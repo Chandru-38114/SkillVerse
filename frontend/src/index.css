@@ -1,0 +1,28 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body {
+  background-color: #F6F4EE;
+  color: #12151B;
+}
+
+.card {
+  @apply bg-white border border-line rounded-sk shadow-[0_1px_0_0_rgba(18,21,27,0.04)];
+}
+
+.btn-primary {
+  @apply bg-moss text-paper px-4 py-2 rounded-sk font-medium hover:bg-moss2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
+}
+
+.btn-secondary {
+  @apply bg-transparent border border-ink/15 text-ink px-4 py-2 rounded-sk font-medium hover:border-ink/40 transition-colors;
+}
+
+.input {
+  @apply w-full border border-line rounded-sk px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-moss/40 focus:border-moss;
+}
+
+.label-eyebrow {
+  @apply text-xs uppercase tracking-[0.14em] text-ink/50 font-medium;
+}

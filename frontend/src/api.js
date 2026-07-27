@@ -1,0 +1,58 @@
+const BASE_URL = "http://localhost:8000";
+
+function getToken() {
+  return localStorage.getItem("skillverse_token");
+}
+
+async function request(path, { method = "GET", body, auth = true } = {}) {
+  const headers = { "Content-Type": "application/json" };
+  if (auth) {
+    const token = getToken();
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+  }
+  const res = await fetch(`${BASE_URL}${path}`, {
+    method,
+    headers,
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(err.detail || "Request failed");
+  }
+  return res.status === 204 ? null : res.json();
+}
+
+export const api = {
+  signup: (data) => request("/auth/signup", { method: "POST", body: data, auth: false }),
+  login: (data) => request("/auth/login", { method: "POST", body: data, auth: false }),
+  me: () => request("/users/me"),
+  mySkills: () => request("/users/me/skills"),
+
+  assessmentQuestions: (skill) => request(`/assessments/questions/${encodeURIComponent(skill)}`),
+  submitAssessment: (data) => request("/assessments/submit", { method: "POST", body: data }),
+
+  searchTeachers: (skill) => request(`/marketplace/search${skill ? `?skill=${encodeURIComponent(skill)}` : ""}`),
+
+  sendRequest: (data) => request("/requests", { method: "POST", body: data }),
+  incomingRequests: () => request("/requests/incoming"),
+  outgoingRequests: () => request("/requests/outgoing"),
+  respondToRequest: (id, accept) => request(`/requests/${id}/respond?accept=${accept}`, { method: "POST" }),
+
+  listMessages: (requestId) => request(`/chat/${requestId}/messages`),
+  sendMessage: (requestId, content) => request(`/chat/${requestId}/messages`, { method: "POST", body: { content } }),
+};
+
+export function saveSession(token, user) {
+  localStorage.setItem("skillverse_token", token);
+  localStorage.setItem("skillverse_user", JSON.stringify(user));
+}
+
+export function getSessionUser() {
+  const raw = localStorage.getItem("skillverse_user");
+  return raw ? JSON.parse(raw) : null;
+}
+
+export function clearSession() {
+  localStorage.removeItem("skillverse_token");
+  localStorage.removeItem("skillverse_user");
+}
