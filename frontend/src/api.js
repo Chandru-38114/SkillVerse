@@ -56,3 +56,14 @@ export function clearSession() {
   localStorage.removeItem("skillverse_token");
   localStorage.removeItem("skillverse_user");
 }
+
+
+// Phase 2: real-time chat over WebSockets.
+// Browsers can't set an Authorization header on a WebSocket handshake, so
+// the JWT is passed as a query param instead — the backend decodes it the
+// same way as any REST request (see chat.py's _authenticate_ws).
+export function chatSocketUrl(requestId) {
+  const token = getToken();
+  const wsBase = BASE_URL.replace(/^http/, "ws");
+  return `${wsBase}/chat/ws/${requestId}?token=${encodeURIComponent(token || "")}`;
+}
