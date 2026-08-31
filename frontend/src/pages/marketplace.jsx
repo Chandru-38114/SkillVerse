@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api'
-import SkillBadge from '../components/SkillBadge'
+import SkillBadge from '../components/skillbadge'
 
 export default function Marketplace() {
   const [query, setQuery] = useState('')
