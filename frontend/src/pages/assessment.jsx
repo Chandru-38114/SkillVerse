@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../api'
-import SkillBadge from '../components/SkillBadge'
+import SkillBadge from '../components/skillbadge'
 
 const STEPS = { PICK: 'pick', QUIZ: 'quiz', RESULT: 'result' }
 
