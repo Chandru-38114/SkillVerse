@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api, getSessionUser } from '../api'
-import SkillBadge from '../components/SkillBadge'
+import SkillBadge from '../components/skillbadge'
 
 export default function Dashboard() {
   const [user, setUser] = useState(getSessionUser())
