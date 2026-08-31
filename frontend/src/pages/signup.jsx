@@ -28,42 +28,59 @@ export default function Signup() {
   }
 
   return (
-    <div className="max-w-md mx-auto px-6 py-16">
-      <h1 className="font-display text-3xl mb-1">Create your profile</h1>
-      <p className="text-ink/60 mb-8 text-sm">You'll assess a skill right after this.</p>
+    <div className="min-h-[calc(100vh-73px)] flex items-center justify-center px-6 py-16">
+      <div className="w-full max-w-md">
+        {/* Logo mark */}
+        <div className="mb-8 text-center">
+          <p className="font-display text-2xl">
+            Skill<span className="text-clay">Verse</span>
+          </p>
+          <p className="text-ink/50 text-sm mt-1">Create your profile — takes 2 minutes</p>
+        </div>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <Field label="Full name" value={form.name} onChange={(v) => update('name', v)} required />
-        <Field label="Email" type="email" value={form.email} onChange={(v) => update('email', v)} required />
-        <Field label="Password" type="password" value={form.password} onChange={(v) => update('password', v)} required />
-        <Field label="College (optional)" value={form.college} onChange={(v) => update('college', v)} />
-        <Field label="Country (optional)" value={form.country} onChange={(v) => update('country', v)} />
+        <div className="card p-8">
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <Field id="name" label="Full name" placeholder="Alex Johnson" value={form.name} onChange={(v) => update('name', v)} required />
+            <Field id="email" label="Email" type="email" placeholder="you@example.com" value={form.email} onChange={(v) => update('email', v)} required />
+            <Field id="password" label="Password" type="password" placeholder="At least 8 characters" value={form.password} onChange={(v) => update('password', v)} required />
 
-        {error && <p className="text-sm text-red-600">{error}</p>}
+            <div className="pt-1 pb-1 border-t border-line" />
 
-        <button type="submit" disabled={loading} className="btn-primary w-full">
-          {loading ? 'Creating account…' : 'Sign up'}
-        </button>
-      </form>
+            <Field id="college" label="College or institution" placeholder="Optional" value={form.college} onChange={(v) => update('college', v)} />
+            <Field id="country" label="Country" placeholder="Optional" value={form.country} onChange={(v) => update('country', v)} />
 
-      <p className="text-sm text-ink/50 mt-6">
-        Already have an account? <Link to="/login" className="text-moss font-medium">Log in</Link>
-      </p>
+            {error && <p className="alert-error">{error}</p>}
+
+            <button type="submit" disabled={loading} className="btn-primary w-full py-3">
+              {loading ? 'Creating account…' : 'Create account →'}
+            </button>
+          </form>
+        </div>
+
+        <p className="text-sm text-ink/50 mt-6 text-center">
+          Already have an account?{' '}
+          <Link to="/login" className="text-moss font-medium hover:underline">
+            Log in
+          </Link>
+        </p>
+      </div>
     </div>
   )
 }
 
-function Field({ label, value, onChange, type = 'text', required = false }) {
+function Field({ id, label, value, onChange, type = 'text', required = false, placeholder = '' }) {
   return (
-    <label className="block">
-      <span className="label-eyebrow block mb-1.5">{label}</span>
+    <div>
+      <label className="field-label" htmlFor={id}>{label}</label>
       <input
+        id={id}
         className="input"
         type={type}
         value={value}
         required={required}
+        placeholder={placeholder}
         onChange={(e) => onChange(e.target.value)}
       />
-    </label>
+    </div>
   )
 }

@@ -9,10 +9,6 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 @router.post("/signup", response_model=schemas.Token)
 def signup(payload: schemas.UserCreate, db: Session = Depends(get_db)):
-    print("Received payload:", payload)
-    print("Password:", repr(payload.password))
-    print("Password length:", len(payload.password))
-
     existing = db.query(models.User).filter(models.User.email == payload.email).first()
     if existing:
         raise HTTPException(status_code=400, detail="Email already registered")

@@ -110,3 +110,33 @@ class MessageOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+# ── Reviews ──────────────────────────────────────────────────────────────────
+
+class ReviewCreate(BaseModel):
+    """Client sends only rating + optional comment.
+    reviewer / reviewee / request are derived server-side."""
+    rating: int          # 1–5, validated in the router
+    comment: Optional[str] = ""
+
+
+class ReviewOut(BaseModel):
+    id: int
+    reviewer_id: int
+    reviewer_name: str
+    reviewee_id: int
+    request_id: int
+    rating: int
+    comment: str
+    created_at: dt.datetime
+
+    class Config:
+        from_attributes = True
+
+
+class UserReviewSummary(BaseModel):
+    """Aggregated review info surfaced on marketplace / profile."""
+    average_rating: Optional[float]   # None when no reviews yet
+    review_count: int
+    reviews: List[ReviewOut]

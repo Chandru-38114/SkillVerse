@@ -3,8 +3,10 @@ venv/
 __pycache__/
 *.pyc
 
-# Environment
+# Environment — ignore all .env variants except the documented example templates
 .env
+.env.*
+!.env.example
 
 # Database
 *.db

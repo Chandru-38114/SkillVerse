@@ -1,4 +1,6 @@
-const BASE_URL = "http://localhost:8000";
+// Backend base URL — set VITE_API_URL in .env.production for deployment.
+// Local development falls back to the Vite dev-server proxy target automatically.
+const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 function getToken() {
   return localStorage.getItem("skillverse_token");
@@ -26,6 +28,13 @@ export const api = {
   signup: (data) => request("/auth/signup", { method: "POST", body: data, auth: false }),
   login: (data) => request("/auth/login", { method: "POST", body: data, auth: false }),
   me: () => request("/users/me"),
+  refreshMe: async () => {
+    const user = await request("/users/me");
+    localStorage.setItem("skillverse_user", JSON.stringify(user));
+    // Notify any component listening (e.g. Navbar) that the user object changed.
+    window.dispatchEvent(new Event("skillverse_user_updated"));
+    return user;
+  },
   mySkills: () => request("/users/me/skills"),
 
   assessmentQuestions: (skill) => request(`/assessments/questions/${encodeURIComponent(skill)}`),
@@ -37,9 +46,16 @@ export const api = {
   incomingRequests: () => request("/requests/incoming"),
   outgoingRequests: () => request("/requests/outgoing"),
   respondToRequest: (id, accept) => request(`/requests/${id}/respond?accept=${accept}`, { method: "POST" }),
+  getConnectionStatus: (toUserId, skillName) =>
+    request(`/requests/status?to_user_id=${toUserId}&skill_name=${encodeURIComponent(skillName)}`),
+  completeRequest: (id) => request(`/requests/${id}/complete`, { method: "POST" }),
 
   listMessages: (requestId) => request(`/chat/${requestId}/messages`),
   sendMessage: (requestId, content) => request(`/chat/${requestId}/messages`, { method: "POST", body: { content } }),
+
+  submitReview: (requestId, data) => request(`/reviews/${requestId}`, { method: "POST", body: data }),
+  getMyReviewForRequest: (requestId) => request(`/reviews/my/${requestId}`),
+  getUserReviews: (userId) => request(`/reviews/user/${userId}`, { auth: false }),
 };
 
 export function saveSession(token, user) {

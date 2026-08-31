@@ -1,3 +1,4 @@
+import os
 import datetime as dt
 from typing import Optional
 from fastapi import Depends, HTTPException, status
@@ -9,8 +10,12 @@ from sqlalchemy.orm import Session
 from .database import get_db
 from . import models
 
-# In production, load this from an environment variable, never hardcode it.
-SECRET_KEY = "dev-secret-change-me-before-you-launch"
+# Read the JWT secret from the environment.
+# In production you MUST set the SECRET_KEY environment variable to a strong
+# random value (e.g.  openssl rand -hex 32).  The fallback below is only for
+# local development; starting the server without a real secret in production
+# is a critical security risk.
+SECRET_KEY = os.environ.get("SECRET_KEY", "dev-secret-change-me-before-you-launch")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # 7 days
 

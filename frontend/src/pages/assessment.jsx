@@ -51,57 +51,114 @@ export default function Assessment() {
     }
   }
 
+  const answeredCount = Object.keys(answers).length
+  const totalCount = questions.length
+  const progress = totalCount > 0 ? Math.round((answeredCount / totalCount) * 100) : 0
+
   return (
     <div className="max-w-2xl mx-auto px-6 py-12">
+      {/* ── Step: Pick skill ── */}
       {step === STEPS.PICK && (
         <>
-          <p className="label-eyebrow mb-1">Skill assessment</p>
-          <h1 className="font-display text-3xl mb-8">What do you want to be assessed on?</h1>
-          <form onSubmit={startQuiz} className="space-y-5">
-            <label className="block">
-              <span className="label-eyebrow block mb-1.5">Skill name</span>
+          <p className="label-eyebrow mb-2">Skill assessment</p>
+          <h1 className="font-display text-4xl mb-2">What skill are you assessing?</h1>
+          <p className="text-ink/50 text-sm mb-8">
+            Python and JavaScript have a full question bank. Other skills use placeholder questions.
+          </p>
+
+          <form onSubmit={startQuiz} className="space-y-6">
+            <div>
+              <label className="field-label" htmlFor="skill-name">Skill name</label>
               <input
+                id="skill-name"
                 className="input"
                 placeholder="e.g. Python, JavaScript, UI Design"
                 value={skillName}
                 onChange={(e) => setSkillName(e.target.value)}
+                autoFocus
               />
-              <span className="text-xs text-ink/40 mt-1 block">
-                Python and JavaScript have a full hand-written question bank in this demo; any other
-                skill name falls back to placeholder questions — swap in an LLM call to generate
-                real ones (see backend/app/data/questions.py).
-              </span>
-            </label>
-            <label className="block">
-              <span className="label-eyebrow block mb-1.5">This assessment is to...</span>
-              <div className="flex gap-3">
-                <RoleOption label="Verify I can teach it" value="teaching" role={role} setRole={setRole} />
-                <RoleOption label="See where I stand as a learner" value="learning" role={role} setRole={setRole} />
+            </div>
+
+            <div>
+              <p className="field-label mb-3">Assessment goal</p>
+              <div className="grid grid-cols-2 gap-3">
+                <RoleOption
+                  label="I want to teach it"
+                  sub="Get a verified teaching badge"
+                  value="teaching"
+                  role={role}
+                  setRole={setRole}
+                  icon="🎓"
+                />
+                <RoleOption
+                  label="I'm learning it"
+                  sub="See where I stand as a learner"
+                  value="learning"
+                  role={role}
+                  setRole={setRole}
+                  icon="📚"
+                />
               </div>
-            </label>
-            {error && <p className="text-sm text-red-600">{error}</p>}
-            <button disabled={loading} className="btn-primary w-full">
-              {loading ? 'Loading questions…' : 'Start assessment'}
+            </div>
+
+            {error && <p className="alert-error">{error}</p>}
+
+            <button disabled={loading || !skillName.trim()} className="btn-primary w-full py-3">
+              {loading ? 'Loading questions…' : 'Start assessment →'}
             </button>
           </form>
         </>
       )}
 
+      {/* ── Step: Quiz ── */}
       {step === STEPS.QUIZ && (
         <>
-          <p className="label-eyebrow mb-1">{skillName}</p>
-          <h1 className="font-display text-3xl mb-8">Answer as best you can</h1>
-          <div className="space-y-6">
+          <div className="flex items-center justify-between mb-2">
+            <div>
+              <p className="label-eyebrow">{skillName}</p>
+              <h1 className="font-display text-3xl">Answer as best you can</h1>
+            </div>
+            <div className="text-right">
+              <p className="text-xs text-ink/40 font-mono mb-1">{answeredCount}/{totalCount} answered</p>
+              <div className="w-24 h-1.5 bg-ink/10 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-moss rounded-full transition-all duration-300"
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-8 space-y-4">
             {questions.map((q, i) => (
-              <div key={q.id} className="card p-5">
-                <p className="text-xs text-ink/40 font-mono mb-2">Q{i + 1} · {q.topic}</p>
-                <p className="mb-3 whitespace-pre-wrap font-medium">{q.question}</p>
+              <div
+                key={q.id}
+                className={`card p-5 transition-all duration-150 ${answers[q.id] ? 'border-moss/30' : ''}`}
+              >
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-xs font-mono text-ink/30 bg-ink/5 px-2 py-0.5 rounded-full">
+                    Q{i + 1}
+                  </span>
+                  <span className="text-xs text-ink/40">{q.topic}</span>
+                  {answers[q.id] && (
+                    <span className="ml-auto text-xs text-moss">✓ answered</span>
+                  )}
+                </div>
+                <p className="font-medium text-sm mb-4 whitespace-pre-wrap leading-relaxed">{q.question}</p>
                 <div className="space-y-2">
                   {q.options.map((opt) => (
-                    <label key={opt} className="flex items-center gap-2 text-sm cursor-pointer">
+                    <label
+                      key={opt}
+                      className={`flex items-center gap-3 text-sm cursor-pointer px-3 py-2.5 rounded-lg border transition-all duration-100
+                        ${answers[q.id] === opt
+                          ? 'border-moss bg-moss/5 text-moss'
+                          : 'border-transparent hover:border-line hover:bg-paper'
+                        }`}
+                    >
                       <input
                         type="radio"
                         name={q.id}
+                        className="accent-moss"
                         checked={answers[q.id] === opt}
                         onChange={() => setAnswers((a) => ({ ...a, [q.id]: opt }))}
                       />
@@ -112,47 +169,68 @@ export default function Assessment() {
               </div>
             ))}
           </div>
-          {error && <p className="text-sm text-red-600 mt-4">{error}</p>}
+
+          {error && <p className="alert-error mt-4">{error}</p>}
+
           <button
             onClick={submitQuiz}
-            disabled={loading || Object.keys(answers).length < questions.length}
-            className="btn-primary w-full mt-6"
+            disabled={loading || answeredCount < totalCount}
+            className="btn-primary w-full mt-6 py-3"
           >
-            {loading ? 'Scoring…' : 'Submit assessment'}
+            {loading
+              ? 'Scoring your answers…'
+              : answeredCount < totalCount
+              ? `Answer all ${totalCount} questions to submit`
+              : 'Submit assessment →'}
           </button>
         </>
       )}
 
+      {/* ── Step: Result ── */}
       {step === STEPS.RESULT && result && (
         <>
-          <p className="label-eyebrow mb-1">Result</p>
-          <div className="flex items-center gap-4 mb-6">
-            <h1 className="font-display text-4xl">{result.score}%</h1>
-            <SkillBadge badge={result.badge} />
-            <span className="text-sm text-ink/50">{result.level}</span>
+          <p className="label-eyebrow mb-3">Assessment complete</p>
+
+          {/* Score hero */}
+          <div className="card p-8 mb-6 text-center bg-gradient-to-b from-white to-paper/60">
+            <p className="font-display text-7xl mb-3">{result.score}%</p>
+            <div className="flex items-center justify-center gap-3">
+              <SkillBadge badge={result.badge} />
+              <span className="text-sm text-ink/50">{result.level}</span>
+            </div>
+            {result.badge && (
+              <p className="text-sm text-moss mt-3 font-medium">+50 points awarded 🎉</p>
+            )}
           </div>
 
           {result.weak_topics.length > 0 && (
             <div className="card p-5 mb-4">
-              <p className="label-eyebrow mb-2">Weak topics</p>
+              <p className="label-eyebrow mb-3">Topics to strengthen</p>
               <div className="flex flex-wrap gap-2">
                 {result.weak_topics.map((t) => (
-                  <span key={t} className="text-xs bg-clay/10 text-clay px-2 py-1 rounded-full">{t}</span>
+                  <span key={t} className="text-xs bg-clay/10 text-clay border border-clay/20 px-3 py-1 rounded-full">
+                    {t}
+                  </span>
                 ))}
               </div>
             </div>
           )}
 
           <div className="card p-5 mb-8">
-            <p className="label-eyebrow mb-2">Personalized study plan</p>
-            <ul className="space-y-1 text-sm">
-              {result.study_plan.map((line, i) => <li key={i}>{line}</li>)}
+            <p className="label-eyebrow mb-3">Your study plan</p>
+            <ul className="space-y-2">
+              {result.study_plan.map((line, i) => (
+                <li key={i} className="flex items-start gap-2 text-sm text-ink/70">
+                  <span className="text-moss mt-0.5">→</span>
+                  {line}
+                </li>
+              ))}
             </ul>
           </div>
 
-          <div className="flex gap-3">
+          <div className="flex flex-wrap gap-3">
             <Link to="/dashboard" className="btn-primary">Back to dashboard</Link>
-            <Link to="/marketplace" className="btn-secondary">Find teachers</Link>
+            <Link to="/marketplace" className="btn-secondary">Find teachers →</Link>
           </div>
         </>
       )}
@@ -160,15 +238,23 @@ export default function Assessment() {
   )
 }
 
-function RoleOption({ label, value, role, setRole }) {
+function RoleOption({ label, sub, value, role, setRole, icon }) {
   const active = role === value
   return (
     <button
       type="button"
       onClick={() => setRole(value)}
-      className={`text-sm px-3 py-2 rounded-sk border ${active ? 'border-moss bg-moss/5 text-moss' : 'border-line text-ink/60'}`}
+      className={`text-left px-4 py-3 rounded-xl border-2 transition-all duration-150
+        ${active
+          ? 'border-moss bg-moss/5'
+          : 'border-line bg-white hover:border-ink/20'
+        }`}
     >
-      {label}
+      <div className="flex items-center gap-2 mb-1">
+        <span>{icon}</span>
+        <span className={`text-sm font-medium ${active ? 'text-moss' : 'text-ink'}`}>{label}</span>
+      </div>
+      <p className="text-xs text-ink/40">{sub}</p>
     </button>
   )
 }
