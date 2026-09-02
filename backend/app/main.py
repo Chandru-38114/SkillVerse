@@ -10,7 +10,8 @@ app = FastAPI(title="SkillVerse AI API", version="0.1.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],  # Vite dev server
+    allow_origins=["http://localhost:5173",
+                 "https://whimsical-raindrop-f3df51.netlify.app"],  # Vite dev server
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
