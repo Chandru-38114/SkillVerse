@@ -16,6 +16,21 @@ class UserLogin(BaseModel):
     password: str
 
 
+class GoogleAuth(BaseModel):
+    credential: str  # The ID token from Google
+
+
+class ForgotPassword(BaseModel):
+    email: EmailStr
+
+
+class ResetPassword(BaseModel):
+    email: EmailStr
+    otp: str
+    new_password: str
+
+
+
 class UserOut(BaseModel):
     id: int
     name: str
@@ -81,6 +96,12 @@ class ConnectionRequestCreate(BaseModel):
     to_user_id: int
     skill_name: str
     message: Optional[str] = ""
+    # Two-way learning context — all optional so old callers still work
+    learner_current_level: Optional[str] = None      # e.g. "Beginner"
+    learner_topics: Optional[str] = None             # comma-separated, e.g. "Loops, Functions"
+    learner_goals: Optional[str] = None              # free-text
+    learner_can_teach: Optional[str] = None          # comma-separated skill names
+    learner_teach_proficiency: Optional[str] = None  # e.g. "Intermediate"
 
 
 class ConnectionRequestOut(BaseModel):
@@ -93,9 +114,16 @@ class ConnectionRequestOut(BaseModel):
     message: str
     status: str
     created_at: dt.datetime
+    # Two-way learning context (nullable — may be absent for old requests)
+    learner_current_level: Optional[str] = None
+    learner_topics: Optional[str] = None
+    learner_goals: Optional[str] = None
+    learner_can_teach: Optional[str] = None
+    learner_teach_proficiency: Optional[str] = None
 
     class Config:
         from_attributes = True
+
 
 
 class MessageCreate(BaseModel):
@@ -140,3 +168,42 @@ class UserReviewSummary(BaseModel):
     average_rating: Optional[float]   # None when no reviews yet
     review_count: int
     reviews: List[ReviewOut]
+
+
+# ── Sessions ──────────────────────────────────────────────────────────────────
+
+class SessionCreate(BaseModel):
+    request_id:   int
+    session_date: str           # "YYYY-MM-DD"
+    start_time:   str           # "HH:MM"
+    end_time:     str           # "HH:MM"
+    notes:        Optional[str] = None
+
+
+class SessionUpdate(BaseModel):
+    session_date: Optional[str] = None
+    start_time:   Optional[str] = None
+    end_time:     Optional[str] = None
+    notes:        Optional[str] = None
+
+
+class SessionOut(BaseModel):
+    id:           int
+    request_id:   int
+    tutor_id:     int
+    tutor_name:   str
+    learner_id:   int
+    learner_name: str
+    skill:        str
+    session_date: str
+    start_time:   str
+    end_time:     str
+    status:       str
+    notes:        Optional[str]
+    request:      Optional[ConnectionRequestOut] = None
+    created_at:   dt.datetime
+    updated_at:   dt.datetime
+
+    class Config:
+        from_attributes = True
+

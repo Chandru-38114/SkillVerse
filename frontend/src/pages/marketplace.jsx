@@ -3,6 +3,18 @@ import { Link } from 'react-router-dom'
 import { api } from '../api'
 import SkillBadge from '../components/skillbadge'
 
+// Default form state for a new request — one per teacher card
+function defaultForm() {
+  return {
+    learner_current_level: '',
+    learner_topics: '',
+    learner_goals: '',
+    learner_can_teach: '',
+    learner_teach_proficiency: '',
+    message: '',
+  }
+}
+
 export default function Marketplace() {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState([])
@@ -10,7 +22,8 @@ export default function Marketplace() {
   const [error, setError] = useState('')
   // key: `${user_id}-${skill_name}` → { status, request_id }
   const [statusMap, setStatusMap] = useState({})
-  const [requestMsg, setRequestMsg] = useState({})
+  // key: `${user_id}-${skill_name}` → form object
+  const [formMap, setFormMap] = useState({})
   // key: user_id → { average_rating, review_count }
   const [ratingsMap, setRatingsMap] = useState({})
 
@@ -46,14 +59,28 @@ export default function Marketplace() {
     runSearch(query.trim())
   }
 
+  function getForm(key) {
+    return formMap[key] || defaultForm()
+  }
+
+  function updateForm(key, field, value) {
+    setFormMap((m) => ({ ...m, [key]: { ...getForm(key), [field]: value } }))
+  }
+
   async function sendRequest(teacher) {
     const key = `${teacher.user_id}-${teacher.skill_name}`
+    const form = getForm(key)
     setError('')
     try {
       const created = await api.sendRequest({
         to_user_id: teacher.user_id,
         skill_name: teacher.skill_name,
-        message: requestMsg[key] || `Hi ${teacher.name}, I'd love to learn ${teacher.skill_name} from you.`,
+        message: form.message || `Hi ${teacher.name}, I'd love to learn ${teacher.skill_name} from you.`,
+        learner_current_level: form.learner_current_level || null,
+        learner_topics: form.learner_topics || null,
+        learner_goals: form.learner_goals || null,
+        learner_can_teach: form.learner_can_teach || null,
+        learner_teach_proficiency: form.learner_teach_proficiency || null,
       })
       setStatusMap((m) => ({ ...m, [key]: { status: 'pending', request_id: created.id } }))
     } catch (err) {
@@ -127,14 +154,14 @@ export default function Marketplace() {
                     <RequestControl
                       rel={rel}
                       teacher={t}
-                      msgKey={key}
-                      requestMsg={requestMsg}
-                      setRequestMsg={setRequestMsg}
+                      form={getForm(key)}
+                      onFormChange={(field, value) => updateForm(key, field, value)}
                       onSend={() => sendRequest(t)}
                     />
                   </div>
                 </div>
               )
+
             })}
           </div>
         </>
@@ -144,11 +171,11 @@ export default function Marketplace() {
 }
 
 /**
- * none / declined / completed → send form
- * pending                     → badge
+ * none / declined / completed → rich send form
+ * pending                     → pending badge
  * accepted                    → connected + chat link
  */
-function RequestControl({ rel, teacher, msgKey, requestMsg, setRequestMsg, onSend }) {
+function RequestControl({ rel, teacher, form, onFormChange, onSend }) {
   if (rel.status === 'accepted') {
     return (
       <div className="flex items-center gap-2">
@@ -172,22 +199,99 @@ function RequestControl({ rel, teacher, msgKey, requestMsg, setRequestMsg, onSen
     )
   }
 
+  const LEVELS = ['', 'Beginner', 'Intermediate', 'Advanced']
+
   return (
-    <div className="space-y-2">
-      <input
-        className="input text-sm"
-        placeholder={`Message ${teacher.name}…`}
-        value={requestMsg[msgKey] || ''}
-        onChange={(e) => setRequestMsg((m) => ({ ...m, [msgKey]: e.target.value }))}
-      />
+    <div className="space-y-4">
+      {/* ── Section 1: I want to learn ─────────────────────────── */}
+      <div>
+        <p className="text-xs font-semibold text-ink/60 uppercase tracking-wide mb-2">
+          I want to learn {teacher.skill_name}
+        </p>
+        <div className="space-y-2">
+          <div>
+            <label className="text-xs text-ink/50 mb-1 block">My current level</label>
+            <select
+              className="input text-sm py-1.5"
+              value={form.learner_current_level}
+              onChange={(e) => onFormChange('learner_current_level', e.target.value)}
+            >
+              {LEVELS.map((l) => (
+                <option key={l} value={l}>{l || '— Select level —'}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="text-xs text-ink/50 mb-1 block">Topics I want to improve</label>
+            <input
+              className="input text-sm"
+              placeholder="e.g. Loops, Functions, Decorators"
+              value={form.learner_topics}
+              onChange={(e) => onFormChange('learner_topics', e.target.value)}
+            />
+          </div>
+          <div>
+            <label className="text-xs text-ink/50 mb-1 block">My learning goals</label>
+            <input
+              className="input text-sm"
+              placeholder="e.g. Build REST APIs, pass my exams"
+              value={form.learner_goals}
+              onChange={(e) => onFormChange('learner_goals', e.target.value)}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* ── Section 2: I can teach ─────────────────────────────── */}
+      <div>
+        <p className="text-xs font-semibold text-ink/60 uppercase tracking-wide mb-2">
+          In return, I can teach
+        </p>
+        <div className="space-y-2">
+          <div>
+            <label className="text-xs text-ink/50 mb-1 block">Skills I can teach</label>
+            <input
+              className="input text-sm"
+              placeholder="e.g. React, Machine Learning, Spanish"
+              value={form.learner_can_teach}
+              onChange={(e) => onFormChange('learner_can_teach', e.target.value)}
+            />
+          </div>
+          <div>
+            <label className="text-xs text-ink/50 mb-1 block">My proficiency in those skills</label>
+            <select
+              className="input text-sm py-1.5"
+              value={form.learner_teach_proficiency}
+              onChange={(e) => onFormChange('learner_teach_proficiency', e.target.value)}
+            >
+              {LEVELS.map((l) => (
+                <option key={l} value={l}>{l || '— Select level —'}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Optional message ───────────────────────────────────── */}
+      <div>
+        <label className="text-xs text-ink/50 mb-1 block">Personal message (optional)</label>
+        <input
+          className="input text-sm"
+          placeholder={`Introduce yourself to ${teacher.name}…`}
+          value={form.message}
+          onChange={(e) => onFormChange('message', e.target.value)}
+        />
+      </div>
+
       <button onClick={onSend} className="btn-primary text-sm py-2 w-full">
         {(rel.status === 'declined' || rel.status === 'completed')
-          ? 'Send request again'
+          ? 'Send request again →'
           : 'Send connection request →'}
       </button>
     </div>
   )
 }
+
 
 function RatingSummary({ data }) {
   if (!data || data.review_count === 0) return null

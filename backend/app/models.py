@@ -24,6 +24,18 @@ class User(Base):
     received_requests = relationship("ConnectionRequest", foreign_keys="ConnectionRequest.to_user_id", back_populates="to_user")
 
 
+class PasswordResetOTP(Base):
+    """Tracks OTP generation for forgot password."""
+    __tablename__ = "password_reset_otps"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    email = Column(String, index=True, nullable=False)
+    hashed_otp = Column(String, nullable=False)
+    expires_at = Column(DateTime, nullable=False)
+    attempts = Column(Integer, default=0)
+    created_at = Column(DateTime, default=dt.datetime.utcnow)
+
+
 class Skill(Base):
     __tablename__ = "skills"
 
@@ -67,12 +79,22 @@ class ConnectionRequest(Base):
     to_user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     skill_id = Column(Integer, ForeignKey("skills.id"), nullable=False)
     message = Column(String, default="")
-    status = Column(String, default="pending")  # pending / accepted / declined
+    status = Column(String, default="pending")  # pending / accepted / declined / completed
     created_at = Column(DateTime, default=dt.datetime.utcnow)
+
+    # ── Two-way learning context (added for rich requests) ────────────────────
+    # What the learner (from_user) wants
+    learner_current_level = Column(String, nullable=True)       # Beginner / Intermediate / Advanced
+    learner_topics        = Column(Text, nullable=True)         # comma-separated topics to improve
+    learner_goals         = Column(Text, nullable=True)         # free-text learning goals
+    # What the learner can offer in return
+    learner_can_teach     = Column(Text, nullable=True)         # comma-separated skill names
+    learner_teach_proficiency = Column(String, nullable=True)   # e.g. Beginner / Intermediate / Advanced
 
     from_user = relationship("User", foreign_keys=[from_user_id], back_populates="sent_requests")
     to_user = relationship("User", foreign_keys=[to_user_id], back_populates="received_requests")
     skill = relationship("Skill")
+
 
 
 class Message(Base):
@@ -112,3 +134,29 @@ class Review(Base):
     )
 
     request = relationship("ConnectionRequest")
+
+
+class Session(Base):
+    """A scheduled learning session between two participants of an accepted request."""
+    __tablename__ = "sessions"
+
+    id         = Column(Integer, primary_key=True, index=True)
+    request_id = Column(Integer, ForeignKey("connection_requests.id"), nullable=False)
+    tutor_id   = Column(Integer, ForeignKey("users.id"), nullable=False)
+    learner_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+
+    skill        = Column(String, nullable=False)
+    session_date = Column(String, nullable=False)   # ISO date string: "YYYY-MM-DD"
+    start_time   = Column(String, nullable=False)   # "HH:MM"
+    end_time     = Column(String, nullable=False)   # "HH:MM"
+
+    # scheduled → completed | cancelled
+    status = Column(String, default="scheduled", nullable=False)
+    notes  = Column(Text, nullable=True)            # optional notes / agenda
+
+    created_at = Column(DateTime, default=dt.datetime.utcnow)
+    updated_at = Column(DateTime, default=dt.datetime.utcnow, onupdate=dt.datetime.utcnow)
+
+    request = relationship("ConnectionRequest")
+    tutor   = relationship("User", foreign_keys=[tutor_id])
+    learner = relationship("User", foreign_keys=[learner_id])

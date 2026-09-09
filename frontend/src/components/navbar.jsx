@@ -7,7 +7,9 @@ const NAV_LINKS = [
   { to: '/assessment', label: 'Get assessed' },
   { to: '/marketplace', label: 'Find a teacher' },
   { to: '/requests', label: 'Requests' },
+  { to: '/sessions', label: 'Sessions' },
 ]
+
 
 export default function Navbar() {
   const navigate = useNavigate()

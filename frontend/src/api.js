@@ -2,7 +2,7 @@
 // Local development falls back to the Vite dev-server proxy target automatically.
 const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
-function getToken() {
+export function getToken() {
   return localStorage.getItem("skillverse_token");
 }
 
@@ -27,6 +27,9 @@ async function request(path, { method = "GET", body, auth = true } = {}) {
 export const api = {
   signup: (data) => request("/auth/signup", { method: "POST", body: data, auth: false }),
   login: (data) => request("/auth/login", { method: "POST", body: data, auth: false }),
+  googleAuth: (credential) => request("/auth/google", { method: "POST", body: { credential }, auth: false }),
+  forgotPassword: (email) => request("/auth/forgot-password", { method: "POST", body: { email }, auth: false }),
+  resetPassword: (data) => request("/auth/reset-password", { method: "POST", body: data, auth: false }),
   me: () => request("/users/me"),
   refreshMe: async () => {
     const user = await request("/users/me");
@@ -56,6 +59,14 @@ export const api = {
   submitReview: (requestId, data) => request(`/reviews/${requestId}`, { method: "POST", body: data }),
   getMyReviewForRequest: (requestId) => request(`/reviews/my/${requestId}`),
   getUserReviews: (userId) => request(`/reviews/user/${userId}`, { auth: false }),
+
+  // Sessions
+  createSession: (data) => request("/sessions", { method: "POST", body: data }),
+  getSession: (id) => request(`/sessions/${id}`),
+  upcomingSessions: () => request("/sessions/upcoming"),
+  mySessions: () => request("/sessions/my"),
+  updateSession: (id, data) => request(`/sessions/${id}`, { method: "PUT", body: data }),
+  cancelSession: (id) => request(`/sessions/${id}/cancel`, { method: "POST" }),
 };
 
 export function saveSession(token, user) {

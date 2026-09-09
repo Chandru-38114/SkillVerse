@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .database import Base, engine
-from .routers import auth, users, assessments, marketplace, requests, chat, reviews
+from .routers import auth, users, assessments, marketplace, requests, chat, reviews, sessions
 
 Base.metadata.create_all(bind=engine)
 
@@ -32,6 +32,8 @@ app.include_router(marketplace.router)
 app.include_router(requests.router)
 app.include_router(chat.router)
 app.include_router(reviews.router)
+app.include_router(sessions.router)
+
 
 
 @app.get("/")

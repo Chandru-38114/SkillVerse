@@ -146,8 +146,8 @@ export default function Chat() {
         ) : (
           <>
             {messages.map((m, idx) => {
-              const isMe = m.sender_id === user.id
-              const prevIsMe = idx > 0 && messages[idx - 1].sender_id === user.id
+              const isMe = Number(m.sender_id) === Number(user?.id)
+              const prevIsMe = idx > 0 && Number(messages[idx - 1].sender_id) === Number(user?.id)
               const isConsecutive = idx > 0 && messages[idx - 1].sender_id === m.sender_id
               return (
                 <div

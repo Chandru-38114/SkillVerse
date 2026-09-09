@@ -42,3 +42,43 @@ class ConnectionManager:
 
 
 chat_manager = ConnectionManager()
+
+
+class WebRTCManager:
+    def __init__(self):
+        # session_id -> { user_id -> WebSocket }
+        self.rooms: Dict[int, Dict[int, WebSocket]] = {}
+
+    async def connect(self, session_id: int, user_id: int, websocket: WebSocket) -> None:
+        await websocket.accept()
+        if session_id not in self.rooms:
+            self.rooms[session_id] = {}
+        self.rooms[session_id][user_id] = websocket
+
+    def disconnect(self, session_id: int, user_id: int) -> None:
+        room = self.rooms.get(session_id)
+        if room and user_id in room:
+            del room[user_id]
+            if not room:
+                del self.rooms[session_id]
+
+    async def send_to_peer(self, session_id: int, sender_id: int, message: dict) -> None:
+        room = self.rooms.get(session_id)
+        if not room:
+            return
+        
+        dead = []
+        for uid, connection in room.items():
+            if uid != sender_id:
+                try:
+                    await connection.send_json(message)
+                except Exception:
+                    dead.append(uid)
+        
+        for uid in dead:
+            del room[uid]
+        if room and not self.rooms[session_id]: # Cleanup if empty
+            del self.rooms[session_id]
+
+
+webrtc_manager = WebRTCManager()

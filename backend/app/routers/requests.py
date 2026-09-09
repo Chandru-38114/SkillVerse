@@ -16,6 +16,12 @@ def _to_out(r: models.ConnectionRequest) -> schemas.ConnectionRequestOut:
         to_user_id=r.to_user_id, to_user_name=r.to_user.name,
         skill_name=r.skill.name, message=r.message, status=r.status,
         created_at=r.created_at,
+        # Two-way learning context — pass through as-is (None for old rows)
+        learner_current_level=r.learner_current_level,
+        learner_topics=r.learner_topics,
+        learner_goals=r.learner_goals,
+        learner_can_teach=r.learner_can_teach,
+        learner_teach_proficiency=r.learner_teach_proficiency,
     )
 
 
@@ -78,11 +84,18 @@ def create_request(
         to_user_id=payload.to_user_id,
         skill_id=skill.id,
         message=payload.message or "",
+        # Two-way learning context
+        learner_current_level=payload.learner_current_level,
+        learner_topics=payload.learner_topics,
+        learner_goals=payload.learner_goals,
+        learner_can_teach=payload.learner_can_teach,
+        learner_teach_proficiency=payload.learner_teach_proficiency,
     )
     db.add(req)
     db.commit()
     db.refresh(req)
     return _to_out(req)
+
 
 
 @router.get("/status")

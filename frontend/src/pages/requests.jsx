@@ -177,6 +177,14 @@ function RequestCard({ r, tab, onAccept, onDecline, onComplete, reviewed, onRevi
           </div>
         </div>
 
+        {/* Two-way learning context panel — shown on incoming requests */}
+        <LearningContext r={r} tab={tab} />
+
+        {/* Schedule Session — only for accepted requests */}
+        {r.status === 'accepted' && (
+          <SchedulePanel requestId={r.id} skill={r.skill_name} />
+        )}
+
         {/* Review panel */}
         {r.status === 'completed' && (
           <div className="mt-4 pt-4 border-t border-line">
@@ -198,9 +206,297 @@ function RequestCard({ r, tab, onAccept, onDecline, onComplete, reviewed, onRevi
   )
 }
 
+
+// ── Two-way learning context panel ───────────────────────────────────────────
+
+function LearningContext({ r, tab }) {
+  const hasLearnInfo = r.learner_current_level || r.learner_topics || r.learner_goals
+  const hasTeachInfo = r.learner_can_teach || r.learner_teach_proficiency
+
+  if (!hasLearnInfo && !hasTeachInfo) return null
+
+  return (
+    <div className="mt-4 pt-4 border-t border-line grid sm:grid-cols-2 gap-4">
+      {/* What the learner wants to learn */}
+      {hasLearnInfo && (
+        <div>
+          <p className="text-xs font-semibold text-ink/50 uppercase tracking-wide mb-2">
+            {tab === 'incoming' ? 'They want to learn' : 'You want to learn'}
+          </p>
+          <div className="space-y-1.5">
+            {r.learner_current_level && (
+              <div className="flex gap-2 text-sm">
+                <span className="text-ink/40 w-24 shrink-0">Current level</span>
+                <span className="font-medium">{r.learner_current_level}</span>
+              </div>
+            )}
+            {r.learner_topics && (
+              <div className="flex gap-2 text-sm">
+                <span className="text-ink/40 w-24 shrink-0">Topics</span>
+                <span>{r.learner_topics}</span>
+              </div>
+            )}
+            {r.learner_goals && (
+              <div className="flex gap-2 text-sm">
+                <span className="text-ink/40 w-24 shrink-0">Goals</span>
+                <span>{r.learner_goals}</span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* What the learner can teach */}
+      {hasTeachInfo && (
+        <div>
+          <p className="text-xs font-semibold text-ink/50 uppercase tracking-wide mb-2">
+            {tab === 'incoming' ? 'They can teach' : 'You offered to teach'}
+          </p>
+          <div className="space-y-1.5">
+            {r.learner_can_teach && (
+              <div className="flex gap-2 text-sm">
+                <span className="text-ink/40 w-24 shrink-0">Skills</span>
+                <span>{r.learner_can_teach}</span>
+              </div>
+            )}
+            {r.learner_teach_proficiency && (
+              <div className="flex gap-2 text-sm">
+                <span className="text-ink/40 w-24 shrink-0">Proficiency</span>
+                <span className="font-medium">{r.learner_teach_proficiency}</span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+
+// ── Schedule session panel ────────────────────────────────────────────────────
+
+function SchedulePanel({ requestId, skill }) {
+  const [session, setSession] = useState(null)   // existing session or null
+  const [showForm, setShowForm] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+
+  async function loadSession() {
+    // Fetch upcoming sessions and find one matching this request
+    try {
+      const sessions = await api.mySessions()
+      const match = sessions.find(
+        (s) => s.request_id === requestId && s.status === 'scheduled'
+      )
+      setSession(match || null)
+    } catch {
+      // non-fatal — just show the form
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => { loadSession() }, [requestId])
+
+  async function handleCancel() {
+    if (!session) return
+    setError('')
+    try {
+      await api.cancelSession(session.id)
+      setSession(null)
+      setShowForm(false)
+    } catch (err) {
+      setError(err.message)
+    }
+  }
+
+  function onScheduled(newSession) {
+    setSession(newSession)
+    setShowForm(false)
+  }
+
+  if (loading) return null
+
+  return (
+    <div className="mt-4 pt-4 border-t border-line">
+      {error && <p className="alert-error mb-3 text-xs">{error}</p>}
+
+      {session ? (
+        /* ── Scheduled session display ── */
+        <div>
+          <p className="text-xs font-semibold text-ink/50 uppercase tracking-wide mb-2">
+            Scheduled Session
+          </p>
+          <div className="bg-moss/5 border border-moss/20 rounded-lg p-3 flex items-center justify-between gap-4">
+            <div className="space-y-0.5">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold text-moss capitalize">{session.skill}</span>
+                <span className="text-xs bg-moss/10 text-moss border border-moss/20 px-1.5 py-0.5 rounded-full font-medium">
+                  Scheduled ●
+                </span>
+              </div>
+              <p className="text-sm text-ink/70">
+                📅 {formatSessionDate(session.session_date)}{' '}
+                <span className="text-ink/40 mx-1">·</span>
+                ⏰ {session.start_time} – {session.end_time}
+              </p>
+              {session.notes && (
+                <p className="text-xs text-ink/50 italic">{session.notes}</p>
+              )}
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <Link
+                to={`/session/${session.id}`}
+                className="btn-primary text-xs py-1.5 px-3"
+              >
+                Join
+              </Link>
+              <button
+                onClick={handleCancel}
+                className="text-xs text-red-600 border border-red-200 hover:border-red-400 px-2.5 py-1.5 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : showForm ? (
+        /* ── Schedule form ── */
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-xs font-semibold text-ink/50 uppercase tracking-wide">
+              Schedule Session
+            </p>
+            <button
+              onClick={() => setShowForm(false)}
+              className="text-xs text-ink/40 hover:text-ink"
+            >
+              ✕ Close
+            </button>
+          </div>
+          <ScheduleForm
+            requestId={requestId}
+            skill={skill}
+            onScheduled={onScheduled}
+          />
+        </div>
+      ) : (
+        /* ── Button to open form ── */
+        <button
+          onClick={() => setShowForm(true)}
+          className="btn-secondary text-sm py-1.5 px-4 w-full"
+        >
+          📅 Schedule Session
+        </button>
+      )}
+    </div>
+  )
+}
+
+// ── Schedule form ─────────────────────────────────────────────────────────────
+
+function ScheduleForm({ requestId, skill, onScheduled }) {
+  const today = new Date().toISOString().slice(0, 10)
+  const [date, setDate] = useState('')
+  const [start, setStart] = useState('')
+  const [end, setEnd] = useState('')
+  const [notes, setNotes] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [formError, setFormError] = useState('')
+
+  async function handleSubmit(e) {
+    e.preventDefault()
+    if (!date || !start || !end) {
+      setFormError('Date, start time, and end time are required.')
+      return
+    }
+    setFormError('')
+    setSubmitting(true)
+    try {
+      const created = await api.createSession({
+        request_id: requestId,
+        session_date: date,
+        start_time: start,
+        end_time: end,
+        notes: notes || null,
+      })
+      onScheduled(created)
+    } catch (err) {
+      setFormError(err.message)
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div>
+          <label className="field-label text-xs">Date</label>
+          <input
+            type="date"
+            className="input text-sm"
+            min={today}
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            required
+          />
+        </div>
+        <div>
+          <label className="field-label text-xs">Start time</label>
+          <input
+            type="time"
+            className="input text-sm"
+            value={start}
+            onChange={(e) => setStart(e.target.value)}
+            required
+          />
+        </div>
+        <div>
+          <label className="field-label text-xs">End time</label>
+          <input
+            type="time"
+            className="input text-sm"
+            value={end}
+            onChange={(e) => setEnd(e.target.value)}
+            required
+          />
+        </div>
+      </div>
+      <div>
+        <label className="field-label text-xs">Notes / agenda (optional)</label>
+        <input
+          className="input text-sm"
+          placeholder="What will you cover in this session?"
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+        />
+      </div>
+      {formError && <p className="alert-error text-xs py-2">{formError}</p>}
+      <button
+        type="submit"
+        disabled={submitting}
+        className="btn-primary text-sm py-2 w-full"
+      >
+        {submitting ? 'Scheduling…' : 'Confirm Session'}
+      </button>
+    </form>
+  )
+}
+
+function formatSessionDate(isoDate) {
+  try {
+    const [y, m, d] = isoDate.split('-').map(Number)
+    return new Date(y, m - 1, d).toLocaleDateString('en-US', {
+      weekday: 'short', year: 'numeric', month: 'short', day: 'numeric',
+    })
+  } catch { return isoDate }
+}
+
 // ── Inline review form ────────────────────────────────────────────────────────
 
 function ReviewForm({ requestId, otherName, onSubmitted }) {
+
   const [rating, setRating] = useState(0)
   const [hovered, setHovered] = useState(0)
   const [comment, setComment] = useState('')
