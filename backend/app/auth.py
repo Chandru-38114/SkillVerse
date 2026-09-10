@@ -56,3 +56,26 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
     if user is None:
         raise credentials_exception
     return user
+
+def get_user_id_from_token_sync(token: str) -> Optional[int]:
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id = payload.get("sub")
+        if user_id:
+            return int(user_id)
+    except Exception:
+        pass
+    return None
+import re
+
+def validate_password_strength(password: str) -> None:
+    if len(password) < 8:
+        raise ValueError("Password must be at least 8 characters long")
+    if not re.search(r"[A-Z]", password):
+        raise ValueError("Password must contain at least one uppercase letter")
+    if not re.search(r"[a-z]", password):
+        raise ValueError("Password must contain at least one lowercase letter")
+    if not re.search(r"\d", password):
+        raise ValueError("Password must contain at least one number")
+    if not re.search(r'[!@#$%^&*(),.?":{}|<>]', password):
+        raise ValueError("Password must contain at least one special character")

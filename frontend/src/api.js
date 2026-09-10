@@ -1,6 +1,6 @@
 // Backend base URL — set VITE_API_URL in .env.production for deployment.
 // Local development falls back to the Vite dev-server proxy target automatically.
-const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+export const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 export function getToken() {
   return localStorage.getItem("skillverse_token");
@@ -67,6 +67,50 @@ export const api = {
   mySessions: () => request("/sessions/my"),
   updateSession: (id, data) => request(`/sessions/${id}`, { method: "PUT", body: data }),
   cancelSession: (id) => request(`/sessions/${id}/cancel`, { method: "POST" }),
+
+  // Auth Verification
+  requestEmailVerification: () => request("/auth/verify-email/request", { method: "POST" }),
+  confirmEmailVerification: (otp) => request("/auth/verify-email/confirm", { method: "POST", body: { otp } }),
+  requestMobileVerification: () => request("/auth/verify-mobile/request", { method: "POST" }),
+  confirmMobileVerification: (otp) => request("/auth/verify-mobile/confirm", { method: "POST", body: { otp } }),
+
+  // Notifications
+  getNotifications: () => request("/notifications"),
+  getUnreadNotificationCount: () => request("/notifications/unread-count"),
+  markNotificationRead: (id) => request(`/notifications/${id}/read`, { method: "POST" }),
+  markAllNotificationsRead: () => request("/notifications/read-all", { method: "POST" }),
+
+  // Certificates
+  getMyCertificates: () => request("/certificates/my"),
+  generateCertificate: (skillName) => request(`/certificates/generate?skill_name=${encodeURIComponent(skillName)}`, { method: "POST" }),
+  verifyCertificate: (certId) => request(`/certificates/verify/${certId}`, { auth: false }),
+
+  // Progress
+  getSessionProgress: (sessionId) => request(`/progress/session/${sessionId}`),
+  completeSessionProgress: (sessionId) => request(`/progress/session/${sessionId}/complete`, { method: "POST" }),
+  getMyProgress: () => request("/progress/my"),
+  getProgressHistory: () => request("/progress/history"),
+
+  // Materials
+  getSessionMaterials: (sessionId) => request(`/materials/${sessionId}`),
+  uploadMaterial: (sessionId, file) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    return fetch(`${BASE_URL}/materials/${sessionId}`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${getToken()}` },
+      body: formData,
+    }).then(res => {
+      if (!res.ok) throw new Error("Upload failed");
+      return res.json();
+    });
+  },
+  deleteMaterial: (id) => request(`/materials/${id}`, { method: "DELETE" }),
+
+  // Gamification
+  getLeaderboard: () => request("/gamification/leaderboard"),
+  getGamificationSummary: () => request("/gamification/summary"),
+
 };
 
 export function saveSession(token, user) {
@@ -94,3 +138,4 @@ export function chatSocketUrl(requestId) {
   const wsBase = BASE_URL.replace(/^http/, "ws");
   return `${wsBase}/chat/ws/${requestId}?token=${encodeURIComponent(token || "")}`;
 }
+

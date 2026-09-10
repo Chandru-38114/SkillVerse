@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from ..notification_service import create_notification
 
 from .. import models, schemas, auth
 from ..database import get_db
@@ -101,16 +102,21 @@ def submit_assessment(
         user_skill = models.UserSkill(user_id=current_user.id, skill_id=skill.id, role=payload.role)
         db.add(user_skill)
 
+    had_badge_before = bool(user_skill.badge) if hasattr(user_skill, 'badge') else False
+    
     user_skill.latest_score = score
     user_skill.level = level
     user_skill.badge = badge
     user_skill.role = payload.role
 
-    # Award points for completing a certification, per the points economy
-    if badge:
+    # Award points for completing a certification ONLY if they did not already have a badge for this skill
+    if badge and not had_badge_before:
         current_user.points += 50
 
     db.commit()
+    create_notification(db, current_user.id, "assessment", "Assessment Completed", f"You scored {score}% on {skill.name}", attempt.id, "assessment")
+    if badge:
+        create_notification(db, current_user.id, "assessment", "Badge Earned", f"You earned a {badge} badge in {skill.name}!", attempt.id, "assessment")
 
     return schemas.AssessmentResult(
         score=score, level=level, badge=badge,

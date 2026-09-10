@@ -1,48 +1,64 @@
 import datetime as dt
 from typing import Optional, List
-from pydantic import BaseModel, EmailStr
-
+from pydantic import BaseModel, EmailStr, model_validator
 
 class UserCreate(BaseModel):
     name: str
     email: EmailStr
+    mobile_number: str
     password: str
-    college: Optional[str] = ""
+    confirm_password: str
+    college: str
     country: Optional[str] = ""
-
+    
+    @model_validator(mode='after')
+    def check_passwords_match(self):
+        if self.password != self.confirm_password:
+            raise ValueError('Passwords do not match')
+        return self
 
 class UserLogin(BaseModel):
-    email: EmailStr
+    email: Optional[str] = None
+    mobile_number: Optional[str] = None
     password: str
-
 
 class GoogleAuth(BaseModel):
     credential: str  # The ID token from Google
 
-
 class ForgotPassword(BaseModel):
     email: EmailStr
-
 
 class ResetPassword(BaseModel):
     email: EmailStr
     otp: str
     new_password: str
 
-
-
 class UserOut(BaseModel):
     id: int
     name: str
     email: EmailStr
+    mobile_number: Optional[str] = None
+    is_email_verified: bool = False
+    is_mobile_verified: bool = False
     college: str
     country: str
     bio: str
+    profile_picture_url: Optional[str] = None
     points: int
 
     class Config:
         from_attributes = True
 
+class UserUpdate(BaseModel):
+    name: Optional[str] = None
+    bio: Optional[str] = None
+    mobile_number: Optional[str] = None
+    college: Optional[str] = None
+    country: Optional[str] = None
+
+class PasswordChangeRequest(BaseModel):
+    current_password: str
+    new_password: str
 
 class Token(BaseModel):
     access_token: str
@@ -82,15 +98,18 @@ class AssessmentResult(BaseModel):
     study_plan: List[str]
 
 
-class MarketplaceTeacher(BaseModel):
-    user_id: int
-    name: str
-    college: str
+class SkillBadgeInfo(BaseModel):
     skill_name: str
     level: str
     badge: Optional[str]
     score: Optional[float]
 
+class MarketplaceUser(BaseModel):
+    user_id: int
+    name: str
+    college: str
+    teaching_skills: List[SkillBadgeInfo]
+    learning_skills: List[SkillBadgeInfo]
 
 class ConnectionRequestCreate(BaseModel):
     to_user_id: int
@@ -134,11 +153,39 @@ class MessageOut(BaseModel):
     id: int
     sender_id: int
     content: str
+    is_read: bool = False
     created_at: dt.datetime
 
     class Config:
         from_attributes = True
 
+class InboxConversationOut(BaseModel):
+    request_id: int
+    other_user_id: int
+    other_user_name: str
+    other_user_avatar: Optional[str] = None
+    skill_name: str
+    latest_message: str
+    latest_message_time: Optional[dt.datetime] = None
+    unread_count: int = 0
+    request_status: str
+    session_id: Optional[int] = None
+    session_date: Optional[str] = None
+    session_time: Optional[str] = None
+
+class NotificationOut(BaseModel):
+    id: int
+    user_id: int
+    type: str
+    title: str
+    message: str
+    is_read: bool
+    created_at: dt.datetime
+    related_id: Optional[int] = None
+    related_type: Optional[str] = None
+
+    class Config:
+        from_attributes = True
 
 # ── Reviews ──────────────────────────────────────────────────────────────────
 
@@ -206,4 +253,64 @@ class SessionOut(BaseModel):
 
     class Config:
         from_attributes = True
-
+
+
+# "?"? Progress History "?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?
+
+class SessionProgressUpdate(BaseModel):
+    topics_discussed: Optional[str] = None
+    topics_completed: Optional[str] = None
+    learning_notes: Optional[str] = None
+
+class SessionProgressOut(BaseModel):
+    id: int
+    session_id: int
+    user_id: int
+    skill_id: int
+    topics_discussed: str
+    topics_completed: str
+    learning_notes: str
+    duration_minutes: int
+    level_before: Optional[str] = None
+    level_after: Optional[str] = None
+    progress_percentage_before: int
+    progress_percentage_after: int
+    created_at: dt.datetime
+    updated_at: dt.datetime
+    
+    # Helpful nested info for the history view
+    session: Optional[SessionOut] = None
+
+    class Config:
+        from_attributes = True
+
+class UserSkillProgressOut(UserSkillOut):
+    progress_percentage: int
+    sessions_completed: int
+    total_learning_minutes: int
+    assessment_count: int = 0
+    # Add history for the detail view
+    history: List[SessionProgressOut] = []
+
+class CertificateGenerateRequest(BaseModel):
+    skill_name: str
+
+class CertificateOut(BaseModel):
+    id: int
+    certificate_id: str
+    user_id: int
+    user_name: Optional[str] = None
+    skill_id: int
+    skill_name: Optional[str] = None
+    issue_date: dt.datetime
+    level: str
+    badge: str
+    sessions_completed: int
+    progress_percentage: int
+
+    class Config:
+        from_attributes = True
+
+class VerifyOTP(BaseModel):
+    otp: str
+

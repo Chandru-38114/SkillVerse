@@ -13,7 +13,8 @@ import datetime as dt
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect, Query
-from sqlalchemy.orm import Session as DBSession
+from sqlalchemy.orm import Session
+from ..notification_service import create_notification as DBSession
 from jose import jwt, JWTError
 
 from .. import models, schemas, auth
@@ -147,6 +148,8 @@ def create_session(
     db.add(session)
     db.commit()
     db.refresh(session)
+    to_notify = session.learner_id if current_user.id == session.tutor_id else session.tutor_id
+    create_notification(db, to_notify, "session", "Session Scheduled", f"{current_user.name} scheduled a new session", session.id, "session")
     return _to_out(session)
 
 
@@ -228,6 +231,8 @@ def update_session(
 
     db.commit()
     db.refresh(s)
+    to_notify = s.learner_id if current_user.id == s.tutor_id else s.tutor_id
+    create_notification(db, to_notify, "session", "Session Rescheduled", f"{current_user.name} rescheduled the session", s.id, "session")
     return _to_out(s)
 
 
@@ -248,6 +253,8 @@ def cancel_session(
     s.status = "cancelled"
     db.commit()
     db.refresh(s)
+    to_notify = s.learner_id if current_user.id == s.tutor_id else s.tutor_id
+    create_notification(db, to_notify, "session", "Session Cancelled", f"{current_user.name} cancelled the session", s.id, "session")
     return _to_out(s)
 @router.websocket("/ws/{session_id}")
 async def webrtc_signaling(

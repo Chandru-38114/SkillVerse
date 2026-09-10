@@ -2,6 +2,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect, Query
 from jose import jwt, JWTError
 from sqlalchemy.orm import Session
+from ..notification_service import create_notification
 
 from .. import models, schemas, auth
 from ..database import get_db, SessionLocal
@@ -18,6 +19,83 @@ def _authorize(db: Session, request_id: int, user_id: int) -> models.ConnectionR
         raise HTTPException(status_code=403, detail="Request has not been accepted yet")
     return req
 
+
+from sqlalchemy import or_, desc, func
+
+@router.get("/inbox", response_model=List[schemas.InboxConversationOut])
+def get_inbox(
+    current_user: models.User = Depends(auth.get_current_user),
+    db: Session = Depends(get_db),
+):
+    # Fetch requests where user is either from or to
+    reqs = db.query(models.ConnectionRequest).filter(
+        or_(
+            models.ConnectionRequest.from_user_id == current_user.id,
+            models.ConnectionRequest.to_user_id == current_user.id
+        )
+    ).all()
+    
+    inbox = []
+    for req in reqs:
+        # Determine the "other user"
+        other_user_id = req.to_user_id if req.from_user_id == current_user.id else req.from_user_id
+        other_user = db.query(models.User).filter(models.User.id == other_user_id).first()
+        skill = db.query(models.Skill).filter(models.Skill.id == req.skill_id).first()
+        
+        # Latest message
+        latest_msg = db.query(models.Message).filter(models.Message.request_id == req.id).order_by(desc(models.Message.created_at)).first()
+        
+        # Unread count (messages sent to the current user that are NOT read)
+        unread_count = db.query(models.Message).filter(
+            models.Message.request_id == req.id,
+            models.Message.sender_id == other_user_id,
+            models.Message.is_read == False
+        ).count()
+        
+        # Check for active session
+        session = db.query(models.Session).filter(models.Session.request_id == req.id).first()
+        
+        inbox.append(schemas.InboxConversationOut(
+            request_id=req.id,
+            other_user_id=other_user.id,
+            other_user_name=other_user.name,
+            other_user_avatar=other_user.profile_picture_url if hasattr(other_user, 'profile_picture_url') else None,
+            skill_name=skill.name,
+            latest_message=latest_msg.content if latest_msg else ("Request " + req.status),
+            latest_message_time=latest_msg.created_at if latest_msg else req.created_at,
+            unread_count=unread_count,
+            request_status=req.status,
+            session_id=session.id if session else None,
+            session_date=session.session_date if session else None,
+            session_time=session.start_time if session else None
+        ))
+    
+    # Sort by latest message time descending
+    # Ensure a datetime is used for sorting. If there's no latest_message, use req.created_at
+    inbox.sort(key=lambda x: x.latest_message_time.timestamp() if x.latest_message_time else 0, reverse=True)
+    return inbox
+
+@router.post("/{request_id}/read")
+def mark_conversation_read(
+    request_id: int,
+    current_user: models.User = Depends(auth.get_current_user),
+    db: Session = Depends(get_db),
+):
+    req = _authorize(db, request_id, current_user.id)
+    # Mark messages from the OTHER user as read
+    other_user_id = req.to_user_id if req.from_user_id == current_user.id else req.from_user_id
+    
+    unread_messages = db.query(models.Message).filter(
+        models.Message.request_id == request_id,
+        models.Message.sender_id == other_user_id,
+        models.Message.is_read == False
+    ).all()
+    
+    for msg in unread_messages:
+        msg.is_read = True
+        
+    db.commit()
+    return {"detail": "Messages marked as read"}
 
 @router.get("/{request_id}/messages", response_model=List[schemas.MessageOut])
 def list_messages(
@@ -42,6 +120,9 @@ def send_message(
     db.add(msg)
     db.commit()
     db.refresh(msg)
+    req = db.query(models.ConnectionRequest).filter(models.ConnectionRequest.id == request_id).first()
+    other_user_id = req.to_user_id if req.from_user_id == current_user.id else req.from_user_id
+    create_notification(db, other_user_id, "message", "New Message", f"{current_user.name} sent you a message", request_id, "chat")
     return msg
 
 
@@ -87,6 +168,9 @@ async def chat_websocket(websocket: WebSocket, request_id: int, token: str = Que
                 db.add(msg)
                 db.commit()
                 db.refresh(msg)
+                req = db.query(models.ConnectionRequest).filter(models.ConnectionRequest.id == request_id).first()
+                other_user_id = req.to_user_id if req.from_user_id == user.id else req.from_user_id
+                create_notification(db, other_user_id, "message", "New Message", f"{user.name} sent you a message", request_id, "chat")
 
                 await chat_manager.broadcast(request_id, {
                     "type": "message",

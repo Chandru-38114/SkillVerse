@@ -67,27 +67,29 @@ export default function Marketplace() {
     setFormMap((m) => ({ ...m, [key]: { ...getForm(key), [field]: value } }))
   }
 
-  async function sendRequest(teacher) {
-    const key = `${teacher.user_id}-${teacher.skill_name}`
+  async function sendRequest(teacher, targetSkill) {
+    const key = `${teacher.user_id}`
     const form = getForm(key)
     setError('')
     try {
       const created = await api.sendRequest({
         to_user_id: teacher.user_id,
-        skill_name: teacher.skill_name,
-        message: form.message || `Hi ${teacher.name}, I'd love to learn ${teacher.skill_name} from you.`,
+        skill_name: targetSkill,
+        message: form.message || `Hi ${teacher.name}, I'd love to learn ${targetSkill} from you.`,
         learner_current_level: form.learner_current_level || null,
         learner_topics: form.learner_topics || null,
         learner_goals: form.learner_goals || null,
         learner_can_teach: form.learner_can_teach || null,
         learner_teach_proficiency: form.learner_teach_proficiency || null,
       })
-      setStatusMap((m) => ({ ...m, [key]: { status: 'pending', request_id: created.id } }))
+      const relKey = `${teacher.user_id}-${targetSkill}`
+      setStatusMap((m) => ({ ...m, [relKey]: { status: 'pending', request_id: created.id } }))
     } catch (err) {
+      const relKey = `${teacher.user_id}-${targetSkill}`
       if (err.message.includes('already pending')) {
-        setStatusMap((m) => ({ ...m, [key]: { status: 'pending', request_id: null } }))
+        setStatusMap((m) => ({ ...m, [relKey]: { status: 'pending', request_id: null } }))
       } else if (err.message.includes('already connected')) {
-        setStatusMap((m) => ({ ...m, [key]: { status: 'accepted', request_id: null } }))
+        setStatusMap((m) => ({ ...m, [relKey]: { status: 'accepted', request_id: null } }))
       } else {
         setError(err.message)
       }
@@ -124,8 +126,15 @@ export default function Marketplace() {
           <p className="text-sm text-ink/40 mb-4">{results.length} verified teacher{results.length !== 1 ? 's' : ''} found</p>
           <div className="grid md:grid-cols-2 gap-4">
             {results.map((t) => {
-              const key = `${t.user_id}-${t.skill_name}`
-              const rel = statusMap[key] || { status: 'none', request_id: null }
+              const key = `${t.user_id}`
+              // We'll manage the selected skill to request in the form state
+              const form = getForm(key)
+              
+              // If they haven't selected a skill to request yet, default to the first teaching skill
+              const targetSkill = form.target_skill || t.teaching_skills[0]?.skill_name
+              const relKey = `${t.user_id}-${targetSkill}`
+              const rel = statusMap[relKey] || { status: 'none', request_id: null }
+
               return (
                 <div key={key} className="card-hover p-6">
                   {/* Teacher header */}
@@ -134,34 +143,51 @@ export default function Marketplace() {
                       <p className="font-semibold text-base">{t.name}</p>
                       <p className="text-xs text-ink/40 mt-0.5">{t.college || 'Independent learner'}</p>
                     </div>
-                    <SkillBadge badge={t.badge} />
-                  </div>
-
-                  {/* Skill info */}
-                  <div className="flex items-center gap-2 mb-3">
-                    <span className="text-xs bg-moss/8 text-moss border border-moss/15 px-2 py-0.5 rounded-full font-medium">
-                      {t.skill_name}
-                    </span>
-                    <span className="text-xs text-ink/40">{t.level}</span>
-                    <span className="text-xs text-ink/30">·</span>
-                    <span className="text-xs text-ink/40 font-mono">{t.score}%</span>
                   </div>
 
                   {/* Rating */}
                   <RatingSummary data={ratingsMap[t.user_id]} />
 
+                  {/* Teaches */}
+                  <div className="mt-4">
+                    <p className="text-[10px] font-semibold text-ink/40 uppercase tracking-wider mb-2">Teaches</p>
+                    <div className="flex flex-wrap gap-2">
+                      {t.teaching_skills.map(s => (
+                        <div key={s.skill_name} className="flex items-center gap-2 bg-moss/5 border border-moss/10 px-2 py-1 rounded">
+                          <span className="text-xs font-medium text-moss">{s.skill_name}</span>
+                          <span className="text-[10px] text-ink/40">{s.level}</span>
+                          <SkillBadge badge={s.badge} />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Wants to Learn */}
+                  {t.learning_skills.length > 0 && (
+                    <div className="mt-4">
+                      <p className="text-[10px] font-semibold text-ink/40 uppercase tracking-wider mb-2">Wants to Learn</p>
+                      <div className="flex flex-wrap gap-2">
+                        {t.learning_skills.map(s => (
+                          <span key={s.skill_name} className="text-xs bg-ink/5 text-ink/60 border border-line px-2 py-1 rounded">
+                            {s.skill_name} <span className="text-[10px] text-ink/40 opacity-70 ml-1">{s.level}</span>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   <div className="border-t border-line/60 mt-4 pt-4">
                     <RequestControl
                       rel={rel}
                       teacher={t}
-                      form={getForm(key)}
+                      targetSkill={targetSkill}
+                      form={form}
                       onFormChange={(field, value) => updateForm(key, field, value)}
-                      onSend={() => sendRequest(t)}
+                      onSend={() => sendRequest(t, targetSkill)}
                     />
                   </div>
                 </div>
               )
-
             })}
           </div>
         </>
@@ -175,7 +201,7 @@ export default function Marketplace() {
  * pending                     → pending badge
  * accepted                    → connected + chat link
  */
-function RequestControl({ rel, teacher, form, onFormChange, onSend }) {
+function RequestControl({ rel, teacher, targetSkill, form, onFormChange, onSend }) {
   if (rel.status === 'accepted') {
     return (
       <div className="flex items-center gap-2">
@@ -205,9 +231,24 @@ function RequestControl({ rel, teacher, form, onFormChange, onSend }) {
     <div className="space-y-4">
       {/* ── Section 1: I want to learn ─────────────────────────── */}
       <div>
-        <p className="text-xs font-semibold text-ink/60 uppercase tracking-wide mb-2">
-          I want to learn {teacher.skill_name}
-        </p>
+        <div className="flex items-center gap-2 mb-2">
+          <p className="text-xs font-semibold text-ink/60 uppercase tracking-wide">
+            I want to learn
+          </p>
+          {teacher.teaching_skills.length > 1 ? (
+            <select
+              className="input text-xs py-1 px-2 min-h-0 bg-transparent border-none font-medium text-moss"
+              value={targetSkill}
+              onChange={(e) => onFormChange('target_skill', e.target.value)}
+            >
+              {teacher.teaching_skills.map(s => (
+                <option key={s.skill_name} value={s.skill_name}>{s.skill_name}</option>
+              ))}
+            </select>
+          ) : (
+            <span className="text-xs font-medium text-moss">{targetSkill}</span>
+          )}
+        </div>
         <div className="space-y-2">
           <div>
             <label className="text-xs text-ink/50 mb-1 block">My current level</label>

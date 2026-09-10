@@ -5,7 +5,7 @@ import { api, saveSession } from '../api'
 
 export default function Login() {
   const navigate = useNavigate()
-  const [email, setEmail] = useState('')
+  const [identifier, setIdentifier] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -15,9 +15,21 @@ export default function Login() {
     setError('')
     setLoading(true)
     try {
-      const { access_token, user } = await api.login({ email, password })
+      const isEmail = identifier.includes('@')
+      const payload = {
+        email: isEmail ? identifier : null,
+        mobile_number: isEmail ? null : identifier,
+        password
+      }
+      const { access_token, user } = await api.login(payload)
       saveSession(access_token, user)
-      navigate('/dashboard')
+      if (!user.is_email_verified) {
+        navigate('/verify-email')
+      } else if (!user.is_mobile_verified) {
+        navigate('/verify-mobile')
+      } else {
+        navigate('/dashboard')
+      }
     } catch (err) {
       setError(err.message)
     } finally {
@@ -49,16 +61,15 @@ export default function Login() {
         <div className="card p-6 sm:p-8">
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label className="field-label" htmlFor="email">Email</label>
+              <label className="field-label" htmlFor="identifier">Email or Mobile Number</label>
               <input
-                id="email"
+                id="identifier"
                 className="input"
-                type="email"
-                placeholder="you@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                type="text"
+                placeholder="you@example.com or +1234567890"
+                value={identifier}
+                onChange={(e) => setIdentifier(e.target.value)}
                 required
-                autoComplete="email"
               />
             </div>
             <div>

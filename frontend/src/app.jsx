@@ -6,6 +6,8 @@ import Landing from './pages/landing'
 import Signup from './pages/signup'
 import Login from './pages/login'
 import ForgotPassword from './pages/forgot_password'
+import VerifyEmail from './pages/verify_email'
+import VerifyMobile from './pages/verify_mobile'
 import Dashboard from './pages/dashboard'
 import Assessment from './pages/assessment'
 import Marketplace from './pages/marketplace'
@@ -13,6 +15,14 @@ import Requests from './pages/requests'
 import Chat from './pages/chat'
 import Sessions from './pages/sessions'
 import SessionRoom from './pages/session_room'
+import Progress from './pages/progress'
+import CertificateView from './pages/CertificateView'
+import VerifyCertificate from './pages/VerifyCertificate'
+
+import Profile from './pages/profile'
+import Messages from './pages/messages'
+import Notifications from './pages/notifications'
+import Gamification from './pages/gamification'
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "NO_CLIENT_ID_CONFIGURED"
 
@@ -26,9 +36,19 @@ export default function App() {
           <Route path="/signup" element={<Signup />} />
           <Route path="/login" element={<Login />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/verify-email" element={<VerifyEmail />} />
+          <Route path="/verify-mobile" element={<VerifyMobile />} />
         <Route
           path="/dashboard"
           element={<ProtectedRoute><Dashboard /></ProtectedRoute>}
+        />
+        <Route
+          path="/profile"
+          element={<ProtectedRoute><Profile /></ProtectedRoute>}
+        />
+        <Route
+          path="/messages"
+          element={<ProtectedRoute><Messages /></ProtectedRoute>}
         />
         <Route
           path="/assessment"
@@ -54,6 +74,23 @@ export default function App() {
           path="/session/:sessionId"
           element={<ProtectedRoute><SessionRoom /></ProtectedRoute>}
         />
+        <Route
+          path="/progress"
+          element={<ProtectedRoute><Progress /></ProtectedRoute>}
+        />
+        <Route
+          path="/certificate/:certId"
+          element={<ProtectedRoute><CertificateView /></ProtectedRoute>}
+        />
+        <Route
+          path="/verify/:certId"
+          element={<VerifyCertificate />}
+        />
+        <Route
+          path="/notifications"
+          element={<ProtectedRoute><Notifications /></ProtectedRoute>}
+        />
+        <Route path="/gamification" element={<ProtectedRoute><Gamification /></ProtectedRoute>} />
       </Routes>
     </div>
     </GoogleOAuthProvider>

@@ -2,6 +2,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import or_, and_
 from sqlalchemy.orm import Session
+from ..notification_service import create_notification
 
 from .. import models, schemas, auth
 from ..database import get_db
@@ -12,9 +13,12 @@ router = APIRouter(prefix="/requests", tags=["requests"])
 
 def _to_out(r: models.ConnectionRequest) -> schemas.ConnectionRequestOut:
     return schemas.ConnectionRequestOut(
-        id=r.id, from_user_id=r.from_user_id, from_user_name=r.from_user.name,
-        to_user_id=r.to_user_id, to_user_name=r.to_user.name,
-        skill_name=r.skill.name, message=r.message, status=r.status,
+        id=r.id, from_user_id=r.from_user_id, 
+        from_user_name=r.from_user.name if r.from_user else "Deleted User",
+        to_user_id=r.to_user_id, 
+        to_user_name=r.to_user.name if r.to_user else "Deleted User",
+        skill_name=r.skill.name if r.skill else "Unknown Skill", 
+        message=r.message, status=r.status,
         created_at=r.created_at,
         # Two-way learning context — pass through as-is (None for old rows)
         learner_current_level=r.learner_current_level,
@@ -94,6 +98,7 @@ def create_request(
     db.add(req)
     db.commit()
     db.refresh(req)
+    create_notification(db, req.to_user_id, "request", "New Learning Request", f"{current_user.name} sent you a request for {skill.name}", req.id, "request")
     return _to_out(req)
 
 
@@ -180,6 +185,11 @@ def respond_to_request(
     req.status = "accepted" if accept else "declined"
     db.commit()
     db.refresh(req)
+    other_user = req.from_user_id if req.to_user_id == current_user.id else req.to_user_id
+    if req.status == "accepted":
+        create_notification(db, other_user, "request", "Learning Request Accepted", f"{current_user.name} accepted your request", req.id, "request")
+    else:
+        create_notification(db, other_user, "request", "Learning Request Declined", f"{current_user.name} declined your request", req.id, "request")
     return _to_out(req)
 
 
@@ -229,4 +239,6 @@ def complete_request(
 
     db.commit()
     db.refresh(req)
+    other_user = req.to_user_id if req.from_user_id == current_user.id else req.from_user_id
+    create_notification(db, other_user, "request", "Session Completed", f"{current_user.name} marked the session as completed.", req.id, "request")
     return _to_out(req)

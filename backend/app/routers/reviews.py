@@ -10,6 +10,7 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func
 from sqlalchemy.orm import Session
+from ..notification_service import create_notification
 
 from .. import models, schemas, auth
 from ..database import get_db
@@ -104,6 +105,7 @@ def submit_review(
     # has been persisted, so invalid or duplicate reviews never earn points.
     current_user.points += 5
     db.commit()
+    create_notification(db, reviewee_id, "review", "New Review", f"{current_user.name} left you a {payload.rating}-star review", review.id, "review")
 
     return _to_out(review)
 

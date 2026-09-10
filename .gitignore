@@ -24,3 +24,6 @@ Thumbs.db
 
 # Temp
 scratch/
+
+# Runtime User Uploads
+backend/uploads/

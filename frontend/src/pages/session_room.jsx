@@ -2,6 +2,10 @@ import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { api, getSessionUser } from '../api'
 import VideoChat from '../components/VideoChat'
+import Compiler from '../components/Compiler'
+import Whiteboard from '../components/Whiteboard'
+import Materials from '../components/Materials'
+import Notes from '../components/Notes'
 
 const TABS = ['Video', 'Chat', 'Compiler', 'Whiteboard', 'Materials', 'Notes']
 
@@ -62,6 +66,7 @@ export default function SessionRoom() {
   }
 
   const isLearner = session.learner_id === user.id
+  const isTutor = !isLearner
   const peerName = isLearner ? session.tutor_name : session.learner_name
   const roleLabel = isLearner ? "You are learning" : "You are teaching"
   const req = session.request
@@ -115,18 +120,23 @@ export default function SessionRoom() {
           {/* Tab Content */}
           {activeTab === 'Video' ? (
             <VideoChat sessionId={session.id} />
+          ) : activeTab === 'Compiler' ? (
+            <Compiler sessionId={session.id} />
+          ) : activeTab === 'Whiteboard' ? (
+            <Whiteboard sessionId={session.id} />
+          ) : activeTab === 'Materials' ? (
+            <Materials session={session} />
+          ) : activeTab === 'Notes' ? (
+            <Notes sessionId={session.id} />
           ) : (
             <div className="flex-1 p-8 flex items-center justify-center">
               <div className="text-center max-w-sm">
                 <div className="w-16 h-16 bg-line/30 rounded-xl mx-auto mb-4 flex items-center justify-center text-2xl">
-                  {activeTab === 'Chat' ? '💬' : activeTab === 'Compiler' ? '💻' : activeTab === 'Whiteboard' ? '📝' : activeTab === 'Materials' ? '📄' : '📋'}
+                  {activeTab === 'Chat' ? '💬' : '📋'}
                 </div>
                 <h2 className="font-medium mb-1">{activeTab}</h2>
                 <p className="text-sm text-ink/50 leading-relaxed">
                   {activeTab === 'Chat' && 'Real-time collaborative chat will be available here.'}
-                  {activeTab === 'Compiler' && 'Collaborative Python compiler will be available here.'}
-                  {activeTab === 'Whiteboard' && 'Collaborative whiteboard will be available here.'}
-                  {activeTab === 'Materials' && 'Learning materials will be available here.'}
                   {activeTab === 'Notes' && 'Session notes will be available here.'}
                 </p>
               </div>
@@ -137,24 +147,33 @@ export default function SessionRoom() {
         {/* Right: Info Panel */}
         <aside className="w-80 border-l border-line bg-white shrink-0 overflow-y-auto p-5 space-y-6 hidden lg:block">
           <div>
-            <p className="text-[10px] uppercase tracking-wider text-ink/40 font-semibold mb-3">Session Info</p>
-            <div className="space-y-3 text-sm">
-              <div className="flex justify-between">
-                <span className="text-ink/50">Role</span>
-                <span className="font-medium text-moss">{roleLabel}</span>
+            <p className="text-[10px] uppercase tracking-wider text-ink/40 font-semibold mb-3">Knowledge Exchange</p>
+            <div className="space-y-4 text-sm bg-moss/5 border border-moss/10 rounded-lg p-4">
+              <div>
+                <p className="text-xs text-ink/50 mb-0.5">You are {isTutor ? 'teaching' : 'learning'}</p>
+                <p className="font-semibold text-moss">{session.skill_name}</p>
               </div>
-              <div className="flex justify-between">
-                <span className="text-ink/50">Tutor</span>
-                <span className="font-medium">{session.tutor_name}</span>
+              
+              {req?.learner_can_teach && (
+                <div>
+                  <p className="text-xs text-ink/50 mb-0.5">You {isTutor ? 'can learn' : 'can teach'}</p>
+                  <p className="font-semibold text-clay">{req.learner_can_teach} <span className="text-xs text-ink/40 font-normal">({req.learner_teach_proficiency})</span></p>
+                </div>
+              )}
+            </div>
+            
+            <div className="space-y-4 text-sm bg-ink/5 border border-line rounded-lg p-4 mt-4">
+              <div>
+                <p className="text-xs text-ink/50 mb-0.5">Your partner ({isTutor ? session.learner_name : session.tutor_name}) is {isTutor ? 'learning' : 'teaching'}</p>
+                <p className="font-semibold text-moss">{session.skill_name}</p>
               </div>
-              <div className="flex justify-between">
-                <span className="text-ink/50">Learner</span>
-                <span className="font-medium">{session.learner_name}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-ink/50">Status</span>
-                <span className="font-medium capitalize">{session.status}</span>
-              </div>
+              
+              {req?.learner_can_teach && (
+                <div>
+                  <p className="text-xs text-ink/50 mb-0.5">Your partner {isTutor ? 'can teach' : 'wants to learn'}</p>
+                  <p className="font-semibold text-clay">{req.learner_can_teach}</p>
+                </div>
+              )}
             </div>
             
             {session.notes && (
@@ -168,7 +187,7 @@ export default function SessionRoom() {
           {/* Context from Step 1 */}
           {req && (req.learner_current_level || req.learner_topics || req.learner_goals) && (
             <div className="pt-5 border-t border-line">
-              <p className="text-[10px] uppercase tracking-wider text-ink/40 font-semibold mb-3">Learner Profile</p>
+              <p className="text-[10px] uppercase tracking-wider text-ink/40 font-semibold mb-3">Learner Goals ({session.skill_name})</p>
               <div className="space-y-4 text-sm">
                 {req.learner_current_level && (
                   <div>
@@ -186,26 +205,6 @@ export default function SessionRoom() {
                   <div>
                     <p className="text-ink/50 text-xs mb-0.5">Goals</p>
                     <p className="font-medium leading-relaxed">{req.learner_goals}</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {req && (req.learner_can_teach || req.learner_teach_proficiency) && (
-            <div className="pt-5 border-t border-line">
-              <p className="text-[10px] uppercase tracking-wider text-ink/40 font-semibold mb-3">Learner Can Teach</p>
-              <div className="space-y-4 text-sm">
-                {req.learner_can_teach && (
-                  <div>
-                    <p className="text-ink/50 text-xs mb-0.5">Skills</p>
-                    <p className="font-medium">{req.learner_can_teach}</p>
-                  </div>
-                )}
-                {req.learner_teach_proficiency && (
-                  <div>
-                    <p className="text-ink/50 text-xs mb-0.5">Proficiency</p>
-                    <p className="font-medium">{req.learner_teach_proficiency}</p>
                   </div>
                 )}
               </div>
