@@ -1,3 +1,4 @@
+import { ArrowLeft, MessageCircle } from 'lucide-react';
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { api, chatSocketUrl, getSessionUser } from '../api'
@@ -5,8 +6,9 @@ import { api, chatSocketUrl, getSessionUser } from '../api'
 const RECONNECT_DELAY_MS = 2000
 const MAX_RECONNECT_DELAY_MS = 10000
 
-export default function Chat() {
-  const { requestId } = useParams()
+export default function Chat({ embeddedRequestId, embedded }) {
+  const { requestId: paramRequestId } = useParams()
+  const requestId = embeddedRequestId || paramRequestId
   const user = getSessionUser()
   const [messages, setMessages] = useState([])
   const [draft, setDraft] = useState('')
@@ -116,7 +118,7 @@ export default function Chat() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto px-6 py-6 flex flex-col h-[calc(100vh-56px)]">
+    <div className={embedded ? "flex-1 flex flex-col h-full min-h-0 bg-white" : "max-w-2xl mx-auto px-6 py-6 flex flex-col h-[calc(100vh-56px)]"}>
       {/* Top bar */}
       <div className="flex items-center justify-between mb-4 pb-4 border-b border-line">
         <Link
@@ -221,3 +223,5 @@ function ChatSkeleton() {
     </div>
   )
 }
+
+

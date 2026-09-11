@@ -1,5 +1,6 @@
 ﻿import { useEffect, useState } from 'react'
 import { api, getSessionUser } from '../api'
+import { Trophy, Medal, Star } from 'lucide-react'
 
 export default function Gamification() {
   const [leaderboard, setLeaderboard] = useState([])
@@ -17,7 +18,7 @@ export default function Gamification() {
   if (loading) {
     return (
       <div className="max-w-5xl mx-auto px-6 py-12 flex justify-center">
-        <div className="w-8 h-8 border-4 border-clay border-t-transparent rounded-full animate-spin"></div>
+        <div className="skeleton h-32 w-full mb-6"></div><div className="grid md:grid-cols-3 gap-6"><div className="skeleton h-64 w-full"></div><div className="md:col-span-2 skeleton h-96 w-full"></div></div>
       </div>
     )
   }
@@ -36,11 +37,11 @@ export default function Gamification() {
           
           <div className="card p-6 bg-clay/5 border-clay/20 text-center">
             <h2 className="text-sm font-bold text-ink/50 uppercase tracking-wider mb-2">Your Standing</h2>
-            <div className="font-display text-5xl text-clay mb-1">{summary?.total_points || 0}</div>
+            <div className="font-display text-5xl text-gold mb-1">{summary?.total_points || 0}</div>
             <div className="text-sm text-ink/60 mb-4">Total Points</div>
             
             {summary?.current_rank && (
-              <div className="inline-block bg-clay text-white px-4 py-1 rounded-full text-sm font-bold mb-4">
+              <div className="inline-block bg-gold text-white px-4 py-1 rounded-full text-sm font-bold mb-4">
                 Rank #{summary.current_rank}
               </div>
             )}
@@ -48,9 +49,9 @@ export default function Gamification() {
             {summary?.next_milestone_points && (
               <div className="text-left mt-4 border-t border-ink/10 pt-4">
                 <p className="text-xs font-bold text-ink/60 mb-1">Next Milestone: {summary.next_milestone_title}</p>
-                <div className="w-full bg-sand/50 h-2 rounded-full overflow-hidden mb-1">
+                <div className="w-full bg-paper h-2 rounded-full overflow-hidden mb-1">
                   <div 
-                    className="bg-clay h-full" 
+                    className="bg-gold h-full" 
                     style={{ width: `${Math.min(100, ((summary?.total_points || 0) / summary.next_milestone_points) * 100)}%` }} 
                   />
                 </div>
@@ -82,7 +83,7 @@ export default function Gamification() {
         {/* Right Column: Leaderboard */}
         <div className="md:col-span-2">
           <div className="card overflow-hidden">
-            <div className="p-6 border-b border-ink/10 bg-sand/30 flex justify-between items-center">
+            <div className="p-6 border-b border-ink/10 bg-paper/50 flex justify-between items-center">
               <h2 className="font-display text-xl">Top Learners & Tutors</h2>
               <span className="text-xs font-bold text-ink/40 bg-white px-2 py-1 rounded shadow-sm">{leaderboard.length} users</span>
             </div>
@@ -100,7 +101,7 @@ export default function Gamification() {
                 return (
                   <div 
                     key={user.user_id} 
-                    className={`flex items-center justify-between p-4 hover:bg-sand/30 transition-colors ${isCurrentUser ? 'bg-clay/5 border-l-4 border-clay' : ''}`}
+                    className={`flex items-center justify-between p-4 hover:bg-paper/50 transition-colors ${isCurrentUser ? 'bg-brandLight/20 border-l-4 border-brand' : ''}`}
                   >
                     <div className="flex items-center gap-4">
                       {rankBadge}
@@ -108,13 +109,13 @@ export default function Gamification() {
                         {user.profile_picture_url ? (
                           <img src={user.profile_picture_url} alt={user.name} className="w-10 h-10 rounded-full object-cover border border-ink/10" />
                         ) : (
-                          <div className="w-10 h-10 rounded-full bg-sand flex items-center justify-center font-bold text-ink/40 border border-ink/10">
+                          <div className="w-10 h-10 rounded-full bg-paper flex items-center justify-center font-bold text-ink/40 border border-ink/10">
                             {user.name.charAt(0).toUpperCase()}
                           </div>
                         )}
                         <div>
                           <p className={`font-bold ${isCurrentUser ? 'text-clay' : ''}`}>
-                            {user.name} {isCurrentUser && <span className="text-xs bg-clay text-white px-1.5 py-0.5 rounded ml-1">You</span>}
+                            {user.name} {isCurrentUser && <span className="text-xs bg-brand text-white px-1.5 py-0.5 rounded ml-1">You</span>}
                           </p>
                         </div>
                       </div>

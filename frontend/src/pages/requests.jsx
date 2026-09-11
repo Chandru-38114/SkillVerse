@@ -608,7 +608,7 @@ function StatusPill({ status }) {
 
   return (
     <span className={cls}>
-      <span className="text-[8px]">{dot}</span>
+      
       {status}
     </span>
   )

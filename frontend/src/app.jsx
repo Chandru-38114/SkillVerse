@@ -1,4 +1,5 @@
-import { Routes, Route } from 'react-router-dom'
+import { Navigate, Routes, Route, useLocation } from 'react-router-dom'
+import { useState, useEffect } from 'react'
 import { GoogleOAuthProvider } from '@react-oauth/google'
 import Navbar from './components/navbar'
 import ProtectedRoute from './components/protectedroute'
@@ -25,14 +26,55 @@ import Notifications from './pages/notifications'
 import Gamification from './pages/gamification'
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "NO_CLIENT_ID_CONFIGURED"
+import { api, saveSession, clearSession } from './api'
+
+import { getSessionUser, getToken } from './api'
+
+function RootRedirect() {
+  const user = getSessionUser()
+  const token = getToken()
+  if (!user || !token) return <Navigate to="/login" replace />
+  if (!user.is_email_verified) return <Navigate to="/verify-email" replace />
+  if (!user.is_mobile_verified) return <Navigate to="/verify-mobile" replace />
+  return <Navigate to="/dashboard" replace />
+}
 
 export default function App() {
+  const location = useLocation();
+  const [authChecked, setAuthChecked] = useState(false);
+
+  useEffect(() => {
+    const token = getToken();
+    if (token) {
+      api.me().then(user => {
+          saveSession(token, user);
+          setAuthChecked(true);
+        }).catch(() => {
+          clearSession();
+          setAuthChecked(true);
+        });
+    } else {
+      setAuthChecked(true);
+    }
+  }, []);
+
+  const authRoutes = ['/login', '/signup', '/verify-email', '/verify-mobile', '/forgot-password', '/reset-password', '/verify/'];
+  const isAuthRoute = authRoutes.some(path => location.pathname.startsWith(path)) || location.pathname === '/' || location.pathname === '/landing';
+
+  if (!authChecked) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-paper">
+        <div className="w-8 h-8 border-4 border-brand border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
   return (
     <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
       <div className="min-h-screen bg-paper text-ink font-body">
-        <Navbar />
+        {!isAuthRoute && <Navbar />}
         <Routes>
-          <Route path="/" element={<Landing />} />
+          <Route path="/" element={<RootRedirect />} /><Route path="/landing" element={<Landing />} />
           <Route path="/signup" element={<Signup />} />
           <Route path="/login" element={<Login />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
@@ -96,3 +138,6 @@ export default function App() {
     </GoogleOAuthProvider>
   )
 }
+
+
+

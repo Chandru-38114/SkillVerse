@@ -31,6 +31,21 @@ export const api = {
   forgotPassword: (email) => request("/auth/forgot-password", { method: "POST", body: { email }, auth: false }),
   resetPassword: (data) => request("/auth/reset-password", { method: "POST", body: data, auth: false }),
   me: () => request("/users/me"),
+  updateMe: (data) => request("/users/me", { method: "PUT", body: data }),
+  changePassword: (current_password, new_password) => request("/users/me/password", { method: "PUT", body: { current_password, new_password } }),
+  uploadAvatar: (file) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    return fetch(`${BASE_URL}/users/me/avatar`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${getToken()}` },
+      body: formData,
+    }).then(res => {
+      if (!res.ok) throw new Error("Upload failed");
+      return res.json();
+    });
+  },
+
   refreshMe: async () => {
     const user = await request("/users/me");
     localStorage.setItem("skillverse_user", JSON.stringify(user));
@@ -43,7 +58,12 @@ export const api = {
   assessmentQuestions: (skill) => request(`/assessments/questions/${encodeURIComponent(skill)}`),
   submitAssessment: (data) => request("/assessments/submit", { method: "POST", body: data }),
 
-  searchTeachers: (skill) => request(`/marketplace/search${skill ? `?skill=${encodeURIComponent(skill)}` : ""}`),
+  searchTeachers: (skill, role) => {
+    let url = `/marketplace/search?`;
+    if (skill) url += `q=${encodeURIComponent(skill)}&`;
+    if (role) url += `role=${encodeURIComponent(role)}&`;
+    return request(url);
+  },
 
   sendRequest: (data) => request("/requests", { method: "POST", body: data }),
   incomingRequests: () => request("/requests/incoming"),
@@ -85,14 +105,23 @@ export const api = {
   generateCertificate: (skillName) => request(`/certificates/generate?skill_name=${encodeURIComponent(skillName)}`, { method: "POST" }),
   verifyCertificate: (certId) => request(`/certificates/verify/${certId}`, { auth: false }),
 
-  // Progress
+  // Progress & Notes
   getSessionProgress: (sessionId) => request(`/progress/session/${sessionId}`),
+  saveSessionNotes: (sessionId, data) => request(`/progress/session/${sessionId}`, { method: "PUT", body: data }),
   completeSessionProgress: (sessionId) => request(`/progress/session/${sessionId}/complete`, { method: "POST" }),
   getMyProgress: () => request("/progress/my"),
   getProgressHistory: () => request("/progress/history"),
 
+  // Whiteboard
+  getWhiteboard: (sessionId) => request(`/sessions/${sessionId}/whiteboard`),
+  saveWhiteboard: (sessionId, state) => request(`/sessions/${sessionId}/whiteboard`, { method: "PUT", body: { state } }),
+
+  // Chat inbox (Direct Messages)
+  getChatInbox: () => request("/chat/inbox"),
+  markChatRead: (requestId) => request(`/chat/${requestId}/read`, { method: "POST" }),
+
   // Materials
-  getSessionMaterials: (sessionId) => request(`/materials/${sessionId}`),
+  getSessionMaterials: (sessionId) => request(`/materials/session/${sessionId}`),
   uploadMaterial: (sessionId, file) => {
     const formData = new FormData();
     formData.append("file", file);
@@ -110,6 +139,10 @@ export const api = {
   // Gamification
   getLeaderboard: () => request("/gamification/leaderboard"),
   getGamificationSummary: () => request("/gamification/summary"),
+
+  // Compiler (Session Room)
+  getCompilerState: (sessionId) => request(`/compiler/${sessionId}/state`),
+  runCompiler: (sessionId, code) => request(`/compiler/${sessionId}/run`, { method: "POST", body: { code } }),
 
 };
 

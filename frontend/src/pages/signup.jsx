@@ -1,11 +1,13 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
+import SkillVerseLogo from '../components/SkillVerseLogo'
 import { api, saveSession } from '../api'
+import { CheckCircle2, XCircle } from 'lucide-react'
 
 export default function Signup() {
   const navigate = useNavigate()
   const [form, setForm] = useState({ 
-    name: '', email: '', mobile_number: '', 
+    name: '', email: '', mobile_number: '', dob: '', gender: '', 
     password: '', confirm_password: '', 
     college: '', country: '', bio: '' 
   })
@@ -14,7 +16,7 @@ export default function Signup() {
 
   // Password validation state
   const passwordRules = [
-    { label: 'Minimum 8 characters', regex: /.{8,}/ },
+    { label: 'Minimum 6 characters', regex: /.{6,}/ },
     { label: 'One uppercase letter', regex: /[A-Z]/ },
     { label: 'One lowercase letter', regex: /[a-z]/ },
     { label: 'One number', regex: /\d/ },
@@ -56,12 +58,8 @@ export default function Signup() {
   return (
     <div className="min-h-[calc(100vh-73px)] flex items-center justify-center px-6 py-16">
       <div className="w-full max-w-md">
-        <div className="mb-8 text-center">
-          <p className="font-display text-2xl">
-            Skill<span className="text-clay">Verse</span>
-          </p>
-          <p className="text-ink/50 text-sm mt-1">Create your profile</p>
-        </div>
+        <SkillVerseLogo />
+        <div className="mb-6 text-center"><p className="text-ink/50 text-sm">Create your profile</p></div>
 
         <div className="card p-8">
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -69,6 +67,19 @@ export default function Signup() {
             <Field id="email" label="Email" type="email" placeholder="you@example.com" value={form.email} onChange={(v) => update('email', v)} required />
             <Field id="mobile_number" label="Mobile Number" type="tel" placeholder="+1234567890" value={form.mobile_number} onChange={(v) => update('mobile_number', v)} required />
             
+            
+            <Field id="dob" label="Date of Birth" type="date" value={form.dob} onChange={(v) => update('dob', v)} required />
+            <div>
+              <label className="field-label">Gender<span className="text-clay ml-1">*</span></label>
+              <select className="input" value={form.gender} onChange={(e) => update('gender', e.target.value)} required>
+                <option value="" disabled>Select Gender</option>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+                <option value="Non-binary">Non-binary</option>
+                <option value="Prefer not to say">Prefer not to say</option>
+              </select>
+            </div>
+
             <div className="pt-1 pb-1 border-t border-line" />
 
             <Field id="college" label="College or organization" placeholder="Required" value={form.college} onChange={(v) => update('college', v)} required />
@@ -81,7 +92,7 @@ export default function Signup() {
             
             {/* Password Strength Indicator */}
             {form.password && (
-              <div className="bg-sand/30 p-3 rounded-lg text-sm space-y-1">
+              <div className="bg-paper/80 border border-line p-3 rounded-lg text-sm space-y-1">
                 {passwordRules.map((rule, idx) => (
                   <div key={idx} className={`flex items-center space-x-2 ${rule.regex.test(form.password) ? 'text-moss' : 'text-ink/40'}`}>
                     <span>{rule.regex.test(form.password) ? '✓' : '○'}</span>

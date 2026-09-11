@@ -1,49 +1,57 @@
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,600;1,9..144,400&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,600;1,9..144,400&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* ── Base ── */
+/* Base */
 html, body {
-  background-color: #F6F4EE;
-  color: #12151B;
+  background-color: #FAFAF9;
+  color: #0f172a;
   -webkit-font-smoothing: antialiased;
+  @apply font-body;
 }
 
-/* ── Cards ── */
+/* Cards */
 .card {
-  @apply bg-white border border-line rounded-xl shadow-sm;
+  @apply bg-white border border-line rounded-xl shadow-[0_2px_8px_-2px_rgba(15,23,42,0.05)];
 }
 
 .card-hover {
-  @apply card transition-all duration-200 hover:shadow-md hover:-translate-y-0.5;
+  @apply card transition-all duration-200 hover:shadow-[0_8px_16px_-4px_rgba(15,23,42,0.08)] hover:-translate-y-0.5;
 }
 
-/* ── Buttons ── */
+/* Buttons */
 .btn-primary {
-  @apply bg-moss text-paper px-5 py-2.5 rounded-lg font-medium text-sm
+  @apply bg-moss text-white px-5 py-2.5 rounded-lg font-medium text-sm
          hover:bg-moss2 active:scale-[0.98] transition-all duration-150
          disabled:opacity-40 disabled:cursor-not-allowed disabled:active:scale-100
-         inline-flex items-center justify-center gap-2;
+         inline-flex items-center justify-center gap-2 shadow-sm;
+}
+
+.btn-brand {
+  @apply bg-brand text-white px-5 py-2.5 rounded-lg font-medium text-sm
+         hover:bg-brand2 active:scale-[0.98] transition-all duration-150
+         disabled:opacity-40 disabled:cursor-not-allowed disabled:active:scale-100
+         inline-flex items-center justify-center gap-2 shadow-sm;
 }
 
 .btn-secondary {
   @apply bg-white border border-line text-ink px-5 py-2.5 rounded-lg font-medium text-sm
-         hover:border-ink/30 hover:bg-paper active:scale-[0.98] transition-all duration-150
-         inline-flex items-center justify-center gap-2;
+         hover:border-ink/20 hover:bg-paper active:scale-[0.98] transition-all duration-150
+         inline-flex items-center justify-center gap-2 shadow-sm;
 }
 
 .btn-ghost {
-  @apply text-ink/60 px-3 py-1.5 rounded-lg text-sm font-medium
-         hover:text-ink hover:bg-ink/5 transition-all duration-150;
+  @apply text-ink/70 px-3 py-1.5 rounded-lg text-sm font-medium
+         hover:text-brand hover:bg-brandLight/30 transition-all duration-150;
 }
 
-/* ── Inputs ── */
+/* Inputs */
 .input {
   @apply w-full border border-line rounded-lg px-3.5 py-2.5 bg-white text-sm
          placeholder:text-ink/30
-         focus:outline-none focus:ring-2 focus:ring-moss/25 focus:border-moss
+         focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand
          transition-all duration-150;
 }
 
@@ -51,54 +59,54 @@ textarea.input {
   @apply resize-none;
 }
 
-/* ── Labels ── */
+/* Labels */
 .label-eyebrow {
-  @apply text-xs uppercase tracking-[0.12em] text-ink/40 font-medium;
+  @apply text-xs uppercase tracking-[0.12em] text-ink/40 font-semibold;
 }
 
 .field-label {
-  @apply text-sm font-medium text-ink/80 block mb-1.5;
+  @apply text-sm font-medium text-ink block mb-1.5;
 }
 
-/* ── Status indicators ── */
+/* Status indicators */
 .status-pill {
-  @apply inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full;
+  @apply inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full;
 }
 
-.status-pending  { @apply status-pill bg-gold/10 text-[#7a5f00]; }
-.status-accepted { @apply status-pill bg-moss/10 text-moss; }
-.status-declined { @apply status-pill bg-ink/10 text-ink/40; }
-.status-completed { @apply status-pill bg-ink/10 text-ink/50; }
+.status-pending  { @apply status-pill bg-goldLight text-gold; }
+.status-accepted { @apply status-pill bg-mossLight text-moss2; }
+.status-declined { @apply status-pill bg-line text-clay; }
+.status-completed { @apply status-pill bg-brandLight text-brand2; }
 
-/* ── Alert / feedback ── */
+/* Alert / feedback */
 .alert-error {
   @apply text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-4 py-3;
 }
 
 .alert-success {
-  @apply text-sm text-moss bg-moss/10 border border-moss/20 rounded-lg px-4 py-3;
+  @apply text-sm text-moss2 bg-mossLight border border-moss/20 rounded-lg px-4 py-3;
 }
 
-/* ── Section divider ── */
+/* Section divider */
 .section-divider {
   @apply border-t border-line my-6;
 }
 
-/* ── Page wrapper ── */
+/* Page wrapper */
 .page {
-  @apply max-w-5xl mx-auto px-6 py-12;
+  @apply max-w-6xl mx-auto px-6 py-10;
 }
 
 .page-narrow {
-  @apply max-w-md mx-auto px-6;
+  @apply max-w-md mx-auto px-6 py-10;
 }
 
-/* ── Skeleton loading ── */
+/* Skeleton loading */
 .skeleton {
-  @apply bg-ink/10 rounded-lg animate-pulse;
+  @apply bg-line rounded-lg animate-pulse;
 }
 
-/* ── Scrollbar (chat) ── */
+/* Scrollbar */
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(18,21,27,0.15); border-radius: 4px; }
+::-webkit-scrollbar-thumb { background: rgba(15,23,42,0.1); border-radius: 4px; }

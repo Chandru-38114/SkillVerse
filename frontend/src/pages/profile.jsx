@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { api } from "../api";
+import { Camera, Save, Lock } from "lucide-react";
 
 const BACKEND_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
 
@@ -32,7 +33,7 @@ export default function Profile() {
 
   async function loadUser() {
     try {
-      const u = await api.getMe();
+      const u = await api.me();
       setUser(u);
       setName(u.name || "");
       setBio(u.bio || "");
@@ -178,6 +179,22 @@ export default function Profile() {
                 </div>
               </div>
 
+              
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                  <label className="field-label">Date of Birth</label>
+                  <input type="text" className="input bg-sand/50 cursor-not-allowed" value={user.dob || 'Not provided'} disabled />
+                </div>
+                <div>
+                  <label className="field-label">Gender</label>
+                  <input type="text" className="input bg-sand/50 cursor-not-allowed" value={user.gender || 'Not provided'} disabled />
+                </div>
+                <div>
+                  <label className="field-label">Age</label>
+                  <input type="text" className="input bg-sand/50 cursor-not-allowed" value={user.age !== null && user.age !== undefined ? user.age : 'Not provided'} disabled />
+                </div>
+              </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="field-label">Mobile Number</label>
@@ -221,7 +238,7 @@ export default function Profile() {
               <div>
                 <label className="field-label">New Password</label>
                 <input type="password" className="input" value={newPassword} onChange={e => setNewPassword(e.target.value)} required />
-                <p className="text-xs text-ink/50 mt-1">Must be at least 8 characters, include uppercase, lowercase, number, and special character.</p>
+                <p className="text-xs text-ink/50 mt-1">Must be at least 6 characters, include uppercase, lowercase, number, and special character.</p>
               </div>
 
               {passwordMsg && (

@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from 'react'
+import { Mic, MicOff, Video, VideoOff, ScreenShare, ShieldCheck, Loader2, AlertCircle } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getToken } from '../api'
 
-export default function VideoChat({ sessionId }) {
+export default function VideoChat({ sessionId, children }) {
   const navigate = useNavigate()
   const [stream, setStream] = useState(null)
   const [remoteStream, setRemoteStream] = useState(null)
@@ -18,31 +19,27 @@ export default function VideoChat({ sessionId }) {
   const streamRef = useRef(null)
 
   useEffect(() => {
-    let ws
-    let pc
+    let ws = null
+    let pc = null
 
     async function init() {
       try {
-        // 1. Get User Media
-        const mediaStream = await navigator.mediaDevices.getUserMedia({
-          video: true,
-          audio: true,
-        })
-        setStream(mediaStream)
-        streamRef.current = mediaStream
+        // 1. Get local media
+        const localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+        setStream(localStream)
+        streamRef.current = localStream
 
         if (localVideoRef.current) {
-          localVideoRef.current.srcObject = mediaStream
+          localVideoRef.current.srcObject = localStream
         }
 
-        // 2. Init Peer Connection
-        pc = new RTCPeerConnection({
-          iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
-        })
+        // 2. Setup WebRTC
+        const config = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] }
+        pc = new RTCPeerConnection(config)
         pcRef.current = pc
 
-        // Add local tracks to PC
-        mediaStream.getTracks().forEach((track) => pc.addTrack(track, mediaStream))
+        // Add local tracks
+        localStream.getTracks().forEach((track) => pc.addTrack(track, localStream))
 
         // Listen for remote tracks
         pc.ontrack = (event) => {
@@ -76,10 +73,6 @@ export default function VideoChat({ sessionId }) {
         wsRef.current = ws
 
         ws.onopen = () => {
-          // Send a manual ping or just wait. Backend sends 'peer_joined' to other user.
-          // To handle if the other peer is ALREADY there, we might need a signal to ask "who is here".
-          // The backend currently only sends "peer_joined" on join.
-          // Let's have the newly joined user send a "ping" or "hello", and the other user can offer.
           ws.send(JSON.stringify({ type: 'hello' }))
         }
 
@@ -88,9 +81,6 @@ export default function VideoChat({ sessionId }) {
 
           if (data.type === 'peer_joined' || data.type === 'hello') {
             setStatus('connecting')
-            // The one who receives 'hello' or 'peer_joined' initiates the offer
-            // We use 'peer_joined' from backend, or 'hello' from frontend.
-            // Let's create an offer
             if (data.type === 'peer_joined') {
                const offer = await pc.createOffer()
                await pc.setLocalDescription(offer)
@@ -175,91 +165,114 @@ export default function VideoChat({ sessionId }) {
   }
 
   return (
-    <div className="flex-1 flex flex-col m-4 gap-4 relative">
-      {/* Status banner */}
-      {status === 'waiting' && (
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 bg-ink/80 text-white px-4 py-1.5 rounded-full text-xs font-medium tracking-wide">
-          Waiting for your peer to join...
-        </div>
-      )}
-      {status === 'connecting' && (
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 bg-ink/80 text-white px-4 py-1.5 rounded-full text-xs font-medium tracking-wide">
-          Connecting...
-        </div>
-      )}
-      {status === 'disconnected' && (
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 bg-red-600/90 text-white px-4 py-1.5 rounded-full text-xs font-medium tracking-wide">
-          Your peer has left the session.
-        </div>
-      )}
-
-      {/* Main Video Area */}
-      <div className="flex-1 bg-ink rounded-2xl overflow-hidden relative shadow-inner border border-ink/20">
-        {/* Remote Video (full screen) */}
-        {remoteStream ? (
-          <video
-            ref={remoteVideoRef}
-            autoPlay
-            playsInline
-            className="w-full h-full object-cover"
-          />
-        ) : (
-          <div className="w-full h-full flex flex-col items-center justify-center text-ink/40">
-            <div className="w-24 h-24 rounded-full bg-white/5 flex items-center justify-center mb-4">
-              <span className="text-4xl">👤</span>
-            </div>
-            <p className="font-medium text-white/50">
-              {status === 'waiting' ? 'Waiting for peer...' : 'Connecting...'}
-            </p>
-          </div>
-        )}
-
-        {/* Local Video (PiP) */}
-        <div className="absolute bottom-6 right-6 w-48 aspect-video bg-ink rounded-xl border-2 border-white/10 overflow-hidden shadow-xl z-20">
-          <video
-            ref={localVideoRef}
-            autoPlay
-            playsInline
-            muted
-            className={`w-full h-full object-cover transition-opacity duration-200 ${isVideoOff ? 'opacity-0' : 'opacity-100'}`}
-          />
-          {isVideoOff && (
-            <div className="absolute inset-0 flex items-center justify-center bg-ink">
-              <span className="text-white/40 text-sm">📷 Off</span>
+    <div className="flex-1 flex flex-col h-full bg-[#FDFDFC]">
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
+        {/* Left Column: Video */}
+        <div className="w-full h-48 md:h-auto md:w-[300px] shrink-0 bg-ink flex flex-col relative border-b md:border-b-0 md:border-r border-ink/20 z-20">
+          
+          {/* Status banner */}
+          {status === 'waiting' && (
+            <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 bg-ink/80 text-white px-4 py-1.5 rounded-full text-xs font-medium tracking-wide whitespace-nowrap">
+              Waiting for peer...
             </div>
           )}
+          {status === 'connecting' && (
+            <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 bg-ink/80 text-white px-4 py-1.5 rounded-full text-xs font-medium tracking-wide">
+              Connecting...
+            </div>
+          )}
+          {status === 'disconnected' && (
+            <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 bg-red-600/90 text-white px-4 py-1.5 rounded-full text-xs font-medium tracking-wide">
+              Peer left.
+            </div>
+          )}
+
+          {/* Remote Video (full screen inside column) */}
+          <div className="flex-1 relative">
+            {remoteStream ? (
+              <video
+                ref={remoteVideoRef}
+                autoPlay
+                playsInline
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="w-full h-full flex flex-col items-center justify-center text-ink/40">
+                <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mb-3">
+                  <span className="text-2xl">👤</span>
+                </div>
+                <p className="font-medium text-white/50 text-sm">
+                  {status === 'waiting' ? 'Waiting...' : 'Connecting...'}
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Local Video (PiP) */}
+          <div className="absolute bottom-4 right-4 w-28 aspect-video bg-black rounded-lg overflow-hidden border border-white/20 shadow-lg z-20">
+            <video
+              ref={localVideoRef}
+              autoPlay
+              playsInline
+              muted
+              className={`w-full h-full object-cover transition-opacity duration-200 ${isVideoOff ? "opacity-0" : "opacity-100"}`}
+            />
+            {isVideoOff && (
+              <div className="absolute inset-0 flex items-center justify-center bg-ink">
+                <span className="text-white/40 text-xs">📹 Off</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Center & Right: Passed via children (Workspace & Info) */}
+        <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
+          {children}
         </div>
       </div>
 
-      {/* Controls Bar */}
-      <div className="shrink-0 flex items-center justify-center gap-4 py-2">
-        <button
-          onClick={toggleMute}
-          className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${
-            isMuted ? 'bg-red-100 text-red-600 hover:bg-red-200' : 'bg-ink/5 text-ink hover:bg-ink/10'
-          }`}
-          title={isMuted ? 'Unmute' : 'Mute'}
-        >
-          {isMuted ? '🔇' : '🎤'}
-        </button>
+      {/* Bottom Bar: Full width */}
+      <div className="h-16 shrink-0 bg-white border-t border-line flex items-center justify-between px-6 z-30">
+        
+        {/* left: blank or status */}
+        <div className="hidden md:block flex-1 text-xs text-ink/50 font-medium">
+          {status === 'connected' ? '🟢 Connected securely' : ''}
+        </div>
 
-        <button
-          onClick={toggleVideo}
-          className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${
-            isVideoOff ? 'bg-red-100 text-red-600 hover:bg-red-200' : 'bg-ink/5 text-ink hover:bg-ink/10'
-          }`}
-          title={isVideoOff ? 'Turn Camera On' : 'Turn Camera Off'}
-        >
-          {isVideoOff ? '🚫' : '📷'}
-        </button>
+        {/* center: media controls */}
+        <div className="flex items-center gap-3">
+          <button
+            onClick={toggleMute}
+            className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${isMuted ? 'bg-red-100 text-red-600 hover:bg-red-200' : 'bg-ink/5 text-ink hover:bg-ink/10'}`}
+            title={isMuted ? 'Unmute' : 'Mute'}
+          >
+            {isMuted ? '🔇' : '🎤'}
+          </button>
 
-        <button
-          onClick={() => navigate('/sessions')}
-          className="w-12 h-12 rounded-full flex items-center justify-center transition-all bg-red-600 text-white hover:bg-red-700 shadow-md ml-4"
-          title="Leave Call"
-        >
-          📞
-        </button>
+          <button
+            onClick={toggleVideo}
+            className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${isVideoOff ? 'bg-red-100 text-red-600 hover:bg-red-200' : 'bg-ink/5 text-ink hover:bg-ink/10'}`}
+            title={isVideoOff ? 'Turn Camera On' : 'Turn Camera Off'}
+          >
+            {isVideoOff ? '🚫' : '📹'}
+          </button>
+          
+          <button className="w-10 h-10 rounded-full flex items-center justify-center transition-all bg-ink/5 text-ink hover:bg-ink/10 opacity-50 cursor-not-allowed" title="Share Screen">
+            💻
+          </button>
+        </div>
+
+        {/* right: Leave button */}
+        <div className="flex-1 flex justify-end">
+          <button
+            onClick={() => navigate('/sessions')}
+            className="px-5 py-2 rounded-lg font-semibold transition-all bg-red-600 text-white hover:bg-red-700 shadow-sm text-sm flex items-center gap-2"
+            title="Leave Session"
+          >
+            Leave Session
+          </button>
+        </div>
       </div>
     </div>
   )

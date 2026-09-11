@@ -70,6 +70,8 @@ def signup(payload: schemas.UserCreate, db: Session = Depends(get_db)):
         hashed_password=auth.hash_password(payload.password),
         college=payload.college,
         country=payload.country or "",
+        dob=payload.dob,
+        gender=payload.gender,
         is_email_verified=False,
         is_mobile_verified=False
     )
@@ -194,6 +196,10 @@ def reset_password(payload: schemas.ResetPassword, db: Session = Depends(get_db)
     user = db.query(models.User).filter(models.User.email == payload.email).first()
     if not user:
         raise HTTPException(status_code=400, detail="Invalid request")
+
+    if auth.verify_password(payload.new_password, user.hashed_password):
+        raise HTTPException(status_code=400, detail="You are entering your old password. Please choose a different password.")
+
         
     otp_record = db.query(models.PasswordResetOTP).filter(
         models.PasswordResetOTP.email == payload.email,

@@ -1,3 +1,4 @@
+import { MousePointer2, Move, Pencil, Minus, ArrowRight, Square, Circle, Diamond, Type, Eraser, Undo, Redo, Trash2 } from 'lucide-react';
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { api, getSessionUser } from '../api';
 
@@ -415,16 +416,16 @@ export default function Whiteboard({ sessionId }) {
   };
 
   const toolbarTools = [
-    { id: 'select', icon: '↗️', label: 'Select' },
-    { id: 'pan', icon: '✋', label: 'Pan' },
-    { id: 'pencil', icon: '✏️', label: 'Draw' },
-    { id: 'line', icon: '➖', label: 'Line' },
-    { id: 'arrow', icon: '➡️', label: 'Arrow' },
-    { id: 'rectangle', icon: '⬛', label: 'Rect' },
-    { id: 'ellipse', icon: '⭕', label: 'Ellipse' },
-    { id: 'diamond', icon: '💠', label: 'Diamond' },
-    { id: 'text', icon: 'T', label: 'Text' },
-    { id: 'eraser', icon: '🧽', label: 'Eraser' },
+    { id: 'select', icon: <MousePointer2 className="w-5 h-5" />, label: 'Select' },
+    { id: 'pan', icon: <Move className="w-5 h-5" />, label: 'Pan' },
+    { id: 'pencil', icon: <Pencil className="w-5 h-5" />, label: 'Draw' },
+    { id: 'line', icon: <Minus className="w-5 h-5" />, label: 'Line' },
+    { id: 'arrow', icon: <ArrowRight className="w-5 h-5" />, label: 'Arrow' },
+    { id: 'rectangle', icon: <Square className="w-5 h-5" />, label: 'Rect' },
+    { id: 'ellipse', icon: <Circle className="w-5 h-5" />, label: 'Ellipse' },
+    { id: 'diamond', icon: <Diamond className="w-5 h-5" />, label: 'Diamond' },
+    { id: 'text', icon: <Type className="w-5 h-5" />, label: 'Text' },
+    { id: 'eraser', icon: <Eraser className="w-5 h-5" />, label: 'Eraser' },
   ];
   const colors = ['#000000', '#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6'];
   const widths = [2, 4, 8];
@@ -444,10 +445,10 @@ export default function Whiteboard({ sessionId }) {
           </button>
         ))}
         <div className="w-px h-6 bg-line mx-2 shrink-0" />
-        <button onClick={handleUndo} disabled={historyStep === 0} title="Undo" className="w-9 h-9 shrink-0 rounded flex items-center justify-center hover:bg-ink/5 disabled:opacity-30">↩️</button>
-        <button onClick={handleRedo} disabled={historyStep === history.length - 1} title="Redo" className="w-9 h-9 shrink-0 rounded flex items-center justify-center hover:bg-ink/5 disabled:opacity-30">↪️</button>
+        <button onClick={handleUndo} disabled={historyStep === 0} title="Undo" className="w-9 h-9 shrink-0 rounded flex items-center justify-center hover:bg-ink/5 disabled:opacity-30"><Undo className="w-5 h-5" /></button>
+        <button onClick={handleRedo} disabled={historyStep === history.length - 1} title="Redo" className="w-9 h-9 shrink-0 rounded flex items-center justify-center hover:bg-ink/5 disabled:opacity-30"><Redo className="w-5 h-5" /></button>
         <div className="w-px h-6 bg-line mx-2 shrink-0" />
-        <button onClick={handleClear} title="Clear Board" className="w-9 h-9 shrink-0 rounded flex items-center justify-center hover:bg-red-50 text-red-500">🗑️</button>
+        <button onClick={handleClear} title="Clear Board" className="w-9 h-9 shrink-0 rounded flex items-center justify-center hover:bg-red-50 text-red-500"><Trash2 className="w-5 h-5" /></button>
       </div>
 
       {/* Side Options Panel */}

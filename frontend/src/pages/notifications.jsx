@@ -79,52 +79,52 @@ const Notifications = () => {
     setPermission(result);
   };
 
-  if (loading) return <div className="p-8 text-center">Loading notifications...</div>;
+  if (loading) return <div className="page max-w-4xl"><div className="skeleton h-12 w-1/3 mb-6"></div><div className="skeleton h-64 w-full"></div></div>;
 
   return (
-    <div className="max-w-4xl mx-auto p-4 md:p-8">
+    <div className="page max-w-4xl">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">Notifications</h1>
+        <h1 className="font-display text-4xl mb-2">Notifications</h1>
         <div className="flex gap-4">
           {permission !== 'granted' && (
             <button 
               onClick={requestBrowserPermission}
-              className="text-sm bg-blue-100 text-blue-700 px-3 py-1 rounded hover:bg-blue-200"
+              className="btn-secondary text-sm"
             >
               Enable Browser Alerts
             </button>
           )}
           <button 
             onClick={handleMarkAllRead}
-            className="text-sm bg-gray-200 text-gray-700 px-3 py-1 rounded hover:bg-gray-300"
+            className="btn-secondary text-sm"
           >
             Mark all as read
           </button>
         </div>
       </div>
 
-      <div className="bg-white shadow rounded-lg overflow-hidden">
+      <div className="card overflow-hidden">
         {notifications.length === 0 ? (
-          <div className="p-8 text-center text-gray-500">
-            You have no notifications.
+          <div className="p-8 text-center text-clay italic">
+            You have no notifications yet.
           </div>
         ) : (
-          <div className="divide-y divide-gray-200">
+          <div className="divide-y divide-line">
             {notifications.map(notif => (
               <div 
                 key={notif.id} 
                 onClick={() => handleNotificationClick(notif)}
-                className={`p-4 cursor-pointer hover:bg-gray-50 flex items-start gap-4 ${!notif.is_read ? 'bg-blue-50' : ''}`}
+                className={`p-4 cursor-pointer hover:bg-paper transition-colors flex items-start gap-4 ${!notif.is_read ? 'bg-brandLight/20' : ''}`}
               >
                 {!notif.is_read && (
-                  <div className="mt-1 w-2 h-2 bg-blue-500 rounded-full flex-shrink-0"></div>
+                  <div className="mt-1 w-2 h-2 bg-brand rounded-full flex-shrink-0"></div>
                 )}
                 <div className="flex-1">
-                  <h3 className={`text-sm font-medium ${!notif.is_read ? 'text-gray-900' : 'text-gray-700'}`}>
+                  <h3 className={`text-sm font-medium ${!notif.is_read ? 'text-ink' : 'text-ink/80'}`}>
                     {notif.title}
                   </h3>
-                  <p className="text-sm text-gray-500 mt-1">{notif.message}</p>
-                  <p className="text-xs text-gray-400 mt-2">
+                  <p className="text-sm text-clay mt-1">{notif.message}</p>
+                  <p className="text-xs text-ink/40 mt-2">
                     {new Date(notif.created_at).toLocaleString()}
                   </p>
                 </div>

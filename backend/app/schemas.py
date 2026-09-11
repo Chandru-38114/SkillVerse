@@ -1,3 +1,4 @@
+import re
 import datetime as dt
 from typing import Optional, List
 from pydantic import BaseModel, EmailStr, model_validator
@@ -6,15 +7,20 @@ class UserCreate(BaseModel):
     name: str
     email: EmailStr
     mobile_number: str
+    college: str
+    dob: dt.date
+    gender: str
     password: str
     confirm_password: str
-    college: str
     country: Optional[str] = ""
-    
+
     @model_validator(mode='after')
     def check_passwords_match(self):
         if self.password != self.confirm_password:
             raise ValueError('Passwords do not match')
+        pw = self.password
+        if len(pw) < 6 or not re.search(r'[A-Z]', pw) or not re.search(r'[a-z]', pw) or not re.search(r'[0-9]', pw) or not re.search(r'[^a-zA-Z0-9]', pw):
+            raise ValueError('Password must contain at least 6 characters, one uppercase letter, one lowercase letter, one number, and one special character.')
         return self
 
 class UserLogin(BaseModel):
@@ -28,10 +34,18 @@ class GoogleAuth(BaseModel):
 class ForgotPassword(BaseModel):
     email: EmailStr
 
+from pydantic import field_validator
 class ResetPassword(BaseModel):
     email: EmailStr
     otp: str
     new_password: str
+
+    @field_validator('new_password')
+    @classmethod
+    def validate_strength(cls, v: str) -> str:
+        if len(v) < 6 or not re.search(r'[A-Z]', v) or not re.search(r'[a-z]', v) or not re.search(r'[0-9]', v) or not re.search(r'[^a-zA-Z0-9]', v):
+            raise ValueError('Password must contain at least 6 characters, one uppercase letter, one lowercase letter, one number, and one special character.')
+        return v
 
 class UserOut(BaseModel):
     id: int
@@ -41,6 +55,9 @@ class UserOut(BaseModel):
     is_email_verified: bool = False
     is_mobile_verified: bool = False
     college: str
+    dob: Optional[dt.date] = None
+    gender: Optional[str] = None
+    age: Optional[int] = None
     country: str
     bio: str
     profile_picture_url: Optional[str] = None
@@ -110,6 +127,8 @@ class MarketplaceUser(BaseModel):
     college: str
     teaching_skills: List[SkillBadgeInfo]
     learning_skills: List[SkillBadgeInfo]
+    match_context: Optional[str] = None
+    match_score: int = 0
 
 class ConnectionRequestCreate(BaseModel):
     to_user_id: int

@@ -76,8 +76,8 @@ export default function Notes({ sessionId }) {
   if (loading) return <div className="p-8">Loading notes...</div>;
 
   return (
-    <div className="p-8 max-w-2xl mx-auto w-full">
-      <h2 className="text-2xl font-bold mb-6">Session Notes & Progress</h2>
+    <div className="p-4 sm:p-8 max-w-2xl mx-auto w-full">
+      <h2 className="text-xl sm:text-2xl font-bold mb-6">Session Notes & Progress</h2>
       
       {isCompleted && (
         <div className="mb-6 p-4 bg-green-50 border border-green-200 text-green-800 rounded-lg">
@@ -127,7 +127,7 @@ export default function Notes({ sessionId }) {
       </div>
 
       {!isCompleted && (
-        <div className="mt-6 flex items-center justify-between">
+        <div className="mt-6 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <button 
               onClick={handleSave} 

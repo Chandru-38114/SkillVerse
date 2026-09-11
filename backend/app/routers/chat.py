@@ -32,7 +32,8 @@ def get_inbox(
         or_(
             models.ConnectionRequest.from_user_id == current_user.id,
             models.ConnectionRequest.to_user_id == current_user.id
-        )
+        ),
+        models.ConnectionRequest.status == 'accepted'
     ).all()
     
     inbox = []

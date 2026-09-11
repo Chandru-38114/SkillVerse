@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
+import SkillVerseLogo from '../components/SkillVerseLogo'
 import { GoogleLogin } from '@react-oauth/google'
 import { api, saveSession } from '../api'
 
@@ -51,12 +52,8 @@ export default function Login() {
     <div className="min-h-[calc(100vh-73px)] flex items-center justify-center px-4 sm:px-6 py-16">
       <div className="w-full max-w-md">
         {/* Logo mark */}
-        <div className="mb-8 text-center">
-          <p className="font-display text-2xl">
-            Skill<span className="text-clay">Verse</span>
-          </p>
-          <p className="text-ink/50 text-sm mt-1">Welcome back</p>
-        </div>
+        <SkillVerseLogo />
+        <div className="mb-6 text-center"><p className="text-ink/50 text-sm">Welcome back</p></div>
 
         <div className="card p-6 sm:p-8">
           <form onSubmit={handleSubmit} className="space-y-5">
@@ -83,7 +80,7 @@ export default function Login() {
                 id="password"
                 className="input"
                 type="password"
-                placeholder="••••••••"
+                placeholder="********"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required

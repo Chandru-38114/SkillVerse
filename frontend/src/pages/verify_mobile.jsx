@@ -1,18 +1,26 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import SkillVerseLogo from '../components/SkillVerseLogo'
 import { api, getSessionUser, saveSession, getToken } from '../api'
 
 export default function VerifyMobile() {
   const navigate = useNavigate()
-  const user = getSessionUser()
+  const [user, setUser] = useState(getSessionUser())
+
+  useEffect(() => {
+    const handleUpdate = () => setUser(getSessionUser())
+    window.addEventListener('skillverse_user_updated', handleUpdate)
+    return () => window.removeEventListener('skillverse_user_updated', handleUpdate)
+  }, [])
   const [otp, setOtp] = useState('')
+  const [newMobile, setNewMobile] = useState('')
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
   const [loading, setLoading] = useState(false)
   const [cooldown, setCooldown] = useState(0)
 
   useEffect(() => {
-    if (!user) {
+    if (!user || !getToken()) {
       navigate('/login')
     } else if (user.is_mobile_verified) {
       navigate('/dashboard')
@@ -25,6 +33,24 @@ export default function VerifyMobile() {
       return () => clearTimeout(timer)
     }
   }, [cooldown])
+
+  async function handleUpdateMobile(e) {
+    e.preventDefault()
+    setError('')
+    setMessage('')
+    setLoading(true)
+    try {
+      const updatedUser = await api.updateMe({ mobile_number: newMobile })
+      saveSession(getToken(), updatedUser)
+      window.dispatchEvent(new Event('skillverse_user_updated'))
+      setMessage('Mobile number updated. You can now request an OTP.')
+      // After updating, we can clear newMobile or let it stay to show we updated it.
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   async function handleRequestOTP() {
     if (cooldown > 0) return
@@ -51,8 +77,9 @@ export default function VerifyMobile() {
     try {
       const res = await api.confirmMobileVerification(otp)
       setMessage(res.detail || 'Mobile verified successfully.')
-      const updatedUser = { ...user, is_mobile_verified: true }
+      const updatedUser = await api.me()
       saveSession(getToken(), updatedUser)
+      window.dispatchEvent(new Event('skillverse_user_updated'))
       setTimeout(() => navigate('/dashboard'), 1500)
     } catch (err) {
       setError(err.message)
@@ -63,9 +90,44 @@ export default function VerifyMobile() {
 
   if (!user) return null
 
+  if (!user.mobile_number) {
+    return (
+      <div className="min-h-[calc(100vh-73px)] flex items-center justify-center px-4 py-16">
+        <div className="w-full max-w-md">
+          <SkillVerseLogo />
+          <div className="card p-8 text-center">
+            <h2 className="text-2xl font-display mb-2">Complete your profile</h2>
+            <p className="text-ink/60 mb-6 text-sm">
+              Please enter your mobile number to proceed with verification.
+            </p>
+            {error && <p className="alert-error mb-4">{error}</p>}
+            {message && <p className="p-3 bg-moss/10 text-moss rounded-md mb-4 text-sm">{message}</p>}
+            <form onSubmit={handleUpdateMobile} className="space-y-4">
+              <div>
+                <input
+                  className="input w-full text-center tracking-wider text-lg"
+                  type="text"
+                  placeholder="+1234567890"
+                  value={newMobile}
+                  onChange={(e) => setNewMobile(e.target.value)}
+                  required
+                />
+              </div>
+              <button type="submit" disabled={loading || !newMobile} className="btn-primary w-full py-3">
+                {loading ? 'Saving...' : 'Save Mobile Number'}
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-[calc(100vh-73px)] flex items-center justify-center px-4 py-16">
-      <div className="w-full max-w-md card p-8 text-center">
+      <div className="w-full max-w-md">
+        <SkillVerseLogo />
+        <div className="card p-8 text-center">
         <h2 className="text-2xl font-display mb-2">Verify your mobile</h2>
         <p className="text-ink/60 mb-6 text-sm">
           We need to verify your mobile number {user.mobile_number} before you can continue.
@@ -102,6 +164,8 @@ export default function VerifyMobile() {
           </button>
         </div>
       </div>
+      </div>
     </div>
   )
 }
+

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import SkillVerseLogo from '../components/SkillVerseLogo'
 import { api, getSessionUser, saveSession, getToken } from '../api'
 
 export default function VerifyEmail() {
@@ -12,7 +13,7 @@ export default function VerifyEmail() {
   const [cooldown, setCooldown] = useState(0)
 
   useEffect(() => {
-    if (!user) {
+    if (!user || !getToken()) {
       navigate('/login')
     } else if (user.is_email_verified) {
       navigate('/verify-mobile')
@@ -65,7 +66,9 @@ export default function VerifyEmail() {
 
   return (
     <div className="min-h-[calc(100vh-73px)] flex items-center justify-center px-4 py-16">
-      <div className="w-full max-w-md card p-8 text-center">
+      <div className="w-full max-w-md">
+        <SkillVerseLogo />
+        <div className="card p-8 text-center">
         <h2 className="text-2xl font-display mb-2">Verify your email</h2>
         <p className="text-ink/60 mb-6 text-sm">
           We need to verify your email address before you can continue.
@@ -102,6 +105,8 @@ export default function VerifyEmail() {
           </button>
         </div>
       </div>
+      </div>
     </div>
   )
 }
+

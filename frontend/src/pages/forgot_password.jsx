@@ -53,12 +53,8 @@ export default function ForgotPassword() {
   return (
     <div className="min-h-[calc(100vh-73px)] flex items-center justify-center px-4 sm:px-6 py-16">
       <div className="w-full max-w-md">
-        <div className="mb-8 text-center">
-          <p className="font-display text-2xl">
-            Skill<span className="text-clay">Verse</span>
-          </p>
-          <p className="text-ink/50 text-sm mt-1">Password Recovery</p>
-        </div>
+        <SkillVerseLogo />
+          <div className="mb-6 text-center"><p className="text-ink/50 text-sm">Password Recovery</p></div>
 
         <div className="card p-6 sm:p-8">
           {error && <p className="alert-error mb-4">{error}</p>}

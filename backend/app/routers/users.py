@@ -51,6 +51,9 @@ def change_password(
     if not auth.verify_password(req.current_password, current_user.hashed_password):
         raise HTTPException(status_code=400, detail="Incorrect current password")
     
+    if auth.verify_password(req.new_password, current_user.hashed_password):
+        raise HTTPException(status_code=400, detail="You are entering your old password. Please choose a different password.")
+        
     try:
         auth.validate_password_strength(req.new_password)
     except ValueError as e:

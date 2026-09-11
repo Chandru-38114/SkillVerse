@@ -189,7 +189,7 @@ export default function Messages() {
           <input 
             type="text" 
             placeholder="Search name or skill..." 
-            className="input-field w-full text-sm py-2"
+            className="input w-full text-sm"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -228,13 +228,18 @@ export default function Messages() {
                     <span className="font-bold text-sm truncate">{conv.other_user_name}</span>
                     {conv.latest_message_time && (
                       <span className="text-[10px] text-ink/40 shrink-0 ml-2">
-                        {new Date(conv.latest_message_time).toLocaleDateString()}
+                        {(() => {
+                          const d = new Date(conv.latest_message_time)
+                          const now = new Date()
+                          const isToday = d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate()
+                          return isToday ? d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : d.toLocaleDateString([], { month: 'short', day: 'numeric' })
+                        })()}
                       </span>
                     )}
                   </div>
                   <div className="text-xs text-moss font-medium mb-1 truncate">{conv.skill_name}</div>
                   <div className={`text-xs truncate ${conv.unread_count > 0 ? 'text-ink font-bold' : 'text-ink/60'}`}>
-                    {conv.latest_message}
+                    {conv.latest_message && conv.latest_message.startsWith('Request ') ? <span className="flex items-center gap-1"><Hand className="w-3 h-3" /> Say hello!</span> : conv.latest_message}
                   </div>
                 </div>
                 
@@ -250,12 +255,15 @@ export default function Messages() {
       </div>
 
       {/* Right side: Chat Window */}
-      <div className="flex-1 bg-paper border border-ink/10 rounded-xl overflow-hidden shadow-sm flex flex-col relative">
+      <div className={`flex-1 bg-paper border border-line rounded-xl overflow-hidden shadow-sm flex-col relative ${!selectedRequestId ? "hidden md:flex" : "flex"}`}>
         {selectedRequestId && selectedConv ? (
           <>
             {/* Chat Header */}
-            <div className="px-6 py-4 border-b border-ink/10 bg-white flex justify-between items-center z-10 shrink-0">
+            <div className="px-4 md:px-6 py-4 border-b border-line bg-white flex justify-between items-center z-10 shrink-0">
               <div className="flex items-center gap-3">
+                <button onClick={() => setSelectedRequestId(null)} className="md:hidden p-2 -ml-2 text-clay hover:text-ink">
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+                </button>
                 <div className="w-10 h-10 rounded-full bg-clay/20 flex items-center justify-center text-clay font-bold overflow-hidden">
                   {selectedConv.other_user_avatar ? (
                     <img src={`${BACKEND_URL}${selectedConv.other_user_avatar}`} alt={selectedConv.other_user_name} className="w-full h-full object-cover" />
@@ -296,7 +304,7 @@ export default function Messages() {
               ) : messages.length === 0 ? (
                 <div className="flex items-center justify-center h-full">
                   <div className="text-center">
-                    <p className="text-3xl mb-3">💬</p>
+                    <MessageCircle className="w-8 h-8 text-ink/30 mx-auto mb-3" />
                     <p className="text-sm text-ink/40 font-medium">Say hello!</p>
                   </div>
                 </div>
@@ -317,7 +325,12 @@ export default function Messages() {
                               : 'bg-white border border-line text-ink rounded-bl-md shadow-sm'
                           }`}
                         >
-                          {m.content}
+                          <p>{m.content}</p>
+                          {m.created_at && (
+                            <p className={`text-[9px] mt-1 text-right ${isMe ? 'text-white/60' : 'text-ink/35'}`}>
+                              {new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </p>
+                          )}
                         </div>
                       </div>
                     )
@@ -367,10 +380,10 @@ function ConnectionBadge({ state }) {
     live: { label: 'Live', dot: 'bg-moss' },
     reconnecting: { label: 'Reconnecting', dot: 'bg-clay animate-pulse' },
     offline: { label: 'Offline', dot: 'bg-ink/30' },
-  }[state]
+  }[state] || { label: 'Connecting', dot: 'bg-gold animate-pulse' }
 
   return (
-    <span className="flex items-center gap-1.5 font-mono">
+    <span className="flex items-center gap-1.5 font-mono text-[10px]">
       <span className={`w-1.5 h-1.5 rounded-full ${config.dot}`} />
       {config.label}
     </span>

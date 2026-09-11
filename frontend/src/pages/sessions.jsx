@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../api'
+import { Calendar, Clock, CheckCircle2, XCircle, ArrowRight } from 'lucide-react'
 
 export default function Sessions() {
   const [sessions, setSessions] = useState([])

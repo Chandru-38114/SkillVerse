@@ -1,223 +1,351 @@
-﻿import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import { api, getSessionUser } from '../api'
-import SkillBadge from '../components/skillbadge'
 
 export default function Dashboard() {
-  const [user, setUser] = useState(getSessionUser())
-  const [skills, setSkills] = useState([])
-  const [gamification, setGamification] = useState(null)
+  const navigate = useNavigate()
+  const user = getSessionUser()
+  
   const [loading, setLoading] = useState(true)
+  const [skills, setSkills] = useState([])
+  const [upcoming, setUpcoming] = useState([])
+  const [gamification, setGamification] = useState(null)
+  const [recommended, setRecommended] = useState([])
+  const [completedSessions, setCompletedSessions] = useState(0)
 
   useEffect(() => {
-    Promise.all([
-      api.refreshMe().then(setUser).catch(() => {}),
-      api.mySkills().then(setSkills),
-      api.getGamificationSummary().then(setGamification).catch(() => {})
-    ]).finally(() => setLoading(false))
-  }, [])
+    if (!user) {
+      navigate('/login')
+      return
+    }
+    
+    async function fetchDashboardData() {
+      try {
+        const [
+          skillsData,
+          upcomingData,
+          sessionsData,
+          gamiData,
+          marketData
+        ] = await Promise.all([
+          api.mySkills().catch(() => []),
+          api.upcomingSessions().catch(() => []),
+          api.mySessions().catch(() => []),
+          api.getGamificationSummary().catch(() => null),
+          api.searchTeachers().catch(() => [])
+        ])
+        
+        setSkills(skillsData || [])
+        setUpcoming(upcomingData || [])
+        setCompletedSessions(sessionsData?.filter(s => s.status === 'completed')?.length || 0)
+        setGamification(gamiData)
+        
+        // Filter recommended teachers (exclude self)
+        const others = (marketData || []).filter(u => u.user_id !== user.id)
+        setRecommended(others.slice(0, 3))
+      } catch (err) {
+        console.error("Dashboard fetch error:", err)
+      } finally {
+        setLoading(false)
+      }
+    }
+    
+    fetchDashboardData()
+  }, [user, navigate])
 
-  const teachingSkills = skills.filter((s) => s.role === 'teaching')
-  const learningSkills = skills.filter((s) => s.role === 'learning')
-  
-  const earnedAchievements = gamification?.achievements.filter(a => a.earned) || [];
+  if (!user) return null
+
+  const learningSkills = skills.filter(s => s.role === 'learning')
+  const teachingSkills = skills.filter(s => s.role === 'teaching')
+
+  const nextSession = upcoming.length > 0 ? upcoming[0] : null
+  const achievements = gamification?.earned_achievements || []
 
   return (
-    <div className="max-w-5xl mx-auto px-6 py-12">
-      {/* --- Header --- */}
-      <div className="flex flex-wrap items-start justify-between gap-6 mb-10">
+    <div className="page space-y-10">
+      
+      {/* 1. WELCOME SECTION */}
+      <section className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <p className="label-eyebrow mb-1">Dashboard</p>
-          <h1 className="font-display text-4xl">
-            Hello, {user?.name?.split(' ')[0]} 👋
+          <h1 className="font-display text-3xl font-bold text-ink">
+            Welcome back, {user.name.split(' ')[0]}
           </h1>
-          <p className="text-ink/50 text-sm mt-1">Here's your skills overview.</p>
+          <p className="text-clay mt-1 font-medium">
+            Continue learning, share your knowledge, and grow together.
+          </p>
         </div>
-
-        {/* Gamification Stats */}
-        <div className="flex gap-4">
-          <Link to="/gamification" className="card-hover px-6 py-4 text-right min-w-[140px] block border-clay/30 bg-clay/5">
-            <p className="label-eyebrow mb-1 text-clay">Points</p>
-            <p className="font-display text-4xl text-clay">{gamification?.total_points ?? user?.points ?? '—'}</p>
-            {gamification?.current_rank && (
-              <p className="text-xs text-clay/70 mt-1 font-bold">Rank #{gamification.current_rank}</p>
-            )}
-          </Link>
-          {gamification?.next_milestone_points && (
-            <div className="card px-6 py-4 text-left min-w-[200px] hidden sm:block">
-              <p className="label-eyebrow mb-1">Next Milestone</p>
-              <p className="font-bold text-sm">{gamification.next_milestone_title}</p>
-              <div className="w-full bg-sand/50 h-2 rounded-full mt-2 mb-1 overflow-hidden">
-                <div 
-                  className="bg-clay h-full" 
-                  style={{ width: `${Math.min(100, ((gamification.total_points || 0) / gamification.next_milestone_points) * 100)}%` }} 
-                />
-              </div>
-              <p className="text-xs text-ink/50 text-right">{gamification.total_points} / {gamification.next_milestone_points} pts</p>
-            </div>
-          )}
+        <div className="flex items-center gap-3">
+          <Link to="/marketplace" className="btn-brand">Find a Teacher</Link>
+          <Link to="/assessment" className="btn-secondary">Assess a Skill</Link>
         </div>
-      </div>
+      </section>
 
-      {/* --- Quick actions --- */}
-      <div className="flex flex-wrap gap-3 mb-10">
-        <Link to="/assessment" className="btn-primary">+ Assess a skill to Teach</Link>
-        <Link to="/marketplace" className="btn-secondary">Browse teachers</Link>
-        <Link to="/requests" className="btn-secondary">My requests</Link>
-        <Link to="/gamification" className="btn-secondary ml-auto text-clay border-clay hover:bg-clay/5">🏆 Leaderboard & Achievements</Link>
-      </div>
-
-      {/* --- Skills --- */}
+      {/* 2. LEARNING OVERVIEW */}
       {loading ? (
-        <SkillsSkeleton />
+        <OverviewSkeleton />
       ) : (
-      <div className="space-y-8">
+        <section className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          <StatCard label="Total Points" value={gamification?.total_points ?? user.points ?? 0} />
+          <StatCard label="Current Rank" value={gamification?.current_rank ? `#${gamification.current_rank}` : '-'} />
+          <StatCard label="Learning Skills" value={learningSkills.length} />
+          <StatCard label="Teaching Skills" value={teachingSkills.length} />
+          <StatCard label="Sessions Completed" value={completedSessions} />
+        </section>
+      )}
+
+      {/* MAIN GRID */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
-        {/* Achievements Quick View (if they have any) */}
-        {earnedAchievements.length > 0 && (
-          <div className="mb-8">
-             <h2 className="font-display text-xl mb-4 flex items-center gap-2">
-              Recent Achievements
-            </h2>
-            <div className="flex flex-wrap gap-3">
-              {earnedAchievements.slice(0, 4).map(a => (
-                <div key={a.id} className="flex items-center gap-2 bg-yellow-50 border border-yellow-200 rounded-full px-3 py-1.5 shadow-sm">
-                  <span className="text-lg">{a.icon}</span>
-                  <span className="text-xs font-bold text-yellow-800">{a.title}</span>
+        <div className="lg:col-span-2 space-y-8">
+          {/* 3. UPCOMING SESSION */}
+          <section>
+            <SectionHeader title="Upcoming Session" />
+            {loading ? (
+              <div className="skeleton h-24 w-full" />
+            ) : nextSession ? (
+              <div className="card p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-brand/20 bg-brandLight/10">
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="status-accepted">{nextSession.status}</span>
+                    <span className="text-sm font-semibold text-brand">{nextSession.skill}</span>
+                  </div>
+                  <p className="font-bold text-lg text-ink">
+                    Session with {nextSession.tutor_id === user.id ? 'Student' : 'Teacher'} #{nextSession.tutor_id === user.id ? nextSession.learner_id : nextSession.tutor_id}
+                  </p>
+                  <p className="text-sm text-clay mt-1 flex items-center gap-1">
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    {`${nextSession.session_date} at ${nextSession.start_time}`}
+                  </p>
                 </div>
-              ))}
-              {earnedAchievements.length > 4 && (
-                <Link to="/gamification" className="flex items-center text-xs font-bold text-clay ml-2">+{earnedAchievements.length - 4} more</Link>
+                <Link to={`/session/${nextSession.id}`} className="btn-brand">
+                  Join Session
+                </Link>
+              </div>
+            ) : (
+              <div className="card p-8 text-center bg-paper/50">
+                <p className="text-clay font-medium mb-3">No upcoming sessions</p>
+                <Link to="/marketplace" className="btn-secondary text-sm">Discover Partners</Link>
+              </div>
+            )}
+          </section>
+
+          {/* 4. MY LEARNING SKILLS */}
+          <section>
+            <SectionHeader title="My Learning Skills" count={learningSkills.length} />
+            {loading ? (
+              <ListSkeleton />
+            ) : learningSkills.length > 0 ? (
+              <div className="grid sm:grid-cols-2 gap-4">
+                {learningSkills.map(s => (
+                  <div key={s.id} className="card p-5">
+                    <div className="flex justify-between items-start mb-3">
+                      <div>
+                        <h3 className="font-bold text-ink">{s.skill_name}</h3>
+                        <p className="text-xs text-clay font-medium mt-0.5 capitalize">{s.level}</p>
+                      </div>
+                      <span className="text-xs font-bold text-moss2 bg-mossLight px-2 py-1 rounded-md">
+                        {s.progress_percentage || 0}%
+                      </span>
+                    </div>
+                    <div className="w-full bg-line rounded-full h-1.5 mb-4">
+                      <div className="bg-moss2 h-1.5 rounded-full" style={{ width: `${s.progress_percentage || 0}%` }} />
+                    </div>
+                    <Link to="/marketplace" className="text-xs font-semibold text-brand hover:underline">Find a Teacher ?</Link>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <EmptyState message="You haven't added any learning skills yet." actionText="Find a Teacher" actionUrl="/marketplace" />
+            )}
+          </section>
+
+          {/* 5. TEACHING SKILLS */}
+          <section>
+            <SectionHeader title="Skills I Teach" count={teachingSkills.length} />
+            {loading ? (
+              <ListSkeleton />
+            ) : teachingSkills.length > 0 ? (
+              <div className="grid sm:grid-cols-2 gap-4">
+                {teachingSkills.map(s => (
+                  <div key={s.id} className="card p-5 flex flex-col justify-between">
+                    <div>
+                      <div className="flex justify-between items-start">
+                        <h3 className="font-bold text-ink">{s.skill_name}</h3>
+                        <SkillBadge badge={s.badge} />
+                      </div>
+                      <p className="text-xs text-clay font-medium mt-1 capitalize">{s.level}</p>
+                    </div>
+                    <div className="mt-4 pt-4 border-t border-line">
+                      <Link to="/requests" className="text-xs font-semibold text-brand hover:underline">View Requests ?</Link>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <EmptyState message="You haven't assessed any skills to teach." actionText="Assess a Skill" actionUrl="/assessment" />
+            )}
+          </section>
+        </div>
+
+        {/* SIDEBAR GRID */}
+        <div className="space-y-8">
+          
+          {/* 6. GAMIFICATION SUMMARY */}
+          <section>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-display text-lg font-bold text-ink">Achievements</h2>
+              <Link to="/gamification" className="text-xs font-bold text-brand hover:underline">View All</Link>
+            </div>
+            <div className="card p-5">
+              {loading ? (
+                <div className="space-y-3">
+                  <div className="skeleton h-12 w-full" />
+                  <div className="skeleton h-12 w-full" />
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-center justify-between mb-6">
+                    <div>
+                      <p className="text-xs font-bold text-gold uppercase tracking-wider">Total Points</p>
+                      <p className="font-display text-2xl font-bold text-ink">{gamification?.total_points ?? user.points ?? 0}</p>
+                    </div>
+                    <div className="w-12 h-12 bg-goldLight rounded-full flex items-center justify-center">
+                      <Trophy className="w-6 h-6 text-gold" />
+                    </div>
+                  </div>
+                  
+                  {achievements.length > 0 ? (
+                    <div className="space-y-3">
+                      <p className="text-xs font-bold text-clay uppercase tracking-wider mb-2">Recent Badges</p>
+                      {achievements.slice(0, 3).map(a => (
+                        <div key={a.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-paper transition-colors">
+                          <div className="w-8 h-8 flex items-center justify-center bg-goldLight/50 border border-gold/20 rounded-full text-lg shadow-sm">
+                            {a.icon}
+                          </div>
+                          <div>
+                            <p className="text-sm font-semibold text-ink">{a.title}</p>
+                            <p className="text-[10px] font-medium text-clay truncate max-w-[150px]">{a.description}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-clay text-center py-2">No achievements yet. Keep learning!</p>
+                  )}
+                </>
               )}
             </div>
-          </div>
-        )}
+          </section>
 
-        {teachingSkills.length > 0 && (
-          <SkillSection title="Skills I Teach" skills={teachingSkills} />
-        )}
-        
-        <div>
-          <h2 className="font-display text-xl mb-4 flex items-center gap-2">
-            Skills I Want to Learn
-            <span className="text-sm font-body text-ink/40 font-normal">({learningSkills.length})</span>
-          </h2>
-          <div className="grid md:grid-cols-2 gap-4 mb-4">
-            {learningSkills.map((s) => (
-              <div key={s.id} className="card-hover p-5 flex items-center justify-between">
-                <div>
-                  <p className="font-semibold text-base">{s.skill_name}</p>
-                  <p className="text-xs text-ink/40 mt-1">{s.level}</p>
+          {/* 7. RECOMMENDED PEERS */}
+          <section>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-display text-lg font-bold text-ink">Recommended Peers</h2>
+              <Link to="/marketplace" className="text-xs font-bold text-brand hover:underline">Explore</Link>
+            </div>
+            <div className="card overflow-hidden">
+              {loading ? (
+                <div className="p-5 space-y-4">
+                  <div className="skeleton h-10 w-full" />
+                  <div className="skeleton h-10 w-full" />
                 </div>
-                <div className="text-right">
-                  <div className="text-sm font-bold text-blue-600">{s.progress_percentage || 0}%</div>
-                  <button 
-                    className="text-red-500 hover:bg-red-50 px-2 py-1 rounded text-xs mt-1"
-                    onClick={async () => {
-                      if(confirm(`Remove ${s.skill_name}?`)) {
-                        await api.deleteMySkill(s.id);
-                        api.mySkills().then(setSkills);
-                      }
-                    }}
-                  >
-                    Remove
-                  </button>
+              ) : recommended.length > 0 ? (
+                <div className="divide-y divide-line">
+                  {recommended.map(peer => (
+                    <div key={peer.user_id} className="p-4 hover:bg-paper transition-colors flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-brandLight text-brand rounded-full flex items-center justify-center font-bold text-sm">
+                          {peer.name.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-ink">{peer.name}</p>
+                          <p className="text-xs text-clay font-medium truncate max-w-[120px]">
+                            {peer.teaching_skills?.length ? peer.teaching_skills[0].skill_name : 'New Member'}
+                          </p>
+                        </div>
+                      </div>
+                      <Link to={`/marketplace`} className="text-xs font-semibold text-brand hover:underline px-2 py-1 rounded bg-brandLight/30">Connect</Link>
+                    </div>
+                  ))}
                 </div>
-              </div>
-            ))}
-          </div>
-          <form 
-            className="flex gap-2 max-w-sm"
-            onSubmit={async (e) => {
-              e.preventDefault();
-              const input = e.target.elements.skill;
-              if (!input.value.trim()) return;
-              try {
-                await api.addMySkill(input.value.trim());
-                input.value = '';
-                api.mySkills().then(setSkills);
-              } catch(err) {
-                alert(err.message);
-              }
-            }}
-          >
-            <input name="skill" className="input text-sm flex-1" placeholder="e.g. React, SQL" />
-            <button className="btn-secondary py-1.5 text-sm">Add</button>
-          </form>
-        </div>
-        
-        {skills.length === 0 && (
-          <EmptySkills />
-        )}
+              ) : (
+                <div className="p-6 text-center">
+                  <p className="text-sm text-clay mb-2">No recommendations available</p>
+                  <Link to="/marketplace" className="btn-secondary text-xs py-1.5">Search Marketplace</Link>
+                </div>
+              )}
+            </div>
+          </section>
 
-        <div className="mt-8 p-6 bg-blue-50 border border-blue-100 rounded-xl flex items-center justify-between">
-          <div>
-            <h2 className="text-lg font-bold text-blue-900 mb-1">Your Learning Progress</h2>
-            <p className="text-sm text-blue-800/70">Track your knowledge history across sessions.</p>
-          </div>
-          <Link to="/progress" className="btn-primary bg-blue-600 hover:bg-blue-700">View Full Progress →</Link>
         </div>
       </div>
+    </div>
+  )
+}
+
+function SectionHeader({ title, count }) {
+  return (
+    <div className="flex items-center gap-2 mb-4">
+      <h2 className="font-display text-xl font-bold text-ink">{title}</h2>
+      {count !== undefined && (
+        <span className="bg-line text-clay text-xs font-bold px-2 py-0.5 rounded-full">{count}</span>
       )}
     </div>
   )
 }
 
-function SkillSection({ title, skills }) {
+function StatCard({ label, value }) {
   return (
-    <div>
-      <h2 className="font-display text-xl mb-4 flex items-center gap-2">
-        {title}
-        <span className="text-sm font-body text-ink/40 font-normal">({skills.length})</span>
-      </h2>
-      <div className="grid md:grid-cols-2 gap-4">
-        {skills.map((s) => (
-          <div key={s.id} className="card-hover p-5 flex items-center justify-between">
-            <div>
-              <p className="font-semibold text-base">{s.skill_name}</p>
-              <div className="flex items-center gap-2 mt-1">
-                <span className="text-xs text-ink/40 font-mono">{s.level}</span>
-                {s.latest_score != null && (
-                  <>
-                    <span className="text-ink/20">•</span>
-                    <span className="text-xs text-ink/40 font-mono">{s.latest_score}%</span>
-                  </>
-                )}
-              </div>
-            </div>
-            <SkillBadge badge={s.badge} />
-          </div>
-        ))}
+    <div className="card p-4 flex flex-col justify-center items-center text-center">
+      <p className="text-[11px] font-bold text-clay uppercase tracking-wider mb-1">{label}</p>
+      <p className="font-display text-2xl font-bold text-ink">{value}</p>
+    </div>
+  )
+}
+
+function EmptyState({ message, actionText, actionUrl }) {
+  return (
+    <div className="card p-8 flex flex-col items-center justify-center text-center border-dashed border-2 bg-transparent shadow-none">
+      <div className="w-12 h-12 bg-line/50 rounded-full flex items-center justify-center mb-3">
+        <svg className="w-6 h-6 text-clay" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+        </svg>
       </div>
+      <p className="text-sm text-ink font-medium mb-4">{message}</p>
+      <Link to={actionUrl} className="btn-secondary text-sm">{actionText}</Link>
     </div>
   )
 }
 
-function EmptySkills() {
+function OverviewSkeleton() {
   return (
-    <div className="card p-12 text-center">
-      <p className="text-4xl mb-4">🎯</p>
-      <h2 className="font-display text-xl mb-2">No skills assessed yet</h2>
-      <p className="text-ink/50 text-sm mb-6 max-w-sm mx-auto">
-        Take a short assessment to get a verified badge — it's how other members know you can teach.
-      </p>
-      <Link to="/assessment" className="btn-primary">Take your first assessment</Link>
-    </div>
-  )
-}
-
-function SkillsSkeleton() {
-  return (
-    <div className="grid md:grid-cols-2 gap-4">
-      {[...Array(4)].map((_, i) => (
-        <div key={i} className="card p-5 flex items-center justify-between">
-          <div className="space-y-2">
-            <div className="skeleton h-4 w-28 rounded" />
-            <div className="skeleton h-3 w-16 rounded" />
-          </div>
-          <div className="skeleton h-6 w-14 rounded-full" />
-        </div>
+    <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+      {[...Array(5)].map((_, i) => (
+        <div key={i} className="card p-4 h-20 skeleton" />
       ))}
     </div>
   )
 }
+
+function ListSkeleton() {
+  return (
+    <div className="grid sm:grid-cols-2 gap-4">
+      <div className="card p-5 h-28 skeleton" />
+      <div className="card p-5 h-28 skeleton" />
+    </div>
+  )
+}
+
+function SkillBadge({ badge }) {
+  if (!badge) return null
+  return (
+    <span className="inline-flex items-center gap-1 bg-goldLight text-gold px-2 py-1 rounded text-xs font-bold border border-gold/20 shadow-sm">
+      <CheckCircle className="w-4 h-4 text-moss" /> Verified
+    </span>
+  )
+}
+
+
+
