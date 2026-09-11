@@ -24,11 +24,10 @@ import Profile from './pages/profile'
 import Messages from './pages/messages'
 import Notifications from './pages/notifications'
 import Gamification from './pages/gamification'
+import { api, saveSession, clearSession } from './api'
+import { getSessionUser, getToken } from './api'
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "NO_CLIENT_ID_CONFIGURED"
-import { api, saveSession, clearSession } from './api'
-
-import { getSessionUser, getToken } from './api'
 
 function RootRedirect() {
   const user = getSessionUser()
