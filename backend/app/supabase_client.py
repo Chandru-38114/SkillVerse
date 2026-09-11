@@ -1,11 +1,12 @@
 import os
+from typing import Optional
 from supabase import create_client, Client
 from fastapi import HTTPException
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
 
-supabase_client: Client | None = None
+supabase_client: Optional[Client] = None
 if SUPABASE_URL and SUPABASE_KEY:
     try:
         supabase_client = create_client(SUPABASE_URL, SUPABASE_KEY)

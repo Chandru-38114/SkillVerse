@@ -1,3 +1,4 @@
+from typing import Optional
 import os
 import sys
 import tempfile
@@ -16,7 +17,7 @@ class RunRequest(BaseModel):
 
 class RunResponse(BaseModel):
     output: str
-    error: str | None = None
+    error: Optional[str] = None
 
 @router.post("/{session_id}/run", response_model=RunResponse)
 def run_code(

@@ -1,3 +1,4 @@
+from typing import Optional
 """
 Sessions router — scheduling a learning session for an accepted connection.
 
@@ -25,7 +26,7 @@ from ..ws_manager import webrtc_manager
 router = APIRouter(prefix="/sessions", tags=["sessions"])
 
 
-def _authenticate_ws(token: str, db: DBSession) -> models.User | None:
+def _authenticate_ws(token: str, db: DBSession) -> Optional[models.User]:
     try:
         payload = jwt.decode(token, auth.SECRET_KEY, algorithms=[auth.ALGORITHM])
         user_id = payload.get("sub")

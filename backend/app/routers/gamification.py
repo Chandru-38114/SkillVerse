@@ -1,3 +1,4 @@
+from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, desc, func
@@ -12,7 +13,7 @@ class LeaderboardUser(BaseModel):
     rank: int
     user_id: int
     name: str
-    profile_picture_url: str | None
+    profile_picture_url: Optional[str]
     points: int
 
 class Achievement(BaseModel):
@@ -20,15 +21,15 @@ class Achievement(BaseModel):
     title: str
     description: str
     earned: bool
-    earned_at: str | None = None
+    earned_at: Optional[str] = None
     icon: str
 
 class GamificationSummary(BaseModel):
     total_points: int
     current_rank: int
     achievements: list[Achievement]
-    next_milestone_points: int | None
-    next_milestone_title: str | None
+    next_milestone_points: Optional[int]
+    next_milestone_title: Optional[str]
 
 @router.get("/leaderboard", response_model=list[LeaderboardUser])
 def get_leaderboard(db: Session = Depends(get_db)):
