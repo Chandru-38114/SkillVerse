@@ -117,7 +117,7 @@ export default function Profile() {
             <div className="w-32 h-32 rounded-full overflow-hidden bg-sand mb-4 flex items-center justify-center">
               {user.profile_picture_url ? (
                 <img 
-                  src={BACKEND_URL + user.profile_picture_url} 
+                  src={getAvatarUrl(user.profile_picture_url)} 
                   alt="Avatar" 
                   className="w-full h-full object-cover" 
                 />

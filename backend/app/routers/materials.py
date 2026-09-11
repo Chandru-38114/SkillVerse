@@ -3,10 +3,11 @@ import uuid
 import shutil
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.orm import Session
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, RedirectResponse
 
 from .. import models, auth
 from ..database import get_db
+from ..supabase_client import get_supabase
 
 router = APIRouter(prefix="/materials", tags=["materials"])
 
@@ -45,24 +46,23 @@ async def upload_material(
     if ext not in ALLOWED_EXTENSIONS:
         raise HTTPException(status_code=400, detail="Unsupported file type")
         
-    file.file.seek(0, 2)
-    file_size = file.file.tell()
-    file.file.seek(0)
+    file_bytes = file.file.read()
+    file_size = len(file_bytes)
     
     if file_size > MAX_FILE_SIZE:
         raise HTTPException(status_code=413, detail="File too large (Max 10MB)")
 
     stored_filename = f"{uuid.uuid4()}{ext}"
-    stored_path = os.path.abspath(os.path.join(UPLOAD_DIR, stored_filename))
-    
-    if not stored_path.startswith(os.path.abspath(UPLOAD_DIR)):
-        raise HTTPException(status_code=400, detail="Invalid file path")
+    supabase = get_supabase()
 
     try:
-        with open(stored_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
+        supabase.storage.from_("materials").upload(
+            file=file_bytes,
+            path=stored_filename,
+            file_options={"content-type": ALLOWED_EXTENSIONS[ext]}
+        )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to save file: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to save file to Supabase: {str(e)}")
 
     mat = models.LearningMaterial(
         session_id=session_id,
@@ -110,15 +110,20 @@ def download_material(
     if not session_db or current_user.id not in [session_db.tutor_id, session_db.learner_id]:
         raise HTTPException(status_code=403, detail="Not authorized")
 
-    stored_path = os.path.join(UPLOAD_DIR, mat.stored_filename)
-    if not os.path.exists(stored_path):
-        raise HTTPException(status_code=404, detail="File not found on server")
+    supabase = get_supabase()
+    try:
+        # Create a signed URL valid for 60 seconds
+        res = supabase.storage.from_("materials").create_signed_url(mat.stored_filename, 60)
+        
+        # Supabase python client returns either a string or a dict depending on the exact version/method
+        signed_url = res if isinstance(res, str) else res.get("signedURL") or res.get("signedUrl")
+        
+        if not signed_url:
+            raise Exception("No signed URL returned from Supabase")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to generate download link: {str(e)}")
 
-    return FileResponse(
-        path=stored_path,
-        filename=mat.original_filename,
-        media_type=mat.file_type
-    )
+    return RedirectResponse(url=signed_url, status_code=307)
 
 @router.delete("/{material_id}")
 def delete_material(
@@ -133,6 +138,14 @@ def delete_material(
     if mat.uploaded_by != current_user.id:
         raise HTTPException(status_code=403, detail="Only the uploader can delete this material")
 
+    # 1. Delete from Supabase
+    supabase = get_supabase()
+    try:
+        supabase.storage.from_("materials").remove([mat.stored_filename])
+    except Exception as e:
+        print(f"Warning: Failed to delete {mat.stored_filename} from Supabase: {e}")
+
+    # 2. Cleanup local legacy file if exists
     stored_path = os.path.join(UPLOAD_DIR, mat.stored_filename)
     if os.path.exists(stored_path):
         try:
@@ -140,6 +153,7 @@ def delete_material(
         except OSError:
             pass
 
+    # 3. Delete from database
     db.delete(mat)
     db.commit()
 

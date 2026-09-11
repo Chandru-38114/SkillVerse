@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from .. import models, schemas, auth
 from ..database import get_db
+from ..supabase_client import get_supabase
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -72,35 +73,46 @@ def upload_avatar(
     if not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="Invalid file type. Must be an image.")
         
-    UPLOAD_DIR = "uploads/avatars"
-    os.makedirs(UPLOAD_DIR, exist_ok=True)
+    file_bytes = file.file.read()
+    if len(file_bytes) > 5 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="File too large (max 5MB).")
+        
+    supabase = get_supabase()
     
     ext = file.filename.split(".")[-1]
     filename = f"{current_user.id}_{uuid.uuid4().hex}.{ext}"
-    filepath = os.path.join(UPLOAD_DIR, filename)
     
-    with open(filepath, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
-        
-    # Check file size < 5MB (simple approx check using stat)
-    if os.path.getsize(filepath) > 5 * 1024 * 1024:
-        os.remove(filepath)
-        raise HTTPException(status_code=400, detail="File too large (max 5MB).")
-        
-    # Delete old avatar if it exists (basic cleanup)
-    if current_user.profile_picture_url and current_user.profile_picture_url.startswith("/uploads/avatars/"):
-        old_path = current_user.profile_picture_url.lstrip("/")
-        if os.path.exists(old_path):
+    # Delete old avatar if it exists
+    old_url = current_user.profile_picture_url
+    if old_url:
+        if "supabase.co/storage/v1/object/public/avatars/" in old_url:
+            old_filename = old_url.split("/")[-1]
             try:
-                os.remove(old_path)
+                supabase.storage.from_("avatars").remove([old_filename])
             except Exception:
                 pass
+        elif old_url.startswith("/uploads/avatars/"):
+            old_path = old_url.lstrip("/")
+            if os.path.exists(old_path):
+                try:
+                    os.remove(old_path)
+                except Exception:
+                    pass
 
-    current_user.profile_picture_url = f"/uploads/avatars/{filename}"
+    try:
+        supabase.storage.from_("avatars").upload(
+            file=file_bytes,
+            path=filename,
+            file_options={"content-type": file.content_type}
+        )
+        public_url = supabase.storage.from_("avatars").get_public_url(filename)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to upload avatar: {str(e)}")
+
+    current_user.profile_picture_url = public_url
     db.commit()
     db.refresh(current_user)
     return current_user
-
 
 @router.get("/me/skills", response_model=List[schemas.UserSkillOut])
 def get_my_skills(

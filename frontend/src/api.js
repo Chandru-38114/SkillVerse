@@ -172,3 +172,9 @@ export function chatSocketUrl(requestId) {
   return `${wsBase}/chat/ws/${requestId}?token=${encodeURIComponent(token || "")}`;
 }
 
+
+export const getAvatarUrl = (url) => {
+  if (!url) return null;
+  if (url.startsWith("http")) return url;
+  return `${BASE_URL}${url}`;
+};

@@ -107,7 +107,7 @@ export default function Gamification() {
                       {rankBadge}
                       <div className="flex items-center gap-3">
                         {user.profile_picture_url ? (
-                          <img src={user.profile_picture_url} alt={user.name} className="w-10 h-10 rounded-full object-cover border border-ink/10" />
+                          <img src={getAvatarUrl(user.profile_picture_url)} alt={user.name} className="w-10 h-10 rounded-full object-cover border border-ink/10" />
                         ) : (
                           <div className="w-10 h-10 rounded-full bg-paper flex items-center justify-center font-bold text-ink/40 border border-ink/10">
                             {user.name.charAt(0).toUpperCase()}

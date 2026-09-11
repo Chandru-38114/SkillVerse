@@ -217,7 +217,7 @@ export default function Messages() {
                 {/* Avatar */}
                 <div className="w-10 h-10 rounded-full bg-clay/20 flex items-center justify-center text-clay font-bold overflow-hidden shrink-0">
                   {conv.other_user_avatar ? (
-                    <img src={`${BACKEND_URL}${conv.other_user_avatar}`} alt={conv.other_user_name} className="w-full h-full object-cover" />
+                    <img src={getAvatarUrl(conv.other_user_avatar)} alt={conv.other_user_name} className="w-full h-full object-cover" />
                   ) : (
                     conv.other_user_name.charAt(0).toUpperCase()
                   )}
@@ -266,7 +266,7 @@ export default function Messages() {
                 </button>
                 <div className="w-10 h-10 rounded-full bg-clay/20 flex items-center justify-center text-clay font-bold overflow-hidden">
                   {selectedConv.other_user_avatar ? (
-                    <img src={`${BACKEND_URL}${selectedConv.other_user_avatar}`} alt={selectedConv.other_user_name} className="w-full h-full object-cover" />
+                    <img src={getAvatarUrl(selectedConv.other_user_avatar)} alt={selectedConv.other_user_name} className="w-full h-full object-cover" />
                   ) : (
                     selectedConv.other_user_name.charAt(0).toUpperCase()
                   )}
