@@ -63,19 +63,19 @@ export default function Dashboard() {
   const achievements = gamification?.earned_achievements || []
 
   return (
-    <div className="page space-y-10">
+    <div className="page space-y-6 md:space-y-10">
       
       {/* 1. WELCOME SECTION */}
-      <section className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <section className="flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-6">
         <div>
-          <h1 className="font-display text-3xl font-bold text-ink">
+          <h1 className="font-display text-2xl md:text-3xl font-bold text-ink leading-tight">
             Welcome back, {user.name.split(' ')[0]}
           </h1>
           <p className="text-clay mt-1 font-medium">
             Continue learning, share your knowledge, and grow together.
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto">
           <Link to="/marketplace" className="btn-brand">Find a Teacher</Link>
           <Link to="/assessment" className="btn-secondary">Assess a Skill</Link>
         </div>
@@ -85,32 +85,32 @@ export default function Dashboard() {
       {loading ? (
         <OverviewSkeleton />
       ) : (
-        <section className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <section className="grid grid-cols-2 md:grid-cols-5 gap-3 md:gap-4">
           <StatCard label="Total Points" value={gamification?.total_points ?? user.points ?? 0} />
           <StatCard label="Current Rank" value={gamification?.current_rank ? `#${gamification.current_rank}` : '-'} />
           <StatCard label="Learning Skills" value={learningSkills.length} />
           <StatCard label="Teaching Skills" value={teachingSkills.length} />
-          <StatCard label="Sessions Completed" value={completedSessions} />
+          <StatCard label="Sessions Completed" value={completedSessions} className="col-span-2 md:col-span-1" />
         </section>
       )}
 
       {/* MAIN GRID */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
         
-        <div className="lg:col-span-2 space-y-8">
+        <div className="lg:col-span-2 space-y-6 md:space-y-8">
           {/* 3. UPCOMING SESSION */}
           <section>
             <SectionHeader title="Upcoming Session" />
             {loading ? (
               <div className="skeleton h-24 w-full" />
             ) : nextSession ? (
-              <div className="card p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-brand/20 bg-brandLight/10">
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="status-accepted">{nextSession.status}</span>
-                    <span className="text-sm font-semibold text-brand">{nextSession.skill}</span>
+              <div className="card p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-brand/20 bg-brandLight/10">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2 mb-2">
+                    <span className="status-accepted shrink-0">{nextSession.status}</span>
+                    <span className="text-sm font-semibold text-brand truncate">{nextSession.skill}</span>
                   </div>
-                  <p className="font-bold text-lg text-ink">
+                  <p className="font-bold text-lg text-ink truncate">
                     Session with {nextSession.tutor_id === user.id ? 'Student' : 'Teacher'} #{nextSession.tutor_id === user.id ? nextSession.learner_id : nextSession.tutor_id}
                   </p>
                   <p className="text-sm text-clay mt-1 flex items-center gap-1">
@@ -120,7 +120,7 @@ export default function Dashboard() {
                     {`${nextSession.session_date} at ${nextSession.start_time}`}
                   </p>
                 </div>
-                <Link to={`/session/${nextSession.id}`} className="btn-brand">
+                <Link to={`/session/${nextSession.id}`} className="btn-brand w-full sm:w-auto shrink-0">
                   Join Session
                 </Link>
               </div>
@@ -138,15 +138,15 @@ export default function Dashboard() {
             {loading ? (
               <ListSkeleton />
             ) : learningSkills.length > 0 ? (
-              <div className="grid sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
                 {learningSkills.map(s => (
-                  <div key={s.id} className="card p-5">
-                    <div className="flex justify-between items-start mb-3">
-                      <div>
-                        <h3 className="font-bold text-ink">{s.skill_name}</h3>
+                  <div key={s.id} className="card p-4 md:p-5">
+                    <div className="flex justify-between items-start gap-2 mb-3">
+                      <div className="min-w-0">
+                        <h3 className="font-bold text-ink line-clamp-2 break-words">{s.skill_name}</h3>
                         <p className="text-xs text-clay font-medium mt-0.5 capitalize">{s.level}</p>
                       </div>
-                      <span className="text-xs font-bold text-moss2 bg-mossLight px-2 py-1 rounded-md">
+                      <span className="text-xs font-bold text-moss2 bg-mossLight px-2 py-1 rounded-md shrink-0">
                         {s.progress_percentage || 0}%
                       </span>
                     </div>
@@ -168,13 +168,15 @@ export default function Dashboard() {
             {loading ? (
               <ListSkeleton />
             ) : teachingSkills.length > 0 ? (
-              <div className="grid sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
                 {teachingSkills.map(s => (
-                  <div key={s.id} className="card p-5 flex flex-col justify-between">
+                  <div key={s.id} className="card p-4 md:p-5 flex flex-col justify-between">
                     <div>
-                      <div className="flex justify-between items-start">
-                        <h3 className="font-bold text-ink">{s.skill_name}</h3>
-                        <SkillBadge badge={s.badge} />
+                      <div className="flex justify-between items-start gap-2">
+                        <h3 className="font-bold text-ink line-clamp-2 break-words">{s.skill_name}</h3>
+                        <div className="shrink-0">
+                          <SkillBadge badge={s.badge} />
+                        </div>
                       </div>
                       <p className="text-xs text-clay font-medium mt-1 capitalize">{s.level}</p>
                     </div>
@@ -191,7 +193,7 @@ export default function Dashboard() {
         </div>
 
         {/* SIDEBAR GRID */}
-        <div className="space-y-8">
+        <div className="space-y-6 md:space-y-8">
           
           {/* 6. GAMIFICATION SUMMARY */}
           <section>
@@ -222,12 +224,12 @@ export default function Dashboard() {
                       <p className="text-xs font-bold text-clay uppercase tracking-wider mb-2">Recent Badges</p>
                       {achievements.slice(0, 3).map(a => (
                         <div key={a.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-paper transition-colors">
-                          <div className="w-8 h-8 flex items-center justify-center bg-goldLight/50 border border-gold/20 rounded-full text-lg shadow-sm">
+                          <div className="w-8 h-8 flex items-center justify-center bg-goldLight/50 border border-gold/20 rounded-full text-lg shadow-sm shrink-0">
                             {a.icon}
                           </div>
-                          <div>
-                            <p className="text-sm font-semibold text-ink">{a.title}</p>
-                            <p className="text-[10px] font-medium text-clay truncate max-w-[150px]">{a.description}</p>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-semibold text-ink truncate">{a.title}</p>
+                            <p className="text-[10px] font-medium text-clay truncate">{a.description}</p>
                           </div>
                         </div>
                       ))}
@@ -255,19 +257,19 @@ export default function Dashboard() {
               ) : recommended.length > 0 ? (
                 <div className="divide-y divide-line">
                   {recommended.map(peer => (
-                    <div key={peer.user_id} className="p-4 hover:bg-paper transition-colors flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-brandLight text-brand rounded-full flex items-center justify-center font-bold text-sm">
+                    <div key={peer.user_id} className="p-4 hover:bg-paper transition-colors flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-10 h-10 bg-brandLight text-brand rounded-full flex items-center justify-center font-bold text-sm shrink-0">
                           {peer.name.charAt(0).toUpperCase()}
                         </div>
-                        <div>
-                          <p className="text-sm font-bold text-ink">{peer.name}</p>
-                          <p className="text-xs text-clay font-medium truncate max-w-[120px]">
+                        <div className="min-w-0">
+                          <p className="text-sm font-bold text-ink truncate">{peer.name}</p>
+                          <p className="text-xs text-clay font-medium truncate">
                             {peer.teaching_skills?.length ? peer.teaching_skills[0].skill_name : 'New Member'}
                           </p>
                         </div>
                       </div>
-                      <Link to={`/marketplace`} className="text-xs font-semibold text-brand hover:underline px-2 py-1 rounded bg-brandLight/30">Connect</Link>
+                      <Link to={`/marketplace`} className="text-xs font-semibold text-brand hover:underline px-3 py-1.5 rounded bg-brandLight/30 shrink-0">Connect</Link>
                     </div>
                   ))}
                 </div>
@@ -297,9 +299,9 @@ function SectionHeader({ title, count }) {
   )
 }
 
-function StatCard({ label, value }) {
+function StatCard({ label, value, className = "" }) {
   return (
-    <div className="card p-4 flex flex-col justify-center items-center text-center">
+    <div className={`card p-4 flex flex-col justify-center items-center text-center ${className}`}>
       <p className="text-[11px] font-bold text-clay uppercase tracking-wider mb-1">{label}</p>
       <p className="font-display text-2xl font-bold text-ink">{value}</p>
     </div>
@@ -322,19 +324,20 @@ function EmptyState({ message, actionText, actionUrl }) {
 
 function OverviewSkeleton() {
   return (
-    <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-      {[...Array(5)].map((_, i) => (
+    <div className="grid grid-cols-2 md:grid-cols-5 gap-3 md:gap-4">
+      {[...Array(4)].map((_, i) => (
         <div key={i} className="card p-4 h-20 skeleton" />
       ))}
+      <div className="card p-4 h-20 skeleton col-span-2 md:col-span-1" />
     </div>
   )
 }
 
 function ListSkeleton() {
   return (
-    <div className="grid sm:grid-cols-2 gap-4">
-      <div className="card p-5 h-28 skeleton" />
-      <div className="card p-5 h-28 skeleton" />
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
+      <div className="card p-4 md:p-5 h-28 skeleton" />
+      <div className="card p-4 md:p-5 h-28 skeleton hidden sm:block" />
     </div>
   )
 }
