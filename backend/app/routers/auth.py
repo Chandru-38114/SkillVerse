@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 import os
 from .. import config
 import random
+import secrets
 import string
 import datetime as dt
 from sqlalchemy.orm import Session
@@ -165,7 +166,10 @@ def forgot_password(payload: schemas.ForgotPassword, db: Session = Depends(get_d
     if recent_otp and (now - recent_otp.created_at).total_seconds() < 60:
         raise HTTPException(status_code=429, detail="Please wait 60 seconds before requesting another OTP.")
         
-    otp = ''.join(random.choices(string.digits, k=6))
+    otp = ''.join(secrets.choice(string.digits) for _ in range(6))
+    
+    # Invalidate previous OTPs
+    db.query(models.PasswordResetOTP).filter(models.PasswordResetOTP.email == payload.email).delete()
     
     reset_entry = models.PasswordResetOTP(
         email=payload.email,
@@ -175,13 +179,16 @@ def forgot_password(payload: schemas.ForgotPassword, db: Session = Depends(get_d
     db.add(reset_entry)
     db.commit()
     
-    real = send_otp_email(payload.email, otp)
-    if not real:
-        if os.getenv("ENVIRONMENT", "development").lower() == "development":
-            return {"detail": f"DEVELOPMENT MODE: Your OTP is {otp}"}
-        else:
-            raise HTTPException(status_code=500, detail="Email delivery is not configured.")
-    return {"detail": "If your email is registered, you will receive an OTP."}
+    try:
+        real = send_otp_email(payload.email, otp, purpose="password_reset")
+        if not real:
+            if os.getenv("ENVIRONMENT", "development").lower() == "development":
+                return {"detail": "DEVELOPMENT MODE: Check terminal for OTP."}
+            else:
+                raise HTTPException(status_code=500, detail="Email delivery is not configured.")
+        return {"detail": "If your email is registered, you will receive an OTP."}
+    except Exception:
+        raise HTTPException(status_code=500, detail="Unable to send verification code. Please try again later.")
 
 
 @router.post("/reset-password")
@@ -234,7 +241,10 @@ def request_email_verification(current_user: models.User = Depends(auth.get_curr
     if recent_otp and (now - recent_otp.created_at).total_seconds() < 60:
         raise HTTPException(status_code=429, detail="Please wait 60 seconds before requesting another OTP.")
         
-    otp = ''.join(random.choices(string.digits, k=6))
+    otp = ''.join(secrets.choice(string.digits) for _ in range(6))
+    
+    # Invalidate previous OTPs
+    db.query(models.EmailVerificationOTP).filter(models.EmailVerificationOTP.user_id == current_user.id).delete()
     
     entry = models.EmailVerificationOTP(
         user_id=current_user.id,
@@ -244,13 +254,16 @@ def request_email_verification(current_user: models.User = Depends(auth.get_curr
     db.add(entry)
     db.commit()
     
-    real = send_otp_email(current_user.email, otp)
-    if not real:
-        if os.getenv("ENVIRONMENT", "development").lower() == "development":
-            return {"detail": f"DEVELOPMENT MODE: Your OTP is {otp}"}
-        else:
-            raise HTTPException(status_code=500, detail="Email delivery is not configured.")
-    return {"detail": "Verification OTP sent."}
+    try:
+        real = send_otp_email(current_user.email, otp, purpose="email_verification")
+        if not real:
+            if os.getenv("ENVIRONMENT", "development").lower() == "development":
+                return {"detail": "DEVELOPMENT MODE: Check terminal for OTP."}
+            else:
+                raise HTTPException(status_code=500, detail="Email delivery is not configured.")
+        return {"detail": "Verification OTP sent."}
+    except Exception:
+        raise HTTPException(status_code=500, detail="Unable to send verification code. Please try again later.")
 
 @router.post("/verify-email/confirm")
 def confirm_email_verification(payload: schemas.VerifyOTP, current_user: models.User = Depends(auth.get_current_user), db: Session = Depends(get_db)):
@@ -295,7 +308,10 @@ def request_mobile_verification(current_user: models.User = Depends(auth.get_cur
     if recent_otp and (now - recent_otp.created_at).total_seconds() < 60:
         raise HTTPException(status_code=429, detail="Please wait 60 seconds before requesting another OTP.")
         
-    otp = ''.join(random.choices(string.digits, k=6))
+    otp = ''.join(secrets.choice(string.digits) for _ in range(6))
+    
+    # Invalidate previous OTPs
+    db.query(models.MobileVerificationOTP).filter(models.MobileVerificationOTP.user_id == current_user.id).delete()
     
     entry = models.MobileVerificationOTP(
         user_id=current_user.id,
@@ -305,13 +321,16 @@ def request_mobile_verification(current_user: models.User = Depends(auth.get_cur
     db.add(entry)
     db.commit()
     
-    real = send_sms_otp(current_user.mobile_number, otp)
-    if not real:
-        if os.getenv("ENVIRONMENT", "development").lower() == "development":
-            return {"detail": f"DEVELOPMENT MODE: Your OTP is {otp}"}
-        else:
-            raise HTTPException(status_code=500, detail="SMS delivery is not configured.")
-    return {"detail": "Verification OTP sent."}
+    try:
+        real = send_sms_otp(current_user.mobile_number, otp, purpose="mobile_verification")
+        if not real:
+            if os.getenv("ENVIRONMENT", "development").lower() == "development":
+                return {"detail": "DEVELOPMENT MODE: Check terminal for OTP."}
+            else:
+                raise HTTPException(status_code=500, detail="SMS delivery is not configured.")
+        return {"detail": "Verification OTP sent."}
+    except Exception:
+        raise HTTPException(status_code=500, detail="Unable to send verification code. Please try again later.")
 
 @router.post("/verify-mobile/confirm")
 def confirm_mobile_verification(payload: schemas.VerifyOTP, current_user: models.User = Depends(auth.get_current_user), db: Session = Depends(get_db)):

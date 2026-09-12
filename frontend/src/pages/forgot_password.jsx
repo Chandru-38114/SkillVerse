@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { api } from '../api'
+import SkillVerseLogo from '../components/SkillVerseLogo'
+import OTPInput from '../components/OTPInput'
 
 export default function ForgotPassword() {
   const navigate = useNavigate()
@@ -45,20 +47,21 @@ export default function ForgotPassword() {
       setTimeout(() => navigate('/login'), 2000)
     } catch (err) {
       setError(err.message)
+      setOtp('')
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div className="min-h-[calc(100vh-73px)] flex items-center justify-center px-4 sm:px-4 sm:px-6 py-10 sm:py-16">
+    <div className="min-h-[calc(100vh-73px)] flex items-center justify-center px-4 sm:px-6 py-10 sm:py-16">
       <div className="w-full max-w-md">
         <SkillVerseLogo />
-          <div className="mb-6 text-center"><p className="text-ink/50 text-sm">Password Recovery</p></div>
+        <div className="mb-6 text-center"><p className="text-ink/50 text-sm">Password Recovery</p></div>
 
-        <div className="card p-4 sm:p-6 sm:p-5 sm:p-8">
+        <div className="card p-5 sm:p-8">
           {error && <p className="alert-error mb-4">{error}</p>}
-          {message && <p className="p-3 text-sm bg-green-50 text-green-700 rounded-md mb-4 border border-green-200">{message}</p>}
+          {message && <p className="p-3 text-sm bg-moss/10 text-moss rounded-md mb-4 border border-moss/20 font-medium">{message}</p>}
 
           {stage === 'request' && (
             <form onSubmit={handleRequestOTP} className="space-y-5">
@@ -77,15 +80,15 @@ export default function ForgotPassword() {
               <button
                 type="submit"
                 disabled={loading || !email}
-                className="btn-primary w-full"
+                className="btn-primary w-full py-3"
               >
-                {loading ? 'Sending OTP...' : 'Send OTP'}
+                {loading ? 'Sending OTP...' : 'Send Reset Code'}
               </button>
             </form>
           )}
 
           {stage === 'verify' && (
-            <form onSubmit={handleResetPassword} className="space-y-5">
+            <form onSubmit={handleResetPassword} className="space-y-6">
               <div>
                 <label className="field-label text-ink/70" htmlFor="email">Email</label>
                 <input
@@ -96,18 +99,11 @@ export default function ForgotPassword() {
                   disabled
                 />
               </div>
-              <div>
-                <label className="field-label" htmlFor="otp">Enter 6-digit OTP</label>
-                <input
-                  id="otp"
-                  className="input tracking-widest text-center text-lg"
-                  type="text"
-                  maxLength={6}
-                  placeholder="123456"
-                  value={otp}
-                  onChange={(e) => setOtp(e.target.value)}
-                  required
-                />
+              <div className="flex flex-col items-center">
+                <label className="field-label w-full" htmlFor="otp">Enter 6-digit Code</label>
+                <div className="w-full">
+                  <OTPInput value={otp} onChange={setOtp} disabled={loading} />
+                </div>
               </div>
               <div>
                 <label className="field-label" htmlFor="new_password">New Password</label>
@@ -124,15 +120,15 @@ export default function ForgotPassword() {
               </div>
               <button
                 type="submit"
-                disabled={loading || !otp || !newPassword}
-                className="btn-primary w-full"
+                disabled={loading || otp.length < 6 || !newPassword}
+                className="btn-primary w-full py-3"
               >
                 {loading ? 'Resetting...' : 'Reset Password'}
               </button>
             </form>
           )}
 
-          <p className="mt-6 text-center text-sm text-ink/60">
+          <p className="mt-6 pt-6 border-t border-line text-center text-sm text-ink/60">
             Remember your password?{' '}
             <Link to="/login" className="text-moss font-medium hover:underline">
               Log in

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import SkillVerseLogo from '../components/SkillVerseLogo'
+import OTPInput from '../components/OTPInput'
 import { api, getSessionUser, saveSession, getToken } from '../api'
 
 export default function VerifyEmail() {
@@ -57,6 +58,8 @@ export default function VerifyEmail() {
       setTimeout(() => navigate('/verify-mobile'), 1500)
     } catch (err) {
       setError(err.message)
+      // Auto-clear on error for easy re-typing
+      setOtp('')
     } finally {
       setLoading(false)
     }
@@ -68,45 +71,38 @@ export default function VerifyEmail() {
     <div className="min-h-[calc(100vh-73px)] flex items-center justify-center px-4 sm:px-6 py-10 sm:py-16">
       <div className="w-full max-w-md">
         <SkillVerseLogo />
-        <div className="card p-5 sm:p-8 text-center">
-        <h2 className="text-2xl font-display mb-2">Verify your email</h2>
-        <p className="text-ink/60 mb-6 text-sm">
-          We need to verify your email address before you can continue.
-        </p>
+        <div className="card p-5 sm:p-8 text-center mt-6">
+          <h2 className="text-2xl font-display mb-2">Verify your email</h2>
+          <p className="text-ink/60 mb-6 text-sm">
+            We sent a verification code to <span className="font-semibold text-ink">{user.email}</span>
+          </p>
 
-        {error && <p className="alert-error mb-4">{error}</p>}
-        {message && <p className="p-3 bg-moss/10 text-moss rounded-md mb-4 text-sm">{message}</p>}
+          {error && <p className="alert-error mb-4">{error}</p>}
+          {message && <p className="p-3 bg-moss/10 text-moss rounded-md mb-4 text-sm font-medium">{message}</p>}
 
-        <form onSubmit={handleVerify} className="space-y-4">
-          <div>
-            <input
-              className="input text-center tracking-widest text-lg"
-              type="text"
-              maxLength={6}
-              placeholder="123456"
-              value={otp}
-              onChange={(e) => setOtp(e.target.value)}
-              required
-            />
+          <form onSubmit={handleVerify} className="space-y-6">
+            <div className="flex flex-col items-center">
+              <label className="text-sm font-semibold text-ink/70 mb-3">Enter 6-digit code</label>
+              <OTPInput value={otp} onChange={setOtp} disabled={loading} />
+            </div>
+            
+            <button type="submit" disabled={loading || otp.length < 6} className="btn-primary w-full py-3">
+              {loading ? 'Verifying...' : 'Verify Email'}
+            </button>
+          </form>
+
+          <div className="mt-8 pt-6 border-t border-line">
+            <p className="text-sm text-ink/60 mb-3">Didn't receive the code?</p>
+            <button 
+              onClick={handleRequestOTP} 
+              disabled={loading || cooldown > 0} 
+              className="btn-secondary w-full transition-all disabled:opacity-50"
+            >
+              {cooldown > 0 ? `Resend Code in ${cooldown}s` : 'Resend Code'}
+            </button>
           </div>
-          <button type="submit" disabled={loading || !otp} className="btn-primary w-full py-3">
-            {loading ? 'Verifying...' : 'Verify Email'}
-          </button>
-        </form>
-
-        <div className="mt-6 pt-6 border-t border-line">
-          <p className="text-sm text-ink/60 mb-3">Didn't receive the code?</p>
-          <button 
-            onClick={handleRequestOTP} 
-            disabled={loading || cooldown > 0} 
-            className="btn-secondary w-full"
-          >
-            {cooldown > 0 ? "Resend OTP in " + cooldown + "s" : 'Send OTP'}
-          </button>
         </div>
-      </div>
       </div>
     </div>
   )
 }
-
