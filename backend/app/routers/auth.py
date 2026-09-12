@@ -60,14 +60,18 @@ def signup(payload: schemas.UserCreate, db: Session = Depends(get_db)):
     if existing_email:
         raise HTTPException(status_code=400, detail="Email already registered")
         
-    existing_mobile = db.query(models.User).filter(models.User.mobile_number == payload.mobile_number).first()
-    if existing_mobile:
-        raise HTTPException(status_code=400, detail="Mobile number already registered")
+    # Convert empty mobile_number to None
+    mobile_val = payload.mobile_number if payload.mobile_number and payload.mobile_number.strip() != "" else None
+    
+    if mobile_val:
+        existing_mobile = db.query(models.User).filter(models.User.mobile_number == mobile_val).first()
+        if existing_mobile:
+            raise HTTPException(status_code=400, detail="Mobile number already registered")
 
     user = models.User(
         name=payload.name,
         email=payload.email,
-        mobile_number=payload.mobile_number,
+        mobile_number=mobile_val,
         hashed_password=auth.hash_password(payload.password),
         college=payload.college,
         country=payload.country or "",

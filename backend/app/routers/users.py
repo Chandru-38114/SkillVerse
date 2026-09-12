@@ -48,13 +48,15 @@ def update_me(
     if req.gender is not None:
         current_user.gender = req.gender
         
-    if req.mobile_number is not None and req.mobile_number != current_user.mobile_number:
-        # Check uniqueness
-        existing = db.query(models.User).filter(models.User.mobile_number == req.mobile_number).first()
-        if existing and existing.id != current_user.id:
-            raise HTTPException(status_code=400, detail="Mobile number already registered")
-        current_user.mobile_number = req.mobile_number
-        current_user.is_mobile_verified = False
+    if req.mobile_number is not None:
+        new_mobile = req.mobile_number if req.mobile_number.strip() != "" else None
+        if new_mobile != current_user.mobile_number:
+            if new_mobile is not None:
+                existing = db.query(models.User).filter(models.User.mobile_number == new_mobile).first()
+                if existing and existing.id != current_user.id:
+                    raise HTTPException(status_code=400, detail="Mobile number already registered")
+            current_user.mobile_number = new_mobile
+            current_user.is_mobile_verified = False
         
     db.commit()
     db.refresh(current_user)

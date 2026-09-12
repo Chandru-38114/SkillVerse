@@ -1,6 +1,6 @@
 // Backend base URL — set VITE_API_URL in .env.production for deployment.
 // Local development falls back to the Vite dev-server proxy target automatically.
-export const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+export const BASE_URL = (import.meta.env.VITE_API_URL || "http://localhost:8000").replace(/\/+$/, "");
 
 export function getToken() {
   return localStorage.getItem("skillverse_token");
@@ -12,14 +12,31 @@ async function request(path, { method = "GET", body, auth = true } = {}) {
     const token = getToken();
     if (token) headers["Authorization"] = `Bearer ${token}`;
   }
-  const res = await fetch(`${BASE_URL}${path}`, {
-    method,
-    headers,
-    body: body ? JSON.stringify(body) : undefined,
-  });
+  
+  let res;
+  try {
+    res = await fetch(`${BASE_URL}${path}`, {
+      method,
+      headers,
+      body: body ? JSON.stringify(body) : undefined,
+    });
+  } catch (error) {
+    // Network error (CORS, DNS, connection refused)
+    if (error.name === 'TypeError' && error.message === 'Failed to fetch') {
+      throw new Error("Network connection failed. Please check your internet or try again later.");
+    }
+    throw error;
+  }
+
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(err.detail || "Request failed");
+    let errorMessage = "Request failed";
+    try {
+      const errData = await res.json();
+      errorMessage = errData.detail || errData.message || res.statusText;
+    } catch (parseError) {
+      errorMessage = res.statusText || `Server returned ${res.status}`;
+    }
+    throw new Error(errorMessage);
   }
   return res.status === 204 ? null : res.json();
 }

@@ -50,7 +50,7 @@ _raw_frontend = os.environ.get("FRONTEND_URL", "")
 _raw_additional = os.environ.get("ADDITIONAL_ORIGINS", "")
 
 _all_raw = ",".join(filter(None, [_raw_frontend, _raw_additional]))
-_parsed = [o.strip() for o in _all_raw.split(",") if o.strip()]
+_parsed = [o.strip().rstrip('/') for o in _all_raw.split(",") if o.strip()]
 
 # Merge and deduplicate while preserving order
 _seen: set = set()
