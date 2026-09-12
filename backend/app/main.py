@@ -13,12 +13,31 @@ app = FastAPI(title="SkillVerse AI API", version="0.1.0")
 os.makedirs("uploads", exist_ok=True)
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
-# Read allowed origins from the environment.
-# Set FRONTEND_URL to your deployed frontend URL in production.
-# Multiple origins can be separated by commas:
-# export FRONTEND_URL="https://skillverse.com,https://www.skillverse.com"
-frontend_url = os.environ.get("FRONTEND_URL", "http://localhost:5173")
-origins = [origin.strip() for origin in frontend_url.split(",")]
+# ---------------------------------------------------------------------------
+# CORS — allowed origins
+# Set FRONTEND_URL on Render to all production frontend origins, comma-separated.
+# Example:
+#   FRONTEND_URL=https://skill-verse-theta.vercel.app,https://whimsical-raindrop-f3df51.netlify.app
+# ADDITIONAL_ORIGINS can be used to append extra origins without replacing FRONTEND_URL.
+# localhost:5173 is always included for local development.
+# ---------------------------------------------------------------------------
+_ALWAYS_ALLOWED = ["http://localhost:5173"]
+
+_raw_frontend = os.environ.get("FRONTEND_URL", "")
+_raw_additional = os.environ.get("ADDITIONAL_ORIGINS", "")
+
+_all_raw = ",".join(filter(None, [_raw_frontend, _raw_additional]))
+_parsed = [o.strip() for o in _all_raw.split(",") if o.strip()]
+
+# Merge and deduplicate while preserving order
+_seen: set = set()
+origins: list = []
+for _o in _ALWAYS_ALLOWED + _parsed:
+    if _o not in _seen:
+        _seen.add(_o)
+        origins.append(_o)
+
+print(f"[CORS] Allowed origins ({len(origins)}): {origins}")
 
 app.add_middleware(
     CORSMiddleware,
