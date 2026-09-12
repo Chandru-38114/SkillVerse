@@ -1,7 +1,7 @@
 import { Mic, MicOff, Video, VideoOff, ScreenShare, ShieldCheck, Loader2, AlertCircle } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { getToken } from '../api'
+import { getToken, getSessionUser } from '../api'
 
 export default function VideoChat({ sessionId, children }) {
   const navigate = useNavigate()
@@ -43,8 +43,16 @@ export default function VideoChat({ sessionId, children }) {
 
         // Listen for remote tracks
         pc.ontrack = (event) => {
-          if (event.streams && event.streams[0]) {
+          if (event.streams && event.streams.length > 0) {
             setRemoteStream(event.streams[0])
+          } else {
+            setRemoteStream(prev => {
+              if (prev) {
+                prev.addTrack(event.track)
+                return prev
+              }
+              return new MediaStream([event.track])
+            })
           }
         }
 
@@ -69,13 +77,14 @@ export default function VideoChat({ sessionId, children }) {
         const baseHttp = import.meta.env.VITE_API_URL || 'http://localhost:8000'
         const wsUrl = baseHttp.replace(/^http/, 'ws') + `/sessions/ws/${sessionId}?token=${token}`
         
+        const currentUser = getSessionUser()
         let pendingCandidates = []
 
         ws = new WebSocket(wsUrl)
         wsRef.current = ws
 
         ws.onopen = () => {
-          ws.send(JSON.stringify({ type: 'hello' }))
+          ws.send(JSON.stringify({ type: 'hello', userId: currentUser?.id }))
         }
 
         ws.onmessage = async (event) => {
@@ -84,12 +93,22 @@ export default function VideoChat({ sessionId, children }) {
           try {
             if (data.type === 'peer_joined' || data.type === 'hello') {
               setStatus('connecting')
-              if (data.type === 'peer_joined') {
-                 const offer = await pc.createOffer()
+              const remoteUserId = data.userId || data.user_id
+              
+              const shouldCreateOffer = remoteUserId 
+                ? currentUser?.id > remoteUserId 
+                : data.type === 'peer_joined'
+
+              if (shouldCreateOffer && pc.signalingState === 'stable') {
+                 const offer = await pc.createOffer({ iceRestart: true })
                  await pc.setLocalDescription(offer)
                  ws.send(JSON.stringify({ type: 'offer', offer }))
               }
             } else if (data.type === 'offer') {
+              if (pc.signalingState !== 'stable') {
+                console.warn('Glare detected, ignoring offer in non-stable state')
+                return
+              }
               setStatus('connecting')
               await pc.setRemoteDescription(new RTCSessionDescription(data.offer))
               
@@ -218,6 +237,7 @@ export default function VideoChat({ sessionId, children }) {
                 ref={remoteVideoRef}
                 autoPlay
                 playsInline
+                onLoadedMetadata={(e) => e.target.play().catch(console.error)}
                 className="w-full h-full object-cover"
               />
             ) : (
