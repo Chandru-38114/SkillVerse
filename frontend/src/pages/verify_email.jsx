@@ -17,7 +17,7 @@ export default function VerifyEmail() {
     if (!user || !getToken()) {
       navigate('/login')
     } else if (user.is_email_verified) {
-      navigate('/verify-mobile')
+      navigate('/dashboard')
     }
   }, [user, navigate])
 
@@ -55,7 +55,7 @@ export default function VerifyEmail() {
       setMessage(res.detail || 'Email verified successfully.')
       const updatedUser = { ...user, is_email_verified: true }
       saveSession(getToken(), updatedUser)
-      setTimeout(() => navigate('/verify-mobile'), 1500)
+      setTimeout(() => navigate('/dashboard'), 1500)
     } catch (err) {
       setError(err.message)
       // Auto-clear on error for easy re-typing

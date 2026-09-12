@@ -26,8 +26,6 @@ export default function Login() {
       saveSession(access_token, user)
       if (!user.is_email_verified) {
         navigate('/verify-email')
-      } else if (!user.is_mobile_verified) {
-        navigate('/verify-mobile')
       } else {
         navigate('/dashboard')
       }

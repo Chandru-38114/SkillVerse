@@ -83,6 +83,23 @@ def signup(payload: schemas.UserCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(user)
 
+    # Generate and send development email OTP
+    import secrets
+    import string
+    now = dt.datetime.utcnow()
+    otp = ''.join(secrets.choice(string.digits) for _ in range(6))
+    
+    entry = models.EmailVerificationOTP(
+        user_id=user.id,
+        hashed_otp=auth.hash_password(otp),
+        expires_at=now + dt.timedelta(minutes=10)
+    )
+    db.add(entry)
+    db.commit()
+    
+    from .. import email_service
+    email_service.send_otp_email(user.email, otp, "email_verification")
+
     token = auth.create_access_token({"sub": str(user.id)})
     return schemas.Token(access_token=token, user=schemas.UserOut.model_validate(user))
 

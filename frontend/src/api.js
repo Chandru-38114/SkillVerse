@@ -108,8 +108,7 @@ export const api = {
   // Auth Verification
   requestEmailVerification: () => request("/auth/verify-email/request", { method: "POST" }),
   confirmEmailVerification: (otp) => request("/auth/verify-email/confirm", { method: "POST", body: { otp } }),
-  requestMobileVerification: () => request("/auth/verify-mobile/request", { method: "POST" }),
-  confirmMobileVerification: (otp) => request("/auth/verify-mobile/confirm", { method: "POST", body: { otp } }),
+
 
   // Notifications
   getNotifications: () => request("/notifications"),
