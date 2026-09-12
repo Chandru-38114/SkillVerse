@@ -9,7 +9,12 @@ html, body {
   background-color: #FAFAF9;
   color: #0f172a;
   -webkit-font-smoothing: antialiased;
-  @apply font-body;
+  @apply font-body overflow-x-hidden w-full break-words;
+}
+
+/* Prevent iOS Zoom on Inputs */
+input, textarea, select {
+  @apply text-base md:text-sm;
 }
 
 /* Cards */
@@ -24,6 +29,7 @@ html, body {
 /* Buttons */
 .btn-primary {
   @apply bg-moss text-white px-5 py-2.5 rounded-lg font-medium text-sm
+         min-h-[44px] md:min-h-0 /* Mobile touch target */
          hover:bg-moss2 active:scale-[0.98] transition-all duration-150
          disabled:opacity-40 disabled:cursor-not-allowed disabled:active:scale-100
          inline-flex items-center justify-center gap-2 shadow-sm;
@@ -31,6 +37,7 @@ html, body {
 
 .btn-brand {
   @apply bg-brand text-white px-5 py-2.5 rounded-lg font-medium text-sm
+         min-h-[44px] md:min-h-0 /* Mobile touch target */
          hover:bg-brand2 active:scale-[0.98] transition-all duration-150
          disabled:opacity-40 disabled:cursor-not-allowed disabled:active:scale-100
          inline-flex items-center justify-center gap-2 shadow-sm;
@@ -38,30 +45,33 @@ html, body {
 
 .btn-secondary {
   @apply bg-white border border-line text-ink px-5 py-2.5 rounded-lg font-medium text-sm
+         min-h-[44px] md:min-h-0 /* Mobile touch target */
          hover:border-ink/20 hover:bg-paper active:scale-[0.98] transition-all duration-150
          inline-flex items-center justify-center gap-2 shadow-sm;
 }
 
 .btn-ghost {
   @apply text-ink/70 px-3 py-1.5 rounded-lg text-sm font-medium
+         min-h-[44px] md:min-h-0 /* Mobile touch target */
          hover:text-brand hover:bg-brandLight/30 transition-all duration-150;
 }
 
 /* Inputs */
 .input {
-  @apply w-full border border-line rounded-lg px-3.5 py-2.5 bg-white text-sm
+  @apply w-full border border-line rounded-lg px-3.5 py-2.5 bg-white text-base md:text-sm
+         min-h-[44px] md:min-h-[38px] /* Mobile touch target */
          placeholder:text-ink/30
          focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand
          transition-all duration-150;
 }
 
 textarea.input {
-  @apply resize-none;
+  @apply resize-none min-h-[80px];
 }
 
 /* Labels */
 .label-eyebrow {
-  @apply text-xs uppercase tracking-[0.12em] text-ink/40 font-semibold;
+  @apply text-[10px] md:text-xs uppercase tracking-[0.12em] text-ink/40 font-semibold;
 }
 
 .field-label {
@@ -70,7 +80,7 @@ textarea.input {
 
 /* Status indicators */
 .status-pill {
-  @apply inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full;
+  @apply inline-flex items-center gap-1 text-[11px] md:text-xs font-medium px-2.5 py-1 rounded-full whitespace-nowrap;
 }
 
 .status-pending  { @apply status-pill bg-goldLight text-gold; }
@@ -89,16 +99,16 @@ textarea.input {
 
 /* Section divider */
 .section-divider {
-  @apply border-t border-line my-6;
+  @apply border-t border-line my-4 md:my-6;
 }
 
 /* Page wrapper */
 .page {
-  @apply max-w-6xl mx-auto px-6 py-10;
+  @apply max-w-6xl mx-auto px-4 sm:px-6 py-6 md:py-10;
 }
 
 .page-narrow {
-  @apply max-w-md mx-auto px-6 py-10;
+  @apply max-w-md mx-auto px-4 sm:px-6 py-6 md:py-10;
 }
 
 /* Skeleton loading */

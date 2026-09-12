@@ -162,7 +162,7 @@ export default function Navbar() {
 
   return (
     <header className="bg-white border-b border-line sticky top-0 z-40 shadow-sm">
-      <div className="max-w-7xl mx-auto px-6 py-0 flex items-center justify-between h-16">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-0 flex items-center justify-between h-16">
         <Link to="/" className="font-display text-xl tracking-tight shrink-0 text-ink font-bold flex items-center gap-2">
           {/* Small Logo Icon */}
           <div className="w-8 h-8 rounded-full bg-brandLight/50 flex items-center justify-center shrink-0">
@@ -263,7 +263,7 @@ export default function Navbar() {
               {/* Mobile Menu Toggle Button */}
               <button 
                 onClick={() => setMobileMenuOpen(prev => !prev)}
-                className="xl:hidden p-2 ml-1 text-clay hover:text-ink bg-paper rounded-lg transition-colors border border-line flex items-center justify-center shrink-0"
+                className="xl:hidden p-2.5 ml-1 text-clay hover:text-ink bg-paper rounded-lg transition-colors border border-line flex items-center justify-center shrink-0 min-w-[44px] min-h-[44px]"
                 aria-label={mobileMenuOpen ? "Close Menu" : "Open Menu"} aria-expanded={mobileMenuOpen}
               >
                 {mobileMenuOpen ? <XIcon /> : <MenuIcon />}
