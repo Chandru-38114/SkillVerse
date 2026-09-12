@@ -6,7 +6,7 @@ export default function PasswordInput(props) {
   const { className = "input", ...rest } = props;
   
   return (
-    <div className="relative flex items-center">
+    <div className="relative flex items-center w-full">
       <input
         {...rest}
         className={`${className} pr-12 w-full`}
@@ -15,7 +15,7 @@ export default function PasswordInput(props) {
       <button
         type="button"
         onClick={() => setShow(!show)}
-        className="absolute right-0 top-0 bottom-0 px-3 flex items-center justify-center text-ink/50 hover:text-ink/80 focus:outline-none min-w-[44px]"
+        className="absolute right-0 top-0 bottom-0 px-3 flex items-center justify-center text-ink/50 hover:text-ink/80 focus:outline-none min-w-[44px] z-10"
         aria-label={show ? "Hide password" : "Show password"}
       >
         {show ? <EyeOff size={20} /> : <Eye size={20} />}

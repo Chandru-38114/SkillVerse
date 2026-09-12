@@ -113,9 +113,14 @@ def login(payload: schemas.UserLogin, db: Session = Depends(get_db)):
 
     check_login_rate_limit(identifier)
 
-    user = db.query(models.User).filter(
-        or_(models.User.email == payload.email, models.User.mobile_number == payload.mobile_number)
-    ).first()
+    # Prevent matching `mobile_number IS NULL` or `email IS NULL` by only using provided fields
+    conditions = []
+    if payload.email:
+        conditions.append(models.User.email == payload.email)
+    if payload.mobile_number:
+        conditions.append(models.User.mobile_number == payload.mobile_number)
+
+    user = db.query(models.User).filter(or_(*conditions)).first()
 
     if not user or not auth.verify_password(payload.password, user.hashed_password):
         record_failed_login(identifier)
