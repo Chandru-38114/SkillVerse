@@ -81,6 +81,7 @@ class Token(BaseModel):
     access_token: str
     token_type: str = "bearer"
     user: UserOut
+    dev_otp: Optional[str] = None
 
 
 class UserSkillOut(BaseModel):

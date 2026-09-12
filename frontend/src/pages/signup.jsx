@@ -45,9 +45,9 @@ export default function Signup() {
 
     setLoading(true)
     try {
-      const { access_token, user } = await api.signup(form)
+      const { access_token, user, dev_otp } = await api.signup(form)
       saveSession(access_token, user)
-      navigate('/verify-email') // Go to verification stage
+      navigate('/verify-email', { state: { devOtp: dev_otp } }) // Go to verification stage
     } catch (err) {
       setError(err.message)
     } finally {

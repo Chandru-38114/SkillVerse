@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import SkillVerseLogo from '../components/SkillVerseLogo'
 import OTPInput from '../components/OTPInput'
 import { api, getSessionUser, saveSession, getToken } from '../api'
 
 export default function VerifyEmail() {
   const navigate = useNavigate()
+  const location = useLocation()
   const user = getSessionUser()
   const [otp, setOtp] = useState('')
+  const [devOtp, setDevOtp] = useState(location.state?.devOtp || null)
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
   const [loading, setLoading] = useState(false)
@@ -36,6 +38,9 @@ export default function VerifyEmail() {
     try {
       const res = await api.requestEmailVerification()
       setMessage(res.detail || 'OTP sent to your email.')
+      if (res.dev_otp) {
+        setDevOtp(res.dev_otp)
+      }
       setCooldown(60)
     } catch (err) {
       setError(err.message)
@@ -76,6 +81,14 @@ export default function VerifyEmail() {
           <p className="text-ink/60 mb-6 text-sm">
             We sent a verification code to <span className="font-semibold text-ink">{user.email}</span>
           </p>
+
+          {devOtp && (
+            <div className="mb-6 p-4 border border-dashed border-clay rounded-md bg-clay/5 text-center">
+              <p className="text-xs font-semibold text-clay uppercase tracking-wider mb-2">Development OTP</p>
+              <p className="text-3xl font-display tracking-[0.2em] text-ink">{devOtp}</p>
+              <p className="text-xs text-ink/60 mt-2">Use this code to continue.</p>
+            </div>
+          )}
 
           {error && <p className="alert-error mb-4">{error}</p>}
           {message && <p className="p-3 bg-moss/10 text-moss rounded-md mb-4 text-sm font-medium">{message}</p>}

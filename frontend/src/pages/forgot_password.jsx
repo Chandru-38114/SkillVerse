@@ -13,6 +13,7 @@ export default function ForgotPassword() {
   // Form fields
   const [email, setEmail] = useState('')
   const [otp, setOtp] = useState('')
+  const [devOtp, setDevOtp] = useState(null)
   const [newPassword, setNewPassword] = useState('')
   
   const [error, setError] = useState('')
@@ -27,6 +28,9 @@ export default function ForgotPassword() {
     try {
       const res = await api.forgotPassword(email)
       setMessage(res.detail || 'OTP sent.')
+      if (res.dev_otp) {
+        setDevOtp(res.dev_otp)
+      }
       setStage('verify')
     } catch (err) {
       setError(err.message)
@@ -88,8 +92,16 @@ export default function ForgotPassword() {
           )}
 
           {stage === 'verify' && (
-            <form onSubmit={handleResetPassword} className="space-y-6">
-              <div>
+            <>
+              {devOtp && (
+                <div className="mb-6 p-4 border border-dashed border-clay rounded-md bg-clay/5 text-center">
+                  <p className="text-xs font-semibold text-clay uppercase tracking-wider mb-2">Development OTP</p>
+                  <p className="text-3xl font-display tracking-[0.2em] text-ink">{devOtp}</p>
+                  <p className="text-xs text-ink/60 mt-2">Use this code to continue.</p>
+                </div>
+              )}
+              <form onSubmit={handleResetPassword} className="space-y-6">
+                <div>
                 <label className="field-label text-ink/70" htmlFor="email">Email</label>
                 <input
                   id="email"
@@ -126,6 +138,7 @@ export default function ForgotPassword() {
                 {loading ? 'Resetting...' : 'Reset Password'}
               </button>
             </form>
+            </>
           )}
 
           <p className="mt-6 pt-6 border-t border-line text-center text-sm text-ink/60">

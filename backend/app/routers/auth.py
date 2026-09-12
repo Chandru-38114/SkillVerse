@@ -101,7 +101,8 @@ def signup(payload: schemas.UserCreate, db: Session = Depends(get_db)):
     email_service.send_otp_email(user.email, otp, "email_verification")
 
     token = auth.create_access_token({"sub": str(user.id)})
-    return schemas.Token(access_token=token, user=schemas.UserOut.model_validate(user))
+    dev_otp = otp if os.getenv("DEV_OTP_MODE", "true").lower() == "true" else None
+    return schemas.Token(access_token=token, user=schemas.UserOut.model_validate(user), dev_otp=dev_otp)
 
 
 @router.post("/login", response_model=schemas.Token)
@@ -202,7 +203,10 @@ def forgot_password(payload: schemas.ForgotPassword, db: Session = Depends(get_d
     
     try:
         send_otp_email(payload.email, otp, purpose="password_reset")
-        return {"detail": "If your email is registered, you will receive an OTP."}
+        response = {"detail": "If your email is registered, you will receive an OTP."}
+        if os.getenv("DEV_OTP_MODE", "true").lower() == "true":
+            response["dev_otp"] = otp
+        return response
     except Exception:
         raise HTTPException(status_code=500, detail="Unable to send verification code. Please try again later.")
 
@@ -272,7 +276,10 @@ def request_email_verification(current_user: models.User = Depends(auth.get_curr
     
     try:
         send_otp_email(current_user.email, otp, purpose="email_verification")
-        return {"detail": "Verification OTP sent."}
+        response = {"detail": "Verification OTP sent."}
+        if os.getenv("DEV_OTP_MODE", "true").lower() == "true":
+            response["dev_otp"] = otp
+        return response
     except Exception:
         raise HTTPException(status_code=500, detail="Unable to send verification code. Please try again later.")
 
