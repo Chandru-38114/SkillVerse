@@ -19,6 +19,20 @@ async def lifespan(app: FastAPI):
         try:
             Base.metadata.create_all(engine)
             print("[startup] Database schema ready.")
+            
+            # Manual safe migration for existing DBs that lack dob/gender
+            with engine.begin() as conn:
+                from sqlalchemy import text
+                try:
+                    conn.execute(text("ALTER TABLE users ADD COLUMN dob VARCHAR;"))
+                    print("[startup] Added dob column.")
+                except Exception:
+                    pass  # column likely exists
+                try:
+                    conn.execute(text("ALTER TABLE users ADD COLUMN gender VARCHAR;"))
+                    print("[startup] Added gender column.")
+                except Exception:
+                    pass  # column likely exists
         except Exception as e:
             print(f"[startup] Database schema creation failed: {e}")
 
@@ -65,6 +79,7 @@ print(f"[CORS] Allowed origins ({len(origins)}): {origins}")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

@@ -140,6 +140,16 @@ def google_auth(payload: schemas.GoogleAuth, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail="Google authentication is not configured on the server")
         
     try:
+        import jwt # using jose.jwt or generic jwt to peek
+        try:
+            unverified = jwt.get_unverified_claims(payload.credential) if hasattr(jwt, 'get_unverified_claims') else jwt.decode(payload.credential, options={"verify_signature": False})
+            print(f"[GOOGLE AUTH DIAGNOSTICS] Expected Client ID: {GOOGLE_CLIENT_ID}")
+            print(f"[GOOGLE AUTH DIAGNOSTICS] Received Token Audience: {unverified.get('aud')}")
+            print(f"[GOOGLE AUTH DIAGNOSTICS] Received Token Issuer: {unverified.get('iss')}")
+            print(f"[GOOGLE AUTH DIAGNOSTICS] Token Expiration: {unverified.get('exp')}")
+        except Exception as peek_err:
+            print(f"[GOOGLE AUTH DIAGNOSTICS] Failed to peek token: {peek_err}")
+
         idinfo = id_token.verify_oauth2_token(
             payload.credential, google_requests.Request(), GOOGLE_CLIENT_ID
         )
