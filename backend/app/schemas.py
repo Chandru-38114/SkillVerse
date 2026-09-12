@@ -8,8 +8,6 @@ class UserCreate(BaseModel):
     email: EmailStr
     mobile_number: str
     college: str
-    dob: dt.date
-    gender: str
     password: str
     confirm_password: str
     country: Optional[str] = ""
@@ -55,9 +53,6 @@ class UserOut(BaseModel):
     is_email_verified: bool = False
     is_mobile_verified: bool = False
     college: str
-    dob: Optional[dt.date] = None
-    gender: Optional[str] = None
-    age: Optional[int] = None
     country: str
     bio: str
     profile_picture_url: Optional[str] = None

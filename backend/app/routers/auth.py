@@ -70,8 +70,6 @@ def signup(payload: schemas.UserCreate, db: Session = Depends(get_db)):
         hashed_password=auth.hash_password(payload.password),
         college=payload.college,
         country=payload.country or "",
-        dob=payload.dob,
-        gender=payload.gender,
         is_email_verified=False,
         is_mobile_verified=False
     )

@@ -17,21 +17,11 @@ class User(Base):
     is_email_verified = Column(Boolean, default=False)
     is_mobile_verified = Column(Boolean, default=False)
     college = Column(String, default="")
-    dob = Column(Date, nullable=True)
-    gender = Column(String, nullable=True)
     country = Column(String, default="")
     bio = Column(String, default="")
     profile_picture_url = Column(String, nullable=True)
     points = Column(Integer, default=100)
     created_at = Column(DateTime, default=dt.datetime.utcnow)
-
-    
-    @property
-    def age(self):
-        if self.dob:
-            today = dt.date.today()
-            return today.year - self.dob.year - ((today.month, today.day) < (self.dob.month, self.dob.day))
-        return None
 
     user_skills = relationship("UserSkill", back_populates="user", cascade="all, delete-orphan")
     sent_requests = relationship("ConnectionRequest", foreign_keys="ConnectionRequest.from_user_id", back_populates="from_user")
