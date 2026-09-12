@@ -69,6 +69,8 @@ export default function VideoChat({ sessionId, children }) {
         const baseHttp = import.meta.env.VITE_API_URL || 'http://localhost:8000'
         const wsUrl = baseHttp.replace(/^http/, 'ws') + `/sessions/ws/${sessionId}?token=${token}`
         
+        let pendingCandidates = []
+
         ws = new WebSocket(wsUrl)
         wsRef.current = ws
 
@@ -79,26 +81,47 @@ export default function VideoChat({ sessionId, children }) {
         ws.onmessage = async (event) => {
           const data = JSON.parse(event.data)
 
-          if (data.type === 'peer_joined' || data.type === 'hello') {
-            setStatus('connecting')
-            if (data.type === 'peer_joined') {
-               const offer = await pc.createOffer()
-               await pc.setLocalDescription(offer)
-               ws.send(JSON.stringify({ type: 'offer', offer }))
+          try {
+            if (data.type === 'peer_joined' || data.type === 'hello') {
+              setStatus('connecting')
+              if (data.type === 'peer_joined') {
+                 const offer = await pc.createOffer()
+                 await pc.setLocalDescription(offer)
+                 ws.send(JSON.stringify({ type: 'offer', offer }))
+              }
+            } else if (data.type === 'offer') {
+              setStatus('connecting')
+              await pc.setRemoteDescription(new RTCSessionDescription(data.offer))
+              
+              // Process queued candidates sequentially
+              for (const c of pendingCandidates) {
+                await pc.addIceCandidate(new RTCIceCandidate(c))
+              }
+              pendingCandidates = []
+
+              const answer = await pc.createAnswer()
+              await pc.setLocalDescription(answer)
+              ws.send(JSON.stringify({ type: 'answer', answer }))
+            } else if (data.type === 'answer') {
+              await pc.setRemoteDescription(new RTCSessionDescription(data.answer))
+              
+              // Process queued candidates sequentially
+              for (const c of pendingCandidates) {
+                await pc.addIceCandidate(new RTCIceCandidate(c))
+              }
+              pendingCandidates = []
+            } else if (data.type === 'candidate') {
+              if (pc.remoteDescription) {
+                await pc.addIceCandidate(new RTCIceCandidate(data.candidate))
+              } else {
+                pendingCandidates.push(data.candidate)
+              }
+            } else if (data.type === 'peer_left') {
+              setStatus('disconnected')
+              setRemoteStream(null)
             }
-          } else if (data.type === 'offer') {
-            setStatus('connecting')
-            await pc.setRemoteDescription(new RTCSessionDescription(data.offer))
-            const answer = await pc.createAnswer()
-            await pc.setLocalDescription(answer)
-            ws.send(JSON.stringify({ type: 'answer', answer }))
-          } else if (data.type === 'answer') {
-            await pc.setRemoteDescription(new RTCSessionDescription(data.answer))
-          } else if (data.type === 'candidate') {
-            await pc.addIceCandidate(new RTCIceCandidate(data.candidate))
-          } else if (data.type === 'peer_left') {
-            setStatus('disconnected')
-            setRemoteStream(null)
+          } catch (err) {
+            console.error('WebRTC signaling error:', err)
           }
         }
 
