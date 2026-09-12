@@ -201,12 +201,7 @@ def forgot_password(payload: schemas.ForgotPassword, db: Session = Depends(get_d
     db.commit()
     
     try:
-        real = send_otp_email(payload.email, otp, purpose="password_reset")
-        if not real:
-            if os.getenv("ENVIRONMENT", "development").lower() == "development":
-                return {"detail": "DEVELOPMENT MODE: Check terminal for OTP."}
-            else:
-                raise HTTPException(status_code=500, detail="Email delivery is not configured.")
+        send_otp_email(payload.email, otp, purpose="password_reset")
         return {"detail": "If your email is registered, you will receive an OTP."}
     except Exception:
         raise HTTPException(status_code=500, detail="Unable to send verification code. Please try again later.")
@@ -276,12 +271,7 @@ def request_email_verification(current_user: models.User = Depends(auth.get_curr
     db.commit()
     
     try:
-        real = send_otp_email(current_user.email, otp, purpose="email_verification")
-        if not real:
-            if os.getenv("ENVIRONMENT", "development").lower() == "development":
-                return {"detail": "DEVELOPMENT MODE: Check terminal for OTP."}
-            else:
-                raise HTTPException(status_code=500, detail="Email delivery is not configured.")
+        send_otp_email(current_user.email, otp, purpose="email_verification")
         return {"detail": "Verification OTP sent."}
     except Exception:
         raise HTTPException(status_code=500, detail="Unable to send verification code. Please try again later.")
