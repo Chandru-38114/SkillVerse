@@ -15,12 +15,19 @@ from .routers import (
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Run DB schema creation in a thread pool so it doesn't block the event loop.
-    # uvicorn has already bound the port by the time this runs, so Render's
-    # port scanner succeeds even if the DB connection is slow.
+    def init_db():
+        try:
+            Base.metadata.create_all(engine)
+            print("[startup] Database schema ready.")
+        except Exception as e:
+            print(f"[startup] Database schema creation failed: {e}")
+
+    # Run DB schema creation in a background thread without awaiting it.
+    # This allows the lifespan to yield immediately, letting Uvicorn bind 
+    # the port instantly while the DB connection happens in the background.
     loop = asyncio.get_event_loop()
-    await loop.run_in_executor(None, Base.metadata.create_all, engine)
-    print("[startup] Database schema ready.")
+    loop.run_in_executor(None, init_db)
+    
     yield
     # (shutdown: nothing to clean up)
 
