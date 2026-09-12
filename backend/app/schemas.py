@@ -1,7 +1,7 @@
 import re
 import datetime as dt
 from typing import Optional, List
-from pydantic import BaseModel, EmailStr, model_validator
+from pydantic import BaseModel, EmailStr, model_validator, ConfigDict
 
 class UserCreate(BaseModel):
     name: str
@@ -46,23 +46,22 @@ class ResetPassword(BaseModel):
         return v
 
 class UserOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     name: str
     email: EmailStr
     mobile_number: Optional[str] = None
     is_email_verified: bool = False
     is_mobile_verified: bool = False
-    college: str
-    country: str
-    bio: str
+    college: Optional[str] = ""
+    country: Optional[str] = ""
+    bio: Optional[str] = ""
     profile_picture_url: Optional[str] = None
-    points: int
+    points: Optional[int] = 0
     dob: Optional[str] = None
     gender: Optional[str] = None
     age: Optional[int] = None
-
-    class Config:
-        from_attributes = True
 
 
 class UserUpdate(BaseModel):

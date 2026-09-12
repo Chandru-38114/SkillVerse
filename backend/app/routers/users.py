@@ -25,7 +25,7 @@ def calculate_age(dob: str) -> int:
 
 @router.get("/me", response_model=schemas.UserOut)
 def get_me(current_user: models.User = Depends(auth.get_current_user)):
-    user_dict = schemas.UserOut.from_orm(current_user).dict()
+    user_dict = schemas.UserOut.model_validate(current_user).model_dump()
     user_dict['age'] = calculate_age(current_user.dob)
     return user_dict
 
@@ -60,7 +60,7 @@ def update_me(
         
     db.commit()
     db.refresh(current_user)
-    user_dict = schemas.UserOut.from_orm(current_user).dict()
+    user_dict = schemas.UserOut.model_validate(current_user).model_dump()
     user_dict['age'] = calculate_age(current_user.dob)
     return user_dict
 
