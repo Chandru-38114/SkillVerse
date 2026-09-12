@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getToken, getSessionUser } from '../api'
 
-export default function VideoChat({ sessionId, children }) {
+export default function VideoChat({ sessionId, children, onLeave }) {
   const navigate = useNavigate()
   const [stream, setStream] = useState(null)
   const [remoteStream, setRemoteStream] = useState(null)
@@ -197,40 +197,54 @@ export default function VideoChat({ sessionId, children }) {
 
   if (errorMsg) {
     return (
-      <div className="flex-1 flex items-center justify-center bg-ink/5 rounded-xl border border-line m-4">
-        <div className="text-center p-6">
-          <p className="text-4xl mb-3">🎥</p>
-          <p className="text-ink/60 text-sm max-w-sm mx-auto">{errorMsg}</p>
+      <div className="flex-1 flex flex-col">
+        <div className="flex items-center justify-center flex-1 bg-ink/5 border-b md:border-b-0 md:border-r border-line">
+          <div className="text-center p-6 max-w-sm">
+            <p className="text-4xl mb-3">🎥</p>
+            <p className="font-semibold text-ink mb-1 text-sm">Camera Unavailable</p>
+            <p className="text-ink/60 text-sm mb-4">{errorMsg}</p>
+            <button
+              onClick={() => (onLeave ? onLeave() : navigate('/sessions'))}
+              className="px-4 py-2 rounded-lg font-semibold bg-red-600 text-white hover:bg-red-700 text-sm"
+            >
+              Leave Session
+            </button>
+          </div>
         </div>
+        {children && (
+          <div className="flex-1 flex overflow-hidden min-h-0">{children}</div>
+        )}
       </div>
     )
   }
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-[#FDFDFC]">
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
-        {/* Left Column: Video */}
-        <div className="w-full h-48 md:h-auto md:w-[300px] shrink-0 bg-ink flex flex-col relative border-b md:border-b-0 md:border-r border-ink/20 z-20">
-          
-          {/* Status banner */}
-          {status === 'waiting' && (
-            <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 bg-ink/80 text-white px-4 py-1.5 rounded-full text-xs font-medium tracking-wide whitespace-nowrap">
-              Waiting for peer...
-            </div>
-          )}
-          {status === 'connecting' && (
-            <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 bg-ink/80 text-white px-4 py-1.5 rounded-full text-xs font-medium tracking-wide">
-              Connecting...
+    <div className="flex-1 flex flex-col overflow-hidden min-h-0">
+      {/* ── Main Content: video column + workspace ──────────── */}
+      <div className="flex-1 flex flex-col md:flex-row overflow-hidden min-h-0">
+
+        {/* Video panel — top strip on mobile, left column on desktop */}
+        <div className="h-40 sm:h-48 md:h-auto md:w-[240px] lg:w-[260px] xl:w-[280px] shrink-0 bg-[#1a1a2e] flex flex-col relative border-b md:border-b-0 md:border-r border-ink/20 z-20">
+
+          {/* Status pill */}
+          {(status === 'waiting' || status === 'connecting') && (
+            <div className="absolute top-2.5 left-1/2 -translate-x-1/2 z-10 bg-ink/80 text-white px-3 py-1 rounded-full text-[10px] font-semibold tracking-wide whitespace-nowrap">
+              {status === 'waiting' ? 'Waiting for peer...' : 'Connecting...'}
             </div>
           )}
           {status === 'disconnected' && (
-            <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 bg-red-600/90 text-white px-4 py-1.5 rounded-full text-xs font-medium tracking-wide">
-              Peer left.
+            <div className="absolute top-2.5 left-1/2 -translate-x-1/2 z-10 bg-red-600/90 text-white px-3 py-1 rounded-full text-[10px] font-semibold tracking-wide">
+              Peer left
+            </div>
+          )}
+          {status === 'connected' && (
+            <div className="absolute top-2.5 left-2.5 z-10 flex items-center gap-1 bg-black/30 text-white/80 px-2 py-0.5 rounded-full text-[9px] font-semibold">
+              <span className="w-1.5 h-1.5 rounded-full bg-moss animate-pulse" />
+              Live
             </div>
           )}
 
-          {/* Remote Video (full screen inside column) */}
+          {/* Remote video */}
           <div className="flex-1 relative">
             {remoteStream ? (
               <video
@@ -241,82 +255,82 @@ export default function VideoChat({ sessionId, children }) {
                 className="w-full h-full object-cover"
               />
             ) : (
-              <div className="w-full h-full flex flex-col items-center justify-center text-ink/40">
-                <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mb-3">
-                  <span className="text-2xl">👤</span>
+              <div className="w-full h-full flex flex-col items-center justify-center">
+                <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center mb-2">
+                  <span className="text-xl">👤</span>
                 </div>
-                <p className="font-medium text-white/50 text-sm">
+                <p className="font-medium text-white/40 text-xs">
                   {status === 'waiting' ? 'Waiting...' : 'Connecting...'}
                 </p>
               </div>
             )}
           </div>
 
-          {/* Local Video (PiP) */}
-          <div className="absolute bottom-4 right-4 w-28 aspect-video bg-black rounded-lg overflow-hidden border border-white/20 shadow-lg z-20">
+          {/* Local video PiP */}
+          <div className="absolute bottom-2 right-2 w-20 sm:w-24 aspect-video bg-black rounded-md overflow-hidden border border-white/20 shadow-md z-20">
             <video
               ref={localVideoRef}
               autoPlay
               playsInline
               muted
-              className={`w-full h-full object-cover transition-opacity duration-200 ${isVideoOff ? "opacity-0" : "opacity-100"}`}
+              className={`w-full h-full object-cover transition-opacity duration-200 ${isVideoOff ? 'opacity-0' : 'opacity-100'}`}
             />
             {isVideoOff && (
-              <div className="absolute inset-0 flex items-center justify-center bg-ink">
-                <span className="text-white/40 text-xs">📹 Off</span>
+              <div className="absolute inset-0 flex items-center justify-center bg-ink/90">
+                <span className="text-white/40 text-[10px]">Cam off</span>
               </div>
             )}
           </div>
         </div>
 
-        {/* Center & Right: Passed via children (Workspace & Info) */}
-        <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
+        {/* Workspace + sidebar (children from session room) */}
+        <div className="flex-1 flex flex-col md:flex-row overflow-hidden min-h-0 min-w-0">
           {children}
         </div>
       </div>
 
-      {/* Bottom Bar: Full width */}
-      <div className="h-16 shrink-0 bg-white border-t border-line flex items-center justify-between px-4 sm:px-6 z-30">
-        
-        {/* left: blank or status */}
-        <div className="hidden md:block flex-1 text-xs text-ink/50 font-medium">
-          {status === 'connected' ? '🟢 Connected securely' : ''}
+      {/* ── Bottom control bar ─────────────────────────────── */}
+      <div className="h-14 shrink-0 bg-white border-t border-line flex items-center justify-between px-3 sm:px-5 z-30 gap-3">
+
+        {/* Left: connection status (desktop) */}
+        <div className="hidden md:block flex-1 text-xs text-ink/50 font-medium min-w-0 truncate">
+          {status === 'connected' && (
+            <span className="flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-moss" />
+              Connected securely
+            </span>
+          )}
         </div>
 
-        {/* center: media controls */}
-        <div className="flex items-center gap-3">
+        {/* Center: media controls */}
+        <div className="flex items-center gap-2">
           <button
             onClick={toggleMute}
-            className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${isMuted ? 'bg-red-100 text-red-600 hover:bg-red-200' : 'bg-ink/5 text-ink hover:bg-ink/10'}`}
+            className={`w-10 h-10 rounded-full flex items-center justify-center transition-all text-base ${isMuted ? 'bg-red-100 text-red-600 hover:bg-red-200' : 'bg-ink/5 text-ink hover:bg-ink/10'}`}
             title={isMuted ? 'Unmute' : 'Mute'}
           >
             {isMuted ? '🔇' : '🎤'}
           </button>
-
           <button
             onClick={toggleVideo}
-            className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${isVideoOff ? 'bg-red-100 text-red-600 hover:bg-red-200' : 'bg-ink/5 text-ink hover:bg-ink/10'}`}
+            className={`w-10 h-10 rounded-full flex items-center justify-center transition-all text-base ${isVideoOff ? 'bg-red-100 text-red-600 hover:bg-red-200' : 'bg-ink/5 text-ink hover:bg-ink/10'}`}
             title={isVideoOff ? 'Turn Camera On' : 'Turn Camera Off'}
           >
             {isVideoOff ? '🚫' : '📹'}
           </button>
-          
-          <button className="w-10 h-10 rounded-full flex items-center justify-center transition-all bg-ink/5 text-ink hover:bg-ink/10 opacity-50 cursor-not-allowed" title="Share Screen">
-            💻
-          </button>
         </div>
 
-        {/* right: Leave button */}
+        {/* Right: Leave button — visually separated, clearly destructive */}
         <div className="flex-1 flex justify-end">
           <button
-            onClick={() => navigate('/sessions')}
-            className="px-5 py-2 rounded-lg font-semibold transition-all bg-red-600 text-white hover:bg-red-700 shadow-sm text-sm flex items-center gap-2"
+            onClick={() => (onLeave ? onLeave() : navigate('/sessions'))}
+            className="px-4 sm:px-5 py-2 rounded-lg font-semibold transition-all bg-red-600 text-white hover:bg-red-700 shadow-sm text-sm whitespace-nowrap"
             title="Leave Session"
           >
-            Leave Session
+            Leave
           </button>
         </div>
       </div>
     </div>
   )
-}
+}

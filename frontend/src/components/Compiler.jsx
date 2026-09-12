@@ -133,64 +133,76 @@ export default function Compiler({ sessionId }) {
   };
 
   return (
-    <div className="flex-1 flex flex-col p-4 gap-4 h-full bg-[#FDFDFC]">
-      
+    <div className="flex-1 flex flex-col gap-3 p-3 sm:p-4 h-full bg-[#FDFDFC] overflow-hidden min-h-0">
+
       {/* Code Editor Area */}
       <div className="flex-1 flex flex-col min-h-0 bg-white rounded-xl border border-line shadow-sm overflow-hidden">
-        <div className="bg-ink/5 border-b border-line px-4 py-2 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-          <div className="flex items-center gap-4">
-            <span className="text-sm font-semibold text-ink/70">Python 3</span>
-            <div className="flex items-center gap-2 text-xs font-medium text-ink/60 bg-white px-2 py-1 rounded shadow-sm border border-line">
+        {/* Toolbar */}
+        <div className="bg-ink/5 border-b border-line px-3 sm:px-4 py-2 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 shrink-0">
+          <div className="flex items-center gap-3 min-w-0 overflow-x-auto scrollbar-hide">
+            <span className="text-xs font-bold text-ink/60 whitespace-nowrap shrink-0">Python 3</span>
+            <div className="flex items-center gap-1.5 text-[10px] font-medium text-ink/50 bg-white px-2 py-1 rounded border border-line whitespace-nowrap shrink-0">
               <span>{syncStatus}</span>
-              {saveStatus && <span className="border-l border-line pl-2 text-moss">{saveStatus}</span>}
+              {saveStatus && <span className="border-l border-line pl-1.5 text-moss">{saveStatus}</span>}
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <button 
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
               onClick={handleRun}
               disabled={isRunning || !code.trim()}
-              className="bg-moss text-white px-4 py-1 rounded text-sm font-medium hover:bg-moss/90 disabled:opacity-50 transition-colors"
+              className="bg-moss text-white px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-moss/90 disabled:opacity-50 transition-colors whitespace-nowrap"
             >
-              {isRunning ? 'Running...' : 'Run Code'}
+              {isRunning ? 'Running...' : '▶ Run'}
             </button>
-            <button 
+            <button
               onClick={handleClear}
-              className="text-ink/60 hover:text-ink px-3 py-1 text-sm font-medium transition-colors"
+              className="text-ink/50 hover:text-ink px-2.5 py-1.5 text-xs font-semibold transition-colors rounded hover:bg-ink/5"
             >
               Clear
             </button>
-            <button 
+            <button
               onClick={handleReset}
-              className="text-red-500/80 hover:text-red-600 px-3 py-1 text-sm font-medium transition-colors"
+              className="text-red-500/70 hover:text-red-600 px-2.5 py-1.5 text-xs font-semibold transition-colors rounded hover:bg-red-50"
             >
               Reset
             </button>
           </div>
         </div>
-        
+
+        {/* Code textarea — horizontally scrollable inside, not the whole page */}
         <textarea
           value={code}
           onChange={(e) => setCode(e.target.value)}
           onKeyDown={handleKeyDown}
-          className="flex-1 w-full p-4 font-mono text-sm leading-relaxed resize-none focus:outline-none bg-[#1e1e1e] text-[#d4d4d4]"
+          className="flex-1 w-full p-3 sm:p-4 font-mono text-sm leading-relaxed resize-none focus:outline-none bg-[#1e1e1e] text-[#d4d4d4] min-h-[120px]"
           spellCheck="false"
           placeholder="Write your Python code here..."
+          style={{ overflowX: 'auto', wordBreak: 'keep-all', whiteSpace: 'pre' }}
         />
       </div>
 
-      {/* Output Area */}
-      <div className="h-1/3 min-h-[200px] flex flex-col bg-white rounded-xl border border-line shadow-sm overflow-hidden">
-        <div className="bg-ink/5 border-b border-line px-4 py-2">
-          <span className="text-sm font-semibold text-ink/70">Output</span>
+      {/* Output Area — fixed sensible height on mobile */}
+      <div className="h-36 sm:h-40 md:h-44 flex flex-col bg-white rounded-xl border border-line shadow-sm overflow-hidden shrink-0">
+        <div className="bg-ink/5 border-b border-line px-3 sm:px-4 py-1.5 flex items-center justify-between shrink-0">
+          <span className="text-xs font-bold text-ink/60">Output</span>
+          {isRunning && (
+            <span className="text-[10px] text-moss font-semibold animate-pulse">Running...</span>
+          )}
         </div>
-        <div className="flex-1 p-4 overflow-y-auto font-mono text-sm bg-paper whitespace-pre-wrap">
+        <div className="flex-1 p-3 sm:p-4 overflow-y-auto font-mono text-xs sm:text-sm bg-paper whitespace-pre-wrap break-words min-h-0">
+          {isRunning && !error && !output && (
+            <span className="text-ink/40 italic">Executing code...</span>
+          )}
           {error && (
-            <div className="text-red-600 break-words mb-2">{error}</div>
+            <div className="text-red-600 break-words">
+              <span className="font-semibold text-[10px] uppercase tracking-wider text-red-500/70 block mb-1">Error</span>
+              {error}
+            </div>
           )}
           {output ? (
             <div className="text-ink break-words">{output}</div>
-          ) : !error ? (
-            <span className="text-ink/30 italic">No output...</span>
+          ) : !error && !isRunning ? (
+            <span className="text-ink/30 italic text-xs">Run your code to see output here.</span>
           ) : null}
         </div>
       </div>
