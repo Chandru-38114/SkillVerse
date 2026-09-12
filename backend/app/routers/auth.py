@@ -13,7 +13,7 @@ from google.auth.transport import requests as google_requests
 from .. import models, schemas, auth
 from ..database import get_db
 from ..email_service import send_otp_email
-from ..sms_service import send_sms_otp
+
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -293,69 +293,5 @@ def confirm_email_verification(payload: schemas.VerifyOTP, current_user: models.
     return {"detail": "Email successfully verified."}
 
 
-@router.post("/verify-mobile/request")
-def request_mobile_verification(current_user: models.User = Depends(auth.get_current_user), db: Session = Depends(get_db)):
-    if current_user.is_mobile_verified:
-        return {"detail": "Mobile number is already verified."}
-    if not current_user.mobile_number:
-        raise HTTPException(status_code=400, detail="No mobile number set.")
-        
-    now = dt.datetime.utcnow()
-    recent_otp = db.query(models.MobileVerificationOTP).filter(
-        models.MobileVerificationOTP.user_id == current_user.id
-    ).order_by(models.MobileVerificationOTP.created_at.desc()).first()
-    
-    if recent_otp and (now - recent_otp.created_at).total_seconds() < 60:
-        raise HTTPException(status_code=429, detail="Please wait 60 seconds before requesting another OTP.")
-        
-    otp = ''.join(secrets.choice(string.digits) for _ in range(6))
-    
-    # Invalidate previous OTPs
-    db.query(models.MobileVerificationOTP).filter(models.MobileVerificationOTP.user_id == current_user.id).delete()
-    
-    entry = models.MobileVerificationOTP(
-        user_id=current_user.id,
-        hashed_otp=auth.hash_password(otp),
-        expires_at=now + dt.timedelta(minutes=10)
-    )
-    db.add(entry)
-    db.commit()
-    
-    try:
-        real = send_sms_otp(current_user.mobile_number, otp, purpose="mobile_verification")
-        if not real:
-            if os.getenv("ENVIRONMENT", "development").lower() == "development":
-                return {"detail": "DEVELOPMENT MODE: Check terminal for OTP."}
-            else:
-                raise HTTPException(status_code=500, detail="SMS delivery is not configured.")
-        return {"detail": "Verification OTP sent."}
-    except Exception:
-        raise HTTPException(status_code=500, detail="Unable to send verification code. Please try again later.")
 
-@router.post("/verify-mobile/confirm")
-def confirm_mobile_verification(payload: schemas.VerifyOTP, current_user: models.User = Depends(auth.get_current_user), db: Session = Depends(get_db)):
-    if current_user.is_mobile_verified:
-        return {"detail": "Mobile number is already verified."}
-
-    otp_record = db.query(models.MobileVerificationOTP).filter(
-        models.MobileVerificationOTP.user_id == current_user.id,
-        models.MobileVerificationOTP.expires_at > dt.datetime.utcnow()
-    ).order_by(models.MobileVerificationOTP.created_at.desc()).first()
-    
-    if not otp_record:
-        raise HTTPException(status_code=400, detail="OTP expired or not found")
-        
-    if otp_record.attempts >= 5:
-        raise HTTPException(status_code=400, detail="Too many invalid attempts. Please request a new OTP.")
-        
-    if not auth.verify_password(payload.otp, otp_record.hashed_otp):
-        otp_record.attempts += 1
-        db.commit()
-        raise HTTPException(status_code=400, detail="Invalid OTP")
-        
-    current_user.is_mobile_verified = True
-    db.query(models.MobileVerificationOTP).filter(models.MobileVerificationOTP.user_id == current_user.id).delete()
-    db.commit()
-    
-    return {"detail": "Mobile number successfully verified."}
 

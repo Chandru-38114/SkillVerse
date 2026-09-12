@@ -91,18 +91,22 @@ export default function VideoChat({ sessionId, children, onLeave }) {
           const data = JSON.parse(event.data)
 
           try {
-            if (data.type === 'peer_joined' || data.type === 'hello') {
+            if (data.type === 'peer_joined') {
+              setStatus('connecting')
+              // A new peer joined. Introduce ourselves so they know we are here.
+              ws.send(JSON.stringify({ type: 'hello', userId: currentUser?.id }))
+            } else if (data.type === 'hello') {
               setStatus('connecting')
               const remoteUserId = data.userId || data.user_id
               
-              const shouldCreateOffer = remoteUserId 
-                ? currentUser?.id > remoteUserId 
-                : data.type === 'peer_joined'
-
-              if (shouldCreateOffer && pc.signalingState === 'stable') {
-                 const offer = await pc.createOffer({ iceRestart: true })
-                 await pc.setLocalDescription(offer)
-                 ws.send(JSON.stringify({ type: 'offer', offer }))
+              // Deterministic offer creation: the user with the higher ID creates the offer.
+              // This prevents glare (both sides creating an offer at the same time).
+              if (remoteUserId && currentUser?.id > remoteUserId) {
+                if (pc.signalingState === 'stable') {
+                  const offer = await pc.createOffer({ iceRestart: true })
+                  await pc.setLocalDescription(offer)
+                  ws.send(JSON.stringify({ type: 'offer', offer }))
+                }
               }
             } else if (data.type === 'offer') {
               if (pc.signalingState !== 'stable') {

@@ -21,6 +21,8 @@ class User(Base):
     bio = Column(String, default="")
     profile_picture_url = Column(String, nullable=True)
     points = Column(Integer, default=100)
+    dob = Column(String, nullable=True)
+    gender = Column(String, nullable=True)
     created_at = Column(DateTime, default=dt.datetime.utcnow)
 
     user_skills = relationship("UserSkill", back_populates="user", cascade="all, delete-orphan")

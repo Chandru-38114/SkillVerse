@@ -57,9 +57,13 @@ class UserOut(BaseModel):
     bio: str
     profile_picture_url: Optional[str] = None
     points: int
+    dob: Optional[str] = None
+    gender: Optional[str] = None
+    age: Optional[int] = None
 
     class Config:
         from_attributes = True
+
 
 class UserUpdate(BaseModel):
     name: Optional[str] = None
@@ -67,6 +71,8 @@ class UserUpdate(BaseModel):
     mobile_number: Optional[str] = None
     college: Optional[str] = None
     country: Optional[str] = None
+    dob: Optional[str] = None
+    gender: Optional[str] = None
 
 class PasswordChangeRequest(BaseModel):
     current_password: str

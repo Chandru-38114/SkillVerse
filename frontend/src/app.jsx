@@ -8,7 +8,6 @@ import Signup from './pages/signup'
 import Login from './pages/login'
 import ForgotPassword from './pages/forgot_password'
 import VerifyEmail from './pages/verify_email'
-import VerifyMobile from './pages/verify_mobile'
 import Dashboard from './pages/dashboard'
 import Assessment from './pages/assessment'
 import Marketplace from './pages/marketplace'
@@ -34,7 +33,6 @@ function RootRedirect() {
   const token = getToken()
   if (!user || !token) return <Navigate to="/login" replace />
   if (!user.is_email_verified) return <Navigate to="/verify-email" replace />
-  if (!user.is_mobile_verified) return <Navigate to="/verify-mobile" replace />
   return <Navigate to="/dashboard" replace />
 }
 
@@ -57,7 +55,7 @@ export default function App() {
     }
   }, []);
 
-  const authRoutes = ['/login', '/signup', '/verify-email', '/verify-mobile', '/forgot-password', '/reset-password', '/verify/'];
+  const authRoutes = ['/login', '/signup', '/verify-email', '/forgot-password', '/reset-password', '/verify/'];
   const isAuthRoute = authRoutes.some(path => location.pathname.startsWith(path)) || location.pathname === '/' || location.pathname === '/landing';
 
   if (!authChecked) {
@@ -78,7 +76,6 @@ export default function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/verify-email" element={<VerifyEmail />} />
-          <Route path="/verify-mobile" element={<VerifyMobile />} />
         <Route
           path="/dashboard"
           element={<ProtectedRoute><Dashboard /></ProtectedRoute>}

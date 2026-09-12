@@ -12,9 +12,22 @@ from ..supabase_client import get_supabase
 router = APIRouter(prefix="/users", tags=["users"])
 
 
+def calculate_age(dob: str) -> int:
+    if not dob:
+        return None
+    import datetime
+    try:
+        birth_date = datetime.datetime.strptime(dob, "%Y-%m-%d").date()
+        today = datetime.date.today()
+        return today.year - birth_date.year - ((today.month, today.day) < (birth_date.month, birth_date.day))
+    except ValueError:
+        return None
+
 @router.get("/me", response_model=schemas.UserOut)
 def get_me(current_user: models.User = Depends(auth.get_current_user)):
-    return current_user
+    user_dict = schemas.UserOut.from_orm(current_user).dict()
+    user_dict['age'] = calculate_age(current_user.dob)
+    return user_dict
 
 @router.put("/me", response_model=schemas.UserOut)
 def update_me(
@@ -30,6 +43,10 @@ def update_me(
         current_user.college = req.college
     if req.country is not None:
         current_user.country = req.country
+    if req.dob is not None:
+        current_user.dob = req.dob
+    if req.gender is not None:
+        current_user.gender = req.gender
         
     if req.mobile_number is not None and req.mobile_number != current_user.mobile_number:
         # Check uniqueness
@@ -41,7 +58,9 @@ def update_me(
         
     db.commit()
     db.refresh(current_user)
-    return current_user
+    user_dict = schemas.UserOut.from_orm(current_user).dict()
+    user_dict['age'] = calculate_age(current_user.dob)
+    return user_dict
 
 @router.put("/me/password")
 def change_password(

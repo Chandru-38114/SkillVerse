@@ -1,19 +1,23 @@
 import React, { useState, useEffect } from "react";
-import { api } from "../api";
+import { api, getAvatarUrl } from "../api";
 import { Camera, Save, Lock } from "lucide-react";
-
-const BACKEND_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
 
 export default function Profile() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   
+  // Edit mode toggle
+  const [isEditing, setIsEditing] = useState(false);
+
   // Profile update form
   const [name, setName] = useState("");
   const [bio, setBio] = useState("");
   const [mobileNumber, setMobileNumber] = useState("");
   const [college, setCollege] = useState("");
   const [country, setCountry] = useState("");
+  const [dob, setDob] = useState("");
+  const [gender, setGender] = useState("");
+
   const [savingProfile, setSavingProfile] = useState(false);
   const [profileMsg, setProfileMsg] = useState("");
   
@@ -35,17 +39,30 @@ export default function Profile() {
     try {
       const u = await api.me();
       setUser(u);
-      setName(u.name || "");
-      setBio(u.bio || "");
-      setMobileNumber(u.mobile_number || "");
-      setCollege(u.college || "");
-      setCountry(u.country || "");
+      resetForm(u);
     } catch (err) {
       console.error(err);
     } finally {
       setLoading(false);
     }
   }
+
+  const resetForm = (u = user) => {
+    if (!u) return;
+    setName(u.name || "");
+    setBio(u.bio || "");
+    setMobileNumber(u.mobile_number || "");
+    setCollege(u.college || "");
+    setCountry(u.country || "");
+    setDob(u.dob || "");
+    setGender(u.gender || "");
+    setProfileMsg("");
+  };
+
+  const handleCancel = () => {
+    resetForm();
+    setIsEditing(false);
+  };
 
   const handleUpdateProfile = async (e) => {
     e.preventDefault();
@@ -57,10 +74,13 @@ export default function Profile() {
         bio, 
         college, 
         country, 
-        mobile_number: mobileNumber 
+        mobile_number: mobileNumber,
+        dob: dob || null,
+        gender: gender || null
       });
       setUser(u);
       setProfileMsg("Profile updated successfully!");
+      setIsEditing(false);
     } catch (err) {
       setProfileMsg("Error: " + err.message);
     } finally {
@@ -73,8 +93,8 @@ export default function Profile() {
     setSavingPassword(true);
     setPasswordMsg("");
     try {
-      const res = await api.changePassword(currentPassword, newPassword);
-      setPasswordMsg(res.detail || "Password changed!");
+      await api.changePassword(currentPassword, newPassword);
+      setPasswordMsg("Password changed successfully!");
       setCurrentPassword("");
       setNewPassword("");
     } catch (err) {
@@ -98,7 +118,6 @@ export default function Profile() {
       setAvatarMsg("Error: " + err.message);
     } finally {
       setUploadingAvatar(false);
-      // Reset input
       e.target.value = null;
     }
   };
@@ -150,14 +169,6 @@ export default function Profile() {
                   <span className="bg-clay/10 text-clay px-2 py-1 rounded-md text-xs font-medium">Pending</span>
                 )}
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-ink/60">Mobile</span>
-                {user.is_mobile_verified ? (
-                  <span className="bg-moss/10 text-moss px-2 py-1 rounded-md text-xs font-medium">Verified</span>
-                ) : (
-                  <span className="bg-clay/10 text-clay px-2 py-1 rounded-md text-xs font-medium">Pending</span>
-                )}
-              </div>
             </div>
           </div>
         </div>
@@ -166,12 +177,20 @@ export default function Profile() {
         <div className="md:col-span-2 space-y-6">
           
           <div className="card p-4 sm:p-6">
-            <h2 className="text-xl font-display mb-4">Personal Info</h2>
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-display">Personal Info</h2>
+              {!isEditing && (
+                <button onClick={() => setIsEditing(true)} className="btn-secondary text-sm px-3 py-1">
+                  Edit Profile
+                </button>
+              )}
+            </div>
+            
             <form onSubmit={handleUpdateProfile} className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="field-label">Full Name</label>
-                  <input type="text" className="input" value={name} onChange={e => setName(e.target.value)} required />
+                  <input type="text" className="input" value={isEditing ? name : (user.name || 'Not provided')} onChange={e => setName(e.target.value)} disabled={!isEditing} required />
                 </div>
                 <div>
                   <label className="field-label">Email <span className="text-xs font-normal text-ink/50">(Cannot be changed)</span></label>
@@ -179,18 +198,27 @@ export default function Profile() {
                 </div>
               </div>
 
-              
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
-                  <label className="field-label">Date of Birth</label>
-                  <input type="text" className="input bg-sand/50 cursor-not-allowed" value={user.dob || 'Not provided'} disabled />
+                  <label className="field-label">Date of Birth <span className="text-xs font-normal text-ink/50">(Not verified)</span></label>
+                  <input type={isEditing ? "date" : "text"} className={`input ${!isEditing ? 'bg-sand/30' : ''}`} value={isEditing ? dob : (user.dob || 'Not provided')} onChange={e => setDob(e.target.value)} disabled={!isEditing} />
                 </div>
                 <div>
-                  <label className="field-label">Gender</label>
-                  <input type="text" className="input bg-sand/50 cursor-not-allowed" value={user.gender || 'Not provided'} disabled />
+                  <label className="field-label">Gender <span className="text-xs font-normal text-ink/50">(Not verified)</span></label>
+                  {isEditing ? (
+                    <select className="input" value={gender} onChange={e => setGender(e.target.value)}>
+                      <option value="">Select Gender</option>
+                      <option value="Male">Male</option>
+                      <option value="Female">Female</option>
+                      <option value="Other">Other</option>
+                      <option value="Prefer not to say">Prefer not to say</option>
+                    </select>
+                  ) : (
+                    <input type="text" className="input bg-sand/30" value={user.gender || 'Not provided'} disabled />
+                  )}
                 </div>
                 <div>
-                  <label className="field-label">Age</label>
+                  <label className="field-label">Age <span className="text-xs font-normal text-ink/50">(Not verified)</span></label>
                   <input type="text" className="input bg-sand/50 cursor-not-allowed" value={user.age !== null && user.age !== undefined ? user.age : 'Not provided'} disabled />
                 </div>
               </div>
@@ -198,33 +226,38 @@ export default function Profile() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="field-label">Mobile Number</label>
-                  <input type="text" className="input" value={mobileNumber} onChange={e => setMobileNumber(e.target.value)} />
+                  <input type="text" className={`input ${!isEditing ? 'bg-sand/30' : ''}`} value={isEditing ? mobileNumber : (user.mobile_number || 'Not provided')} onChange={e => setMobileNumber(e.target.value)} disabled={!isEditing} />
                 </div>
                 <div>
                   <label className="field-label">Organization / College</label>
-                  <input type="text" className="input" value={college} onChange={e => setCollege(e.target.value)} />
+                  <input type="text" className={`input ${!isEditing ? 'bg-sand/30' : ''}`} value={isEditing ? college : (user.college || 'Not provided')} onChange={e => setCollege(e.target.value)} disabled={!isEditing} />
                 </div>
               </div>
 
               <div>
                 <label className="field-label">Country</label>
-                <input type="text" className="input" value={country} onChange={e => setCountry(e.target.value)} />
+                <input type="text" className={`input ${!isEditing ? 'bg-sand/30' : ''}`} value={isEditing ? country : (user.country || 'Not provided')} onChange={e => setCountry(e.target.value)} disabled={!isEditing} />
               </div>
 
               <div>
                 <label className="field-label">Bio</label>
-                <textarea className="input min-h-[100px]" value={bio} onChange={e => setBio(e.target.value)}></textarea>
+                <textarea className={`input min-h-[100px] ${!isEditing ? 'bg-sand/30' : ''}`} value={isEditing ? bio : (user.bio || 'Not provided')} onChange={e => setBio(e.target.value)} disabled={!isEditing}></textarea>
               </div>
 
               {profileMsg && (
                 <p className={`text-sm ${profileMsg.startsWith('Error') ? 'text-clay' : 'text-moss'}`}>{profileMsg}</p>
               )}
 
-              <div className="flex justify-end">
-                <button type="submit" disabled={savingProfile} className="btn-primary">
-                  {savingProfile ? "Saving..." : "Save Profile"}
-                </button>
-              </div>
+              {isEditing && (
+                <div className="flex justify-end gap-3 mt-6">
+                  <button type="button" onClick={handleCancel} disabled={savingProfile} className="px-4 py-2 text-sm font-medium text-ink/70 hover:text-ink transition-colors">
+                    Cancel
+                  </button>
+                  <button type="submit" disabled={savingProfile} className="btn-primary">
+                    {savingProfile ? "Saving..." : "Save Changes"}
+                  </button>
+                </div>
+              )}
             </form>
           </div>
 
