@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { api } from '../api'
 import SkillVerseLogo from '../components/SkillVerseLogo'
 import OTPInput from '../components/OTPInput'
+import PasswordInput from '../components/PasswordInput'
 
 export default function ForgotPassword() {
   const navigate = useNavigate()
@@ -119,11 +120,9 @@ export default function ForgotPassword() {
               </div>
               <div>
                 <label className="field-label" htmlFor="new_password">New Password</label>
-                <input
+                <PasswordInput
                   id="new_password"
-                  className="input"
-                  type="password"
-                  placeholder="••••••••"
+                  placeholder="********"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   required

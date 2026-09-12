@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import SkillVerseLogo from '../components/SkillVerseLogo'
+import PasswordInput from '../components/PasswordInput'
 import { GoogleLogin } from '@react-oauth/google'
 import { api, saveSession } from '../api'
 
@@ -74,16 +75,14 @@ export default function Login() {
                   Forgot Password?
                 </Link>
               </div>
-              <input
-                id="password"
-                className="input"
-                type="password"
-                placeholder="********"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                autoComplete="current-password"
-              />
+                <PasswordInput
+                  id="password"
+                  placeholder="********"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  autoComplete="current-password"
+                />
             </div>
 
             {error && <p className="alert-error">{error}</p>}

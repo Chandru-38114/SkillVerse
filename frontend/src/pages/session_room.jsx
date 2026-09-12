@@ -82,6 +82,46 @@ export default function SessionRoom() {
     )
   }
 
+  const [timeLeft, setTimeLeft] = useState(null)
+  const [isEnded, setIsEnded] = useState(false)
+
+  useEffect(() => {
+    if (!session) return;
+    const endStr = `${session.session_date}T${session.end_time}:00`;
+    const endObj = new Date(endStr);
+    
+    const updateTimer = () => {
+      const now = new Date();
+      const diff = endObj - now;
+      if (diff <= 0) {
+        setIsEnded(true);
+        setTimeLeft('00:00');
+      } else {
+        const totalSecs = Math.floor(diff / 1000);
+        const m = Math.floor(totalSecs / 60);
+        const s = totalSecs % 60;
+        setTimeLeft(`${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`);
+      }
+    };
+    
+    updateTimer();
+    const timer = setInterval(updateTimer, 1000);
+    return () => clearInterval(timer);
+  }, [session]);
+
+  if (isEnded || (session && session.status === 'completed')) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-paper p-4">
+        <div className="max-w-md w-full text-center p-8 card">
+          <div className="text-5xl mb-4">⏳</div>
+          <h1 className="text-2xl font-display mb-2">Session Ended</h1>
+          <p className="text-ink/60 mb-8 text-sm">This scheduled session has reached its end time.</p>
+          <Link to="/sessions" className="btn-primary">Return to Sessions</Link>
+        </div>
+      </div>
+    )
+  }
+
   const isLearner = session.learner_id === user.id
   const isTutor = !isLearner
   const peerName = isLearner ? session.tutor_name : session.learner_name
@@ -120,15 +160,23 @@ export default function SessionRoom() {
             <span className="text-ink/20">·</span>
             <span>{formatDate(session.session_date)}, {session.start_time}</span>
           </div>
-          {/* Mobile info toggle */}
-          <button
-            onClick={() => setInfoOpen(v => !v)}
-            className="lg:hidden flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-ink/60 bg-ink/5 hover:bg-ink/10 transition-colors shrink-0"
-            title="Session info"
-          >
-            <Info className="w-3.5 h-3.5" />
-            {infoOpen ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-          </button>
+          {/* Right side: Timer & Mobile Info toggle */}
+          <div className="flex items-center gap-2">
+            {timeLeft && (
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-clay/10 text-clay font-medium text-xs">
+                <span>Ends in</span>
+                <span className="font-mono tracking-wider">{timeLeft}</span>
+              </div>
+            )}
+            <button
+              onClick={() => setInfoOpen(v => !v)}
+              className="lg:hidden flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-ink/60 bg-ink/5 hover:bg-ink/10 transition-colors shrink-0"
+              title="Session info"
+            >
+              <Info className="w-3.5 h-3.5" />
+              {infoOpen ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+            </button>
+          </div>
         </div>
       </header>
 

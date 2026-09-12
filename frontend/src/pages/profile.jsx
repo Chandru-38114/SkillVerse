@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { api, getAvatarUrl } from "../api";
+import PasswordInput from "../components/PasswordInput";
 import { Camera, Save, Lock } from "lucide-react";
 
 export default function Profile() {
@@ -266,11 +267,11 @@ export default function Profile() {
             <form onSubmit={handleChangePassword} className="space-y-4">
               <div>
                 <label className="field-label">Current Password</label>
-                <input type="password" className="input" value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} required />
+                <PasswordInput value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} required />
               </div>
               <div>
                 <label className="field-label">New Password</label>
-                <input type="password" className="input" value={newPassword} onChange={e => setNewPassword(e.target.value)} required />
+                <PasswordInput value={newPassword} onChange={e => setNewPassword(e.target.value)} required />
                 <p className="text-xs text-ink/50 mt-1">Must be at least 6 characters, include uppercase, lowercase, number, and special character.</p>
               </div>
 

@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate, Link, useLocation } from 'react-router-dom'
 import SkillVerseLogo from '../components/SkillVerseLogo'
+import PasswordInput from '../components/PasswordInput'
 import { api, saveSession } from '../api'
 import { CheckCircle2, XCircle } from 'lucide-react'
 
@@ -127,15 +128,25 @@ function Field({ id, label, value, onChange, type = 'text', required = false, pl
   return (
     <div>
       <label className="field-label" htmlFor={id}>{label}{required && <span className="text-clay ml-1">*</span>}</label>
-      <input
-        id={id}
-        className="input"
-        type={type}
-        value={value}
-        required={required}
-        placeholder={placeholder}
-        onChange={(e) => onChange(e.target.value)}
-      />
+      {type === 'password' ? (
+        <PasswordInput
+          id={id}
+          value={value}
+          required={required}
+          placeholder={placeholder}
+          onChange={(e) => onChange(e.target.value)}
+        />
+      ) : (
+        <input
+          id={id}
+          className="input"
+          type={type}
+          value={value}
+          required={required}
+          placeholder={placeholder}
+          onChange={(e) => onChange(e.target.value)}
+        />
+      )}
     </div>
   )
 }
