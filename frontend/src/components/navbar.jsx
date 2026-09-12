@@ -10,7 +10,7 @@ const NAV_LINKS = [
   { to: '/sessions', label: 'Sessions' },
   { to: '/requests', label: 'Requests' },
   { to: '/progress', label: 'Progress' },
-  { to: '/gamification', label: 'Gamification' },
+  { to: '/gamification', label: 'Skill Journey' },
   { to: '/profile', label: 'Profile' },
 ]
 
@@ -22,9 +22,9 @@ const MOBILE_NAV_LINKS = [
   { to: '/requests', label: 'Requests', icon: <Inbox className="w-5 h-5" /> },
   { to: '/notifications', label: 'Notifications', icon: <Bell className="w-5 h-5" /> },
   { to: '/progress', label: 'Progress', icon: <TrendingUp className="w-5 h-5" /> },
-  { to: '/gamification', label: 'Gamification', icon: <Trophy className="w-5 h-5" /> },
+  { to: '/gamification', label: 'Skill Journey', icon: <Trophy className="w-5 h-5" /> },
   { to: '/profile', label: 'Profile', icon: <User className="w-5 h-5" /> },
-  { to: '/profile', label: 'Settings', icon: '?' },
+  { to: '/profile', label: 'Settings', icon: <Settings className="w-5 h-5" /> },
 ]
 
 function BellIcon() {

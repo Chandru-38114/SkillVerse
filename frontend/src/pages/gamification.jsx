@@ -1,6 +1,15 @@
 import { useEffect, useState } from 'react'
-import { api, getSessionUser } from '../api'
-import { Trophy, Medal, Star } from 'lucide-react'
+import { api, getSessionUser, getAvatarUrl } from '../api'
+import { Trophy, Medal, Star, ClipboardCheck, Award, Users, Flame } from 'lucide-react'
+
+const ACHIEVEMENT_ICONS = {
+  first_assessment: <ClipboardCheck className="w-8 h-8" />,
+  first_badge: <Award className="w-8 h-8" />,
+  first_session: <Users className="w-8 h-8" />,
+  five_sessions: <Flame className="w-8 h-8" />,
+  first_review: <Star className="w-8 h-8" />,
+  points_500: <Trophy className="w-8 h-8" />
+}
 
 export default function Gamification() {
   const [leaderboard, setLeaderboard] = useState([])
@@ -26,7 +35,9 @@ export default function Gamification() {
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
       <div className="mb-10 text-center">
-        <h1 className="font-display text-4xl mb-2">🏆 Leaderboard & Achievements</h1>
+        <h1 className="font-display text-4xl mb-2 flex items-center justify-center gap-2">
+          <Trophy className="w-8 h-8 text-gold" /> Skill Journey & Leaderboard
+        </h1>
         <p className="text-ink/60">Compete, earn points, and collect badges by sharing knowledge.</p>
       </div>
 
@@ -65,7 +76,9 @@ export default function Gamification() {
             <div className="space-y-4">
               {summary?.achievements.map(ach => (
                 <div key={ach.id} className={`flex gap-3 ${ach.earned ? 'opacity-100' : 'opacity-40 grayscale'}`}>
-                  <div className="text-3xl flex-shrink-0">{ach.icon}</div>
+                  <div className={`flex-shrink-0 ${ach.earned ? 'text-gold' : 'text-ink/30'}`}>
+                    {ACHIEVEMENT_ICONS[ach.id] || <Award className="w-8 h-8" />}
+                  </div>
                   <div>
                     <h3 className="font-bold text-sm">{ach.title}</h3>
                     <p className="text-xs text-ink/60 leading-snug">{ach.description}</p>
@@ -94,9 +107,9 @@ export default function Gamification() {
                 
                 // Medals for top 3
                 let rankBadge = <span className="font-bold text-ink/40 w-6 text-center">{user.rank}</span>;
-                if (user.rank === 1) rankBadge = <span className="text-xl w-6 text-center" title="1st Place">🥇</span>;
-                if (user.rank === 2) rankBadge = <span className="text-xl w-6 text-center" title="2nd Place">🥈</span>;
-                if (user.rank === 3) rankBadge = <span className="text-xl w-6 text-center" title="3rd Place">🥉</span>;
+                if (user.rank === 1) rankBadge = <Medal className="w-6 h-6 text-gold" title="1st Place" />;
+                if (user.rank === 2) rankBadge = <Medal className="w-6 h-6 text-ink/40" title="2nd Place" />;
+                if (user.rank === 3) rankBadge = <Medal className="w-6 h-6 text-brand" title="3rd Place" />;
 
                 return (
                   <div 

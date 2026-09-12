@@ -1,7 +1,16 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Trophy, CheckCircle } from 'lucide-react'
+import { Trophy, CheckCircle, ClipboardCheck, Award, Users, Flame, Star } from 'lucide-react'
 import { api, getSessionUser } from '../api'
+
+const ACHIEVEMENT_ICONS = {
+  first_assessment: <ClipboardCheck className="w-8 h-8" />,
+  first_badge: <Award className="w-8 h-8" />,
+  first_session: <Users className="w-8 h-8" />,
+  five_sessions: <Flame className="w-8 h-8" />,
+  first_review: <Star className="w-8 h-8" />,
+  points_500: <Trophy className="w-8 h-8" />
+}
 
 export default function Dashboard() {
   const navigate = useNavigate()
@@ -198,7 +207,7 @@ export default function Dashboard() {
           {/* 6. GAMIFICATION SUMMARY */}
           <section>
             <div className="flex items-center justify-between mb-4">
-              <h2 className="font-display text-lg font-bold text-ink">Achievements</h2>
+              <h2 className="font-display text-lg font-bold text-ink">Skill Journey</h2>
               <Link to="/gamification" className="text-xs font-bold text-brand hover:underline">View All</Link>
             </div>
             <div className="card p-5">
@@ -224,8 +233,8 @@ export default function Dashboard() {
                       <p className="text-xs font-bold text-clay uppercase tracking-wider mb-2">Recent Badges</p>
                       {achievements.slice(0, 3).map(a => (
                         <div key={a.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-paper transition-colors">
-                          <div className="w-8 h-8 flex items-center justify-center bg-goldLight/50 border border-gold/20 rounded-full text-lg shadow-sm shrink-0">
-                            {a.icon}
+                          <div className="flex-shrink-0 text-gold">
+                            {ACHIEVEMENT_ICONS[a.id] || <Award className="w-8 h-8" />}
                           </div>
                           <div className="min-w-0 flex-1">
                             <p className="text-sm font-semibold text-ink truncate">{a.title}</p>
