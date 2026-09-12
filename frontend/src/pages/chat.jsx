@@ -118,7 +118,7 @@ export default function Chat({ embeddedRequestId, embedded }) {
   }
 
   return (
-    <div className={embedded ? "flex-1 flex flex-col h-full min-h-0 bg-white" : "max-w-2xl mx-auto px-6 py-6 flex flex-col h-[calc(100vh-56px)]"}>
+    <div className={embedded ? "flex-1 flex flex-col h-full min-h-0 bg-white" : "max-w-2xl mx-auto px-4 sm:px-6 py-4 sm:py-6 flex flex-col h-[calc(100dvh-56px)] md:h-[calc(100vh-56px)]"}>
       {/* Top bar */}
       <div className="flex items-center justify-between mb-4 pb-4 border-b border-line">
         <Link

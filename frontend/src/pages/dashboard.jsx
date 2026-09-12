@@ -85,7 +85,7 @@ export default function Dashboard() {
       {loading ? (
         <OverviewSkeleton />
       ) : (
-        <section className="grid grid-cols-2 md:grid-cols-5 gap-3 md:gap-4">
+        <section className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 md:gap-4">
           <StatCard label="Total Points" value={gamification?.total_points ?? user.points ?? 0} />
           <StatCard label="Current Rank" value={gamification?.current_rank ? `#${gamification.current_rank}` : '-'} />
           <StatCard label="Learning Skills" value={learningSkills.length} />
@@ -97,14 +97,14 @@ export default function Dashboard() {
       {/* MAIN GRID */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
         
-        <div className="lg:col-span-2 space-y-6 md:space-y-8">
+        <div className="lg:col-span-2 space-y-6 md:space-y-6 md:space-y-8">
           {/* 3. UPCOMING SESSION */}
           <section>
             <SectionHeader title="Upcoming Session" />
             {loading ? (
               <div className="skeleton h-24 w-full" />
             ) : nextSession ? (
-              <div className="card p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-brand/20 bg-brandLight/10">
+              <div className="card p-5 sm:p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-brand/20 bg-brandLight/10">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2 mb-2">
                     <span className="status-accepted shrink-0">{nextSession.status}</span>
@@ -125,7 +125,7 @@ export default function Dashboard() {
                 </Link>
               </div>
             ) : (
-              <div className="card p-8 text-center bg-paper/50">
+              <div className="card p-5 sm:p-8 text-center bg-paper/50">
                 <p className="text-clay font-medium mb-3">No upcoming sessions</p>
                 <Link to="/marketplace" className="btn-secondary text-sm">Discover Partners</Link>
               </div>
@@ -193,7 +193,7 @@ export default function Dashboard() {
         </div>
 
         {/* SIDEBAR GRID */}
-        <div className="space-y-6 md:space-y-8">
+        <div className="space-y-6 md:space-y-6 md:space-y-8">
           
           {/* 6. GAMIFICATION SUMMARY */}
           <section>
@@ -310,7 +310,7 @@ function StatCard({ label, value, className = "" }) {
 
 function EmptyState({ message, actionText, actionUrl }) {
   return (
-    <div className="card p-8 flex flex-col items-center justify-center text-center border-dashed border-2 bg-transparent shadow-none">
+    <div className="card p-5 sm:p-8 flex flex-col items-center justify-center text-center border-dashed border-2 bg-transparent shadow-none">
       <div className="w-12 h-12 bg-line/50 rounded-full flex items-center justify-center mb-3">
         <svg className="w-6 h-6 text-clay" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
@@ -324,7 +324,7 @@ function EmptyState({ message, actionText, actionUrl }) {
 
 function OverviewSkeleton() {
   return (
-    <div className="grid grid-cols-2 md:grid-cols-5 gap-3 md:gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 md:gap-4">
       {[...Array(4)].map((_, i) => (
         <div key={i} className="card p-4 h-20 skeleton" />
       ))}

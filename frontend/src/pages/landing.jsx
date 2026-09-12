@@ -58,7 +58,7 @@ export default function Landing() {
 
       {/* ── How it works ── */}
       <section className="bg-white border-y border-line">
-        <div className="max-w-5xl mx-auto px-6 py-16">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-10 sm:py-16">
           <p className="label-eyebrow mb-3">How it works</p>
           <h2 className="font-display text-3xl mb-12">Three steps to your first exchange</h2>
           <div className="grid md:grid-cols-3 gap-6">
@@ -100,7 +100,7 @@ export default function Landing() {
 
 function Step({ n, title, text, icon }) {
   return (
-    <div className="card-hover p-6">
+    <div className="card-hover p-4 sm:p-6">
       <div className="flex items-center gap-3 mb-4">
         <span className="text-2xl">{icon}</span>
         <span className="font-mono text-xs text-clay font-medium">{n}</span>

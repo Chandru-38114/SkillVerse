@@ -39,7 +39,7 @@ export default function Sessions() {
   const past = sessions.filter((s) => !upcoming.includes(s))
 
   return (
-    <div className="max-w-3xl mx-auto px-6 py-12">
+    <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
       <p className="label-eyebrow mb-1">My schedule</p>
       <h1 className="font-display text-4xl mb-8">Sessions</h1>
 

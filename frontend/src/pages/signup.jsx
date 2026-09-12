@@ -56,12 +56,12 @@ export default function Signup() {
   }
 
   return (
-    <div className="min-h-[calc(100vh-73px)] flex items-center justify-center px-6 py-16">
+    <div className="min-h-[calc(100vh-73px)] flex items-center justify-center px-4 sm:px-6 py-10 sm:py-16">
       <div className="w-full max-w-md">
         <SkillVerseLogo />
         <div className="mb-6 text-center"><p className="text-ink/50 text-sm">Create your profile</p></div>
 
-        <div className="card p-8">
+        <div className="card p-5 sm:p-8">
           <form onSubmit={handleSubmit} className="space-y-4">
             <Field id="name" label="Full name" placeholder="Alex Johnson" value={form.name} onChange={(v) => update('name', v)} required />
             <Field id="email" label="Email" type="email" placeholder="you@example.com" value={form.email} onChange={(v) => update('email', v)} required />

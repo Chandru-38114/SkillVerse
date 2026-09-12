@@ -65,10 +65,10 @@ export default function VerifyEmail() {
   if (!user) return null
 
   return (
-    <div className="min-h-[calc(100vh-73px)] flex items-center justify-center px-4 py-16">
+    <div className="min-h-[calc(100vh-73px)] flex items-center justify-center px-4 sm:px-6 py-10 sm:py-16">
       <div className="w-full max-w-md">
         <SkillVerseLogo />
-        <div className="card p-8 text-center">
+        <div className="card p-5 sm:p-8 text-center">
         <h2 className="text-2xl font-display mb-2">Verify your email</h2>
         <p className="text-ink/60 mb-6 text-sm">
           We need to verify your email address before you can continue.

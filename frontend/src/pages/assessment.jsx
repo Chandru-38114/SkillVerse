@@ -56,8 +56,8 @@ export default function Assessment() {
   const progress = totalCount > 0 ? Math.round((answeredCount / totalCount) * 100) : 0
 
   return (
-    <div className="max-w-2xl mx-auto px-6 py-12">
-      {/* ── Step: Pick skill ── */}
+    <div className="max-w-2xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
+      {/* ✨ Step: Pick skill ✨ */}
       {step === STEPS.PICK && (
         <>
           <p className="label-eyebrow mb-2">Skill assessment</p>
@@ -81,7 +81,7 @@ export default function Assessment() {
 
             <div>
               <p className="field-label mb-3">Assessment goal</p>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <RoleOption
                   label="I want to teach it"
                   sub="Get a verified teaching badge"

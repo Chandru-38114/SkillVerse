@@ -87,7 +87,7 @@ export default function Materials({ session }) {
   if (loading) return <div className="p-8 text-center text-ink/50">Loading materials...</div>;
 
   return (
-    <div className="flex-1 p-6 flex flex-col h-full bg-[#FDFDFC] overflow-y-auto">
+    <div className="flex-1 p-4 sm:p-6 flex flex-col h-full bg-[#FDFDFC] overflow-y-auto">
       <div className="max-w-4xl mx-auto w-full">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8 pb-4 border-b border-line">
           <div>

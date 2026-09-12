@@ -43,8 +43,8 @@ export default function Progress() {
     }
   };
 
-  if (loading) return <div className="max-w-6xl mx-auto px-6 py-12"><div className="skeleton h-32 w-full mb-6"></div><div className="grid md:grid-cols-3 gap-6"><div className="skeleton h-64 w-full"></div></div></div>;
-  if (error) return <div className="max-w-6xl mx-auto px-6 py-12"><div className="alert-error">{error}</div></div>;
+  if (loading) return <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-12"><div className="skeleton h-32 w-full mb-6"></div><div className="grid md:grid-cols-3 gap-6"><div className="skeleton h-64 w-full"></div></div></div>;
+  if (error) return <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-12"><div className="alert-error">{error}</div></div>;
 
   return (
     <div className="page">
@@ -80,7 +80,7 @@ export default function Progress() {
                   </div>
                 </div>
 
-                <div className="text-sm text-ink/70 grid grid-cols-2 gap-2 mt-4 mb-6">
+                <div className="text-sm text-ink/70 grid grid-cols-1 sm:grid-cols-2 gap-2 mt-4 mb-6">
                   <div>
                     <p className="font-bold">{skill.sessions_completed}</p>
                     <p className="text-xs">Sessions</p>

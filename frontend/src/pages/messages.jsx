@@ -180,10 +180,10 @@ export default function Messages() {
   const selectedConv = inbox.find(c => c.request_id === selectedRequestId)
 
   return (
-    <div className="max-w-6xl mx-auto px-6 py-6 h-[calc(100vh-56px)] flex gap-6">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 sm:py-6 h-[calc(100dvh-56px)] md:h-[calc(100vh-56px)] flex gap-4 md:gap-6">
       
       {/* Left sidebar: Inbox list */}
-      <div className="w-1/3 flex flex-col bg-paper border border-ink/10 rounded-xl overflow-hidden shadow-sm">
+      <div className={`${selectedRequestId ? "hidden md:flex" : "flex"} w-full md:w-1/3 flex-col bg-paper border border-line rounded-xl overflow-hidden shadow-sm`}>
         <div className="p-4 border-b border-ink/10 bg-white">
           <h2 className="text-xl font-display font-bold mb-3">Messages</h2>
           <input 

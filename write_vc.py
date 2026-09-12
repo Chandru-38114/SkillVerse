@@ -1,7 +1,9 @@
-import { Mic, MicOff, Video, VideoOff, ScreenShare, ShieldCheck, Loader2, AlertCircle } from 'lucide-react';
+import os
+
+content = """
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { getToken, getSessionUser } from '../api'
+import { getToken } from '../api'
 
 export default function VideoChat({ sessionId, children }) {
   const navigate = useNavigate()
@@ -43,16 +45,8 @@ export default function VideoChat({ sessionId, children }) {
 
         // Listen for remote tracks
         pc.ontrack = (event) => {
-          if (event.streams && event.streams.length > 0) {
+          if (event.streams && event.streams[0]) {
             setRemoteStream(event.streams[0])
-          } else {
-            setRemoteStream(prev => {
-              if (prev) {
-                prev.addTrack(event.track)
-                return prev
-              }
-              return new MediaStream([event.track])
-            })
           }
         }
 
@@ -68,7 +62,7 @@ export default function VideoChat({ sessionId, children }) {
           if (pc.connectionState === 'connected') {
             setStatus('connected')
           } else if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed') {
-            setStatus('connecting')
+            setStatus('disconnected')
           }
         }
 
@@ -77,70 +71,36 @@ export default function VideoChat({ sessionId, children }) {
         const baseHttp = import.meta.env.VITE_API_URL || 'http://localhost:8000'
         const wsUrl = baseHttp.replace(/^http/, 'ws') + `/sessions/ws/${sessionId}?token=${token}`
         
-        const currentUser = getSessionUser()
-        let pendingCandidates = []
-
         ws = new WebSocket(wsUrl)
         wsRef.current = ws
 
         ws.onopen = () => {
-          ws.send(JSON.stringify({ type: 'hello', userId: currentUser?.id }))
+          ws.send(JSON.stringify({ type: 'hello' }))
         }
 
         ws.onmessage = async (event) => {
           const data = JSON.parse(event.data)
 
-          try {
-            if (data.type === 'peer_joined' || data.type === 'hello') {
-              setStatus('connecting')
-              const remoteUserId = data.userId || data.user_id
-              
-              const shouldCreateOffer = remoteUserId 
-                ? currentUser?.id > remoteUserId 
-                : data.type === 'peer_joined'
-
-              if (shouldCreateOffer && pc.signalingState === 'stable') {
-                 const offer = await pc.createOffer({ iceRestart: true })
-                 await pc.setLocalDescription(offer)
-                 ws.send(JSON.stringify({ type: 'offer', offer }))
-              }
-            } else if (data.type === 'offer') {
-              if (pc.signalingState !== 'stable') {
-                console.warn('Glare detected, ignoring offer in non-stable state')
-                return
-              }
-              setStatus('connecting')
-              await pc.setRemoteDescription(new RTCSessionDescription(data.offer))
-              
-              // Process queued candidates sequentially
-              for (const c of pendingCandidates) {
-                await pc.addIceCandidate(new RTCIceCandidate(c))
-              }
-              pendingCandidates = []
-
-              const answer = await pc.createAnswer()
-              await pc.setLocalDescription(answer)
-              ws.send(JSON.stringify({ type: 'answer', answer }))
-            } else if (data.type === 'answer') {
-              await pc.setRemoteDescription(new RTCSessionDescription(data.answer))
-              
-              // Process queued candidates sequentially
-              for (const c of pendingCandidates) {
-                await pc.addIceCandidate(new RTCIceCandidate(c))
-              }
-              pendingCandidates = []
-            } else if (data.type === 'candidate') {
-              if (pc.remoteDescription) {
-                await pc.addIceCandidate(new RTCIceCandidate(data.candidate))
-              } else {
-                pendingCandidates.push(data.candidate)
-              }
-            } else if (data.type === 'peer_left') {
-              setStatus('disconnected')
-              setRemoteStream(null)
+          if (data.type === 'peer_joined' || data.type === 'hello') {
+            setStatus('connecting')
+            if (data.type === 'peer_joined') {
+               const offer = await pc.createOffer()
+               await pc.setLocalDescription(offer)
+               ws.send(JSON.stringify({ type: 'offer', offer }))
             }
-          } catch (err) {
-            console.error('WebRTC signaling error:', err)
+          } else if (data.type === 'offer') {
+            setStatus('connecting')
+            await pc.setRemoteDescription(new RTCSessionDescription(data.offer))
+            const answer = await pc.createAnswer()
+            await pc.setLocalDescription(answer)
+            ws.send(JSON.stringify({ type: 'answer', answer }))
+          } else if (data.type === 'answer') {
+            await pc.setRemoteDescription(new RTCSessionDescription(data.answer))
+          } else if (data.type === 'candidate') {
+            await pc.addIceCandidate(new RTCIceCandidate(data.candidate))
+          } else if (data.type === 'peer_left') {
+            setStatus('disconnected')
+            setRemoteStream(null)
           }
         }
 
@@ -209,9 +169,9 @@ export default function VideoChat({ sessionId, children }) {
   return (
     <div className="flex-1 flex flex-col h-full bg-[#FDFDFC]">
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
+      <div className="flex-1 flex overflow-hidden">
         {/* Left Column: Video */}
-        <div className="w-full h-48 md:h-auto md:w-[300px] shrink-0 bg-ink flex flex-col relative border-b md:border-b-0 md:border-r border-ink/20 z-20">
+        <div className="w-[300px] shrink-0 bg-ink flex flex-col relative border-r border-ink/20">
           
           {/* Status banner */}
           {status === 'waiting' && (
@@ -237,7 +197,6 @@ export default function VideoChat({ sessionId, children }) {
                 ref={remoteVideoRef}
                 autoPlay
                 playsInline
-                onLoadedMetadata={(e) => e.target.play().catch(console.error)}
                 className="w-full h-full object-cover"
               />
             ) : (
@@ -270,16 +229,16 @@ export default function VideoChat({ sessionId, children }) {
         </div>
 
         {/* Center & Right: Passed via children (Workspace & Info) */}
-        <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
+        <div className="flex-1 flex overflow-hidden">
           {children}
         </div>
       </div>
 
       {/* Bottom Bar: Full width */}
-      <div className="h-16 shrink-0 bg-white border-t border-line flex items-center justify-between px-4 sm:px-6 z-30">
+      <div className="h-16 shrink-0 bg-white border-t border-line flex items-center justify-between px-6 z-30">
         
         {/* left: blank or status */}
-        <div className="hidden md:block flex-1 text-xs text-ink/50 font-medium">
+        <div className="flex-1 text-xs text-ink/50 font-medium">
           {status === 'connected' ? '🟢 Connected securely' : ''}
         </div>
 
@@ -320,3 +279,7 @@ export default function VideoChat({ sessionId, children }) {
     </div>
   )
 }
+"""
+
+with open('frontend/src/components/VideoChat.jsx', 'w', encoding='utf-8') as f:
+    f.write(content.strip())

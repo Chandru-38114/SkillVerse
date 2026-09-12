@@ -215,7 +215,7 @@ export default function Navbar() {
                 </button>
 
                 {notifOpen && (
-                  <div className="absolute right-0 top-12 w-80 bg-white border border-line rounded-xl shadow-lg overflow-hidden z-50">
+                  <div className="absolute right-0 top-12 w-full sm:w-80 bg-white border border-line rounded-xl shadow-lg overflow-hidden z-50">
                     <div className="flex items-center justify-between px-4 py-3 border-b border-line bg-paper/50">
                       <span className="text-sm font-semibold text-ink">Notifications</span>
                       <div className="flex gap-3">

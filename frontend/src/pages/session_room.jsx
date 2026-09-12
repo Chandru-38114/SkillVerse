@@ -76,11 +76,18 @@ export default function SessionRoom() {
     <div className="h-screen flex flex-col bg-[#FDFDFC] overflow-hidden font-body">
       {/* Header */}
       <header className="h-14 border-b border-line bg-white px-3 md:px-6 flex items-center justify-between shrink-0 shadow-sm z-10">
-        <div className="flex items-center gap-4">
-          <SkillVerseLogo />
-          <div className="h-6 w-px bg-line"></div>
-          <div className="flex items-center gap-2">
-            <h1 className="font-semibold text-sm capitalize text-ink tracking-tight">{session.skill}</h1>
+        <div className="flex items-center gap-3">
+          <Link to="/" className="font-display text-lg tracking-tight shrink-0 text-ink font-bold flex items-center gap-2">
+            <div className="w-8 h-8 rounded-full bg-brandLight/50 flex items-center justify-center shrink-0">
+              <svg className="w-5 h-5 text-brand" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+              </svg>
+            </div>
+            <div className="hidden sm:block">Skill<span className="text-brand">Verse</span></div>
+          </Link>
+          <div className="h-6 w-px bg-line shrink-0"></div>
+          <div className="flex items-center gap-2 min-w-0">
+            <h1 className="font-semibold text-sm capitalize text-ink tracking-tight truncate">{session.skill}</h1>
             {session.skill_level && (
               <span className="text-[10px] uppercase tracking-wider bg-moss/10 text-moss px-1.5 py-0.5 rounded font-bold">
                 {session.skill_level}

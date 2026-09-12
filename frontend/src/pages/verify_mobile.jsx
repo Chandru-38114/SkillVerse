@@ -92,10 +92,10 @@ export default function VerifyMobile() {
 
   if (!user.mobile_number) {
     return (
-      <div className="min-h-[calc(100vh-73px)] flex items-center justify-center px-4 py-16">
+      <div className="min-h-[calc(100vh-73px)] flex items-center justify-center px-4 sm:px-6 py-10 sm:py-16">
         <div className="w-full max-w-md">
           <SkillVerseLogo />
-          <div className="card p-8 text-center">
+          <div className="card p-5 sm:p-8 text-center">
             <h2 className="text-2xl font-display mb-2">Complete your profile</h2>
             <p className="text-ink/60 mb-6 text-sm">
               Please enter your mobile number to proceed with verification.
@@ -124,10 +124,10 @@ export default function VerifyMobile() {
   }
 
   return (
-    <div className="min-h-[calc(100vh-73px)] flex items-center justify-center px-4 py-16">
+    <div className="min-h-[calc(100vh-73px)] flex items-center justify-center px-4 sm:px-6 py-10 sm:py-16">
       <div className="w-full max-w-md">
         <SkillVerseLogo />
-        <div className="card p-8 text-center">
+        <div className="card p-5 sm:p-8 text-center">
         <h2 className="text-2xl font-display mb-2">Verify your mobile</h2>
         <p className="text-ink/60 mb-6 text-sm">
           We need to verify your mobile number {user.mobile_number} before you can continue.

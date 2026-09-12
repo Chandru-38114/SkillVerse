@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { api, getSessionUser } from '../api'
 import { Trophy, Medal, Star } from 'lucide-react'
 
@@ -24,7 +24,7 @@ export default function Gamification() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto px-6 py-12">
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
       <div className="mb-10 text-center">
         <h1 className="font-display text-4xl mb-2">🏆 Leaderboard & Achievements</h1>
         <p className="text-ink/60">Compete, earn points, and collect badges by sharing knowledge.</p>

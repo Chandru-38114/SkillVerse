@@ -32,8 +32,8 @@ export default function CertificateView() {
   const issueDate = new Date(cert.issue_date).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
 
   return (
-    <div className="min-h-screen bg-ink/5 py-12 px-6 flex flex-col items-center">
-      {/* Controls: hidden on print */}
+    <div className="min-h-screen bg-ink/5 py-8 sm:py-12 px-4 sm:px-6 flex flex-col items-center">
+      {/* Decorative background elements */}
       <div className="w-full max-w-4xl flex justify-between items-center mb-6 print:hidden">
         <Link to="/progress" className="btn-secondary">Back to Progress</Link>
         <button onClick={() => window.print()} className="btn-primary">

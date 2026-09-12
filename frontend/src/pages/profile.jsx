@@ -107,13 +107,13 @@ export default function Profile() {
   if (!user) return <div className="p-8 text-center text-clay">Failed to load user data</div>;
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-12">
+    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
       <h1 className="text-3xl font-display mb-8">Profile Settings</h1>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
         {/* Left Column: Avatar & Verification */}
         <div className="space-y-6">
-          <div className="card p-6 flex flex-col items-center">
+          <div className="card p-4 sm:p-6 flex flex-col items-center">
             <div className="w-32 h-32 rounded-full overflow-hidden bg-sand mb-4 flex items-center justify-center">
               {user.profile_picture_url ? (
                 <img 
@@ -139,7 +139,7 @@ export default function Profile() {
             {avatarMsg && <p className="text-xs text-center mt-2 text-moss">{avatarMsg}</p>}
           </div>
 
-          <div className="card p-6">
+          <div className="card p-4 sm:p-6">
             <h3 className="font-display text-lg mb-4">Account Status</h3>
             <div className="space-y-3 text-sm">
               <div className="flex items-center justify-between">
@@ -165,7 +165,7 @@ export default function Profile() {
         {/* Right Column: Forms */}
         <div className="md:col-span-2 space-y-6">
           
-          <div className="card p-6">
+          <div className="card p-4 sm:p-6">
             <h2 className="text-xl font-display mb-4">Personal Info</h2>
             <form onSubmit={handleUpdateProfile} className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -228,7 +228,7 @@ export default function Profile() {
             </form>
           </div>
 
-          <div className="card p-6">
+          <div className="card p-4 sm:p-6">
             <h2 className="text-xl font-display mb-4">Change Password</h2>
             <form onSubmit={handleChangePassword} className="space-y-4">
               <div>

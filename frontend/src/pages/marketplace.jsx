@@ -151,7 +151,7 @@ export default function Marketplace() {
 
   return (
     <div className="min-h-screen bg-[#FDFDFC] font-body text-ink pb-24">
-      <section className="pt-16 pb-12 px-6 max-w-6xl mx-auto border-b border-line/40 mb-8">
+      <section className="pt-16 pb-12 px-4 sm:px-6 max-w-6xl mx-auto border-b border-line/40 mb-8">
         <div className="max-w-3xl mx-auto text-center mb-10">
           <h1 className="text-4xl md:text-5xl font-display font-bold mb-4 text-ink tracking-tight">Find Your Learning Partner</h1>
           <p className="text-lg text-ink/70">Connect with peers to teach what you know, and learn what you don't.</p>
@@ -220,7 +220,7 @@ export default function Marketplace() {
         </div>
       </section>
 
-      <section className="px-6 max-w-6xl mx-auto">
+      <section className="px-4 sm:px-6 max-w-6xl mx-auto">
         {error && <div className="alert-error mb-8 max-w-2xl mx-auto">{error}</div>}
 
         {loading ? (
@@ -272,7 +272,7 @@ export default function Marketplace() {
                       </div>
                     )}
 
-                    <div className="grid grid-cols-2 gap-6 mt-auto">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mt-auto">
                       <div>
                         <h4 className="text-[10px] uppercase tracking-widest text-clay font-bold mb-3 flex items-center gap-1.5">
                           <span className="w-1.5 h-1.5 rounded-full bg-moss"></span>
@@ -438,7 +438,7 @@ function TeacherSkeleton() {
                 <div className="skeleton h-3 w-1/4 rounded" />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-6 mt-12">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mt-12">
               <div className="space-y-3">
                 <div className="skeleton h-3 w-20 rounded" />
                 <div className="skeleton h-8 w-full rounded" />

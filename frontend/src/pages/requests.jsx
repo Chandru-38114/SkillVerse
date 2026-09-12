@@ -65,7 +65,7 @@ export default function Requests() {
   const incomingPending = incoming.filter((r) => r.status === 'pending').length
 
   return (
-    <div className="max-w-3xl mx-auto px-6 py-12">
+    <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
       {/* Header */}
       <p className="label-eyebrow mb-1">My connections</p>
       <h1 className="font-display text-4xl mb-8">Requests</h1>
