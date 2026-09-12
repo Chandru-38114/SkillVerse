@@ -3,12 +3,28 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
+import asyncio
+from contextlib import asynccontextmanager
+
 from .database import Base, engine
-from .routers import auth, users, assessments, marketplace, requests, chat, reviews, sessions, compiler, whiteboard, materials, progress, certificates, notifications, gamification
+from .routers import (
+    auth, users, assessments, marketplace, requests, chat, reviews,
+    sessions, compiler, whiteboard, materials, progress, certificates,
+    notifications, gamification,
+)
 
-Base.metadata.create_all(bind=engine)
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Run DB schema creation in a thread pool so it doesn't block the event loop.
+    # uvicorn has already bound the port by the time this runs, so Render's
+    # port scanner succeeds even if the DB connection is slow.
+    loop = asyncio.get_event_loop()
+    await loop.run_in_executor(None, Base.metadata.create_all, engine)
+    print("[startup] Database schema ready.")
+    yield
+    # (shutdown: nothing to clean up)
 
-app = FastAPI(title="SkillVerse AI API", version="0.1.0")
+app = FastAPI(title="SkillVerse AI API", version="0.1.0", lifespan=lifespan)
 
 os.makedirs("uploads", exist_ok=True)
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
