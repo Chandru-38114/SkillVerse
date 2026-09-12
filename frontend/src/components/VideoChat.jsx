@@ -60,7 +60,7 @@ export default function VideoChat({ sessionId, children }) {
           if (pc.connectionState === 'connected') {
             setStatus('connected')
           } else if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed') {
-            setStatus('disconnected')
+            setStatus('connecting')
           }
         }
 
