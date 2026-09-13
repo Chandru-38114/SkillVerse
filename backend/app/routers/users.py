@@ -12,12 +12,15 @@ from ..supabase_client import get_supabase
 router = APIRouter(prefix="/users", tags=["users"])
 
 
-def calculate_age(dob: str) -> int:
+def calculate_age(dob) -> int:
     if not dob:
         return None
     import datetime
     try:
-        birth_date = datetime.datetime.strptime(dob, "%Y-%m-%d").date()
+        if isinstance(dob, datetime.date):
+            birth_date = dob
+        else:
+            birth_date = datetime.datetime.strptime(str(dob), "%Y-%m-%d").date()
         today = datetime.date.today()
         return today.year - birth_date.year - ((today.month, today.day) < (birth_date.month, birth_date.day))
     except ValueError:
