@@ -76,6 +76,28 @@ for _o in _ALWAYS_ALLOWED + _parsed:
 
 print(f"[CORS] Allowed origins ({len(origins)}): {origins}")
 
+from fastapi.responses import JSONResponse
+from fastapi.requests import Request
+import traceback
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    print(f"Unhandled Exception: {exc}")
+    traceback.print_exc()
+    
+    # We must explicitly add CORS headers here because FastAPI's default 500 handler strips them
+    origin = request.headers.get("origin")
+    headers = {}
+    if origin:
+        headers["access-control-allow-origin"] = origin
+        headers["access-control-allow-credentials"] = "true"
+        
+    return JSONResponse(
+        status_code=500,
+        content={"detail": f"Internal Server Error: {str(exc)}"},
+        headers=headers
+    )
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,

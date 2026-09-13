@@ -32,12 +32,20 @@ async function request(path, { method = "GET", body, auth = true } = {}) {
   }
 
   if (!res.ok) {
-    let errorMessage = "Request failed";
+    let errorMessage = `Request failed (${res.status})`;
     try {
       const errData = await res.json();
-      errorMessage = errData.detail || errData.message || res.statusText;
+      if (res.status === 422 && errData.detail && Array.isArray(errData.detail)) {
+        errorMessage = errData.detail.map(e => e.msg).join(", ");
+      } else {
+        errorMessage = errData.detail || errData.message || res.statusText;
+      }
     } catch (parseError) {
       errorMessage = res.statusText || `Server returned ${res.status}`;
+    }
+    
+    if (res.status === 500) {
+      throw new Error(`Server error: ${errorMessage}`);
     }
     throw new Error(errorMessage);
   }

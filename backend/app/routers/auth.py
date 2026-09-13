@@ -17,7 +17,8 @@ from ..email_service import send_otp_email
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
-GOOGLE_CLIENT_ID = os.getenv("VITE_GOOGLE_CLIENT_ID") or os.getenv("GOOGLE_CLIENT_ID")
+raw_google_id = os.getenv("VITE_GOOGLE_CLIENT_ID") or os.getenv("GOOGLE_CLIENT_ID")
+GOOGLE_CLIENT_ID = raw_google_id.strip().strip('"').strip("'") if raw_google_id else None
 
 # In-memory rate limiting dictionary for login brute-force protection
 login_attempts = {}
@@ -183,8 +184,9 @@ def google_auth(payload: schemas.GoogleAuth, db: Session = Depends(get_db)):
         token = auth.create_access_token({"sub": str(user.id)})
         return schemas.Token(access_token=token, user=schemas.UserOut.model_validate(user))
         
-    except ValueError:
-        raise HTTPException(status_code=401, detail="Invalid Google token")
+    except ValueError as e:
+        print(f"[GOOGLE AUTH] Token verification failed: {e}")
+        raise HTTPException(status_code=401, detail=f"Invalid Google token: {str(e)}")
 
 
 @router.post("/forgot-password")
