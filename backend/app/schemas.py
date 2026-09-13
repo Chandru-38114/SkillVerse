@@ -1,6 +1,6 @@
 import re
 import datetime as dt
-from typing import Optional, List
+from typing import Optional, List, Union
 from pydantic import BaseModel, EmailStr, model_validator, ConfigDict
 
 class UserCreate(BaseModel):
@@ -59,9 +59,10 @@ class UserOut(BaseModel):
     bio: Optional[str] = ""
     profile_picture_url: Optional[str] = None
     points: Optional[int] = 0
-    dob: Optional[str] = None
+    dob: Optional[Union[dt.date, str]] = None
     gender: Optional[str] = None
     age: Optional[int] = None
+    created_at: Optional[dt.datetime] = None
 
 
 class UserUpdate(BaseModel):
@@ -70,7 +71,7 @@ class UserUpdate(BaseModel):
     mobile_number: Optional[str] = None
     college: Optional[str] = None
     country: Optional[str] = None
-    dob: Optional[str] = None
+    dob: Optional[Union[dt.date, str]] = None
     gender: Optional[str] = None
 
 class PasswordChangeRequest(BaseModel):
