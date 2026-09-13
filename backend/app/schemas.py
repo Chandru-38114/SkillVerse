@@ -52,8 +52,8 @@ class UserOut(BaseModel):
     name: str
     email: EmailStr
     mobile_number: Optional[str] = None
-    is_email_verified: bool = False
-    is_mobile_verified: bool = False
+    is_email_verified: Optional[bool] = False
+    is_mobile_verified: Optional[bool] = False
     college: Optional[str] = ""
     country: Optional[str] = ""
     bio: Optional[str] = ""
