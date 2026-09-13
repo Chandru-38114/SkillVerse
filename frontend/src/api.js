@@ -159,6 +159,10 @@ export const api = {
   // Chat inbox (Direct Messages)
   getChatInbox: () => request("/chat/inbox"),
   markChatRead: (requestId) => request(`/chat/${requestId}/read`, { method: "POST" }),
+  editMessage: (messageId, content) => request(`/chat/messages/${messageId}`, { method: "PUT", body: { content } }),
+  deleteMessageForEveryone: (messageId) => request(`/chat/messages/${messageId}`, { method: "DELETE" }),
+  toggleReaction: (messageId, emoji) => request(`/chat/messages/${messageId}/react`, { method: "POST", body: { emoji } }),
+  forwardMessage: (requestId, content) => request(`/chat/${requestId}/messages`, { method: "POST", body: { content, metadata: { forwarded: true } } }),
 
   // Materials
   getSessionMaterials: (sessionId) => request(`/materials/session/${sessionId}`),

@@ -320,3 +320,101 @@ async def chat_websocket(websocket: WebSocket, request_id: int, token: str = Que
             await chat_manager.broadcast(request_id, msg_payload)
     except WebSocketDisconnect:
         chat_manager.disconnect(request_id, websocket)
+
+
+# ── Message operations ────────────────────────────────────────────────────────
+
+def _get_message_authorized(db: Session, message_id: int, user_id: int) -> models.Message:
+    """Fetch message and verify user belongs to the conversation."""
+    msg = db.query(models.Message).filter(models.Message.id == message_id).first()
+    if not msg:
+        raise HTTPException(status_code=404, detail="Message not found")
+    _authorize(db, msg.request_id, user_id)
+    return msg
+
+
+def _broadcast_update_sync(request_id: int, payload: dict):
+    """Fire-and-forget broadcast helper for sync contexts."""
+    import asyncio
+    try:
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            loop.create_task(chat_manager.broadcast(request_id, payload))
+    except Exception:
+        pass
+
+
+@router.put("/messages/{message_id}", response_model=schemas.MessageOut)
+def edit_message(
+    message_id: int,
+    payload: schemas.MessageEdit,
+    current_user: models.User = Depends(auth.get_current_user),
+    db: Session = Depends(get_db),
+):
+    msg = _get_message_authorized(db, message_id, current_user.id)
+    if msg.sender_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Only the sender can edit this message")
+    if (msg.message_metadata or {}).get("deleted_for_everyone"):
+        raise HTTPException(status_code=400, detail="Cannot edit a deleted message")
+
+    from ..utils.timezone import utc_now
+    new_meta = dict(msg.message_metadata or {})
+    new_meta["edited_at"] = utc_now().isoformat()
+    msg.content = payload.content
+    msg.message_metadata = new_meta
+    db.commit()
+    db.refresh(msg)
+    return msg
+
+
+@router.delete("/messages/{message_id}")
+def delete_message_for_everyone(
+    message_id: int,
+    current_user: models.User = Depends(auth.get_current_user),
+    db: Session = Depends(get_db),
+):
+    msg = _get_message_authorized(db, message_id, current_user.id)
+    if msg.sender_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Only the sender can delete this message for everyone")
+
+    new_meta = dict(msg.message_metadata or {})
+    new_meta["deleted_for_everyone"] = True
+    msg.content = ""
+    msg.message_metadata = new_meta
+    db.commit()
+    return {"detail": "Message deleted", "id": message_id, "request_id": msg.request_id}
+
+
+@router.post("/messages/{message_id}/react")
+def toggle_reaction(
+    message_id: int,
+    payload: schemas.ReactionUpdate,
+    current_user: models.User = Depends(auth.get_current_user),
+    db: Session = Depends(get_db),
+):
+    msg = _get_message_authorized(db, message_id, current_user.id)
+    new_meta = dict(msg.message_metadata or {})
+    reactions = dict(new_meta.get("reactions", {}))
+
+    emoji = payload.emoji
+    user_id = current_user.id
+
+    if emoji not in reactions:
+        reactions[emoji] = []
+
+    if user_id in reactions[emoji]:
+        reactions[emoji].remove(user_id)
+        if not reactions[emoji]:
+            del reactions[emoji]
+    else:
+        reactions[emoji] = reactions.get(emoji, []) + [user_id]
+
+    new_meta["reactions"] = reactions
+    msg.message_metadata = new_meta
+    db.commit()
+    db.refresh(msg)
+    return {
+        "id": msg.id,
+        "request_id": msg.request_id,
+        "metadata": msg.message_metadata,
+    }

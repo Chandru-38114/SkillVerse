@@ -195,6 +195,16 @@ class InboxConversationOut(BaseModel):
     session_id: Optional[int] = None
     session_date: Optional[str] = None
     session_time: Optional[str] = None
+    scheduled_start: Optional[dt.datetime] = None
+    scheduled_end: Optional[dt.datetime] = None
+
+
+class MessageEdit(BaseModel):
+    content: str
+
+
+class ReactionUpdate(BaseModel):
+    emoji: str
 
 class NotificationOut(BaseModel):
     id: int

@@ -181,9 +181,11 @@ function RequestCard({ r, tab, onAccept, onDecline, onComplete, reviewed, onRevi
         {/* Two-way learning context panel — shown on incoming requests */}
         <LearningContext r={r} tab={tab} />
 
-        {/* Schedule Session — only for accepted requests */}
+        {/* For accepted: direct user to Connect to schedule */}
         {r.status === 'accepted' && (
-          <SchedulePanel requestId={r.id} skill={r.skill_name} />
+          <div className="mt-4 pt-4 border-t border-line flex items-center gap-3">
+            <p className="text-xs text-ink/50 flex-1">💬 Use <strong>Connect</strong> to chat and schedule a session with this person.</p>
+          </div>
         )}
 
         {/* Review panel */}

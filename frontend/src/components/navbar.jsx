@@ -6,7 +6,7 @@ import { getSessionUser, clearSession, api } from '../api'
 const NAV_LINKS = [
   { to: '/dashboard', label: 'Dashboard' },
   { to: '/marketplace', label: 'Discover' },
-  { to: '/messages', label: 'Messages' },
+  { to: '/messages', label: 'Connect' },
   { to: '/sessions', label: 'Sessions' },
   { to: '/requests', label: 'Requests' },
   { to: '/progress', label: 'Progress' },
@@ -17,7 +17,7 @@ const NAV_LINKS = [
 const MOBILE_NAV_LINKS = [
   { to: '/dashboard', label: 'Dashboard', icon: <Home className="w-5 h-5" /> },
   { to: '/marketplace', label: 'Discover', icon: <Compass className="w-5 h-5" /> },
-  { to: '/messages', label: 'Messages', icon: <MessageCircle className="w-5 h-5" /> },
+  { to: '/messages', label: 'Connect', icon: <MessageCircle className="w-5 h-5" /> },
   { to: '/sessions', label: 'Sessions', icon: <Calendar className="w-5 h-5" /> },
   { to: '/requests', label: 'Requests', icon: <Inbox className="w-5 h-5" /> },
   { to: '/notifications', label: 'Notifications', icon: <Bell className="w-5 h-5" /> },
