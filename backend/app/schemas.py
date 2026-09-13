@@ -1,7 +1,7 @@
 import re
 import datetime as dt
-from typing import Optional, List, Union
-from pydantic import BaseModel, EmailStr, model_validator, ConfigDict
+from typing import Dict, Any, Optional, List, Union
+from pydantic import BaseModel, Field, EmailStr, Field, model_validator, ConfigDict
 
 class UserCreate(BaseModel):
     name: str
@@ -168,6 +168,7 @@ class ConnectionRequestOut(BaseModel):
 
 class MessageCreate(BaseModel):
     content: str
+    metadata: Optional[Dict[str, Any]] = Field(default_factory=dict)
 
 
 class MessageOut(BaseModel):
@@ -176,6 +177,7 @@ class MessageOut(BaseModel):
     content: str
     is_read: bool = False
     created_at: dt.datetime
+    metadata: Dict[str, Any] = Field(default_factory=dict, validation_alias="message_metadata", serialization_alias="metadata")
 
     class Config:
         from_attributes = True

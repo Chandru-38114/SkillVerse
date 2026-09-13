@@ -1,7 +1,7 @@
 import datetime as dt
 from .utils.timezone import utc_now
 from sqlalchemy import (
-    Column, Integer, String, Float, ForeignKey, DateTime, Date, Text, Boolean
+    Column, Integer, String, Float, ForeignKey, DateTime, Date, Text, Boolean, JSON, Index
 )
 from sqlalchemy.orm import relationship
 from .database import Base
@@ -137,6 +137,11 @@ class Message(Base):
     content = Column(String, nullable=False)
     is_read = Column(Boolean, default=False)
     created_at = Column(DateTime, default=utc_now)
+    message_metadata = Column("metadata", JSON, nullable=False, default=dict)
+
+    __table_args__ = (
+        Index("ix_messages_request_id_created_at", "request_id", "created_at"),
+    )
 
 class Review(Base):
     __tablename__ = "reviews"

@@ -220,7 +220,7 @@ def send_message(
     db: Session = Depends(get_db),
 ):
     _authorize(db, request_id, current_user.id)
-    msg = models.Message(request_id=request_id, sender_id=current_user.id, content=payload.content)
+    msg = models.Message(request_id=request_id, sender_id=current_user.id, content=payload.content, message_metadata=payload.metadata)
     db.add(msg)
     db.commit()
     db.refresh(msg)
@@ -266,15 +266,16 @@ def _fetch_history(request_id: int):
             "id": m.id,
             "sender_id": m.sender_id,
             "content": m.content,
-            "created_at": enforce_utc_iso(m.created_at)
+            "created_at": enforce_utc_iso(m.created_at),
+            "metadata": m.message_metadata
         } for m in messages]
     finally:
         db_hist.close()
 
-def _save_message_and_notify(request_id: int, user_id: int, user_name: str, content: str):
+def _save_message_and_notify(request_id: int, user_id: int, user_name: str, content: str, metadata: dict = None):
     db_msg = SessionLocal()
     try:
-        msg = models.Message(request_id=request_id, sender_id=user_id, content=content)
+        msg = models.Message(request_id=request_id, sender_id=user_id, content=content, message_metadata=metadata or {})
         db_msg.add(msg)
         db_msg.commit()
         db_msg.refresh(msg)
@@ -287,7 +288,8 @@ def _save_message_and_notify(request_id: int, user_id: int, user_name: str, cont
             "id": msg.id,
             "sender_id": msg.sender_id,
             "content": msg.content,
-            "created_at": enforce_utc_iso(msg.created_at)
+            "created_at": enforce_utc_iso(msg.created_at),
+            "metadata": msg.message_metadata
         }
     finally:
         db_msg.close()
@@ -309,10 +311,11 @@ async def chat_websocket(websocket: WebSocket, request_id: int, token: str = Que
         while True:
             data = await websocket.receive_json()
             content = (data.get("content") or "").strip()
-            if not content:
+            metadata = data.get("metadata", {})
+            if not content and not metadata:
                 continue
 
-            msg_payload = await run_in_threadpool(_save_message_and_notify, request_id, user.id, user.name, content)
+            msg_payload = await run_in_threadpool(_save_message_and_notify, request_id, user.id, user.name, content, metadata)
             msg_payload["type"] = "message"
             await chat_manager.broadcast(request_id, msg_payload)
     except WebSocketDisconnect:
