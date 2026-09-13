@@ -134,7 +134,7 @@ export default function Messages() {
       }
       if (socketRef.current === ws) socketRef.current = null
     }
-  }, [selectedRequestId, user])
+  }, [selectedRequestId])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'auto' })

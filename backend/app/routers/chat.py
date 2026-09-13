@@ -235,6 +235,24 @@ async def chat_websocket(websocket: WebSocket, request_id: int, token: str = Que
         db.close()
 
     await chat_manager.connect(request_id, websocket)
+    
+    # Send history immediately upon connection
+    db_hist = SessionLocal()
+    try:
+        messages = db_hist.query(models.Message).filter(models.Message.request_id == request_id).order_by(models.Message.created_at).all()
+        history_payload = {
+            "type": "history",
+            "messages": [{
+                "id": m.id,
+                "sender_id": m.sender_id,
+                "content": m.content,
+                "created_at": m.created_at.isoformat()
+            } for m in messages]
+        }
+        await websocket.send_json(history_payload)
+    finally:
+        db_hist.close()
+
     try:
         while True:
             data = await websocket.receive_json()
