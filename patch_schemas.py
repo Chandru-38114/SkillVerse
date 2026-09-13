@@ -1,50 +1,40 @@
 import re
 
-with open("backend/app/schemas.py", "r", encoding="utf-8") as f:
+with open('backend/app/schemas.py', 'r', encoding='utf-8') as f:
     content = f.read()
 
-# Make sure re is imported
-if "import re" not in content:
-    content = "import re\n" + content
-    
-# Replace UserCreate
-user_create_pattern = re.compile(r"class UserCreate\(BaseModel\):.*?return self", re.DOTALL)
-new_user_create = """class UserCreate(BaseModel):
-    name: str
-    email: EmailStr
-    mobile_number: str
-    college: str
-    dob: dt.date
-    gender: str
-    password: str
-    confirm_password: str
-    country: Optional[str] = ""
+# Update SessionCreate
+session_create = """class SessionCreate(BaseModel):
+    request_id:   int
+    session_date: Optional[str] = None
+    start_time:   Optional[str] = None
+    end_time:     Optional[str] = None
+    scheduled_start: dt.datetime
+    scheduled_end: dt.datetime
+    notes:        Optional[str] = None"""
+content = re.sub(r'class SessionCreate\(BaseModel\):.*?notes:\s*Optional\[str\] = None', session_create, content, flags=re.DOTALL)
 
-    @model_validator(mode='after')
-    def check_passwords_match(self):
-        if self.password != self.confirm_password:
-            raise ValueError('Passwords do not match')
-        pw = self.password
-        if len(pw) < 6 or not re.search(r'[A-Z]', pw) or not re.search(r'[a-z]', pw) or not re.search(r'[0-9]', pw) or not re.search(r'[^a-zA-Z0-9]', pw):
-            raise ValueError('Password must contain at least 6 characters, one uppercase letter, one lowercase letter, one number, and one special character.')
-        return self"""
-content = user_create_pattern.sub(new_user_create, content)
+# Update SessionOut
+session_out = """class SessionOut(BaseModel):
+    id:           int
+    request_id:   int
+    tutor_id:     int
+    tutor_name:   str
+    learner_id:   int
+    learner_name: str
+    skill:        str
+    session_date: Optional[str] = None
+    start_time:   Optional[str] = None
+    end_time:     Optional[str] = None
+    scheduled_start: Optional[dt.datetime] = None
+    scheduled_end: Optional[dt.datetime] = None
+    status:       str
+    notes:        Optional[str]
+    request:      Optional[ConnectionRequestOut] = None
+    created_at:   dt.datetime
+    updated_at:   dt.datetime"""
+content = re.sub(r'class SessionOut\(BaseModel\):.*?updated_at:\s*dt\.datetime', session_out, content, flags=re.DOTALL)
 
-# Replace ResetPassword
-reset_pw_pattern = re.compile(r"class ResetPassword\(BaseModel\):\n    email: EmailStr\n    otp: str\n    new_password: str", re.DOTALL)
-new_reset_pw = """from pydantic import field_validator
-class ResetPassword(BaseModel):
-    email: EmailStr
-    otp: str
-    new_password: str
-
-    @field_validator('new_password')
-    @classmethod
-    def validate_strength(cls, v: str) -> str:
-        if len(v) < 6 or not re.search(r'[A-Z]', v) or not re.search(r'[a-z]', v) or not re.search(r'[0-9]', v) or not re.search(r'[^a-zA-Z0-9]', v):
-            raise ValueError('Password must contain at least 6 characters, one uppercase letter, one lowercase letter, one number, and one special character.')
-        return v"""
-content = reset_pw_pattern.sub(new_reset_pw, content)
-
-with open("backend/app/schemas.py", "w", encoding="utf-8") as f:
+with open('backend/app/schemas.py', 'w', encoding='utf-8') as f:
     f.write(content)
+print("schemas.py updated.")

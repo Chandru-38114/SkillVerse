@@ -1,4 +1,5 @@
 import datetime as dt
+from .utils.timezone import utc_now
 from sqlalchemy import (
     Column, Integer, String, Float, ForeignKey, DateTime, Date, Text, Boolean
 )
@@ -23,7 +24,7 @@ class User(Base):
     points = Column(Integer, default=100)
     dob = Column(String, nullable=True)
     gender = Column(String, nullable=True)
-    created_at = Column(DateTime, default=dt.datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now)
 
     user_skills = relationship("UserSkill", back_populates="user", cascade="all, delete-orphan")
     sent_requests = relationship("ConnectionRequest", foreign_keys="ConnectionRequest.from_user_id", back_populates="from_user")
@@ -36,7 +37,7 @@ class EmailVerificationOTP(Base):
     hashed_otp = Column(String, nullable=False)
     expires_at = Column(DateTime, nullable=False)
     attempts = Column(Integer, default=0)
-    created_at = Column(DateTime, default=dt.datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now)
 
 class MobileVerificationOTP(Base):
     __tablename__ = "mobile_verification_otps"
@@ -45,7 +46,7 @@ class MobileVerificationOTP(Base):
     hashed_otp = Column(String, nullable=False)
     expires_at = Column(DateTime, nullable=False)
     attempts = Column(Integer, default=0)
-    created_at = Column(DateTime, default=dt.datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now)
 
 
 class PasswordResetOTP(Base):
@@ -57,7 +58,7 @@ class PasswordResetOTP(Base):
     hashed_otp = Column(String, nullable=False)
     expires_at = Column(DateTime, nullable=False)
     attempts = Column(Integer, default=0)
-    created_at = Column(DateTime, default=dt.datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now)
 
 
 class Skill(Base):
@@ -84,7 +85,7 @@ class UserSkill(Base):
     sessions_completed = Column(Integer, default=0)
     total_learning_minutes = Column(Integer, default=0)
     
-    updated_at = Column(DateTime, default=dt.datetime.utcnow, onupdate=dt.datetime.utcnow)
+    updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)
 
     user = relationship("User", back_populates="user_skills")
     skill = relationship("Skill")
@@ -98,7 +99,7 @@ class AssessmentAttempt(Base):
     skill_id = Column(Integer, ForeignKey("skills.id"), nullable=False)
     score = Column(Float, nullable=False)
     weak_topics = Column(Text, default="")  # comma-separated
-    created_at = Column(DateTime, default=dt.datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now)
 
 
 class ConnectionRequest(Base):
@@ -110,7 +111,7 @@ class ConnectionRequest(Base):
     skill_id = Column(Integer, ForeignKey("skills.id"), nullable=False)
     message = Column(String, default="")
     status = Column(String, default="pending")  # pending / accepted / declined / completed
-    created_at = Column(DateTime, default=dt.datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now)
 
     # ── Two-way learning context (added for rich requests) ────────────────────
     # What the learner (from_user) wants
@@ -135,7 +136,7 @@ class Message(Base):
     sender_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     content = Column(String, nullable=False)
     is_read = Column(Boolean, default=False)
-    created_at = Column(DateTime, default=dt.datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now)
 
 class Review(Base):
     __tablename__ = "reviews"
@@ -152,7 +153,7 @@ class Review(Base):
 
     rating = Column(Integer, nullable=False)
     comment = Column(Text, default="")
-    created_at = Column(DateTime, default=dt.datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now)
 
     reviewer = relationship(
         "User",
@@ -180,13 +181,15 @@ class Session(Base):
     session_date = Column(String, nullable=False)   # ISO date string: "YYYY-MM-DD"
     start_time   = Column(String, nullable=False)   # "HH:MM"
     end_time     = Column(String, nullable=False)   # "HH:MM"
+    scheduled_start = Column(DateTime(timezone=True), nullable=True)
+    scheduled_end = Column(DateTime(timezone=True), nullable=True)
 
     # scheduled → completed | cancelled
     status = Column(String, default="scheduled", nullable=False)
     notes  = Column(Text, nullable=True)            # optional notes / agenda
 
-    created_at = Column(DateTime, default=dt.datetime.utcnow)
-    updated_at = Column(DateTime, default=dt.datetime.utcnow, onupdate=dt.datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now)
+    updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)
 
     request = relationship("ConnectionRequest")
     tutor   = relationship("User", foreign_keys=[tutor_id])
@@ -200,7 +203,7 @@ class WhiteboardState(Base):
     id = Column(Integer, primary_key=True, index=True)
     session_id = Column(Integer, ForeignKey("sessions.id"), unique=True, nullable=False)
     state = Column(Text, nullable=False, default="[]")  # JSON string of whiteboard elements
-    updated_at = Column(DateTime, default=dt.datetime.utcnow, onupdate=dt.datetime.utcnow)
+    updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)
     
     session = relationship("Session")
 
@@ -211,7 +214,7 @@ class CompilerState(Base):
     session_id = Column(Integer, ForeignKey("sessions.id"), unique=True, nullable=False)
     code = Column(Text, nullable=False, default='print("Hello, SkillVerse!")')
     version = Column(Integer, default=0, nullable=False)
-    updated_at = Column(DateTime, default=dt.datetime.utcnow, onupdate=dt.datetime.utcnow)
+    updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)
     
     session = relationship("Session")
 
@@ -232,7 +235,7 @@ class LearningMaterial(Base):
     file_type = Column(String, nullable=False)
     file_size = Column(Integer, nullable=False)
     
-    created_at = Column(DateTime, default=dt.datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now)
     
     session = relationship("Session")
     uploader = relationship("User", foreign_keys=[uploaded_by])
@@ -256,8 +259,8 @@ class SessionProgress(Base):
     progress_percentage_before = Column(Integer, default=0)
     progress_percentage_after = Column(Integer, default=0)
     
-    created_at = Column(DateTime, default=dt.datetime.utcnow)
-    updated_at = Column(DateTime, default=dt.datetime.utcnow, onupdate=dt.datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now)
+    updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)
     
     session = relationship("Session")
     user = relationship("User", foreign_keys=[user_id])
@@ -273,7 +276,7 @@ class Certificate(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     skill_id = Column(Integer, ForeignKey("skills.id"), nullable=False)
     
-    issue_date = Column(DateTime, default=dt.datetime.utcnow)
+    issue_date = Column(DateTime, default=utc_now)
     level = Column(String, nullable=False)
     badge = Column(String, nullable=False)
     sessions_completed = Column(Integer, default=0)
@@ -291,7 +294,7 @@ class Notification(Base):
     title = Column(String, nullable=False)
     message = Column(String, nullable=False)
     is_read = Column(Boolean, default=False)
-    created_at = Column(DateTime, default=dt.datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now)
     related_id = Column(Integer, nullable=True)
     related_type = Column(String, nullable=True)
 

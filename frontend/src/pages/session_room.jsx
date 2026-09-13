@@ -31,8 +31,7 @@ function SessionRoomComponent() {
 
   useEffect(() => {
     if (!session) return;
-    const endStr = `${session.session_date}T${session.end_time}:00`;
-    const endObj = new Date(endStr);
+    const endObj = new Date(session.scheduled_end);
     
     const updateTimer = () => {
       const now = new Date();
@@ -177,7 +176,7 @@ function SessionRoomComponent() {
               {peerName && <span>with <strong className="text-ink/70">{peerName}</strong></span>}
             </div>
             <span className="text-ink/20">·</span>
-            <span>{formatDate(session.session_date)}, {session.start_time}</span>
+            <span>{formatDate(session.scheduled_start || session.session_date)}, {session.start_time}</span>
           </div>
           {/* Right side: Timer & Mobile Info toggle */}
           <div className="flex items-center gap-2">
@@ -209,7 +208,7 @@ function SessionRoomComponent() {
             </div>
             <div>
               <span className="text-[10px] uppercase tracking-wider text-ink/40 font-bold block mb-0.5">Date</span>
-              <span className="font-semibold text-ink">{formatDate(session.session_date)}</span>
+              <span className="font-semibold text-ink">{formatDate(session.scheduled_start || session.session_date)}</span>
             </div>
             <div>
               <span className="text-[10px] uppercase tracking-wider text-ink/40 font-bold block mb-0.5">Time</span>
@@ -330,14 +329,7 @@ function SessionRoomComponent() {
   )
 }
 
-function formatDate(isoDate) {
-  try {
-    const [y, m, d] = isoDate.split('-').map(Number)
-    return new Date(y, m - 1, d).toLocaleDateString('en-US', {
-      weekday: 'short', month: 'short', day: 'numeric',
-    })
-  } catch { return isoDate }
-}
+
 
 import ErrorBoundary from '../components/ErrorBoundary';
 export default function SessionRoom() { return <ErrorBoundary><SessionRoomComponent /></ErrorBoundary>; }

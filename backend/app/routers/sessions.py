@@ -50,6 +50,8 @@ def _to_out(s: models.Session) -> schemas.SessionOut:
         session_date=s.session_date,
         start_time=s.start_time,
         end_time=s.end_time,
+        scheduled_start=s.scheduled_start,
+        scheduled_end=s.scheduled_end,
         status=s.status,
         notes=s.notes,
         request=_req_to_out(s.request) if s.request else None,
@@ -59,21 +61,15 @@ def _to_out(s: models.Session) -> schemas.SessionOut:
 
 
 
-def _validate_times(session_date: str, start_time: str, end_time: str):
+def _validate_times(start: dt.datetime, end: dt.datetime):
     """Raise 422 for obviously invalid date/time combinations."""
-    try:
-        date_obj  = dt.date.fromisoformat(session_date)
-        start_obj = dt.time.fromisoformat(start_time)
-        end_obj   = dt.time.fromisoformat(end_time)
-    except ValueError as exc:
-        raise HTTPException(status_code=422, detail=f"Invalid date or time format: {exc}")
+    if start >= end:
+        raise HTTPException(status_code=422, detail="Start time must be before end time.")
+    from ..utils.timezone import utc_now
+    # We allow scheduling slightly in the past (e.g. starting a session right now)
+    if start < utc_now() - dt.timedelta(hours=1):
+        raise HTTPException(status_code=422, detail="Session cannot be scheduled too far in the past.")
 
-    if end_obj <= start_obj:
-        raise HTTPException(status_code=422, detail="end_time must be after start_time.")
-
-    # Prevent scheduling in the past (by date — lenient about same-day)
-    if date_obj < dt.date.today():
-        raise HTTPException(status_code=422, detail="session_date cannot be in the past.")
 
 
 def _get_my_session(session_id: int, current_user: models.User, db: DBSession) -> models.Session:
@@ -84,9 +80,9 @@ def _get_my_session(session_id: int, current_user: models.User, db: DBSession) -
     
     # Enforce expiration logic on the backend
     try:
-        end_time_str = f"{s.session_date}T{s.end_time}:00"
-        end_dt = dt.datetime.fromisoformat(end_time_str)
-        if dt.datetime.now() >= end_dt:
+        from ..utils.timezone import utc_now
+        end_dt = s.scheduled_end
+        if end_dt and utc_now() >= end_dt:
             if s.status not in ('completed', 'cancelled'):
                 s.status = 'completed'
                 db.commit()
@@ -148,17 +144,23 @@ def create_session(
             detail="An active session is already scheduled for this request. Cancel it first to reschedule.",
         )
 
-    _validate_times(payload.session_date, payload.start_time, payload.end_time)
-
-    # tutor = the person who received the request (to_user); learner = sender (from_user)
+    _validate_times(payload.scheduled_start, payload.scheduled_end)
+    
+    # Store legacy strings based on scheduled_start for backward compatibility until dropped
+    from ..utils.timezone import IST
+    ist_start = payload.scheduled_start.astimezone(IST)
+    ist_end = payload.scheduled_end.astimezone(IST)
+    
     session = models.Session(
         request_id=payload.request_id,
         tutor_id=req.to_user_id,
         learner_id=req.from_user_id,
         skill=req.skill.name,
-        session_date=payload.session_date,
-        start_time=payload.start_time,
-        end_time=payload.end_time,
+        session_date=ist_start.strftime("%Y-%m-%d"),
+        start_time=ist_start.strftime("%H:%M"),
+        end_time=ist_end.strftime("%H:%M"),
+        scheduled_start=payload.scheduled_start,
+        scheduled_end=payload.scheduled_end,
         notes=payload.notes,
     )
     db.add(session)
@@ -180,11 +182,11 @@ def upcoming_sessions(
         db.query(models.Session)
         .filter(
             models.Session.status == "scheduled",
-            models.Session.session_date >= today,
+            models.Session.scheduled_start >= utc_now() - dt.timedelta(hours=24),
             (models.Session.tutor_id == current_user.id)
             | (models.Session.learner_id == current_user.id),
         )
-        .order_by(models.Session.session_date, models.Session.start_time)
+        .order_by(models.Session.scheduled_start)
         .all()
     )
     return [_to_out(s) for s in rows]
@@ -202,7 +204,7 @@ def my_sessions(
             (models.Session.tutor_id == current_user.id)
             | (models.Session.learner_id == current_user.id)
         )
-        .order_by(models.Session.session_date.desc(), models.Session.start_time.desc())
+        .order_by(models.Session.scheduled_start.desc())
         .all()
     )
     return [_to_out(s) for s in rows]
@@ -233,15 +235,16 @@ def update_session(
             detail=f"Cannot update a session with status '{s.status}'.",
         )
 
-    new_date  = payload.session_date or s.session_date
-    new_start = payload.start_time   or s.start_time
-    new_end   = payload.end_time     or s.end_time
-
-    _validate_times(new_date, new_start, new_end)
-
-    s.session_date = new_date
-    s.start_time   = new_start
-    s.end_time     = new_end
+    from ..utils.timezone import IST
+    s.scheduled_start = payload.scheduled_start or s.scheduled_start
+    s.scheduled_end = payload.scheduled_end or s.scheduled_end
+    _validate_times(s.scheduled_start, s.scheduled_end)
+    
+    ist_start = s.scheduled_start.astimezone(IST)
+    ist_end = s.scheduled_end.astimezone(IST)
+    s.session_date = ist_start.strftime("%Y-%m-%d")
+    s.start_time = ist_start.strftime("%H:%M")
+    s.end_time = ist_end.strftime("%H:%M")
     if payload.notes is not None:
         s.notes = payload.notes
 
@@ -295,9 +298,9 @@ async def webrtc_signaling(
             return
 
         import asyncio
-        end_dt = dt.datetime.strptime(f"{s.session_date} {s.end_time}", "%Y-%m-%d %H:%M")
-        
-        if dt.datetime.now() >= end_dt:
+        from ..utils.timezone import utc_now
+        end_dt = s.scheduled_end
+        if end_dt and utc_now() >= end_dt:
             s.status = "completed"
             db.commit()
             await websocket.close(code=1008, reason="Session Ended")
@@ -316,7 +319,7 @@ async def webrtc_signaling(
 
     async def enforce_end():
         while True:
-            now = dt.datetime.now()
+            now = utc_now()
             if now >= end_dt:
                 db_end = SessionLocal()
                 try:

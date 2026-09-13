@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
 import datetime as dt
+from ..utils.timezone import utc_now
 
 from .. import models, schemas, auth
 from ..database import get_db
@@ -165,8 +166,8 @@ def get_session_progress(session_id: int, db: Session = Depends(get_db), current
             duration_minutes=0,
             progress_percentage_before=0,
             progress_percentage_after=0,
-            created_at=dt.datetime.utcnow(),
-            updated_at=dt.datetime.utcnow()
+            created_at=utc_now(),
+            updated_at=utc_now()
         )
         
     return schemas.SessionProgressOut(

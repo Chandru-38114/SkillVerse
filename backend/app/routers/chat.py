@@ -246,7 +246,7 @@ async def chat_websocket(websocket: WebSocket, request_id: int, token: str = Que
                 "id": m.id,
                 "sender_id": m.sender_id,
                 "content": m.content,
-                "created_at": m.created_at.isoformat()
+                "created_at": enforce_utc_iso(m.created_at)
             } for m in messages]
         }
         await websocket.send_json(history_payload)
@@ -272,7 +272,7 @@ async def chat_websocket(websocket: WebSocket, request_id: int, token: str = Que
                 msg_id = msg.id
                 msg_sender = msg.sender_id
                 msg_content = msg.content
-                msg_created = msg.created_at.isoformat()
+                msg_created = enforce_utc_iso(msg.created_at)
             finally:
                 db_msg.close()
 

@@ -214,9 +214,8 @@ export default function Messages() {
     try {
       await api.createSession({
         request_id: selectedRequestId,
-        session_date: scheduleData.date,
-        start_time: scheduleData.startTime,
-        end_time: scheduleData.endTime,
+        scheduled_start: createIstToUtcDate(scheduleData.date, scheduleData.startTime).toISOString(),
+        scheduled_end: createIstToUtcDate(scheduleData.date, scheduleData.endTime).toISOString(),
         notes: scheduleData.notes
       })
       const text = `📅 I've scheduled a session for ${scheduleData.date} at ${scheduleData.startTime}!`
@@ -353,7 +352,7 @@ export default function Messages() {
                   {activeConversation?.session_id ? (
                     <div className="flex items-center gap-2">
                       <span className="hidden sm:inline-block px-2.5 py-1 bg-moss/10 text-moss text-[10px] font-bold uppercase tracking-wider rounded-md">
-                        Session: {formatTime(activeConversation.session_date)} {activeConversation.session_time}
+                        Session: {activeConversation.session_date ? (activeConversation.scheduled_start ? formatDateTime(activeConversation.scheduled_start) : `${activeConversation.session_date} ${activeConversation.session_time}`) : ""}
                       </span>
                       <button 
                         onClick={() => navigate('/sessions')}
@@ -404,7 +403,7 @@ export default function Messages() {
                             <MessageRenderer content={m.content} />
                             {m.created_at && (
                               <p className={`text-[9px] mt-1 text-right ${isMe ? 'text-white/60' : 'text-ink/35'}`}>
-                                {new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                {formatTime(m.created_at)}
                               </p>
                             )}
                           </div>
@@ -550,10 +549,4 @@ function ConnectionBadge({ state }) {
   )
 }
 
-function formatTime(dateStr) {
-  const d = new Date(dateStr)
-  if (d.toDateString() === new Date().toDateString()) {
-    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-  }
-  return d.toLocaleDateString([], { month: 'short', day: 'numeric' })
-}
+

@@ -242,7 +242,7 @@ export default function Chat({ requestId, embedded = false }) {
                     <MessageRenderer content={m.content} />
                     {m.created_at && (
                       <p className={`text-[9px] mt-1 text-right ${isMe ? 'text-white/60' : 'text-ink/35'}`}>
-                        {new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        {formatTime(m.created_at)}
                       </p>
                     )}
                   </div>

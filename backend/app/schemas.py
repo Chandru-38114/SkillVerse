@@ -242,9 +242,11 @@ class UserReviewSummary(BaseModel):
 
 class SessionCreate(BaseModel):
     request_id:   int
-    session_date: str           # "YYYY-MM-DD"
-    start_time:   str           # "HH:MM"
-    end_time:     str           # "HH:MM"
+    session_date: Optional[str] = None
+    start_time:   Optional[str] = None
+    end_time:     Optional[str] = None
+    scheduled_start: dt.datetime
+    scheduled_end: dt.datetime
     notes:        Optional[str] = None
 
 
@@ -263,9 +265,11 @@ class SessionOut(BaseModel):
     learner_id:   int
     learner_name: str
     skill:        str
-    session_date: str
-    start_time:   str
-    end_time:     str
+    session_date: Optional[str] = None
+    start_time:   Optional[str] = None
+    end_time:     Optional[str] = None
+    scheduled_start: Optional[dt.datetime] = None
+    scheduled_end: Optional[dt.datetime] = None
     status:       str
     notes:        Optional[str]
     request:      Optional[ConnectionRequestOut] = None
