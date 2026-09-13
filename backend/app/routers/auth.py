@@ -187,6 +187,11 @@ def google_auth(payload: schemas.GoogleAuth, db: Session = Depends(get_db)):
     except ValueError as e:
         print(f"[GOOGLE AUTH] Token verification failed: {e}")
         raise HTTPException(status_code=401, detail=f"Invalid Google token: {str(e)}")
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        print(f"[GOOGLE AUTH] Unexpected error: {e}")
+        raise HTTPException(status_code=500, detail=f"Unexpected error during Google authentication: {str(e)}")
 
 
 @router.post("/forgot-password")
