@@ -15,12 +15,15 @@ async function request(path, { method = "GET", body, auth = true } = {}) {
   
   let res;
   try {
+    console.log(`[API] Request started: ${method} ${BASE_URL}${path}`);
     res = await fetch(`${BASE_URL}${path}`, {
       method,
       headers,
       body: body ? JSON.stringify(body) : undefined,
     });
+    console.log(`[API] Request completed: ${method} ${path} - Status: ${res.status}`);
   } catch (error) {
+    console.error(`[API] Request failed/aborted: ${method} ${path}`, error.name, error.message);
     // Network error (CORS, DNS, connection refused)
     if (error.name === 'TypeError' && error.message === 'Failed to fetch') {
       throw new Error("Network connection failed. Please check your internet or try again later.");

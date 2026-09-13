@@ -14,6 +14,7 @@ export default function Login() {
 
   async function handleSubmit(e) {
     e.preventDefault()
+    console.log('[LOGIN] handleSubmit triggered, preventing default')
     setError('')
     setLoading(true)
     try {
@@ -23,16 +24,22 @@ export default function Login() {
         mobile_number: isEmail ? null : identifier,
         password
       }
+      console.log('[LOGIN] Payload prepared, calling api.login...')
       const { access_token, user } = await api.login(payload)
+      console.log('[LOGIN] api.login succeeded, saving session...')
       saveSession(access_token, user)
       if (!user.is_email_verified) {
+        console.log('[LOGIN] Navigating to /verify-email')
         navigate('/verify-email')
       } else {
+        console.log('[LOGIN] Navigating to /dashboard')
         navigate('/dashboard')
       }
     } catch (err) {
-      setError(err.message)
+      console.error('[LOGIN] Error caught in handleSubmit:', err)
+      setError(err.message || 'Login failed')
     } finally {
+      console.log('[LOGIN] Finally block reached, setting loading false')
       setLoading(false)
     }
   }
