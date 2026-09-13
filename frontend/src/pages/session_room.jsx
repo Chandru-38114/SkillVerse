@@ -17,7 +17,7 @@ const TABS = [
   { id: 'Chat',       label: 'Chat',   Icon: MessageSquare },
 ]
 
-export default function SessionRoom() {
+function SessionRoomComponent() {
   const { sessionId } = useParams()
   const user = getSessionUser()
   const [session, setSession] = useState(null)
@@ -51,6 +51,18 @@ export default function SessionRoom() {
         <div className="text-center">
           <div className="w-10 h-10 border-4 border-brand border-t-transparent rounded-full animate-spin mx-auto mb-4" />
           <p className="text-ink/50 text-sm">Loading session...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!user) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-paper p-4">
+        <div className="max-w-md w-full text-center p-8 card">
+          <h1 className="text-2xl font-display mb-2">Authentication Required</h1>
+          <p className="text-ink/60 mb-8 text-sm">Please log in to join this session.</p>
+          <Link to="/login" className="btn-primary">Login</Link>
         </div>
       </div>
     )
@@ -319,3 +331,6 @@ function formatDate(isoDate) {
     })
   } catch { return isoDate }
 }
+
+import ErrorBoundary from '../components/ErrorBoundary';
+export default function SessionRoom() { return <ErrorBoundary><SessionRoomComponent /></ErrorBoundary>; }

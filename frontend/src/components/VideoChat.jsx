@@ -201,23 +201,23 @@ export default function VideoChat({ sessionId, children, onLeave }) {
 
   if (errorMsg) {
     return (
-      <div className="flex-1 flex flex-col">
-        <div className="flex items-center justify-center flex-1 bg-ink/5 border-b md:border-b-0 md:border-r border-line">
-          <div className="text-center p-6 max-w-sm">
-            <p className="text-4xl mb-3">🎥</p>
-            <p className="font-semibold text-ink mb-1 text-sm">Camera Unavailable</p>
-            <p className="text-ink/60 text-sm mb-4">{errorMsg}</p>
+      <div className="flex-1 flex flex-col overflow-hidden min-h-0">
+        <div className="flex-1 flex flex-col md:flex-row overflow-hidden min-h-0">
+          {/* Left strip showing error */}
+          <div className="h-40 sm:h-48 md:h-auto md:w-[240px] lg:w-[260px] xl:w-[280px] shrink-0 bg-[#1a1a2e] flex flex-col items-center justify-center border-b md:border-b-0 md:border-r border-ink/20 z-20 p-4 text-center">
+            <p className="text-4xl mb-3">⚠️</p>
+            <p className="font-semibold text-white mb-1 text-sm">Media Unavailable</p>
+            <p className="text-white/60 text-xs mb-4">{errorMsg}</p>
             <button
               onClick={() => (onLeave ? onLeave() : navigate('/sessions'))}
-              className="px-4 py-2 rounded-lg font-semibold bg-red-600 text-white hover:bg-red-700 text-sm"
+              className="px-4 py-2 rounded-lg font-semibold bg-red-600 text-white hover:bg-red-700 text-xs"
             >
               Leave Session
             </button>
           </div>
+          {/* Workspace still renders */}
+          {children}
         </div>
-        {children && (
-          <div className="flex-1 flex overflow-hidden min-h-0">{children}</div>
-        )}
       </div>
     )
   }
