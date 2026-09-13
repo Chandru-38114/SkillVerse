@@ -81,6 +81,21 @@ def _get_my_session(session_id: int, current_user: models.User, db: DBSession) -
     s = db.query(models.Session).filter(models.Session.id == session_id).first()
     if not s or current_user.id not in (s.tutor_id, s.learner_id):
         raise HTTPException(status_code=404, detail="Session not found.")
+    
+    # Enforce expiration logic on the backend
+    try:
+        end_time_str = f"{s.session_date}T{s.end_time}:00"
+        end_dt = dt.datetime.fromisoformat(end_time_str)
+        if dt.datetime.now() >= end_dt:
+            if s.status not in ('completed', 'cancelled'):
+                s.status = 'completed'
+                db.commit()
+            raise HTTPException(status_code=410, detail="This session has expired.")
+    except Exception as e:
+        if isinstance(e, HTTPException):
+            raise e
+        pass # ignore parsing errors from bad data
+        
     return s
 
 
