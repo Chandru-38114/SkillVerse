@@ -285,7 +285,6 @@ async def webrtc_signaling(
             await websocket.close(code=1008)
             return
         
-        # Verify session and participant
         s = db.query(models.Session).filter(models.Session.id == session_id).first()
         if not s or user.id not in (s.tutor_id, s.learner_id):
             await websocket.close(code=1008)
@@ -303,46 +302,51 @@ async def webrtc_signaling(
             db.commit()
             await websocket.close(code=1008, reason="Session Ended")
             return
-
-        # Connect user
-        await webrtc_manager.connect(session_id, user.id, websocket)
-
-        # Notify peer that user joined
-        await webrtc_manager.send_to_peer(session_id, user.id, {
-            "type": "peer_joined",
-            "user_id": user.id
-        })
-
-        async def enforce_end():
-            while True:
-                now = dt.datetime.now()
-                if now >= end_dt:
-                    s.status = "completed"
-                    db.commit()
-                    try:
-                        await websocket.close(code=1008, reason="Session Ended")
-                    except Exception:
-                        pass
-                    break
-                await asyncio.sleep(min(max((end_dt - now).total_seconds(), 0.1), 10))
-
-        enforcer = asyncio.create_task(enforce_end())
-
-        try:
-            while True:
-                data = await websocket.receive_json()
-                # For WebRTC, just relay to the other participant
-                await webrtc_manager.send_to_peer(session_id, user.id, data)
-        except WebSocketDisconnect:
-            pass
-        finally:
-            enforcer.cancel()
-            webrtc_manager.disconnect(session_id, user.id)
-            # Try to notify peer if still possible
-            asyncio.create_task(webrtc_manager.send_to_peer(session_id, user.id, {
-                "type": "peer_left",
-                "user_id": user.id
-            }))
-
     finally:
         db.close()
+
+    # Connect user
+    await webrtc_manager.connect(session_id, user.id, websocket)
+
+    # Notify peer that user joined
+    await webrtc_manager.send_to_peer(session_id, user.id, {
+        "type": "peer_joined",
+        "user_id": user.id
+    })
+
+    async def enforce_end():
+        while True:
+            now = dt.datetime.now()
+            if now >= end_dt:
+                db_end = SessionLocal()
+                try:
+                    s_end = db_end.query(models.Session).filter(models.Session.id == session_id).first()
+                    if s_end and s_end.status != "completed":
+                        s_end.status = "completed"
+                        db_end.commit()
+                finally:
+                    db_end.close()
+                try:
+                    await websocket.close(code=1008, reason="Session Ended")
+                except Exception:
+                    pass
+                break
+            await asyncio.sleep(min(max((end_dt - now).total_seconds(), 0.1), 10))
+
+    enforcer = asyncio.create_task(enforce_end())
+
+    try:
+        while True:
+            data = await websocket.receive_json()
+            # For WebRTC, just relay to the other participant
+            await webrtc_manager.send_to_peer(session_id, user.id, data)
+    except WebSocketDisconnect:
+        pass
+    finally:
+        enforcer.cancel()
+        webrtc_manager.disconnect(session_id, user.id)
+        # Try to notify peer if still possible
+        asyncio.create_task(webrtc_manager.send_to_peer(session_id, user.id, {
+            "type": "peer_left",
+            "user_id": user.id
+        }))
