@@ -1,7 +1,7 @@
  import React, { useEffect, useRef, useState, useCallback } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { api, chatSocketUrl, getSessionUser, getAvatarUrl } from '../api'
-import { Hand, MessageCircle } from 'lucide-react'
+import { Hand, MessageCircle, ArrowLeft, Paperclip, Calendar, Image as ImageIcon, File as FileIcon } from 'lucide-react'
 
 const RECONNECT_DELAY_MS = 2000
 const MAX_RECONNECT_DELAY_MS = 10000
