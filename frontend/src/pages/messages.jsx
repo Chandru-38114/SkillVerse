@@ -1,11 +1,13 @@
- import React, { useEffect, useRef, useState, useCallback } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { api, chatSocketUrl, getSessionUser, getAvatarUrl } from '../api'
-import { Hand, MessageCircle, ArrowLeft, Paperclip, Calendar, Image as ImageIcon, File as FileIcon } from 'lucide-react'
+import { Hand, MessageCircle, ArrowLeft, Paperclip, Calendar, Image as ImageIcon, File as FileIcon, Smile, Trash2 } from 'lucide-react'
+import BackButton from '../components/BackButton'
 
 const RECONNECT_DELAY_MS = 2000
 const MAX_RECONNECT_DELAY_MS = 10000
-const BACKEND_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
+
+const COMMON_EMOJIS = ["😀","😂","🥰","😎","🤔","👍","❤️","🎉","🔥","👏","🚀","✨","🙌","💡","👀","🙏","😅","😊","😭","🥺"]
 
 export default function Messages() {
   const navigate = useNavigate()
@@ -22,20 +24,25 @@ export default function Messages() {
   const [draft, setDraft] = useState('')
   const [connectionState, setConnectionState] = useState('offline')
 
+  // Chat UI states
+  const [uploadingFile, setUploadingFile] = useState(null)
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false)
+  const [scheduleOpen, setScheduleOpen] = useState(false)
+  const [scheduleData, setScheduleData] = useState({ date: '', startTime: '', endTime: '', notes: '' })
+  const [scheduling, setScheduling] = useState(false)
+  const [canceling, setCanceling] = useState(false)
+
   const bottomRef = useRef(null)
   const socketRef = useRef(null)
   const reconnectTimerRef = useRef(null)
   const reconnectDelayRef = useRef(RECONNECT_DELAY_MS)
   const mountedRef = useRef(true)
   const inputRef = useRef(null)
-
-  // Polling interval reference for inbox updates
   const inboxTimerRef = useRef(null)
 
   useEffect(() => {
     mountedRef.current = true
     loadInbox()
-    // Poll inbox every 10 seconds to keep unread counts updated
     inboxTimerRef.current = setInterval(() => {
       if (mountedRef.current) loadInbox(false)
     }, 10000)
@@ -47,47 +54,6 @@ export default function Messages() {
       socketRef.current?.close()
     }
   }, [])
-
-  
-  // Scheduling logic
-  const [scheduleOpen, setScheduleOpen] = useState(false)
-  const [scheduleData, setScheduleData] = useState({ date: '', startTime: '', endTime: '', notes: '' })
-  const [scheduling, setScheduling] = useState(false)
-
-  const handleSchedule = async (e) => {
-    e.preventDefault()
-    if (!selectedRequestId) return
-    setScheduling(true)
-    try {
-      await api.createSession({
-        request_id: selectedRequestId,
-        session_date: scheduleData.date,
-        start_time: scheduleData.startTime,
-        end_time: scheduleData.endTime,
-        notes: scheduleData.notes
-      })
-      // Send a system message via user indicating session scheduled
-      const text = `I've scheduled a session for ${scheduleData.date} at ${scheduleData.startTime}!`
-      const ws = socketRef.current
-      if (ws && ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({ content: text }))
-      } else {
-        await api.sendMessage(selectedRequestId, text)
-      }
-      setScheduleOpen(false)
-      setScheduleData({ date: '', startTime: '', endTime: '', notes: '' })
-      loadInbox(false)
-    } catch (err) {
-      setError(err.message)
-    } finally {
-      setScheduling(false)
-    }
-  }
-
-  const handleBack = () => {
-    setSelectedRequestId(null)
-    // Optional: reload inbox if needed
-  }
 
   const loadInbox = async (showLoading = true) => {
     if (showLoading) setLoadingInbox(true)
@@ -102,107 +68,103 @@ export default function Messages() {
     }
   }
 
-  // Effect when a conversation is selected
+  // Socket logic
   useEffect(() => {
     if (!selectedRequestId) return
-    
-    // Clean up previous socket
     clearTimeout(reconnectTimerRef.current)
     if (socketRef.current) {
       socketRef.current.close()
       socketRef.current = null
     }
 
-    // Mark as read immediately
-    api.markChatRead(selectedRequestId).then(() => {
-      loadInbox(false)
-    }).catch(console.error)
-
+    let requestId = selectedRequestId
     setLoadingMessages(true)
-    api.listMessages(selectedRequestId)
-      .then((msgs) => {
+    setMessages([])
+    setConnectionState('connecting')
+
+    const connectWs = (reqId) => {
+      const token = localStorage.getItem('token')
+      const ws = new WebSocket(`${chatSocketUrl}/${reqId}?token=${token}`)
+      socketRef.current = ws
+
+      ws.onopen = () => {
         if (!mountedRef.current) return
-        setMessages(msgs)
-        connectWs(selectedRequestId)
-      })
-      .catch((err) => {
-        if (mountedRef.current) setError(err.message)
-      })
-      .finally(() => {
-        if (mountedRef.current) setLoadingMessages(false)
-      })
-      
-  }, [selectedRequestId])
+        setConnectionState('live')
+        reconnectDelayRef.current = RECONNECT_DELAY_MS
+        setError('')
+      }
 
-  const connectWs = useCallback((requestId) => {
-    const ws = new WebSocket(chatSocketUrl(requestId))
-    socketRef.current = ws
+      ws.onmessage = (event) => {
+        if (!mountedRef.current) return
+        const data = JSON.parse(event.data)
+        if (data.type === 'history') {
+          setMessages(data.messages)
+          setLoadingMessages(false)
+        } else if (data.type === 'message') {
+          setMessages(prev => [...prev, data.message])
+          api.markMessagesRead(reqId).then(() => loadInbox(false)).catch(console.error)
+        }
+      }
 
-    ws.onopen = () => {
-      if (!mountedRef.current) return
-      setConnectionState('live')
-      setError('')
-      reconnectDelayRef.current = RECONNECT_DELAY_MS
+      ws.onclose = (event) => {
+        if (!mountedRef.current) return
+        socketRef.current = null
+        if (event.code === 4401 || event.code === 4403) {
+          setConnectionState('offline')
+          setError(event.code === 4401 ? 'Session expired.' : "No access.")
+          return
+        }
+        if (selectedRequestId === reqId) {
+          setConnectionState('reconnecting')
+          reconnectTimerRef.current = setTimeout(() => {
+            reconnectDelayRef.current = Math.min(reconnectDelayRef.current * 1.5, MAX_RECONNECT_DELAY_MS)
+            connectWs(reqId)
+          }, reconnectDelayRef.current)
+        }
+      }
+
+      ws.onerror = () => { ws.close() }
     }
 
-    ws.onmessage = (event) => {
-      if (!mountedRef.current) return
-      const incoming = JSON.parse(event.data)
-      setMessages((prev) => {
-        if (prev.some((m) => m.id === incoming.id)) return prev
-        return [...prev, incoming]
-      })
-      
-      // If we receive a message from them, mark read immediately
-      if (Number(incoming.sender_id) !== Number(user?.id)) {
-        api.markChatRead(requestId).then(() => loadInbox(false)).catch(console.error)
-      } else {
-        loadInbox(false)
+    connectWs(requestId)
+    api.markMessagesRead(requestId).then(() => loadInbox(false)).catch(console.error)
+
+    return () => {
+      clearTimeout(reconnectTimerRef.current)
+      if (socketRef.current) {
+        socketRef.current.close()
+        socketRef.current = null
       }
     }
-
-    ws.onclose = (event) => {
-      if (!mountedRef.current) return
-      socketRef.current = null
-      if (event.code === 4401 || event.code === 4403) {
-        setConnectionState('offline')
-        setError(event.code === 4401 ? 'Session expired.' : "No access.")
-        return
-      }
-      if (selectedRequestId === requestId) {
-        setConnectionState('reconnecting')
-        reconnectTimerRef.current = setTimeout(() => {
-          reconnectDelayRef.current = Math.min(reconnectDelayRef.current * 1.5, MAX_RECONNECT_DELAY_MS)
-          connectWs(requestId)
-        }, reconnectDelayRef.current)
-      }
-    }
-
-    ws.onerror = () => { ws.close() }
   }, [selectedRequestId, user])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'auto' })
   }, [messages])
 
-  
-  const [uploadingFile, setUploadingFile] = useState(null)
+  const handleSelectConversation = (id) => {
+    setSelectedRequestId(id)
+    setShowEmojiPicker(false)
+    setScheduleOpen(false)
+  }
 
+  const handleBackToList = () => {
+    setSelectedRequestId(null)
+  }
+
+  // File Upload
   const handleFileUpload = async (e) => {
     const file = e.target.files?.[0]
     if (!file || !selectedRequestId) return
     
-    // Check size limit (5MB)
     if (file.size > 5 * 1024 * 1024) {
-      setError("File is too large (max 5MB)")
+      alert("File is too large (max 5MB)")
       return
     }
 
     setUploadingFile(file.name)
-    setError('')
     try {
       const res = await api.uploadChatAttachment(selectedRequestId, file)
-      // Automatically send the returned markdown string as a message
       const ws = socketRef.current
       if (ws && ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({ content: res.markdown }))
@@ -212,266 +174,334 @@ export default function Messages() {
         loadInbox(false)
       }
     } catch (err) {
-      setError(err.message)
+      alert(err.message || "Failed to upload file")
     } finally {
       setUploadingFile(null)
-      e.target.value = '' // reset input
+      e.target.value = ''
     }
   }
 
-  async function handleSend(e) {
-
+  // Text send
+  const handleSend = async (e) => {
     e.preventDefault()
-    const content = draft.trim()
-    if (!content || !selectedRequestId) return
-    setDraft('')
-    inputRef.current?.focus()
+    if (!draft.trim() || !selectedRequestId) return
 
+    const content = draft.trim()
+    setDraft('')
+    setShowEmojiPicker(false)
     const ws = socketRef.current
     if (ws && ws.readyState === WebSocket.OPEN) {
       ws.send(JSON.stringify({ content }))
-      return
-    }
-
-    try {
-      const msg = await api.sendMessage(selectedRequestId, content)
-      setMessages((prev) => [...prev, msg])
-      loadInbox(false)
-    } catch (err) {
-      setError(err.message)
+    } else {
+      try {
+        const msg = await api.sendMessage(selectedRequestId, content)
+        setMessages(prev => [...prev, msg])
+        loadInbox(false)
+      } catch (err) {
+        setError(err.message)
+      }
     }
   }
 
-  function handleKeyDown(e) {
+  const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
       handleSend(e)
     }
   }
 
+  // Scheduling
+  const handleSchedule = async (e) => {
+    e.preventDefault()
+    if (!selectedRequestId) return
+    setScheduling(true)
+    try {
+      await api.createSession({
+        request_id: selectedRequestId,
+        session_date: scheduleData.date,
+        start_time: scheduleData.startTime,
+        end_time: scheduleData.endTime,
+        notes: scheduleData.notes
+      })
+      const text = `📅 I've scheduled a session for ${scheduleData.date} at ${scheduleData.startTime}!`
+      const ws = socketRef.current
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ content: text }))
+      } else {
+        await api.sendMessage(selectedRequestId, text)
+      }
+      setScheduleOpen(false)
+      setScheduleData({ date: '', startTime: '', endTime: '', notes: '' })
+      loadInbox(false) // refresh to show the active session
+    } catch (err) {
+      alert(err.message || "Failed to schedule session")
+    } finally {
+      setScheduling(false)
+    }
+  }
+
+  const handleCancelSession = async (sessionId) => {
+    if (!window.confirm("Are you sure you want to cancel this session?")) return
+    setCanceling(true)
+    try {
+      await api.cancelSession(sessionId)
+      loadInbox(false)
+      const text = `❌ I've cancelled the scheduled session.`
+      const ws = socketRef.current
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ content: text }))
+      } else {
+        await api.sendMessage(selectedRequestId, text)
+      }
+    } catch (e) {
+      alert(e.message || "Failed to cancel session")
+    } finally {
+      setCanceling(false)
+    }
+  }
+
   const filteredInbox = inbox.filter(conv => 
-    conv.other_user_name.toLowerCase().includes(search.toLowerCase()) || 
+    conv.other_user_name.toLowerCase().includes(search.toLowerCase()) ||
     conv.skill_name.toLowerCase().includes(search.toLowerCase())
   )
 
   const selectedConv = inbox.find(c => c.request_id === selectedRequestId)
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 sm:py-6 h-[calc(100dvh-56px)] md:h-[calc(100vh-56px)] flex gap-4 md:gap-6">
-      
-      {/* Left sidebar: Inbox list */}
-      <div className={`${selectedRequestId ? "hidden md:flex" : "flex"} w-full md:w-1/3 flex-col bg-paper border border-line rounded-xl overflow-hidden shadow-sm`}>
-        <div className="p-4 border-b border-ink/10 bg-white">
-          <h2 className="text-xl font-display font-bold mb-3">Messages</h2>
-          <input 
-            type="text" 
-            placeholder="Search name or skill..." 
-            className="input w-full text-sm"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </div>
-        
-        <div className="flex-1 overflow-y-auto">
-          {loadingInbox ? (
-            <div className="p-4 text-center text-ink/50 text-sm">Loading...</div>
-          ) : inbox.length === 0 ? (
-            <div className="p-8 text-center">
-              <p className="text-ink/60 text-sm">No conversations yet.</p>
-              <p className="text-ink/40 text-xs mt-2">Connect with a tutor or learner to start chatting!</p>
-            </div>
-          ) : filteredInbox.length === 0 ? (
-            <div className="p-4 text-center text-ink/50 text-sm">No matches found.</div>
-          ) : (
-            filteredInbox.map(conv => (
-              <button
-                key={conv.request_id}
-                onClick={() => setSelectedRequestId(conv.request_id)}
-                className={`w-full text-left p-4 border-b border-ink/5 transition-colors flex items-start gap-3
-                  ${selectedRequestId === conv.request_id ? 'bg-moss/5 border-l-4 border-l-moss' : 'hover:bg-ink/5 border-l-4 border-l-transparent'}
-                `}
-              >
-                {/* Avatar */}
-                <div className="w-10 h-10 rounded-full bg-clay/20 flex items-center justify-center text-clay font-bold overflow-hidden shrink-0">
-                  {conv.other_user_avatar ? (
-                    <img src={getAvatarUrl(conv.other_user_avatar)} alt={conv.other_user_name} className="w-full h-full object-cover" />
-                  ) : (
-                    conv.other_user_name.charAt(0).toUpperCase()
-                  )}
-                </div>
-                
-                <div className="flex-1 min-w-0">
-                  <div className="flex justify-between items-baseline mb-0.5">
-                    <span className="font-bold text-sm truncate">{conv.other_user_name}</span>
-                    {conv.latest_message_time && (
-                      <span className="text-[10px] text-ink/40 shrink-0 ml-2">
-                        {(() => {
-                          const d = new Date(conv.latest_message_time)
-                          const now = new Date()
-                          const isToday = d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate()
-                          return isToday ? d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : d.toLocaleDateString([], { month: 'short', day: 'numeric' })
-                        })()}
-                      </span>
-                    )}
-                  </div>
-                  <div className="text-xs text-moss font-medium mb-1 truncate">{conv.skill_name}</div>
-                  <div className={`text-xs truncate ${conv.unread_count > 0 ? 'text-ink font-bold' : 'text-ink/60'}`}>
-                    {conv.latest_message && conv.latest_message.startsWith('Request ') ? <span className="flex items-center gap-1"><Hand className="w-3 h-3" /> Say hello!</span> : conv.latest_message}
-                  </div>
-                </div>
-                
-                {conv.unread_count > 0 && (
-                  <div className="shrink-0 bg-clay text-white text-[10px] font-bold px-2 py-0.5 rounded-full mt-2">
-                    {conv.unread_count}
-                  </div>
-                )}
-              </button>
-            ))
-          )}
-        </div>
+    <div className="h-[100dvh] md:h-[calc(100vh-56px)] flex flex-col md:max-w-6xl md:mx-auto md:px-6 md:py-6 overflow-hidden">
+      <div className="hidden md:block mb-4">
+        <BackButton to="/dashboard" />
       </div>
 
-      {/* Right side: Chat Window */}
-      <div className={`flex-1 bg-paper border border-line rounded-xl overflow-hidden shadow-sm flex-col relative ${!selectedRequestId ? "hidden md:flex" : "flex"}`}>
-        {selectedRequestId && selectedConv ? (
-          <>
-            
-            {/* Chat Header */}
-            <div className="px-4 md:px-6 py-4 border-b border-line bg-white flex justify-between items-center z-10 shrink-0">
-              <div className="flex items-center gap-3">
-                <button onClick={handleBack} className="md:hidden p-2 -ml-2 text-ink/50 hover:text-ink">
-                  <ArrowLeft className="w-5 h-5" />
+      <div className="flex-1 bg-white md:rounded-2xl md:border border-line md:shadow-sm overflow-hidden flex flex-col md:flex-row relative">
+        
+        {/* Left Sidebar - Conversation List */}
+        <div className={`w-full md:w-[340px] shrink-0 border-r border-line bg-paper flex flex-col absolute inset-0 md:relative z-10 transition-transform ${selectedRequestId ? '-translate-x-full md:translate-x-0' : 'translate-x-0'}`}>
+          <div className="p-4 border-b border-line bg-white shrink-0">
+            <h2 className="font-display font-bold text-xl mb-3">Messages</h2>
+            <input
+              type="text"
+              placeholder="Search conversations..."
+              className="input w-full bg-ink/5 border-transparent text-sm"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+            />
+          </div>
+          
+          <div className="flex-1 overflow-y-auto divide-y divide-line">
+            {loadingInbox ? (
+              <div className="p-4 space-y-4">
+                {[1, 2, 3].map(i => (
+                  <div key={i} className="flex gap-3">
+                    <div className="skeleton w-10 h-10 rounded-full shrink-0" />
+                    <div className="flex-1 space-y-2 py-1">
+                      <div className="skeleton h-4 w-1/2" />
+                      <div className="skeleton h-3 w-3/4" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : filteredInbox.length === 0 ? (
+              <div className="p-8 text-center text-ink/40">
+                <Hand className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                <p className="text-sm font-medium">No conversations found</p>
+              </div>
+            ) : (
+              filteredInbox.map(conv => (
+                <button
+                  key={conv.request_id}
+                  onClick={() => handleSelectConversation(conv.request_id)}
+                  className={`w-full text-left p-4 flex gap-3 hover:bg-white transition-colors relative ${selectedRequestId === conv.request_id ? 'bg-white' : ''}`}
+                >
+                  <div className="relative shrink-0">
+                    <div className="w-12 h-12 rounded-full bg-clay/20 flex items-center justify-center font-bold text-clay overflow-hidden">
+                      {conv.other_user_avatar ? (
+                        <img src={getAvatarUrl(conv.other_user_avatar)} alt={conv.other_user_name} className="w-full h-full object-cover" />
+                      ) : (
+                        conv.other_user_name.charAt(0).toUpperCase()
+                      )}
+                    </div>
+                  </div>
+                  
+                  <div className="flex-1 min-w-0 flex flex-col justify-center">
+                    <div className="flex justify-between items-baseline mb-0.5">
+                      <h4 className={`font-semibold text-sm truncate ${conv.unread_count > 0 ? 'text-ink' : 'text-ink/80'}`}>
+                        {conv.other_user_name}
+                      </h4>
+                      {conv.last_message_at && (
+                        <span className="text-[10px] text-ink/40 whitespace-nowrap ml-2">
+                          {formatTime(conv.last_message_at)}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex justify-between items-center gap-2">
+                      <p className={`text-xs truncate ${conv.unread_count > 0 ? 'font-medium text-ink' : 'text-ink/50'}`}>
+                        {conv.last_message_content || `Started learning ${conv.skill_name}`}
+                      </p>
+                      {conv.unread_count > 0 && (
+                        <span className="shrink-0 bg-brand text-white text-[10px] font-bold px-1.5 min-w-[1.25rem] h-5 rounded-full flex items-center justify-center">
+                          {conv.unread_count}
+                        </span>
+                      )}
+                    </div>
+                  </div>
                 </button>
-                <div className="w-10 h-10 rounded-full bg-clay/20 flex items-center justify-center text-clay font-bold overflow-hidden">
-                  {selectedConv.other_user_avatar ? (
-                    <img src={getAvatarUrl(selectedConv.other_user_avatar)} alt={selectedConv.other_user_name} className="w-full h-full object-cover" />
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* Right Content - Chat Window */}
+        <div className={`w-full flex-1 flex flex-col bg-white absolute inset-0 md:relative z-20 transition-transform ${selectedRequestId ? 'translate-x-0' : 'translate-x-full md:translate-x-0'}`}>
+          {selectedConv ? (
+            <>
+              {/* Chat Header */}
+              <div className="px-3 md:px-6 py-3 border-b border-line bg-white flex flex-col sm:flex-row sm:justify-between sm:items-center z-10 shrink-0 gap-3">
+                
+                <div className="flex items-center gap-3">
+                  <button onClick={handleBackToList} className="md:hidden p-2 -ml-2 text-ink/50 hover:text-ink">
+                    <ArrowLeft className="w-5 h-5" />
+                  </button>
+                  <div className="w-10 h-10 rounded-full bg-clay/20 flex items-center justify-center text-clay font-bold overflow-hidden shrink-0">
+                    {selectedConv.other_user_avatar ? (
+                      <img src={getAvatarUrl(selectedConv.other_user_avatar)} alt={selectedConv.other_user_name} className="w-full h-full object-cover" />
+                    ) : (
+                      selectedConv.other_user_name.charAt(0).toUpperCase()
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="font-bold text-sm truncate">{selectedConv.other_user_name}</h3>
+                    <div className="text-xs text-ink/50 flex gap-2 items-center">
+                      <span className="truncate">{selectedConv.skill_name}</span>
+                      <span>·</span>
+                      <ConnectionBadge state={connectionState} />
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Session Context / Schedule Button */}
+                <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
+                  {selectedConv.session_id ? (
+                    <div className="flex items-center gap-2 bg-moss/10 pl-3 pr-1 py-1 rounded-lg border border-moss/20">
+                      <div className="text-right">
+                        <div className="text-xs font-bold text-moss">Session Scheduled</div>
+                        <div className="text-[10px] text-ink/70">{new Date(selectedConv.session_date).toLocaleDateString()} at {selectedConv.session_time}</div>
+                      </div>
+                      <div className="flex flex-col gap-1 ml-2">
+                        <Link to={`/session/${selectedConv.session_id}`} className="btn-primary py-0.5 px-2 text-[10px] leading-tight">Join</Link>
+                        <button disabled={canceling} onClick={() => handleCancelSession(selectedConv.session_id)} className="bg-red-100 text-red-600 hover:bg-red-200 transition-colors font-semibold rounded py-0.5 px-2 text-[10px] leading-tight">
+                          {canceling ? '...' : 'Cancel'}
+                        </button>
+                      </div>
+                    </div>
                   ) : (
-                    selectedConv.other_user_name.charAt(0).toUpperCase()
+                    <button 
+                      onClick={() => setScheduleOpen(true)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-brand text-white text-xs font-semibold rounded-lg hover:bg-brand/90 transition-colors"
+                    >
+                      <Calendar className="w-4 h-4" />
+                      <span>Schedule</span>
+                    </button>
                   )}
                 </div>
-                <div>
-                  <h3 className="font-bold">{selectedConv.other_user_name}</h3>
-                  <div className="text-xs text-ink/50 flex gap-2 items-center">
-                    <span>{selectedConv.skill_name}</span>
-                    <span>·</span>
-                    <ConnectionBadge state={connectionState} />
-                  </div>
-                </div>
               </div>
-              
-              <div className="flex items-center gap-2">
-                {/* Session Context */}
-                {selectedConv.session_id ? (
-                  <div className="hidden sm:flex items-center gap-3 text-sm bg-moss/10 px-3 py-1.5 rounded-lg border border-moss/20">
-                    <div className="text-right">
-                      <div className="text-xs font-bold text-moss">Scheduled Session</div>
-                      <div className="text-[10px] text-ink/70">{new Date(selectedConv.session_date).toLocaleDateString()} at {selectedConv.session_time}</div>
+
+              {/* Chat Messages */}
+              <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-3 bg-[#FDFDFC]">
+                {loadingMessages ? (
+                  <div className="text-center text-ink/50 text-sm mt-10">Loading messages...</div>
+                ) : messages.length === 0 ? (
+                  <div className="flex items-center justify-center h-full">
+                    <div className="text-center">
+                      <MessageCircle className="w-8 h-8 text-ink/30 mx-auto mb-3" />
+                      <p className="text-sm text-ink/40 font-medium">Say hello!</p>
                     </div>
-                    <Link to={`/session/${selectedConv.session_id}`} className="btn-primary py-1 px-3 text-xs">Join</Link>
                   </div>
                 ) : (
-                  <button 
-                    onClick={() => setScheduleOpen(true)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-brand text-white text-xs font-semibold rounded-lg hover:bg-brand/90 transition-colors"
-                  >
-                    <Calendar className="w-3.5 h-3.5" />
-                    <span className="hidden sm:inline">Schedule</span>
-                  </button>
-                )}
-                {selectedConv.session_id && (
-                  <Link to={`/session/${selectedConv.session_id}`} className="sm:hidden btn-primary py-1.5 px-3 text-xs">Join</Link>
+                  <>
+                    {messages.map((m, idx) => {
+                      const isMe = Number(m.sender_id) === Number(user?.id)
+                      const isConsecutive = idx > 0 && messages[idx - 1].sender_id === m.sender_id
+                      return (
+                        <div key={m.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'} ${isConsecutive ? 'mt-0.5' : 'mt-3'}`}>
+                          <div className={`max-w-[85%] sm:max-w-[72%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed break-words ${isMe ? 'bg-moss text-paper rounded-br-md' : 'bg-white border border-line text-ink rounded-bl-md shadow-sm'}`}>
+                            <MessageRenderer content={m.content} />
+                            {m.created_at && (
+                              <p className={`text-[9px] mt-1 text-right ${isMe ? 'text-white/60' : 'text-ink/35'}`}>
+                                {new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      )
+                    })}
+                    <div ref={bottomRef} />
+                  </>
                 )}
               </div>
-            </div>
-{/* Chat Messages */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-3">
-              {loadingMessages ? (
-                <div className="text-center text-ink/50 text-sm mt-10">Loading messages...</div>
-              ) : messages.length === 0 ? (
-                <div className="flex items-center justify-center h-full">
-                  <div className="text-center">
-                    <MessageCircle className="w-8 h-8 text-ink/30 mx-auto mb-3" />
-                    <p className="text-sm text-ink/40 font-medium">Say hello!</p>
-                  </div>
-                </div>
-              ) : (
-                <>
-                  {messages.map((m, idx) => {
-                    const isMe = Number(m.sender_id) === Number(user?.id)
-                    const isConsecutive = idx > 0 && messages[idx - 1].sender_id === m.sender_id
-                    return (
-                      <div
-                        key={m.id}
-                        className={`flex ${isMe ? 'justify-end' : 'justify-start'} ${isConsecutive ? 'mt-0.5' : 'mt-3'}`}
-                      >
-                        <div
-                          className={`max-w-[72%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${
-                            isMe
-                              ? 'bg-moss text-paper rounded-br-md'
-                              : 'bg-white border border-line text-ink rounded-bl-md shadow-sm'
-                          }`}
-                        >
-                          <MessageRenderer content={m.content} />
-                          {m.created_at && (
-                            <p className={`text-[9px] mt-1 text-right ${isMe ? 'text-white/60' : 'text-ink/35'}`}>
-                              {new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    )
-                  })}
-                  <div ref={bottomRef} />
-                </>
-              )}
-            </div>
 
-            
-            {/* Chat Input */}
-            <div className="p-4 bg-white border-t border-ink/10 shrink-0">
-              <form onSubmit={handleSend} className="flex gap-2">
-                <label className="flex items-center justify-center p-2 rounded-lg text-ink/50 hover:text-ink hover:bg-ink/5 cursor-pointer transition-colors" title="Attach file">
-                  <input type="file" className="hidden" onChange={handleFileUpload} accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg" />
-                  <Paperclip className="w-5 h-5" />
-                </label>
-                <input
-                  ref={inputRef}
-                  className="input flex-1 bg-ink/5 border-transparent focus:bg-white focus:border-moss"
-                  placeholder="Type a message... (Enter to send)"
-                  value={draft}
-                  onChange={(e) => setDraft(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  autoComplete="off"
-                />
-                <button
-                  type="submit"
-                  disabled={!draft.trim() || connectionState === 'connecting'}
-                  className="btn-primary shrink-0 px-6"
-                >
-                  Send
-                </button>
-              </form>
-              {uploadingFile && (
-                <div className="mt-2 text-xs text-moss font-medium flex items-center gap-2">
-                  <span className="w-3 h-3 rounded-full border-2 border-moss border-t-transparent animate-spin" />
-                  Uploading {uploadingFile}...
-                </div>
-              )}
+              {/* Chat Toolbar & Input */}
+              <div className="bg-white border-t border-ink/10 shrink-0 relative">
+                {showEmojiPicker && (
+                  <div className="absolute bottom-full left-2 mb-2 bg-white border border-line shadow-lg rounded-xl p-3 w-64 z-30">
+                    <div className="flex flex-wrap gap-2">
+                      {COMMON_EMOJIS.map(em => (
+                        <button key={em} type="button" onClick={() => { setDraft(draft + em); setShowEmojiPicker(false); inputRef.current?.focus() }} className="text-xl hover:scale-125 transition-transform p-1">
+                          {em}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                
+                <form onSubmit={handleSend} className="p-3 sm:p-4 flex gap-1 sm:gap-2 items-center">
+                  <button type="button" onClick={() => setShowEmojiPicker(!showEmojiPicker)} className="p-2 text-ink/50 hover:text-ink hover:bg-ink/5 rounded-full transition-colors shrink-0">
+                    <Smile className="w-5 h-5" />
+                  </button>
+                  <label className="p-2 text-ink/50 hover:text-ink hover:bg-ink/5 rounded-full transition-colors cursor-pointer shrink-0" title="Attach file (PDF, Image, Doc)">
+                    <input type="file" className="hidden" onChange={handleFileUpload} accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg,.webp" />
+                    <Paperclip className="w-5 h-5" />
+                  </label>
+                  
+                  <input
+                    ref={inputRef}
+                    className="input flex-1 bg-ink/5 border-transparent focus:bg-white focus:border-moss min-w-0 text-sm"
+                    placeholder="Type a message..."
+                    value={draft}
+                    onChange={(e) => setDraft(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    autoComplete="off"
+                  />
+                  <button
+                    type="submit"
+                    disabled={!draft.trim() || connectionState === 'connecting'}
+                    className="btn-primary shrink-0 px-4 sm:px-6 py-2 ml-1"
+                  >
+                    Send
+                  </button>
+                </form>
+                {uploadingFile && (
+                  <div className="px-4 pb-3 text-xs text-moss font-medium flex items-center gap-2">
+                    <span className="w-3 h-3 rounded-full border-2 border-moss border-t-transparent animate-spin" />
+                    Uploading {uploadingFile}...
+                  </div>
+                )}
+              </div>
+            </>
+          ) : (
+            <div className="hidden md:flex flex-1 flex-col items-center justify-center text-ink/40 bg-paper/50">
+              <MessageCircle className="w-16 h-16 mb-4 opacity-20" />
+              <p className="font-medium text-lg text-ink/50">Your Messages</p>
+              <p className="text-sm">Select a conversation to start collaborating.</p>
             </div>
-</>
-        ) : (
-          <div className="flex-1 flex flex-col items-center justify-center text-ink/40">
-            <svg className="w-16 h-16 mb-4 opacity-20" fill="currentColor" viewBox="0 0 24 24"><path d="M20 2H4C2.9 2 2 2.9 2 4v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>
-            <p className="font-medium text-lg text-ink/50">Your Messages</p>
-            <p className="text-sm">Select a conversation from the left to start chatting.</p>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {/* Schedule Modal */}
       {scheduleOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink/40 backdrop-blur-sm">
-          <div className="bg-white rounded-xl shadow-xl border border-line w-full max-w-md p-6">
+          <div className="bg-white rounded-xl shadow-xl border border-line w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
             <h3 className="font-display font-bold text-lg mb-4">Schedule Session</h3>
             <form onSubmit={handleSchedule} className="space-y-4">
               <div>
@@ -490,7 +520,7 @@ export default function Messages() {
               </div>
               <div>
                 <label className="block text-xs font-bold text-ink/70 mb-1">Notes (Optional)</label>
-                <input type="text" className="input w-full" placeholder="e.g. Let's cover React hooks" value={scheduleData.notes} onChange={e => setScheduleData({...scheduleData, notes: e.target.value})} />
+                <input type="text" className="input w-full" placeholder="Agenda or topics" value={scheduleData.notes} onChange={e => setScheduleData({...scheduleData, notes: e.target.value})} />
               </div>
               <div className="flex gap-2 justify-end mt-6">
                 <button type="button" onClick={() => setScheduleOpen(false)} className="btn-secondary">Cancel</button>
@@ -504,9 +534,7 @@ export default function Messages() {
   )
 }
 
-
 function MessageRenderer({ content }) {
-  // Check for image markdown: ![alt](url)
   const imgMatch = content.match(/^!\[(.*?)\]\((.*?)\)$/);
   if (imgMatch) {
     return (
@@ -518,7 +546,6 @@ function MessageRenderer({ content }) {
     );
   }
   
-  // Check for file link markdown: [text](url)
   const fileMatch = content.match(/^\[(.*?)\]\((.*?)\)$/);
   if (fileMatch) {
     return (
@@ -528,8 +555,6 @@ function MessageRenderer({ content }) {
       </a>
     );
   }
-
-  // Handle line breaks
   return <p className="whitespace-pre-wrap">{content}</p>;
 }
 
@@ -547,4 +572,12 @@ function ConnectionBadge({ state }) {
       {config.label}
     </span>
   )
+}
+
+function formatTime(dateStr) {
+  const d = new Date(dateStr)
+  if (d.toDateString() === new Date().toDateString()) {
+    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  }
+  return d.toLocaleDateString([], { month: 'short', day: 'numeric' })
 }

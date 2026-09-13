@@ -14,8 +14,8 @@ import datetime as dt
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect, Query
-from sqlalchemy.orm import Session
-from ..notification_service import create_notification as DBSession
+from sqlalchemy.orm import Session as DBSession
+from ..notification_service import create_notification
 from jose import jwt, JWTError
 
 from .. import models, schemas, auth
