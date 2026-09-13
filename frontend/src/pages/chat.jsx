@@ -6,7 +6,7 @@ import { ArrowLeft, MessageCircle, Paperclip, Calendar, Image as ImageIcon, File
 const RECONNECT_DELAY_MS = 2000
 const MAX_RECONNECT_DELAY_MS = 10000
 
-const COMMON_EMOJIS = ["😀","😂","🥰","😎","🤔","👍","❤️","🎉","🔥","👏","🚀","✨","🙌","💡","👀","🙏","😅","😊","😭","🥺"]
+const COMMON_EMOJIS = ["👍","👎","❤️","🔥","✨","✅","🤔👀","💯","🎉","😂","🙏","🚀","💡","🤷","👏","😅","🙌","😎","😭","🤝"]
 
 export default function Chat({ requestId, embedded = false }) {
   const user = getSessionUser()
@@ -25,46 +25,35 @@ export default function Chat({ requestId, embedded = false }) {
 
   const bottomRef = useRef(null)
   const socketRef = useRef(null)
-  const reconnectTimerRef = useRef(null)
-  const reconnectDelayRef = useRef(RECONNECT_DELAY_MS)
-  const mountedRef = useRef(true)
   const inputRef = useRef(null)
-
-  useEffect(() => {
-    mountedRef.current = true
-    return () => {
-      mountedRef.current = false
-      clearTimeout(reconnectTimerRef.current)
-      socketRef.current?.close()
-    }
-  }, [])
 
   useEffect(() => {
     if (!requestId) return
 
-    clearTimeout(reconnectTimerRef.current)
-    if (socketRef.current) {
-      socketRef.current.close()
-      socketRef.current = null
-    }
+    let isActive = true
+    let ws = null
+    let reconnectTimer = null
+    let currentDelay = RECONNECT_DELAY_MS
 
     setMessages(null)
     setConnectionState('connecting')
 
     const connectWs = () => {
-      const token = localStorage.getItem('token')
-      const ws = new WebSocket(`${chatSocketUrl}/${requestId}?token=${token}`)
+      if (!isActive) return
+      
+      const url = chatSocketUrl(requestId)
+      ws = new WebSocket(url)
       socketRef.current = ws
 
       ws.onopen = () => {
-        if (!mountedRef.current) return
+        if (!isActive) return
         setConnectionState('live')
-        reconnectDelayRef.current = RECONNECT_DELAY_MS
+        currentDelay = RECONNECT_DELAY_MS
         setError('')
       }
 
       ws.onmessage = (event) => {
-        if (!mountedRef.current) return
+        if (!isActive) return
         const data = JSON.parse(event.data)
         if (data.type === 'history') {
           setMessages(data.messages)
@@ -75,18 +64,20 @@ export default function Chat({ requestId, embedded = false }) {
       }
 
       ws.onclose = (event) => {
-        if (!mountedRef.current) return
+        if (!isActive) return
         socketRef.current = null
-        if (event.code === 4401 || event.code === 4403) {
+        if (event.code === 4401 || event.code === 4403 || event.code === 1008) {
           setConnectionState('offline')
           setError(event.code === 4401 ? 'Session expired.' : 'No access.')
           return
         }
+        
         setConnectionState('reconnecting')
-        reconnectTimerRef.current = setTimeout(() => {
-          reconnectDelayRef.current = Math.min(reconnectDelayRef.current * 1.5, MAX_RECONNECT_DELAY_MS)
+        reconnectTimer = setTimeout(() => {
+          if (!isActive) return
+          currentDelay = Math.min(currentDelay * 1.5, MAX_RECONNECT_DELAY_MS)
           connectWs()
-        }, reconnectDelayRef.current)
+        }, currentDelay)
       }
 
       ws.onerror = () => { ws.close() }
@@ -94,6 +85,16 @@ export default function Chat({ requestId, embedded = false }) {
 
     connectWs()
     api.markMessagesRead(requestId).catch(console.error)
+
+    return () => {
+      isActive = false
+      if (reconnectTimer) clearTimeout(reconnectTimer)
+      if (ws) {
+        ws.onclose = null
+        ws.close()
+      }
+      if (socketRef.current === ws) socketRef.current = null
+    }
   }, [requestId])
 
   useEffect(() => {
@@ -213,7 +214,11 @@ export default function Chat({ requestId, embedded = false }) {
         </div>
       </div>
 
-      {error && <p className="alert-error mx-4 mt-3 shrink-0">{error}</p>}
+      {error && (
+        <div className="bg-red-50 text-red-600 px-4 py-2 text-sm font-medium border-b border-red-100 shrink-0">
+          {error}
+        </div>
+      )}
 
       {/* Message area */}
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">

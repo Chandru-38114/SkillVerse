@@ -7,7 +7,7 @@ import BackButton from '../components/BackButton'
 const RECONNECT_DELAY_MS = 2000
 const MAX_RECONNECT_DELAY_MS = 10000
 
-const COMMON_EMOJIS = ["😀","😂","🥰","😎","🤔","👍","❤️","🎉","🔥","👏","🚀","✨","🙌","💡","👀","🙏","😅","😊","😭","🥺"]
+const COMMON_EMOJIS = ["👍","👎","❤️","🔥","✨","✅","🤔👀","💯","🎉","😂","🙏","🚀","💡","🤷","👏","😅","🙌","😎","😭","🤝"]
 
 export default function Messages() {
   const navigate = useNavigate()
@@ -29,15 +29,11 @@ export default function Messages() {
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
   const [scheduleOpen, setScheduleOpen] = useState(false)
   const [scheduleData, setScheduleData] = useState({ date: '', startTime: '', endTime: '', notes: '' })
-  const [scheduling, setScheduling] = useState(false)
-  const [canceling, setCanceling] = useState(false)
-
+  const inputRef = useRef(null)
+  
   const bottomRef = useRef(null)
   const socketRef = useRef(null)
-  const reconnectTimerRef = useRef(null)
-  const reconnectDelayRef = useRef(RECONNECT_DELAY_MS)
   const mountedRef = useRef(true)
-  const inputRef = useRef(null)
   const inboxTimerRef = useRef(null)
 
   useEffect(() => {
@@ -50,8 +46,6 @@ export default function Messages() {
     return () => {
       mountedRef.current = false
       clearInterval(inboxTimerRef.current)
-      clearTimeout(reconnectTimerRef.current)
-      socketRef.current?.close()
     }
   }, [])
 
@@ -71,11 +65,11 @@ export default function Messages() {
   // Socket logic
   useEffect(() => {
     if (!selectedRequestId) return
-    clearTimeout(reconnectTimerRef.current)
-    if (socketRef.current) {
-      socketRef.current.close()
-      socketRef.current = null
-    }
+    
+    let isActive = true
+    let ws = null
+    let reconnectTimer = null
+    let currentDelay = RECONNECT_DELAY_MS
 
     let requestId = selectedRequestId
     setLoadingMessages(true)
@@ -83,19 +77,21 @@ export default function Messages() {
     setConnectionState('connecting')
 
     const connectWs = (reqId) => {
-      const token = localStorage.getItem('token')
-      const ws = new WebSocket(`${chatSocketUrl}/${reqId}?token=${token}`)
+      if (!isActive) return
+      
+      const url = chatSocketUrl(reqId)
+      ws = new WebSocket(url)
       socketRef.current = ws
 
       ws.onopen = () => {
-        if (!mountedRef.current) return
+        if (!isActive) return
         setConnectionState('live')
-        reconnectDelayRef.current = RECONNECT_DELAY_MS
+        currentDelay = RECONNECT_DELAY_MS
         setError('')
       }
 
       ws.onmessage = (event) => {
-        if (!mountedRef.current) return
+        if (!isActive) return
         const data = JSON.parse(event.data)
         if (data.type === 'history') {
           setMessages(data.messages)
@@ -107,20 +103,20 @@ export default function Messages() {
       }
 
       ws.onclose = (event) => {
-        if (!mountedRef.current) return
+        if (!isActive) return
         socketRef.current = null
-        if (event.code === 4401 || event.code === 4403) {
+        if (event.code === 4401 || event.code === 4403 || event.code === 1008) {
           setConnectionState('offline')
-          setError(event.code === 4401 ? 'Session expired.' : "No access.")
+          setError(event.code === 4401 ? 'Session expired.' : 'No access.')
           return
         }
-        if (selectedRequestId === reqId) {
-          setConnectionState('reconnecting')
-          reconnectTimerRef.current = setTimeout(() => {
-            reconnectDelayRef.current = Math.min(reconnectDelayRef.current * 1.5, MAX_RECONNECT_DELAY_MS)
-            connectWs(reqId)
-          }, reconnectDelayRef.current)
-        }
+        
+        setConnectionState('reconnecting')
+        reconnectTimer = setTimeout(() => {
+          if (!isActive) return
+          currentDelay = Math.min(currentDelay * 1.5, MAX_RECONNECT_DELAY_MS)
+          connectWs(reqId)
+        }, currentDelay)
       }
 
       ws.onerror = () => { ws.close() }
@@ -130,11 +126,13 @@ export default function Messages() {
     api.markMessagesRead(requestId).then(() => loadInbox(false)).catch(console.error)
 
     return () => {
-      clearTimeout(reconnectTimerRef.current)
-      if (socketRef.current) {
-        socketRef.current.close()
-        socketRef.current = null
+      isActive = false
+      if (reconnectTimer) clearTimeout(reconnectTimer)
+      if (ws) {
+        ws.onclose = null
+        ws.close()
       }
+      if (socketRef.current === ws) socketRef.current = null
     }
   }, [selectedRequestId, user])
 
@@ -170,25 +168,24 @@ export default function Messages() {
         ws.send(JSON.stringify({ content: res.markdown }))
       } else {
         const msg = await api.sendMessage(selectedRequestId, res.markdown)
-        setMessages((prev) => [...prev, msg])
-        loadInbox(false)
+        setMessages(prev => [...prev, msg])
       }
     } catch (err) {
-      alert(err.message || "Failed to upload file")
+      alert(err.message || "Failed to upload")
     } finally {
       setUploadingFile(null)
       e.target.value = ''
     }
   }
 
-  // Text send
   const handleSend = async (e) => {
     e.preventDefault()
-    if (!draft.trim() || !selectedRequestId) return
+    if (!draft.trim()) return
 
     const content = draft.trim()
     setDraft('')
     setShowEmojiPicker(false)
+
     const ws = socketRef.current
     if (ws && ws.readyState === WebSocket.OPEN) {
       ws.send(JSON.stringify({ content }))
@@ -196,7 +193,6 @@ export default function Messages() {
       try {
         const msg = await api.sendMessage(selectedRequestId, content)
         setMessages(prev => [...prev, msg])
-        loadInbox(false)
       } catch (err) {
         setError(err.message)
       }
@@ -210,7 +206,7 @@ export default function Messages() {
     }
   }
 
-  // Scheduling
+  // Session Scheduling & Actions
   const handleSchedule = async (e) => {
     e.preventDefault()
     if (!selectedRequestId) return
@@ -228,200 +224,180 @@ export default function Messages() {
       if (ws && ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({ content: text }))
       } else {
-        await api.sendMessage(selectedRequestId, text)
+        const msg = await api.sendMessage(selectedRequestId, text)
+        setMessages(prev => [...prev, msg])
       }
       setScheduleOpen(false)
       setScheduleData({ date: '', startTime: '', endTime: '', notes: '' })
-      loadInbox(false) // refresh to show the active session
     } catch (err) {
-      alert(err.message || "Failed to schedule session")
+      alert(err.message || "Failed to schedule")
     } finally {
       setScheduling(false)
     }
   }
 
   const handleCancelSession = async (sessionId) => {
-    if (!window.confirm("Are you sure you want to cancel this session?")) return
-    setCanceling(true)
+    if (!confirm("Are you sure you want to cancel this session?")) return
     try {
       await api.cancelSession(sessionId)
       loadInbox(false)
-      const text = `❌ I've cancelled the scheduled session.`
-      const ws = socketRef.current
-      if (ws && ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({ content: text }))
-      } else {
-        await api.sendMessage(selectedRequestId, text)
-      }
-    } catch (e) {
-      alert(e.message || "Failed to cancel session")
-    } finally {
-      setCanceling(false)
+    } catch (err) {
+      alert(err.message || "Failed to cancel")
     }
   }
 
-  const filteredInbox = inbox.filter(conv => 
-    conv.other_user_name.toLowerCase().includes(search.toLowerCase()) ||
-    conv.skill_name.toLowerCase().includes(search.toLowerCase())
+  const filteredInbox = inbox.filter(c => 
+    c.other_user_name.toLowerCase().includes(search.toLowerCase()) || 
+    c.skill_name.toLowerCase().includes(search.toLowerCase())
   )
 
-  const selectedConv = inbox.find(c => c.request_id === selectedRequestId)
+  const activeConversation = inbox.find(c => c.request_id === selectedRequestId)
 
   return (
-    <div className="h-[100dvh] md:h-[calc(100vh-56px)] flex flex-col md:max-w-6xl md:mx-auto md:px-6 md:py-6 overflow-hidden">
-      <div className="hidden md:block mb-4">
-        <BackButton to="/dashboard" />
+    <div className="max-w-6xl mx-auto min-h-screen bg-paper flex flex-col md:py-6 relative">
+      <div className="hidden md:flex items-center gap-4 px-6 mb-6">
+        <BackButton />
+        <h1 className="text-2xl font-display font-bold text-ink">Messages</h1>
       </div>
 
-      <div className="flex-1 bg-white md:rounded-2xl md:border border-line md:shadow-sm overflow-hidden flex flex-col md:flex-row relative">
+      <div className="flex-1 flex md:rounded-2xl border border-line bg-white shadow-sm overflow-hidden h-[100dvh] md:h-[calc(100vh-120px)]">
         
-        {/* Left Sidebar - Conversation List */}
-        <div className={`w-full md:w-[340px] shrink-0 border-r border-line bg-paper flex flex-col absolute inset-0 md:relative z-10 transition-transform ${selectedRequestId ? '-translate-x-full md:translate-x-0' : 'translate-x-0'}`}>
-          <div className="p-4 border-b border-line bg-white shrink-0">
-            <h2 className="font-display font-bold text-xl mb-3">Messages</h2>
-            <input
+        {/* Inbox List (Hidden on mobile if a conversation is selected) */}
+        <div className={`${selectedRequestId ? 'hidden md:flex' : 'flex'} w-full md:w-80 lg:w-96 flex-col border-r border-line bg-paper/30 shrink-0`}>
+          <div className="p-4 border-b border-line bg-white flex items-center gap-3">
+            <BackButton className="md:hidden" />
+            <input 
               type="text"
-              placeholder="Search conversations..."
-              className="input w-full bg-ink/5 border-transparent text-sm"
+              placeholder="Search messages..."
               value={search}
-              onChange={e => setSearch(e.target.value)}
+              onChange={(e) => setSearch(e.target.value)}
+              className="input flex-1 text-sm bg-ink/5 border-transparent focus:bg-white focus:border-moss transition-colors"
             />
           </div>
-          
-          <div className="flex-1 overflow-y-auto divide-y divide-line">
+
+          <div className="flex-1 overflow-y-auto">
             {loadingInbox ? (
-              <div className="p-4 space-y-4">
-                {[1, 2, 3].map(i => (
-                  <div key={i} className="flex gap-3">
-                    <div className="skeleton w-10 h-10 rounded-full shrink-0" />
-                    <div className="flex-1 space-y-2 py-1">
-                      <div className="skeleton h-4 w-1/2" />
-                      <div className="skeleton h-3 w-3/4" />
+              <div className="p-8 text-center text-ink/40 text-sm">Loading inbox...</div>
+            ) : filteredInbox.length === 0 ? (
+              <div className="p-8 text-center text-ink/40 text-sm">No conversations found.</div>
+            ) : (
+              <div className="divide-y divide-line/50">
+                {filteredInbox.map(conv => (
+                  <button
+                    key={conv.request_id}
+                    onClick={() => handleSelectConversation(conv.request_id)}
+                    className={`w-full text-left p-4 hover:bg-moss/5 transition-colors flex gap-3 relative ${selectedRequestId === conv.request_id ? 'bg-moss/5' : ''}`}
+                  >
+                    <div className="relative">
+                      <img 
+                        src={getAvatarUrl(conv.other_user_avatar)} 
+                        alt="" 
+                        className="w-12 h-12 rounded-full object-cover border border-line bg-white"
+                        onError={(e) => e.target.src = "https://api.dicebear.com/7.x/avataaars/svg?seed=fallback"}
+                      />
+                      {conv.unread_count > 0 && (
+                        <span className="absolute -top-1 -right-1 bg-brand text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center border-2 border-white shadow-sm">
+                          {conv.unread_count > 99 ? '99+' : conv.unread_count}
+                        </span>
+                      )}
                     </div>
-                  </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex justify-between items-baseline mb-0.5">
+                        <h3 className="font-bold text-ink truncate pr-2">{conv.other_user_name}</h3>
+                        <span className="text-[10px] text-ink/40 font-medium whitespace-nowrap">
+                          {formatTime(conv.latest_message_time)}
+                        </span>
+                      </div>
+                      <p className="text-xs text-ink/60 font-medium truncate mb-1">
+                        {conv.skill_name}
+                      </p>
+                      <p className={`text-xs truncate ${conv.unread_count > 0 ? 'text-ink font-semibold' : 'text-ink/50'}`}>
+                        {conv.latest_message}
+                      </p>
+                    </div>
+                  </button>
                 ))}
               </div>
-            ) : filteredInbox.length === 0 ? (
-              <div className="p-8 text-center text-ink/40">
-                <Hand className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                <p className="text-sm font-medium">No conversations found</p>
-              </div>
-            ) : (
-              filteredInbox.map(conv => (
-                <button
-                  key={conv.request_id}
-                  onClick={() => handleSelectConversation(conv.request_id)}
-                  className={`w-full text-left p-4 flex gap-3 hover:bg-white transition-colors relative ${selectedRequestId === conv.request_id ? 'bg-white' : ''}`}
-                >
-                  <div className="relative shrink-0">
-                    <div className="w-12 h-12 rounded-full bg-clay/20 flex items-center justify-center font-bold text-clay overflow-hidden">
-                      {conv.other_user_avatar ? (
-                        <img src={getAvatarUrl(conv.other_user_avatar)} alt={conv.other_user_name} className="w-full h-full object-cover" />
-                      ) : (
-                        conv.other_user_name.charAt(0).toUpperCase()
-                      )}
-                    </div>
-                  </div>
-                  
-                  <div className="flex-1 min-w-0 flex flex-col justify-center">
-                    <div className="flex justify-between items-baseline mb-0.5">
-                      <h4 className={`font-semibold text-sm truncate ${conv.unread_count > 0 ? 'text-ink' : 'text-ink/80'}`}>
-                        {conv.other_user_name}
-                      </h4>
-                      {conv.last_message_at && (
-                        <span className="text-[10px] text-ink/40 whitespace-nowrap ml-2">
-                          {formatTime(conv.last_message_at)}
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex justify-between items-center gap-2">
-                      <p className={`text-xs truncate ${conv.unread_count > 0 ? 'font-medium text-ink' : 'text-ink/50'}`}>
-                        {conv.last_message_content || `Started learning ${conv.skill_name}`}
-                      </p>
-                      {conv.unread_count > 0 && (
-                        <span className="shrink-0 bg-brand text-white text-[10px] font-bold px-1.5 min-w-[1.25rem] h-5 rounded-full flex items-center justify-center">
-                          {conv.unread_count}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </button>
-              ))
             )}
           </div>
         </div>
 
-        {/* Right Content - Chat Window */}
-        <div className={`w-full flex-1 flex flex-col bg-white absolute inset-0 md:relative z-20 transition-transform ${selectedRequestId ? 'translate-x-0' : 'translate-x-full md:translate-x-0'}`}>
-          {selectedConv ? (
+        {/* Chat Area */}
+        <div className={`${!selectedRequestId ? 'hidden md:flex' : 'flex'} flex-1 flex-col bg-[#FDFDFC] min-w-0`}>
+          {selectedRequestId ? (
             <>
               {/* Chat Header */}
-              <div className="px-3 md:px-6 py-3 border-b border-line bg-white flex flex-col sm:flex-row sm:justify-between sm:items-center z-10 shrink-0 gap-3">
-                
-                <div className="flex items-center gap-3">
-                  <button onClick={handleBackToList} className="md:hidden p-2 -ml-2 text-ink/50 hover:text-ink">
+              <div className="h-16 px-4 border-b border-line bg-white flex items-center justify-between shrink-0 shadow-sm relative z-10">
+                <div className="flex items-center gap-3 overflow-hidden">
+                  <button onClick={handleBackToList} className="md:hidden p-2 -ml-2 text-ink/50 hover:text-ink hover:bg-ink/5 rounded-full">
                     <ArrowLeft className="w-5 h-5" />
                   </button>
-                  <div className="w-10 h-10 rounded-full bg-clay/20 flex items-center justify-center text-clay font-bold overflow-hidden shrink-0">
-                    {selectedConv.other_user_avatar ? (
-                      <img src={getAvatarUrl(selectedConv.other_user_avatar)} alt={selectedConv.other_user_name} className="w-full h-full object-cover" />
-                    ) : (
-                      selectedConv.other_user_name.charAt(0).toUpperCase()
-                    )}
-                  </div>
-                  <div className="min-w-0">
-                    <h3 className="font-bold text-sm truncate">{selectedConv.other_user_name}</h3>
-                    <div className="text-xs text-ink/50 flex gap-2 items-center">
-                      <span className="truncate">{selectedConv.skill_name}</span>
-                      <span>·</span>
-                      <ConnectionBadge state={connectionState} />
-                    </div>
-                  </div>
+                  {activeConversation && (
+                    <>
+                      <img 
+                        src={getAvatarUrl(activeConversation.other_user_avatar)} 
+                        alt="" 
+                        className="w-9 h-9 rounded-full object-cover border border-line"
+                      />
+                      <div className="min-w-0">
+                        <h2 className="font-bold text-ink truncate text-sm leading-tight">
+                          {activeConversation.other_user_name}
+                        </h2>
+                        <ConnectionBadge state={connectionState} />
+                      </div>
+                    </>
+                  )}
                 </div>
-                
-                {/* Session Context / Schedule Button */}
-                <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
-                  {selectedConv.session_id ? (
-                    <div className="flex items-center gap-2 bg-moss/10 pl-3 pr-1 py-1 rounded-lg border border-moss/20">
-                      <div className="text-right">
-                        <div className="text-xs font-bold text-moss">Session Scheduled</div>
-                        <div className="text-[10px] text-ink/70">{new Date(selectedConv.session_date).toLocaleDateString()} at {selectedConv.session_time}</div>
-                      </div>
-                      <div className="flex flex-col gap-1 ml-2">
-                        <Link to={`/session/${selectedConv.session_id}`} className="btn-primary py-0.5 px-2 text-[10px] leading-tight">Join</Link>
-                        <button disabled={canceling} onClick={() => handleCancelSession(selectedConv.session_id)} className="bg-red-100 text-red-600 hover:bg-red-200 transition-colors font-semibold rounded py-0.5 px-2 text-[10px] leading-tight">
-                          {canceling ? '...' : 'Cancel'}
-                        </button>
-                      </div>
+
+                <div className="flex items-center gap-2">
+                  {activeConversation?.session_id ? (
+                    <div className="flex items-center gap-2">
+                      <span className="hidden sm:inline-block px-2.5 py-1 bg-moss/10 text-moss text-[10px] font-bold uppercase tracking-wider rounded-md">
+                        Session: {formatTime(activeConversation.session_date)} {activeConversation.session_time}
+                      </span>
+                      <button 
+                        onClick={() => navigate('/sessions')}
+                        className="btn-primary px-3 py-1.5 text-xs h-auto"
+                      >
+                        Join Room
+                      </button>
+                      <button 
+                        onClick={() => handleCancelSession(activeConversation.session_id)}
+                        className="p-1.5 text-ink/40 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors"
+                        title="Cancel Session"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     </div>
                   ) : (
                     <button 
                       onClick={() => setScheduleOpen(true)}
                       className="flex items-center gap-1.5 px-3 py-1.5 bg-brand text-white text-xs font-semibold rounded-lg hover:bg-brand/90 transition-colors"
                     >
-                      <Calendar className="w-4 h-4" />
-                      <span>Schedule</span>
+                      <Calendar className="w-3.5 h-3.5" />
+                      <span className="hidden sm:inline">Schedule</span>
                     </button>
                   )}
                 </div>
               </div>
 
               {/* Chat Messages */}
-              <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-3 bg-[#FDFDFC]">
+              <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-paper/30">
                 {loadingMessages ? (
-                  <div className="text-center text-ink/50 text-sm mt-10">Loading messages...</div>
-                ) : messages.length === 0 ? (
                   <div className="flex items-center justify-center h-full">
-                    <div className="text-center">
-                      <MessageCircle className="w-8 h-8 text-ink/30 mx-auto mb-3" />
-                      <p className="text-sm text-ink/40 font-medium">Say hello!</p>
-                    </div>
+                    <div className="w-6 h-6 border-2 border-moss border-t-transparent rounded-full animate-spin" />
+                  </div>
+                ) : messages.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-full text-ink/30 space-y-3">
+                    <Hand className="w-10 h-10" />
+                    <p className="text-sm font-medium">Say hello!</p>
                   </div>
                 ) : (
                   <>
                     {messages.map((m, idx) => {
                       const isMe = Number(m.sender_id) === Number(user?.id)
                       const isConsecutive = idx > 0 && messages[idx - 1].sender_id === m.sender_id
+                      
                       return (
                         <div key={m.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'} ${isConsecutive ? 'mt-0.5' : 'mt-3'}`}>
                           <div className={`max-w-[85%] sm:max-w-[72%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed break-words ${isMe ? 'bg-moss text-paper rounded-br-md' : 'bg-white border border-line text-ink rounded-bl-md shadow-sm'}`}>
