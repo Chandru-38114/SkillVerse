@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import BackButton from "../components/BackButton";
 import { api, getAvatarUrl } from "../api";
 import PasswordInput from "../components/PasswordInput";
 import { Camera, Save, Lock } from "lucide-react";

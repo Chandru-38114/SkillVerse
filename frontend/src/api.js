@@ -103,6 +103,18 @@ export const api = {
 
   listMessages: (requestId) => request(`/chat/${requestId}/messages`),
   sendMessage: (requestId, content) => request(`/chat/${requestId}/messages`, { method: "POST", body: { content } }),
+  uploadChatAttachment: (requestId, file) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    return fetch(`${BASE_URL}/chat/${requestId}/upload`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${getToken()}` },
+      body: formData,
+    }).then(async (res) => {
+      if (!res.ok) throw new Error((await res.json()).detail || "Upload failed");
+      return res.json();
+    });
+  },
 
   submitReview: (requestId, data) => request(`/reviews/${requestId}`, { method: "POST", body: data }),
   getMyReviewForRequest: (requestId) => request(`/reviews/my/${requestId}`),

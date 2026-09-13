@@ -26,10 +26,43 @@ function SessionRoomComponent() {
   const [infoOpen, setInfoOpen] = useState(false)
   const navigate = useNavigate()
 
+  const [timeLeft, setTimeLeft] = useState(null)
+  const [isEnded, setIsEnded] = useState(false)
+
+  useEffect(() => {
+    if (!session) return;
+    const endStr = `${session.session_date}T${session.end_time}:00`;
+    const endObj = new Date(endStr);
+    
+    const updateTimer = () => {
+      const now = new Date();
+      const diff = endObj - now;
+      if (diff <= 0) {
+        setIsEnded(true);
+        setTimeLeft('00:00');
+      } else {
+        const totalSecs = Math.floor(diff / 1000);
+        const m = Math.floor(totalSecs / 60);
+        const s = totalSecs % 60;
+        setTimeLeft(`${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`);
+      }
+    };
+    
+    updateTimer();
+    const timer = setInterval(updateTimer, 1000);
+    return () => clearInterval(timer);
+  }, [session]);
+
   useEffect(() => {
     api.getSession(sessionId)
       .then(setSession)
-      .catch(err => setError(err.message))
+      .catch(err => {
+        if (err.response?.status === 410 || String(err).includes('410') || String(err).includes('expired')) {
+          setIsEnded(true)
+        } else {
+          setError(err.message)
+        }
+      })
   }, [sessionId])
 
   if (error) {
@@ -94,41 +127,15 @@ function SessionRoomComponent() {
     )
   }
 
-  const [timeLeft, setTimeLeft] = useState(null)
-  const [isEnded, setIsEnded] = useState(false)
-
-  useEffect(() => {
-    if (!session) return;
-    const endStr = `${session.session_date}T${session.end_time}:00`;
-    const endObj = new Date(endStr);
-    
-    const updateTimer = () => {
-      const now = new Date();
-      const diff = endObj - now;
-      if (diff <= 0) {
-        setIsEnded(true);
-        setTimeLeft('00:00');
-      } else {
-        const totalSecs = Math.floor(diff / 1000);
-        const m = Math.floor(totalSecs / 60);
-        const s = totalSecs % 60;
-        setTimeLeft(`${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`);
-      }
-    };
-    
-    updateTimer();
-    const timer = setInterval(updateTimer, 1000);
-    return () => clearInterval(timer);
-  }, [session]);
 
   if (isEnded || (session && session.status === 'completed')) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-paper p-4">
-        <div className="max-w-md w-full text-center p-8 card">
-          <div className="text-5xl mb-4">⏳</div>
+        <div className="max-w-md w-full text-center p-8 card border-t-4 border-t-brand">
+          <div className="text-5xl mb-4">⏱️</div>
           <h1 className="text-2xl font-display mb-2">Session Ended</h1>
-          <p className="text-ink/60 mb-8 text-sm">This scheduled session has reached its end time.</p>
-          <Link to="/sessions" className="btn-primary">Return to Sessions</Link>
+          <p className="text-ink/60 mb-8 text-sm">This scheduled session has reached its end time and is no longer available.</p>
+          <Link to="/sessions" className="btn-primary inline-flex">Return to Sessions</Link>
         </div>
       </div>
     )
