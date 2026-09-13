@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { formatDate, formatTime } from '../utils/dateTime'
 import BackButton from "../components/BackButton";
 import { Link } from 'react-router-dom'
 import { api } from '../api'
@@ -177,17 +178,7 @@ function SessionStatusPill({ status }) {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function formatDate(isoDate) {
-  try {
-    // Parse as local date to avoid UTC offset day shift
-    const [y, m, d] = isoDate.split('-').map(Number)
-    return new Date(y, m - 1, d).toLocaleDateString('en-US', {
-      weekday: 'short', year: 'numeric', month: 'short', day: 'numeric',
-    })
-  } catch {
-    return isoDate
-  }
-}
+
 
 function SessionsSkeleton() {
   return (
@@ -215,4 +206,4 @@ function EmptySessions() {
   )
 }
 
-export { SessionCard, SessionStatusPill, formatDate }
+export { SessionCard, SessionStatusPill }

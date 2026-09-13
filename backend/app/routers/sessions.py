@@ -22,6 +22,7 @@ from .. import models, schemas, auth
 from ..database import get_db, SessionLocal
 from .requests import _to_out as _req_to_out
 from ..ws_manager import webrtc_manager
+from ..utils.timezone import utc_now, IST, enforce_utc_iso
 
 router = APIRouter(prefix="/sessions", tags=["sessions"])
 
@@ -65,7 +66,6 @@ def _validate_times(start: dt.datetime, end: dt.datetime):
     """Raise 422 for obviously invalid date/time combinations."""
     if start >= end:
         raise HTTPException(status_code=422, detail="Start time must be before end time.")
-    from ..utils.timezone import utc_now
     # We allow scheduling slightly in the past (e.g. starting a session right now)
     if start < utc_now() - dt.timedelta(hours=1):
         raise HTTPException(status_code=422, detail="Session cannot be scheduled too far in the past.")
@@ -80,7 +80,6 @@ def _get_my_session(session_id: int, current_user: models.User, db: DBSession) -
     
     # Enforce expiration logic on the backend
     try:
-        from ..utils.timezone import utc_now
         end_dt = s.scheduled_end
         if end_dt and utc_now() >= end_dt:
             if s.status not in ('completed', 'cancelled'):
@@ -147,7 +146,6 @@ def create_session(
     _validate_times(payload.scheduled_start, payload.scheduled_end)
     
     # Store legacy strings based on scheduled_start for backward compatibility until dropped
-    from ..utils.timezone import IST
     ist_start = payload.scheduled_start.astimezone(IST)
     ist_end = payload.scheduled_end.astimezone(IST)
     
@@ -235,7 +233,6 @@ def update_session(
             detail=f"Cannot update a session with status '{s.status}'.",
         )
 
-    from ..utils.timezone import IST
     s.scheduled_start = payload.scheduled_start or s.scheduled_start
     s.scheduled_end = payload.scheduled_end or s.scheduled_end
     _validate_times(s.scheduled_start, s.scheduled_end)
@@ -298,7 +295,6 @@ async def webrtc_signaling(
             return
 
         import asyncio
-        from ..utils.timezone import utc_now
         end_dt = s.scheduled_end
         if end_dt and utc_now() >= end_dt:
             s.status = "completed"

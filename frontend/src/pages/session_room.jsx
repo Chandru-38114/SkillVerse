@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { formatDate, formatTime } from '../utils/dateTime'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { api, getSessionUser } from '../api'
 import VideoChat from '../components/VideoChat'
@@ -176,7 +177,7 @@ function SessionRoomComponent() {
               {peerName && <span>with <strong className="text-ink/70">{peerName}</strong></span>}
             </div>
             <span className="text-ink/20">·</span>
-            <span>{formatDate(session.scheduled_start || session.session_date)}, {session.start_time}</span>
+            <span>{formatDate(session.scheduled_start || session.session_date)}, {session.scheduled_start ? formatTime(session.scheduled_start) : session.start_time}</span>
           </div>
           {/* Right side: Timer & Mobile Info toggle */}
           <div className="flex items-center gap-2">

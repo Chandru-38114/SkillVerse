@@ -1,4 +1,4 @@
-import { createIstToUtcDate } from '../utils/dateTime'
+import { createIstToUtcDate, formatDate } from '../utils/dateTime'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api, getSessionUser } from '../api'
@@ -337,7 +337,7 @@ function SchedulePanel({ requestId, skill }) {
                 </span>
               </div>
               <p className="text-sm text-ink/70">
-                📅 {formatSessionDate(session.session_date)}{' '}
+                📅 {formatDate(session.scheduled_start || session.session_date)}{' '}
                 <span className="text-ink/40 mx-1">·</span>
                 ⏰ {session.start_time} – {session.end_time}
               </p>
@@ -487,14 +487,7 @@ function ScheduleForm({ requestId, skill, onScheduled }) {
   )
 }
 
-function formatSessionDate(isoDate) {
-  try {
-    const [y, m, d] = isoDate.split('-').map(Number)
-    return new Date(y, m - 1, d).toLocaleDateString('en-US', {
-      weekday: 'short', year: 'numeric', month: 'short', day: 'numeric',
-    })
-  } catch { return isoDate }
-}
+
 
 // ── Inline review form ────────────────────────────────────────────────────────
 
