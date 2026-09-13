@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel, Field
 
 from .. import models, auth
-from ..database import get_db
+from ..database import get_db, SessionLocal
 
 router = APIRouter(prefix="/compiler", tags=["compiler"])
 
@@ -150,24 +150,21 @@ from fastapi import WebSocket, WebSocketDisconnect
 import json
 
 @router.websocket("/{session_id}/ws")
-async def compiler_websocket(websocket: WebSocket, session_id: int, token: str, db: Session = Depends(get_db)):
-    # Authenticate token
-    user_id = auth.get_user_id_from_token_sync(token)
-    print(f"WS auth: token={token[:10]} user_id={user_id}")
-    if not user_id:
-        await websocket.close(code=1008)
-        return
-
-    # Verify session
-    session_db = db.query(models.Session).filter(models.Session.id == session_id).first()
-    if session_db:
-        print(f"WS session {session_id}: tutor={session_db.tutor_id} learner={session_db.learner_id}")
-    else:
-        print(f"WS session {session_id} not found")
-        
-    if not session_db or user_id not in [session_db.tutor_id, session_db.learner_id]:
-        await websocket.close(code=1008)
-        return
+async def compiler_websocket(websocket: WebSocket, session_id: int, token: str):
+    # Short-lived DB session for initial validation
+    db = SessionLocal()
+    try:
+        user_id = auth.get_user_id_from_token_sync(token)
+        if not user_id:
+            await websocket.close(code=1008)
+            return
+            
+        session_db = db.query(models.Session).filter(models.Session.id == session_id).first()
+        if not session_db or user_id not in [session_db.tutor_id, session_db.learner_id]:
+            await websocket.close(code=1008)
+            return
+    finally:
+        db.close()
 
     await compiler_manager.connect(websocket, session_id, user_id)
     try:
@@ -177,21 +174,27 @@ async def compiler_websocket(websocket: WebSocket, session_id: int, token: str, 
                 msg = json.loads(data)
                 if msg.get("type") == "update_code":
                     new_code = msg.get("code")
-                    comp = db.query(models.CompilerState).filter_by(session_id=session_id).first()
-                    if not comp:
-                        comp = models.CompilerState(session_id=session_id, code=new_code, version=1)
-                        db.add(comp)
-                    else:
-                        comp.code = new_code
-                        comp.version += 1
-                    db.commit()
-                    db.refresh(comp)
-                    
+                    db_loop = SessionLocal()
+                    try:
+                        comp = db_loop.query(models.CompilerState).filter_by(session_id=session_id).first()
+                        if not comp:
+                            comp = models.CompilerState(session_id=session_id, code=new_code, version=1)
+                            db_loop.add(comp)
+                        else:
+                            comp.code = new_code
+                            comp.version += 1
+                        db_loop.commit()
+                        db_loop.refresh(comp)
+                        c_code = comp.code
+                        c_version = comp.version
+                    finally:
+                        db_loop.close()
+                        
                     # Broadcast the event with version
                     await compiler_manager.broadcast(session_id, user_id, json.dumps({
                         "type": "update_code",
-                        "code": comp.code,
-                        "version": comp.version
+                        "code": c_code,
+                        "version": c_version
                     }))
                 elif msg.get("type") == "execution_result":
                     await compiler_manager.broadcast(session_id, user_id, json.dumps({

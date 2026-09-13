@@ -220,8 +220,6 @@ def _authenticate_ws(token: str, db: Session) -> Optional[models.User]:
 
 @router.websocket("/ws/{request_id}")
 async def chat_websocket(websocket: WebSocket, request_id: int, token: str = Query(...)):
-    # Each connection gets its own DB session since this runs outside the
-    # normal Depends(get_db) request lifecycle.
     db = SessionLocal()
     try:
         user = _authenticate_ws(token, db)
@@ -233,31 +231,39 @@ async def chat_websocket(websocket: WebSocket, request_id: int, token: str = Que
         except HTTPException:
             await websocket.close(code=4403)  # custom code: forbidden
             return
-
-        await chat_manager.connect(request_id, websocket)
-        try:
-            while True:
-                data = await websocket.receive_json()
-                content = (data.get("content") or "").strip()
-                if not content:
-                    continue
-
-                msg = models.Message(request_id=request_id, sender_id=user.id, content=content)
-                db.add(msg)
-                db.commit()
-                db.refresh(msg)
-                req = db.query(models.ConnectionRequest).filter(models.ConnectionRequest.id == request_id).first()
-                other_user_id = req.to_user_id if req.from_user_id == user.id else req.from_user_id
-                create_notification(db, other_user_id, "message", "New Message", f"{user.name} sent you a message", request_id, "chat")
-
-                await chat_manager.broadcast(request_id, {
-                    "type": "message",
-                    "id": msg.id,
-                    "sender_id": msg.sender_id,
-                    "content": msg.content,
-                    "created_at": msg.created_at.isoformat(),
-                })
-        except WebSocketDisconnect:
-            chat_manager.disconnect(request_id, websocket)
     finally:
         db.close()
+
+    await chat_manager.connect(request_id, websocket)
+    try:
+        while True:
+            data = await websocket.receive_json()
+            content = (data.get("content") or "").strip()
+            if not content:
+                continue
+
+            db_msg = SessionLocal()
+            try:
+                msg = models.Message(request_id=request_id, sender_id=user.id, content=content)
+                db_msg.add(msg)
+                db_msg.commit()
+                db_msg.refresh(msg)
+                req = db_msg.query(models.ConnectionRequest).filter(models.ConnectionRequest.id == request_id).first()
+                other_user_id = req.to_user_id if req.from_user_id == user.id else req.from_user_id
+                create_notification(db_msg, other_user_id, "message", "New Message", f"{user.name} sent you a message", request_id, "chat")
+                msg_id = msg.id
+                msg_sender = msg.sender_id
+                msg_content = msg.content
+                msg_created = msg.created_at.isoformat()
+            finally:
+                db_msg.close()
+
+            await chat_manager.broadcast(request_id, {
+                "type": "message",
+                "id": msg_id,
+                "sender_id": msg_sender,
+                "content": msg_content,
+                "created_at": msg_created,
+            })
+    except WebSocketDisconnect:
+        chat_manager.disconnect(request_id, websocket)
