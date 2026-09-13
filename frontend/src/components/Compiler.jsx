@@ -1,21 +1,26 @@
 import { useState, useRef, useEffect } from 'react';
-import { api } from '../api';
+import { api, getSessionUser } from '../api';
 
 const DEFAULT_CODE = 'print("Hello, SkillVerse!")\n';
 
 export default function Compiler({ sessionId }) {
+  const user = getSessionUser();
   const [code, setCode] = useState(DEFAULT_CODE);
   const [output, setOutput] = useState('');
   const [error, setError] = useState('');
   const [isRunning, setIsRunning] = useState(false);
 
   // Sync state
-  const [syncStatus, setSyncStatus] = useState('🟡 Connecting...');
+  const [syncStatus, setSyncStatus] = useState('dYY Connecting...');
   const [saveStatus, setSaveStatus] = useState('');
   const wsRef = useRef(null);
   const isRemoteUpdate = useRef(false);
 
+  // Indicator for when remote user runs code
+  const [remoteRunIndicator, setRemoteRunIndicator] = useState(null);
+
   const versionRef = useRef(0);
+  const execTimestampRef = useRef(0);
 
   // 1. Initial Load
   useEffect(() => {
@@ -43,9 +48,9 @@ export default function Compiler({ sessionId }) {
     const ws = new WebSocket(`${wsUrl}/compiler/${sessionId}/ws?token=${token}`);
     wsRef.current = ws;
 
-    ws.onopen = () => setSyncStatus('🟢 Connected');
-    ws.onclose = () => setSyncStatus('🔴 Disconnected');
-    ws.onerror = () => setSyncStatus('🔴 Error');
+    ws.onopen = () => setSyncStatus('Connected');
+    ws.onclose = () => setSyncStatus('Disconnected');
+    ws.onerror = () => setSyncStatus('Error');
 
     ws.onmessage = (event) => {
       try {
@@ -57,6 +62,18 @@ export default function Compiler({ sessionId }) {
           versionRef.current = msg.version;
           isRemoteUpdate.current = true;
           setCode(msg.code);
+        } else if (msg.type === 'execution_result') {
+          if (msg.timestamp && msg.timestamp <= execTimestampRef.current) {
+            return; // ignore stale execution
+          }
+          execTimestampRef.current = msg.timestamp || Date.now();
+          setOutput(msg.output || '');
+          setError(msg.error || '');
+          
+          if (msg.user_name) {
+            setRemoteRunIndicator(`${msg.user_name} ran the code`);
+            setTimeout(() => setRemoteRunIndicator(null), 3000);
+          }
         }
       } catch (err) {
         console.error(err);
@@ -96,10 +113,21 @@ export default function Compiler({ sessionId }) {
     
     try {
       const res = await api.runCompiler(sessionId, code);
-      if (res.error) {
-        setError(res.error);
+      if (res.error) setError(res.error);
+      const newOutput = res.output || '';
+      setOutput(newOutput);
+      
+      if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+        const ts = Date.now();
+        execTimestampRef.current = ts;
+        wsRef.current.send(JSON.stringify({ 
+          type: 'execution_result', 
+          output: newOutput,
+          error: res.error || '',
+          user_name: user?.name || 'Peer',
+          timestamp: ts
+        }));
       }
-      setOutput(res.output || '');
     } catch (err) {
       setError(err.message || 'Execution failed');
     } finally {
@@ -133,43 +161,48 @@ export default function Compiler({ sessionId }) {
   };
 
   return (
-    <div className="flex-1 flex flex-col gap-3 p-3 sm:p-4 h-full bg-[#FDFDFC] overflow-hidden min-h-0">
+    <div className="flex-1 flex flex-col gap-3 p-3 sm:p-4 h-full bg-[#FDFDFC] overflow-hidden min-h-0 min-w-0">
 
       {/* Code Editor Area */}
-      <div className="flex-1 flex flex-col min-h-0 bg-white rounded-xl border border-line shadow-sm overflow-hidden">
+      <div className="flex-1 flex flex-col min-h-0 bg-white rounded-xl border border-line shadow-sm overflow-hidden min-w-0">
         {/* Toolbar */}
-        <div className="bg-ink/5 border-b border-line px-3 sm:px-4 py-2 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 shrink-0">
-          <div className="flex items-center gap-3 min-w-0 overflow-x-auto scrollbar-hide">
-            <span className="text-xs font-bold text-ink/60 whitespace-nowrap shrink-0">Python 3</span>
-            <div className="flex items-center gap-1.5 text-[10px] font-medium text-ink/50 bg-white px-2 py-1 rounded border border-line whitespace-nowrap shrink-0">
+        <div className="bg-ink/5 border-b border-line px-3 sm:px-4 py-2 flex items-center justify-between gap-2 shrink-0 overflow-x-auto scrollbar-hide">
+          <div className="flex items-center gap-3 shrink-0">
+            <span className="text-xs font-bold text-ink/60 whitespace-nowrap">Python 3</span>
+            <div className="hidden sm:flex items-center gap-1.5 text-[10px] font-medium text-ink/50 bg-white px-2 py-1 rounded border border-line whitespace-nowrap shrink-0">
               <span>{syncStatus}</span>
               {saveStatus && <span className="border-l border-line pl-1.5 text-moss">{saveStatus}</span>}
             </div>
           </div>
           <div className="flex items-center gap-1.5 shrink-0">
+            {remoteRunIndicator && (
+              <span className="text-[10px] text-moss bg-moss/10 px-2 py-1 rounded animate-pulse whitespace-nowrap shrink-0">
+                {remoteRunIndicator}
+              </span>
+            )}
             <button
               onClick={handleRun}
               disabled={isRunning || !code.trim()}
-              className="bg-moss text-white px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-moss/90 disabled:opacity-50 transition-colors whitespace-nowrap"
+              className="bg-moss text-white px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-moss/90 disabled:opacity-50 transition-colors whitespace-nowrap shrink-0"
             >
-              {isRunning ? 'Running...' : '▶ Run'}
+              {isRunning ? 'Running...' : 'Run'}
             </button>
             <button
               onClick={handleClear}
-              className="text-ink/50 hover:text-ink px-2.5 py-1.5 text-xs font-semibold transition-colors rounded hover:bg-ink/5"
+              className="text-ink/50 hover:text-ink px-2.5 py-1.5 text-xs font-semibold transition-colors rounded hover:bg-ink/5 shrink-0"
             >
               Clear
             </button>
             <button
               onClick={handleReset}
-              className="text-red-500/70 hover:text-red-600 px-2.5 py-1.5 text-xs font-semibold transition-colors rounded hover:bg-red-50"
+              className="text-red-500/70 hover:text-red-600 px-2.5 py-1.5 text-xs font-semibold transition-colors rounded hover:bg-red-50 shrink-0"
             >
               Reset
             </button>
           </div>
         </div>
 
-        {/* Code textarea — horizontally scrollable inside, not the whole page */}
+        {/* Code textarea ?" horizontally scrollable inside, not the whole page */}
         <textarea
           value={code}
           onChange={(e) => setCode(e.target.value)}
@@ -181,8 +214,8 @@ export default function Compiler({ sessionId }) {
         />
       </div>
 
-      {/* Output Area — fixed sensible height on mobile */}
-      <div className="h-36 sm:h-40 md:h-44 flex flex-col bg-white rounded-xl border border-line shadow-sm overflow-hidden shrink-0">
+      {/* Output Area ?" fixed sensible height on mobile */}
+      <div className="h-32 sm:h-40 md:h-44 flex flex-col bg-white rounded-xl border border-line shadow-sm overflow-hidden shrink-0 min-w-0">
         <div className="bg-ink/5 border-b border-line px-3 sm:px-4 py-1.5 flex items-center justify-between shrink-0">
           <span className="text-xs font-bold text-ink/60">Output</span>
           {isRunning && (

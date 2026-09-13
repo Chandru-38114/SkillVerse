@@ -193,6 +193,14 @@ async def compiler_websocket(websocket: WebSocket, session_id: int, token: str, 
                         "code": comp.code,
                         "version": comp.version
                     }))
+                elif msg.get("type") == "execution_result":
+                    await compiler_manager.broadcast(session_id, user_id, json.dumps({
+                        "type": "execution_result",
+                        "output": msg.get("output", ""),
+                        "error": msg.get("error", ""),
+                        "user_name": msg.get("user_name", ""),
+                        "timestamp": msg.get("timestamp")
+                    }))
             except Exception as e:
                 pass
     except WebSocketDisconnect:

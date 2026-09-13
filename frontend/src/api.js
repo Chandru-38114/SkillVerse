@@ -102,6 +102,7 @@ export const api = {
   completeRequest: (id) => request(`/requests/${id}/complete`, { method: "POST" }),
 
   listMessages: (requestId) => request(`/chat/${requestId}/messages`),
+  markMessagesRead: (requestId) => request(`/chat/${requestId}/read`, { method: "POST" }),
   sendMessage: (requestId, content) => request(`/chat/${requestId}/messages`, { method: "POST", body: { content } }),
   uploadChatAttachment: (requestId, file) => {
     const formData = new FormData();
