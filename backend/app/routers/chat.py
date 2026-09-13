@@ -1,9 +1,11 @@
 from typing import List, Optional
+import asyncio
 from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect, Query
 from starlette.concurrency import run_in_threadpool
 from jose import jwt, JWTError
 from sqlalchemy.orm import Session
 from ..notification_service import create_notification
+from ..utils.timezone import enforce_utc_iso
 
 from .. import models, schemas, auth
 from ..database import get_db, SessionLocal
@@ -96,6 +98,30 @@ def _authorize(db: Session, request_id: int, user_id: int) -> models.ConnectionR
     if req.status != "accepted":
         raise HTTPException(status_code=403, detail="Request has not been accepted yet")
     return req
+
+
+def _serialize_message(msg: models.Message) -> dict:
+    """Shared serializer for WS payloads — keeps history, new messages, and
+    update broadcasts consistent."""
+    return {
+        "id": msg.id,
+        "sender_id": msg.sender_id,
+        "content": msg.content,
+        "is_read": msg.is_read,
+        "created_at": enforce_utc_iso(msg.created_at),
+        "metadata": msg.message_metadata or {},
+    }
+
+
+async def _broadcast_message_update(request_id: int, msg: models.Message) -> None:
+    """Broadcast a message_update event to all participants in a conversation."""
+    try:
+        await chat_manager.broadcast(request_id, {
+            "type": "message_update",
+            "message": _serialize_message(msg),
+        })
+    except Exception:
+        pass  # Never let a failed broadcast crash the REST response
 
 
 from sqlalchemy import or_, desc, func
@@ -333,19 +359,10 @@ def _get_message_authorized(db: Session, message_id: int, user_id: int) -> model
     return msg
 
 
-def _broadcast_update_sync(request_id: int, payload: dict):
-    """Fire-and-forget broadcast helper for sync contexts."""
-    import asyncio
-    try:
-        loop = asyncio.get_event_loop()
-        if loop.is_running():
-            loop.create_task(chat_manager.broadcast(request_id, payload))
-    except Exception:
-        pass
 
 
 @router.put("/messages/{message_id}", response_model=schemas.MessageOut)
-def edit_message(
+async def edit_message(
     message_id: int,
     payload: schemas.MessageEdit,
     current_user: models.User = Depends(auth.get_current_user),
@@ -364,11 +381,14 @@ def edit_message(
     msg.message_metadata = new_meta
     db.commit()
     db.refresh(msg)
+
+    # Broadcast real-time update to both participants
+    await _broadcast_message_update(msg.request_id, msg)
     return msg
 
 
 @router.delete("/messages/{message_id}")
-def delete_message_for_everyone(
+async def delete_message_for_everyone(
     message_id: int,
     current_user: models.User = Depends(auth.get_current_user),
     db: Session = Depends(get_db),
@@ -377,16 +397,21 @@ def delete_message_for_everyone(
     if msg.sender_id != current_user.id:
         raise HTTPException(status_code=403, detail="Only the sender can delete this message for everyone")
 
+    request_id = msg.request_id
     new_meta = dict(msg.message_metadata or {})
     new_meta["deleted_for_everyone"] = True
     msg.content = ""
     msg.message_metadata = new_meta
     db.commit()
-    return {"detail": "Message deleted", "id": message_id, "request_id": msg.request_id}
+    db.refresh(msg)
+
+    # Broadcast real-time update to both participants
+    await _broadcast_message_update(request_id, msg)
+    return {"detail": "Message deleted", "id": message_id, "request_id": request_id}
 
 
 @router.post("/messages/{message_id}/react")
-def toggle_reaction(
+async def toggle_reaction(
     message_id: int,
     payload: schemas.ReactionUpdate,
     current_user: models.User = Depends(auth.get_current_user),
@@ -407,14 +432,20 @@ def toggle_reaction(
         if not reactions[emoji]:
             del reactions[emoji]
     else:
-        reactions[emoji] = reactions.get(emoji, []) + [user_id]
+        # Prevent duplicate user IDs
+        if user_id not in reactions.get(emoji, []):
+            reactions[emoji] = reactions.get(emoji, []) + [user_id]
 
     new_meta["reactions"] = reactions
     msg.message_metadata = new_meta
     db.commit()
     db.refresh(msg)
+
+    # Broadcast real-time update to both participants
+    await _broadcast_message_update(msg.request_id, msg)
     return {
         "id": msg.id,
         "request_id": msg.request_id,
         "metadata": msg.message_metadata,
     }
+

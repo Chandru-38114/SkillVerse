@@ -522,6 +522,8 @@ export default function Messages() {
         } else if (data.type === 'message') {
           setMessages(prev => [...prev, data])
           api.markMessagesRead(reqId).then(() => loadInbox(false)).catch(console.error)
+        } else if (data.type === 'message_update') {
+          setMessages(prev => prev ? prev.map(m => m.id === data.message.id ? data.message : m) : null)
         }
       }
 

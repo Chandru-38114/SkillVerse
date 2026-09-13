@@ -59,8 +59,12 @@ export default function Chat({ requestId, embedded = false }) {
         if (data.type === 'history') {
           setMessages(data.messages)
         } else if (data.type === 'message') {
-          setMessages((prev) => (prev ? [...prev, data.message] : [data.message]))
+          // Note: the original payload structure was flat, not wrapped in message, but keeping for compatibility
+          const msg = data.message || data
+          setMessages((prev) => (prev ? [...prev, msg] : [msg]))
           api.markMessagesRead(requestId).catch(console.error)
+        } else if (data.type === 'message_update') {
+          setMessages((prev) => prev ? prev.map(m => m.id === data.message.id ? data.message : m) : null)
         }
       }
 
