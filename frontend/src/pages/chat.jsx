@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
+import { formatTime, createIstToUtcDate } from '../utils/dateTime'
 import { Link } from 'react-router-dom'
 import { api, chatSocketUrl, getSessionUser } from '../api'
 import { ArrowLeft, MessageCircle, Paperclip, Calendar, Image as ImageIcon, File as FileIcon, Smile } from 'lucide-react'
@@ -167,6 +168,8 @@ export default function Chat({ requestId, embedded = false }) {
         session_date: scheduleData.date,
         start_time: scheduleData.startTime,
         end_time: scheduleData.endTime,
+          scheduled_start: createIstToUtcDate(scheduleData.date, scheduleData.startTime).toISOString(),
+          scheduled_end: createIstToUtcDate(scheduleData.date, scheduleData.endTime).toISOString(),
         notes: scheduleData.notes
       })
       const text = `📅 I've scheduled a session for ${scheduleData.date} at ${scheduleData.startTime}!`

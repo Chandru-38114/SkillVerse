@@ -418,6 +418,8 @@ function ScheduleForm({ requestId, skill, onScheduled }) {
         session_date: date,
         start_time: start,
         end_time: end,
+          scheduled_start: createIstToUtcDate(date, start).toISOString(),
+          scheduled_end: createIstToUtcDate(date, end).toISOString(),
         notes: notes || null,
       })
       onScheduled(created)
