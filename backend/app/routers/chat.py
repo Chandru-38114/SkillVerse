@@ -44,6 +44,18 @@ async def upload_attachment(
     file_bytes = await file.read()
     size_bytes = len(file_bytes)
 
+    # 1. Safely normalize the MIME type (browser often sends audio/webm;codecs=opus or video/webm for audio)
+    raw_content_type = file.content_type or ""
+    content_type = raw_content_type.split(";")[0].strip()
+    
+    if type == "voice":
+        if content_type.startswith("video/"):
+            content_type = content_type.replace("video/", "audio/")
+        elif not content_type:
+            content_type = "audio/webm"
+    elif type == "file" and not content_type:
+        content_type = "application/octet-stream"
+
     if type == "file":
         if size_bytes > 25 * 1024 * 1024:
             raise HTTPException(status_code=400, detail="File too large (max 25MB)")
@@ -61,11 +73,11 @@ async def upload_attachment(
     supabase = get_supabase()
 
     try:
-        logger.info(f"Uploading to bucket '{bucket}', path '{filename}', content-type '{file.content_type}'")
+        logger.info(f"Uploading to bucket '{bucket}', path '{filename}', content-type '{content_type}' (raw: {raw_content_type})")
         res = supabase.storage.from_(bucket).upload(
             file=file_bytes,
             path=filename,
-            file_options={"content-type": file.content_type}
+            file_options={"content-type": content_type}
         )
         
         if isinstance(res, dict):
@@ -83,28 +95,37 @@ async def upload_attachment(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Storage upload exception (Bucket: {bucket}, Path: {filename}): {str(e)}", exc_info=True)
+        # If the SDK throws an exception (like the text AttributeError), fallback to a reliable REST upload
+        logger.warning(f"Storage SDK upload failed (Bucket: {bucket}, Path: {filename}): {str(e)}. Attempting REST fallback...")
+        import requests
+        from ..supabase_client import SUPABASE_URL, SUPABASE_KEY
         
-        status_code = 500
-        err_msg = "Unknown exception during upload"
-        
-        if hasattr(e, "args") and len(e.args) > 0 and isinstance(e.args[0], dict):
-            err_dict = e.args[0]
-            status_code = err_dict.get("statusCode", err_dict.get("status", 500))
-            err_msg = err_dict.get("message", err_dict.get("error", "Upload failed"))
-        elif isinstance(e, AttributeError) and "has no attribute 'text'" in str(e):
-            err_msg = "SDK AttributeError encountered. Check server logs for traceback."
-        else:
-            err_msg = str(e)
+        if not SUPABASE_URL or not SUPABASE_KEY:
+            raise HTTPException(status_code=500, detail="Storage configuration missing for fallback.")
             
-        raise HTTPException(
-            status_code=status_code if isinstance(status_code, int) else 500,
-            detail=f"Storage upload failed (HTTP {status_code}): {err_msg}"
-        )
+        url = f"{SUPABASE_URL.rstrip('/')}/storage/v1/object/{bucket}/{filename}"
+        headers = {
+            "Authorization": f"Bearer {SUPABASE_KEY}",
+            "Content-Type": content_type
+        }
+        
+        try:
+            resp = requests.post(url, data=file_bytes, headers=headers, timeout=30)
+            if resp.status_code >= 400:
+                err_dict = resp.json() if resp.text else {}
+                msg = err_dict.get("message", err_dict.get("error", resp.text or "REST Upload failed"))
+                logger.error(f"REST fallback upload failed: HTTP {resp.status_code} - {msg}")
+                raise HTTPException(status_code=resp.status_code, detail=f"Storage upload failed (HTTP {resp.status_code}): {msg}")
+            logger.info("REST fallback upload succeeded.")
+        except HTTPException:
+            raise
+        except Exception as rest_e:
+            logger.error(f"REST fallback also failed: {str(rest_e)}", exc_info=True)
+            raise HTTPException(status_code=500, detail="Both SDK and REST upload failed. Check server logs.")
 
     metadata = {
         "type": type,
-        "mime_type": file.content_type,
+        "mime_type": content_type,
         "size_bytes": size_bytes
     }
     if type == "voice":

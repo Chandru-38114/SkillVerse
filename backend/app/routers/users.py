@@ -151,23 +151,33 @@ def upload_avatar(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Storage upload exception (Bucket: {bucket}, Path: {filename}): {str(e)}", exc_info=True)
-        status_code = 500
-        err_msg = "Unknown exception during upload"
+        logger.warning(f"Storage SDK upload failed (Bucket: {bucket}, Path: {filename}): {str(e)}. Attempting REST fallback...")
+        import requests
+        from ..supabase_client import SUPABASE_URL, SUPABASE_KEY
         
-        if hasattr(e, "args") and len(e.args) > 0 and isinstance(e.args[0], dict):
-            err_dict = e.args[0]
-            status_code = err_dict.get("statusCode", err_dict.get("status", 500))
-            err_msg = err_dict.get("message", err_dict.get("error", "Upload failed"))
-        elif isinstance(e, AttributeError) and "has no attribute 'text'" in str(e):
-            err_msg = "SDK AttributeError encountered. Check server logs for traceback."
-        else:
-            err_msg = str(e)
+        if not SUPABASE_URL or not SUPABASE_KEY:
+            raise HTTPException(status_code=500, detail="Storage configuration missing for fallback.")
             
-        raise HTTPException(
-            status_code=status_code if isinstance(status_code, int) else 500,
-            detail=f"Storage upload failed (HTTP {status_code}): {err_msg}"
-        )
+        url = f"{SUPABASE_URL.rstrip('/')}/storage/v1/object/{bucket}/{filename}"
+        headers = {
+            "Authorization": f"Bearer {SUPABASE_KEY}",
+            "Content-Type": file.content_type
+        }
+        
+        try:
+            resp = requests.post(url, data=file_bytes, headers=headers, timeout=30)
+            if resp.status_code >= 400:
+                err_dict = resp.json() if resp.text else {}
+                msg = err_dict.get("message", err_dict.get("error", resp.text or "REST Upload failed"))
+                logger.error(f"REST fallback upload failed: HTTP {resp.status_code} - {msg}")
+                raise HTTPException(status_code=resp.status_code, detail=f"Storage upload failed (HTTP {resp.status_code}): {msg}")
+            logger.info("REST fallback upload succeeded.")
+            public_url = supabase.storage.from_(bucket).get_public_url(filename)
+        except HTTPException:
+            raise
+        except Exception as rest_e:
+            logger.error(f"REST fallback also failed: {str(rest_e)}", exc_info=True)
+            raise HTTPException(status_code=500, detail="Both SDK and REST upload failed. Check server logs.")
 
     current_user.profile_picture_url = public_url
     db.commit()
