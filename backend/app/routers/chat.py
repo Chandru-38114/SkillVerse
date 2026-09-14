@@ -155,14 +155,46 @@ def download_chat_file(
     if not filename.startswith(f"req_{request_id}_"):
         raise HTTPException(status_code=403, detail="Unauthorized access to this file")
 
-    supabase = get_supabase()
+    from ..supabase_client import SUPABASE_URL, SUPABASE_KEY
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        raise HTTPException(status_code=500, detail="Storage configuration missing")
+
+    from urllib.parse import urlparse
+    import requests
+
+    parsed = urlparse(SUPABASE_URL)
+    base_url = f"{parsed.scheme}://{parsed.netloc}"
+    sign_url = f"{base_url}/storage/v1/object/sign/{bucket}/{filename}"
+
+    headers = {
+        "apikey": SUPABASE_KEY,
+        "Authorization": f"Bearer {SUPABASE_KEY}",
+        "Content-Type": "application/json"
+    }
+    
     try:
-        res = supabase.storage.from_(bucket).create_signed_url(filename, 3600)
-        signed_url = res if isinstance(res, str) else res.get("signedURL") or res.get("signedUrl")
-        if not signed_url:
-            raise Exception("No signed URL returned")
-        return {"url": signed_url}
+        resp = requests.post(sign_url, json={"expiresIn": 3600}, headers=headers, timeout=10)
+        if resp.status_code >= 400:
+            err_dict = resp.json() if resp.text else {}
+            msg = err_dict.get("message", err_dict.get("error", "Signed URL generation failed"))
+            raise Exception(f"HTTP {resp.status_code}: {msg}")
+            
+        data = resp.json()
+        # Storage API usually returns {"signedURL": "/object/sign/..."}
+        signed_path = data.get("signedURL") or data.get("signedUrl")
+        if not signed_path:
+            raise Exception("No signed URL path in response")
+            
+        if signed_path.startswith("/storage/v1/"):
+            full_signed_url = f"{base_url}{signed_path}"
+        elif signed_path.startswith("/object/sign/"):
+            full_signed_url = f"{base_url}/storage/v1{signed_path}"
+        else:
+            full_signed_url = f"{base_url}/storage/v1/{signed_path.lstrip('/')}"
+            
+        return {"url": full_signed_url}
     except Exception as e:
+        logger.error(f"Failed to generate signed URL for {bucket}/{filename}: {e}")
         raise HTTPException(status_code=500, detail="Could not generate download link")
 
 

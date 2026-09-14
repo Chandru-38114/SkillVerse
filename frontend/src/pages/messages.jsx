@@ -119,18 +119,24 @@ function ReactionBubbles({ reactions, messageId, currentUserId, onToggle }) {
 
 function VoicePlayer({ meta, reqId }) {
   const [signedUrl, setSignedUrl] = useState('')
+  const [error, setError] = useState(false)
 
   useEffect(() => {
     if (meta.audio_path) {
       api.getChatFileUrl(reqId, 'chat_audio', meta.audio_path)
         .then(res => setSignedUrl(res.url))
-        .catch(err => console.error('Failed to load audio', err))
+        .catch(err => {
+          console.error('Failed to load audio', err)
+          setError(true)
+        })
     }
   }, [meta.audio_path, reqId])
 
   return (
     <div className="flex items-center gap-2 mt-1 px-3 py-2 bg-ink/5 rounded-full">
-      {signedUrl ? (
+      {error ? (
+        <div className="h-8 w-48 flex items-center justify-center text-xs text-red-500 font-medium bg-red-50 rounded-full">Audio unavailable</div>
+      ) : signedUrl ? (
         <audio controls src={signedUrl} className="h-8 w-48 max-w-full" controlsList="nodownload noplaybackrate" />
       ) : (
         <div className="h-8 w-48 animate-pulse bg-ink/10 rounded-full"></div>
@@ -141,21 +147,25 @@ function VoicePlayer({ meta, reqId }) {
 
 function FileAttachment({ meta, reqId }) {
   const [signedUrl, setSignedUrl] = useState('')
+  const [error, setError] = useState(false)
 
   useEffect(() => {
     if (meta.file_path) {
       api.getChatFileUrl(reqId, 'chat_files', meta.file_path)
         .then(res => setSignedUrl(res.url))
-        .catch(err => console.error('Failed to load attachment', err))
+        .catch(err => {
+          console.error('Failed to load attachment', err)
+          setError(true)
+        })
     }
   }, [meta.file_path, reqId])
 
   return (
-    <a href={signedUrl || '#'} target={signedUrl ? "_blank" : "_self"} rel="noreferrer" className={`flex items-center gap-3 mt-1 px-3 py-2 bg-ink/5 rounded-lg hover:bg-ink/10 transition-colors w-full max-w-[240px] ${!signedUrl ? 'opacity-50 pointer-events-none' : ''}`}>
-      <FileText className="w-6 h-6 shrink-0 opacity-70" />
+    <a href={signedUrl || '#'} target={signedUrl ? "_blank" : "_self"} rel="noreferrer" className={`flex items-center gap-3 mt-1 px-3 py-2 ${error ? 'bg-red-50' : 'bg-ink/5 hover:bg-ink/10'} rounded-lg transition-colors w-full max-w-[240px] ${(!signedUrl && !error) ? 'opacity-50 pointer-events-none' : ''} ${error ? 'pointer-events-none' : ''}`}>
+      <FileText className={`w-6 h-6 shrink-0 ${error ? 'text-red-400' : 'opacity-70'}`} />
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-medium truncate">{meta.file_name || 'Attachment'}</p>
-        {meta.size_bytes && <p className="text-[10px] opacity-60">{(meta.size_bytes / 1024).toFixed(1)} KB</p>}
+        <p className={`text-sm font-medium truncate ${error ? 'text-red-500' : ''}`}>{error ? 'Attachment unavailable' : (meta.file_name || 'Attachment')}</p>
+        {!error && meta.size_bytes && <p className="text-[10px] opacity-60">{(meta.size_bytes / 1024).toFixed(1)} KB</p>}
       </div>
     </a>
   )
