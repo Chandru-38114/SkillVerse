@@ -5,7 +5,8 @@ import { api, chatSocketUrl, getSessionUser, getAvatarUrl, BASE_URL } from '../a
 import {
   ArrowLeft, Paperclip, Calendar, Smile, Search, X, Send,
   MoreVertical, Trash, Trash2, Pencil, Copy, CornerUpLeft, Forward,
-  MessageCircle, Hand, Check, CheckCheck, ChevronUp, ChevronDown, MoreHorizontal
+  MessageCircle, Hand, Check, CheckCheck, ChevronUp, ChevronDown, MoreHorizontal,
+  Mic, FileText
 } from 'lucide-react'
 import BackButton from '../components/BackButton'
 
