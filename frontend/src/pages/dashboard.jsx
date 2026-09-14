@@ -113,7 +113,7 @@ export default function Dashboard() {
             {loading ? (
               <div className="skeleton h-24 w-full" />
             ) : nextSession ? (
-              <div className="card p-5 sm:p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-brand/20 bg-brandLight/10">
+              <div className="card p-5 sm:p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-brand/20 bg-brand/10">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2 mb-2">
                     <span className="status-accepted shrink-0">{nextSession.status}</span>
@@ -278,7 +278,7 @@ export default function Dashboard() {
                           </p>
                         </div>
                       </div>
-                      <Link to={`/marketplace`} className="text-xs font-semibold text-brand hover:underline px-3 py-1.5 rounded bg-brandLight/30 shrink-0">Connect</Link>
+                      <Link to={`/marketplace`} className="text-xs font-semibold text-brand hover:underline px-3 py-1.5 rounded bg-brand/15 shrink-0">Connect</Link>
                     </div>
                   ))}
                 </div>

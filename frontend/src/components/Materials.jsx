@@ -87,7 +87,7 @@ export default function Materials({ session }) {
   if (loading) return <div className="p-8 text-center text-ink/50">Loading materials...</div>;
 
   return (
-    <div className="flex-1 p-4 sm:p-6 flex flex-col h-full bg-[#FDFDFC] overflow-y-auto">
+    <div className="flex-1 p-4 sm:p-6 flex flex-col h-full bg-paper overflow-y-auto">
       <div className="max-w-4xl mx-auto w-full">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8 pb-4 border-b border-line">
           <div>
@@ -122,7 +122,7 @@ export default function Materials({ session }) {
         )}
 
         {materials.length === 0 ? (
-          <div className="text-center py-16 bg-white border border-line rounded-xl shadow-sm">
+          <div className="text-center py-16 bg-surface shadow-elev-1 border border-line rounded-xl shadow-sm">
             <div className="text-4xl mb-4">📄</div>
             <h3 className="font-medium text-lg mb-2">No Materials Yet</h3>
             <p className="text-sm text-ink/50">
@@ -132,7 +132,7 @@ export default function Materials({ session }) {
         ) : (
           <div className="space-y-4">
             {materials.map(mat => (
-              <div key={mat.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 bg-white border border-line rounded-xl shadow-sm hover:shadow-md transition-shadow">
+              <div key={mat.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 bg-surface shadow-elev-1 border border-line rounded-xl shadow-sm hover:shadow-md transition-shadow">
                 <div className="flex items-start gap-4">
                   <div className="w-10 h-10 bg-moss/10 text-moss rounded flex items-center justify-center text-xl shrink-0">
                     {mat.file_type.includes("pdf") ? <FileText className="w-6 h-6 text-moss" /> : <File className="w-6 h-6 text-moss" />}

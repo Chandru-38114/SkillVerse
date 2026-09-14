@@ -174,7 +174,7 @@ export default function Settings() {
               </div>
               {/* Dummy toggle since no API exists yet */}
               <div className="w-10 h-6 bg-brand rounded-full relative cursor-not-allowed opacity-50">
-                <div className="w-4 h-4 bg-white rounded-full absolute right-1 top-1"></div>
+                <div className="w-4 h-4 bg-surface rounded-full absolute right-1 top-1"></div>
               </div>
             </div>
           </div>

@@ -3,7 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { Home, Compass, MessageCircle, Calendar, Inbox, Bell, TrendingUp, Trophy, User, Settings, LogOut, Menu, X } from 'lucide-react'
 import { getSessionUser, clearSession, api } from '../api'
 
-  const NAV_LINKS = [
+const NAV_LINKS = [
   { to: '/dashboard', label: 'Dashboard' },
   { to: '/marketplace', label: 'Discover' },
   { to: '/messages', label: 'Connect' },
@@ -97,7 +97,6 @@ export default function Navbar() {
     return () => document.removeEventListener('mousedown', handleClick)
   }, [])
 
-  // Close mobile menu on escape key
   useEffect(() => {
     function handleKeyDown(e) {
       if (e.key === 'Escape' && mobileMenuOpen) {
@@ -108,7 +107,6 @@ export default function Navbar() {
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [mobileMenuOpen])
 
-  // Close mobile menu when navigating
   useEffect(() => {
     setMobileMenuOpen(false)
   }, [location.pathname])
@@ -162,16 +160,16 @@ export default function Navbar() {
   }
 
   return (
-    <header className="bg-white border-b border-line sticky top-0 z-40 shadow-sm">
+    <header className="bg-surface border-b border-line sticky top-0 z-40 shadow-elev-1">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-0 flex items-center justify-between h-16">
+        {/* Logo */}
         <Link to="/" className="font-display text-xl tracking-tight shrink-0 text-ink font-bold flex items-center gap-2">
-          {/* Small Logo Icon */}
-          <div className="w-8 h-8 rounded-full bg-brandLight/50 flex items-center justify-center shrink-0">
+          <div className="w-8 h-8 rounded-full bg-brand/15 flex items-center justify-center shrink-0">
             <svg className="w-5 h-5 text-brand" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
             </svg>
           </div>
-          <div>
+          <div className="text-ink">
             Skill<span className="text-brand">Verse</span>
           </div>
         </Link>
@@ -188,8 +186,8 @@ export default function Navbar() {
                     to={to}
                     className={`px-3 py-2 rounded-lg text-[13px] font-semibold transition-all duration-150 whitespace-nowrap ${
                       active
-                        ? 'bg-brandLight/50 text-brand'
-                        : 'text-clay hover:text-ink hover:bg-line/30'
+                        ? 'bg-brand/15 text-brand'
+                        : 'text-clay hover:text-ink hover:bg-lift'
                     }`}
                   >
                     {label}
@@ -197,14 +195,14 @@ export default function Navbar() {
                 )
               })}
             </nav>
-            
+
             {/* Right side controls */}
             <div className="flex items-center gap-2 ml-auto lg:ml-0 shrink-0">
               {/* Notification Bell (Desktop Only) */}
               <div className="relative hidden xl:block" ref={panelRef}>
                 <button
                   onClick={openNotifPanel}
-                  className="relative p-2 rounded-lg text-clay hover:text-brand hover:bg-brandLight/30 transition-all"
+                  className={`relative p-2 rounded-lg transition-all ${notifOpen ? 'bg-brand/15 text-brand' : 'text-clay hover:text-brand hover:bg-brand/10'}`}
                   aria-label="Notifications"
                 >
                   <BellIcon />
@@ -216,8 +214,8 @@ export default function Navbar() {
                 </button>
 
                 {notifOpen && (
-                  <div className="absolute right-0 top-12 w-full sm:w-80 bg-white border border-line rounded-xl shadow-lg overflow-hidden z-50">
-                    <div className="flex items-center justify-between px-4 py-3 border-b border-line bg-paper/50">
+                  <div className="absolute right-0 top-12 w-full sm:w-80 bg-lift border border-line rounded-xl shadow-elev-3 overflow-hidden z-50">
+                    <div className="flex items-center justify-between px-4 py-3 border-b border-line bg-surface">
                       <span className="text-sm font-semibold text-ink">Notifications</span>
                       <div className="flex gap-3">
                         <button onClick={handleMarkAll} className="text-xs font-medium text-brand hover:underline">Mark all read</button>
@@ -234,13 +232,13 @@ export default function Navbar() {
                           <div
                             key={n.id}
                             onClick={() => notifNav(n)}
-                            className={`flex gap-3 px-4 py-3 cursor-pointer border-b border-line last:border-0 transition-colors ${!n.is_read ? 'bg-brandLight/20 hover:bg-brandLight/40' : 'hover:bg-paper'}`}
+                            className={`flex gap-3 px-4 py-3 cursor-pointer border-b border-line last:border-0 transition-colors ${!n.is_read ? 'bg-brand/10 hover:bg-brand/15' : 'hover:bg-lift'}`}
                           >
                             {!n.is_read && <div className="mt-1.5 w-2 h-2 bg-brand rounded-full flex-shrink-0 shadow-sm" />}
                             <div className="flex-1 min-w-0">
                               <p className={`text-sm truncate ${!n.is_read ? 'text-ink font-semibold' : 'text-ink/80 font-medium'}`}>{n.title}</p>
                               <p className="text-xs text-clay mt-0.5 truncate">{n.message}</p>
-                              <p className="text-[10px] font-medium text-ink/40 mt-1 uppercase tracking-wider">{new Date(n.created_at).toLocaleString()}</p>
+                              <p className="text-[10px] font-medium text-clay/60 mt-1 uppercase tracking-wider">{new Date(n.created_at).toLocaleString()}</p>
                             </div>
                           </div>
                         ))
@@ -252,7 +250,7 @@ export default function Navbar() {
 
               {/* Desktop Points & Logout */}
               <div className="items-center hidden xl:flex">
-                <span className="text-gold font-mono text-[11px] font-bold bg-goldLight border border-gold/20 px-2.5 py-1 rounded-full shadow-sm mx-2">
+                <span className="text-gold font-mono text-[11px] font-bold bg-gold/15 border border-gold/25 px-2.5 py-1 rounded-full shadow-sm mx-2">
                   {user.points ?? 0} pts
                 </span>
                 <div className="w-px h-5 bg-line mx-2"></div>
@@ -262,15 +260,20 @@ export default function Navbar() {
               </div>
 
               {/* Mobile Menu Toggle Button */}
-              <button 
+              <button
                 onClick={() => setMobileMenuOpen(prev => !prev)}
-                className="xl:hidden p-2.5 ml-1 text-clay hover:text-ink bg-paper rounded-lg transition-colors border border-line flex items-center justify-center shrink-0 min-w-[44px] min-h-[44px]"
-                aria-label={mobileMenuOpen ? "Close Menu" : "Open Menu"} aria-expanded={mobileMenuOpen}
+                className={`xl:hidden p-2.5 ml-1 rounded-lg transition-colors border flex items-center justify-center shrink-0 min-w-[44px] min-h-[44px] ${
+                  mobileMenuOpen
+                    ? 'bg-brand/15 border-brand/30 text-brand'
+                    : 'bg-lift border-line text-clay hover:text-ink hover:bg-surface'
+                }`}
+                aria-label={mobileMenuOpen ? "Close Menu" : "Open Menu"}
+                aria-expanded={mobileMenuOpen}
               >
                 {mobileMenuOpen ? <XIcon /> : <MenuIcon />}
                 <span className="ml-2 text-sm font-bold tracking-wide hidden sm:inline">Menu</span>
                 {unreadCount > 0 && !mobileMenuOpen && (
-                  <span className="absolute top-2 right-2 min-w-[12px] h-3 bg-red-500 rounded-full border border-white"></span>
+                  <span className="absolute top-2 right-2 min-w-[12px] h-3 bg-red-500 rounded-full border border-surface"></span>
                 )}
               </button>
             </div>
@@ -283,9 +286,9 @@ export default function Navbar() {
         )}
       </div>
 
-      {/* Mobile/Tablet Dropdown Menu */}
+      {/* Mobile/Tablet Dropdown Menu — dark-aware */}
       {user && mobileMenuOpen && (
-        <div className="xl:hidden absolute top-16 left-0 w-full bg-white border-b border-line shadow-xl max-h-[calc(100vh-4rem)] overflow-y-auto">
+        <div className="xl:hidden absolute top-16 left-0 w-full bg-surface border-b border-line shadow-elev-3 max-h-[calc(100vh-4rem)] overflow-y-auto">
           <div className="flex flex-col px-4 py-4 space-y-1">
             {MOBILE_NAV_LINKS.map(({ to, label, icon }) => {
               const active = location.pathname === to || location.pathname.startsWith(to + '/')
@@ -295,11 +298,11 @@ export default function Navbar() {
                   to={to}
                   className={`flex items-center gap-3 px-4 py-3 rounded-xl text-[15px] font-semibold transition-all ${
                     active
-                      ? 'bg-brandLight/50 text-brand border border-brand/10'
-                      : 'text-ink/80 hover:bg-paper hover:text-ink'
+                      ? 'bg-brand/15 text-brand border border-brand/20'
+                      : 'text-ink hover:bg-lift hover:text-brand'
                   }`}
                 >
-                  <span className="w-6 flex items-center justify-center text-ink/70">{icon}</span>
+                  <span className={`w-6 flex items-center justify-center ${active ? 'text-brand' : 'text-clay'}`}>{icon}</span>
                   {label}
                   {label === 'Notifications' && unreadCount > 0 && (
                     <span className="ml-auto bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm">
@@ -309,17 +312,17 @@ export default function Navbar() {
                 </Link>
               )
             })}
-            
-            <hr className="border-line/40 my-4 mx-2" />
-            
+
+            <hr className="border-line/60 my-4 mx-2" />
+
             <div className="px-4 pb-2 flex items-center justify-between">
-              <span className="text-gold font-mono text-[13px] font-bold bg-goldLight border border-gold/20 px-3 py-1.5 rounded-full shadow-sm">
+              <span className="text-gold font-mono text-[13px] font-bold bg-gold/15 border border-gold/25 px-3 py-1.5 rounded-full shadow-sm flex items-center gap-1.5">
                 <Trophy className="w-4 h-4 text-gold" /> {user.points ?? 0} pts
               </span>
-              
-              <button 
-                onClick={handleLogout} 
-                className="flex items-center gap-2 px-4 py-2 text-[15px] font-semibold text-red-600 hover:bg-red-50 rounded-xl transition-colors"
+
+              <button
+                onClick={handleLogout}
+                className="flex items-center gap-2 px-4 py-2 text-[15px] font-semibold text-red-400 hover:bg-red-500/10 rounded-xl transition-colors"
               >
                 <LogOut className="w-5 h-5" /> Logout
               </button>

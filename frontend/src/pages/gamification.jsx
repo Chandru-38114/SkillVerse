@@ -98,7 +98,7 @@ export default function Gamification() {
           <div className="card overflow-hidden">
             <div className="p-6 border-b border-ink/10 bg-paper/50 flex justify-between items-center">
               <h2 className="font-display text-xl">Top Learners & Tutors</h2>
-              <span className="text-xs font-bold text-ink/40 bg-white px-2 py-1 rounded shadow-sm">{leaderboard.length} users</span>
+              <span className="text-xs font-bold text-clay bg-lift border border-line px-2 py-1 rounded shadow-sm">{leaderboard.length} users</span>
             </div>
             
             <div className="divide-y divide-ink/5 max-h-[600px] overflow-y-auto">

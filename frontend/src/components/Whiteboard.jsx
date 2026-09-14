@@ -431,9 +431,9 @@ export default function Whiteboard({ sessionId }) {
   const widths = [2, 4, 8];
 
   return (
-    <div className="flex-1 flex flex-col bg-[#FDFDFC] relative overflow-hidden h-full">
+    <div className="flex-1 flex flex-col bg-paper relative overflow-hidden h-full">
       {/* Top Toolbar */}
-      <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-white rounded-xl shadow-md border border-line p-2 flex items-center gap-1 z-10 overflow-x-auto max-w-[95%]">
+      <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-surface shadow-elev-1 rounded-xl shadow-md border border-line p-2 flex items-center gap-1 z-10 overflow-x-auto max-w-[95%]">
         {toolbarTools.map(t => (
           <button
             key={t.id}
@@ -452,7 +452,7 @@ export default function Whiteboard({ sessionId }) {
       </div>
 
       {/* Side Options Panel */}
-      <div className="absolute top-20 left-4 bg-white rounded-xl shadow-md border border-line p-3 flex flex-col gap-4 z-10 w-12 hidden sm:flex">
+      <div className="absolute top-20 left-4 bg-surface shadow-elev-1 rounded-xl shadow-md border border-line p-3 flex flex-col gap-4 z-10 w-12 hidden sm:flex">
         <div className="flex flex-col gap-2">
           {colors.map(c => (
             <button key={c} onClick={() => setStrokeColor(c)} className={`w-6 h-6 rounded-full border-2 mx-auto ${strokeColor === c ? 'border-ink' : 'border-transparent'}`} style={{ backgroundColor: c }} />
@@ -470,11 +470,11 @@ export default function Whiteboard({ sessionId }) {
 
       {/* Zoom Controls & Status */}
       <div className="absolute bottom-4 left-4 flex flex-col gap-2 z-10">
-        <div className="bg-white/90 rounded-xl shadow border border-line px-3 py-1 flex items-center text-xs font-medium text-ink/70">
+        <div className="bg-surface/90 shadow-elev-1 rounded-xl shadow border border-line px-3 py-1 flex items-center text-xs font-medium text-ink/70">
           {syncStatus}
           {saveStatus && <span className="ml-2 pl-2 border-l border-line text-moss">{saveStatus}</span>}
         </div>
-        <div className="bg-white rounded-xl shadow-md border border-line p-1 flex items-center w-max">
+        <div className="bg-surface shadow-elev-1 rounded-xl shadow-md border border-line p-1 flex items-center w-max">
           <button onClick={() => setZoom(Math.max(0.1, zoom - 0.1))} className="w-8 h-8 rounded hover:bg-ink/5 font-bold">-</button>
           <span className="text-xs font-medium w-12 text-center">{Math.round(zoom * 100)}%</span>
           <button onClick={() => setZoom(Math.min(3, zoom + 0.1))} className="w-8 h-8 rounded hover:bg-ink/5 font-bold">+</button>

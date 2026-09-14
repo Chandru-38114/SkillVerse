@@ -86,7 +86,7 @@ export default function OTPInput({ length = 6, value, onChange, disabled = false
           onKeyDown={(e) => handleKeyDown(e, index)}
           disabled={disabled}
           autoComplete="one-time-code"
-          className="w-10 sm:w-12 h-12 sm:h-14 text-center text-xl sm:text-2xl font-bold bg-white border border-line rounded-lg focus:outline-none focus:border-moss focus:ring-1 focus:ring-moss transition-colors disabled:opacity-50 disabled:bg-gray-50"
+          className="w-10 sm:w-12 h-12 sm:h-14 text-center text-xl sm:text-2xl font-bold bg-surface border border-line rounded-lg focus:outline-none focus:border-moss focus:ring-1 focus:ring-moss transition-colors disabled:opacity-50 disabled:bg-lift"
         />
       ))}
     </div>

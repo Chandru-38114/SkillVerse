@@ -151,7 +151,7 @@ export default function Marketplace() {
   const CATEGORIES = ['Java', 'Python', 'React', 'Data Science', 'Machine Learning', 'Figma', 'JavaScript']
 
   return (
-    <div className="min-h-screen bg-[#FDFDFC] font-body text-ink pb-24">
+    <div className="min-h-screen bg-paper font-body text-ink pb-24">
       <section className="pt-16 pb-12 px-4 sm:px-6 max-w-6xl mx-auto border-b border-line/40 mb-8">
         <div className="max-w-3xl mx-auto text-center mb-10">
           <h1 className="text-4xl md:text-5xl font-display font-bold mb-4 text-ink tracking-tight">Find Your Learning Partner</h1>
@@ -159,7 +159,7 @@ export default function Marketplace() {
         </div>
 
         <div className="max-w-2xl mx-auto">
-          <form onSubmit={handleSearchSubmit} className="relative shadow-sm mb-6 flex rounded-xl bg-white border border-line focus-within:border-moss focus-within:ring-2 focus-within:ring-moss/20 transition-all overflow-hidden">
+          <form onSubmit={handleSearchSubmit} className="relative shadow-sm mb-6 flex rounded-xl bg-surface border border-line focus-within:border-brand focus-within:ring-2 focus-within:ring-brand/20 transition-all overflow-hidden">
             <div className="pl-4 pr-2 py-3.5 flex items-center justify-center text-ink/40">
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
             </div>
@@ -194,7 +194,7 @@ export default function Marketplace() {
                 <button
                   key={f}
                   onClick={() => handleFilterChange(f)}
-                  className={`px-4 py-1.5 text-sm font-semibold rounded-md transition-all ${activeFilter === f ? 'bg-white text-ink shadow-sm ring-1 ring-black/5' : 'text-ink/60 hover:text-ink hover:bg-white/50'}`}
+                  className={`px-4 py-1.5 text-sm font-semibold rounded-md transition-all ${activeFilter === f ? 'bg-lift text-ink shadow-elev-1 border border-brand/20' : 'text-clay hover:text-ink hover:bg-lift/60'}`}
                 >
                   {f}
                 </button>
@@ -204,7 +204,7 @@ export default function Marketplace() {
             <div className="flex items-center gap-2">
               <span className="text-xs font-bold uppercase tracking-wider text-ink/50">Min Proficiency:</span>
               <select 
-                className="input text-sm py-1.5 bg-white w-auto font-medium"
+                className="input text-sm py-1.5 bg-lift w-auto font-medium"
                 value={proficiency}
                 onChange={e => setProficiency(e.target.value)}
               >
@@ -241,7 +241,7 @@ export default function Marketplace() {
               const form = formMap[key] || defaultForm()
 
               return (
-                <div key={teacher.user_id} className="card overflow-hidden flex flex-col bg-white border border-line shadow-sm hover:shadow-md transition-shadow">
+                <div key={teacher.user_id} className="card overflow-hidden flex flex-col shadow-sm hover:shadow-md transition-shadow">
                   
                   <div className="p-6 flex-1 flex flex-col">
                     <div className="flex gap-4 mb-6">
@@ -306,7 +306,7 @@ export default function Marketplace() {
                     </div>
                   </div>
 
-                  <div className="p-5 border-t border-line/40 bg-[#FAFAFA]">
+                  <div className="p-5 border-t border-line/40 bg-lift">
                     <RequestControl
                       rel={rel}
                       teacher={teacher}
@@ -364,7 +364,7 @@ function RequestControl({ rel, teacher, targetSkill, form, onFormChange, onSend,
         <p className="text-[11px] font-bold text-clay uppercase tracking-wider">Connect Request</p>
         {displaySkills.length > 1 ? (
           <select
-            className="input text-sm py-2 bg-white font-medium"
+            className="input text-sm py-2 bg-lift font-medium"
             value={targetSkill}
             onChange={(e) => onFormChange('target_skill', e.target.value)}
           >
@@ -376,11 +376,11 @@ function RequestControl({ rel, teacher, targetSkill, form, onFormChange, onSend,
             ))}
           </select>
         ) : displaySkills.length === 1 ? (
-          <p className="text-sm font-medium text-ink bg-white border border-line px-3.5 py-2 rounded-lg">
+          <p className="text-sm font-medium text-ink bg-surface border border-line px-3.5 py-2 rounded-lg">
             {isTeachingThem ? 'I want to teach them ' : 'I want to learn '}<span className="font-bold text-brand">{targetSkill}</span>
           </p>
         ) : (
-          <p className="text-sm font-medium text-ink/50 bg-white border border-line px-3.5 py-2 rounded-lg italic">
+          <p className="text-sm font-medium text-clay bg-lift border border-line px-3.5 py-2 rounded-lg italic">
             No specific skills available for this role.
           </p>
         )}
@@ -389,7 +389,7 @@ function RequestControl({ rel, teacher, targetSkill, form, onFormChange, onSend,
       <div>
         <label className="text-xs text-ink/60 font-semibold mb-1 block">Personal Message</label>
         <input
-          className="input text-sm py-2 bg-white"
+          className="input text-sm py-2 bg-lift"
           placeholder={`Hi ${teacher.name}, let's connect!`}
           value={form.message}
           onChange={(e) => onFormChange('message', e.target.value)}
@@ -430,7 +430,7 @@ function TeacherSkeleton() {
   return (
     <div className="grid lg:grid-cols-2 gap-8">
       {[...Array(4)].map((_, i) => (
-        <div key={i} className="card overflow-hidden flex flex-col bg-white border border-line shadow-sm">
+        <div key={i} className="card overflow-hidden flex flex-col">
           <div className="p-6 flex-1 border-b border-line/40">
             <div className="flex gap-4 mb-6">
               <div className="w-16 h-16 rounded-full skeleton shrink-0" />

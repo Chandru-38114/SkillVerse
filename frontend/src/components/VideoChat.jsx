@@ -288,7 +288,7 @@ export default function VideoChat({ sessionId, children, onLeave }) {
       </div>
 
       {/* Desktop Bottom control bar */}
-      <div className="hidden md:flex h-14 shrink-0 bg-white border-t border-line items-center justify-between px-3 sm:px-5 z-30 gap-3">
+      <div className="hidden md:flex h-14 shrink-0 bg-surface border-t border-line shadow-elev-1 items-center justify-between px-3 sm:px-5 z-30 gap-3">
         <div className="flex-1 text-xs text-ink/50 font-medium min-w-0 truncate">
           {status === 'connected' && (
             <span className="flex items-center gap-1.5">

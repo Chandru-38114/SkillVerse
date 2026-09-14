@@ -60,7 +60,7 @@ export default function Progress() {
               <div>
                 <div className="flex justify-between items-start mb-4">
                   <h2 className="text-xl font-semibold">{skill.skill_name}</h2>
-                  <span className="text-xs font-bold px-2 py-1 bg-gray-100 rounded text-ink/70">
+                  <span className="text-xs font-bold px-2 py-1 bg-lift border border-line rounded text-clay">
                     {skill.role === "learning" ? "Learning" : "Teaching"}
                   </span>
                 </div>

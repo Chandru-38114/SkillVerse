@@ -144,7 +144,7 @@ const Notifications = () => {
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl border border-line shadow-sm overflow-hidden">
+      <div className="bg-surface rounded-2xl border border-line shadow-elev-1 overflow-hidden">
         {notifications.length === 0 ? (
           <div className="p-12 flex flex-col items-center justify-center text-center">
             <div className="w-16 h-16 rounded-full bg-ink/5 flex items-center justify-center mb-4">
