@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock } from 'lucide-react';
 
 export default function DateTimePicker({ date, startTime, endTime, onDateChange, onStartTimeChange, onEndTimeChange, minDate }) {
@@ -27,17 +27,24 @@ export default function DateTimePicker({ date, startTime, endTime, onDateChange,
     }
   }
 
+  const getLocalYMD = (d) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  };
+
   const formatDay = (d) => {
     const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     return {
       dayName: dayNames[d.getDay()],
       dateNum: d.getDate(),
-      full: d.toISOString().split('T')[0]
+      full: getLocalYMD(d)
     };
   };
 
   const isSelected = (d) => {
-    return date === d.toISOString().split('T')[0];
+    return date === getLocalYMD(d);
   };
 
   return (

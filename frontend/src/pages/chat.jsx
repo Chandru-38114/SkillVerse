@@ -324,7 +324,7 @@ export default function Chat({ requestId, embedded = false }) {
                 onDateChange={(val) => setScheduleData({...scheduleData, date: val})}
                 onStartTimeChange={(val) => setScheduleData({...scheduleData, startTime: val})}
                 onEndTimeChange={(val) => setScheduleData({...scheduleData, endTime: val})}
-                minDate={new Date().toISOString().slice(0, 10)}
+                minDate={getTodayIstYMD()}
               />
 
               <div>

@@ -399,7 +399,7 @@ function SchedulePanel({ requestId, skill }) {
 // ── Schedule form ─────────────────────────────────────────────────────────────
 
 function ScheduleForm({ requestId, skill, onScheduled }) {
-  const today = new Date().toISOString().slice(0, 10)
+  const today = getTodayIstYMD()
   const [date, setDate] = useState('')
   const [start, setStart] = useState('')
   const [end, setEnd] = useState('')

@@ -36,7 +36,7 @@ export default function Sessions() {
   }
 
   const upcoming = sessions.filter(
-    (s) => s.status === 'scheduled' && s.session_date >= new Date().toISOString().slice(0, 10)
+    (s) => s.status === 'scheduled' && s.session_date >= getTodayIstYMD()
   )
   const past = sessions.filter((s) => !upcoming.includes(s))
 

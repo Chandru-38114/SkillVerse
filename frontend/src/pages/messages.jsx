@@ -401,7 +401,7 @@ function ScheduleModal({ requestId, onClose, onScheduled }) {
   const [notes, setNotes] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
-  const today = new Date().toISOString().slice(0, 10)
+  const today = getTodayIstYMD()
 
   async function handleSubmit(e) {
     e.preventDefault()

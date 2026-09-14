@@ -67,3 +67,13 @@ export function createIstToUtcDate(dateStr, timeStr) {
   const d = new Date(isoStr);
   return isNaN(d.getTime()) ? null : d;
 }
+
+/**
+ * Returns today's date in YYYY-MM-DD format, evaluated specifically in IST timezone.
+ */
+export function getTodayIstYMD() {
+  const d = new Date();
+  const options = { timeZone: IST_TIMEZONE, year: 'numeric', month: '2-digit', day: '2-digit' };
+  // Intl.DateTimeFormat with 'en-CA' gives YYYY-MM-DD format directly
+  return new Intl.DateTimeFormat('en-CA', options).format(d);
+}
