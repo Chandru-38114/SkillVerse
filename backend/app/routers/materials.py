@@ -56,12 +56,39 @@ async def upload_material(
     supabase = get_supabase()
 
     try:
-        supabase.storage.from_("materials").upload(
+        res = supabase.storage.from_("materials").upload(
             file=file_bytes,
             path=stored_filename,
             file_options={"content-type": ALLOWED_EXTENSIONS[ext]}
         )
+        
+        if isinstance(res, dict):
+            if res.get("error") or res.get("statusCode", 200) >= 400:
+                raise HTTPException(
+                    status_code=res.get("statusCode", 400), 
+                    detail=res.get("message", res.get("error", "Upload failed"))
+                )
+        elif hasattr(res, "status_code") and res.status_code >= 400:
+            err = res.json() if hasattr(res, "json") else {}
+            raise HTTPException(
+                status_code=res.status_code, 
+                detail=err.get("message", err.get("error", "Upload failed"))
+            )
+            
+    except HTTPException:
+        raise
     except Exception as e:
+        if hasattr(e, "args") and len(e.args) > 0 and isinstance(e.args[0], dict):
+            err_dict = e.args[0]
+            raise HTTPException(
+                status_code=err_dict.get("statusCode", 500),
+                detail=err_dict.get("message", err_dict.get("error", "Upload failed"))
+            )
+        if isinstance(e, AttributeError) and "has no attribute 'text'" in str(e):
+            raise HTTPException(
+                status_code=500, 
+                detail="Storage configuration error: Bucket may not exist or permission denied."
+            )
         raise HTTPException(status_code=500, detail=f"Failed to save file to Supabase: {str(e)}")
 
     mat = models.LearningMaterial(

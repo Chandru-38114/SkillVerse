@@ -61,12 +61,45 @@ async def upload_attachment(
     supabase = get_supabase()
 
     try:
-        supabase.storage.from_(bucket).upload(
+        res = supabase.storage.from_(bucket).upload(
             file=file_bytes,
             path=filename,
             file_options={"content-type": file.content_type}
         )
+        
+        # If the helper already returns a dict, handle it correctly
+        if isinstance(res, dict):
+            if res.get("error") or res.get("statusCode", 200) >= 400:
+                raise HTTPException(
+                    status_code=res.get("statusCode", 400), 
+                    detail=res.get("message", res.get("error", "Upload failed"))
+                )
+        # If it returns an HTTP response object that failed
+        elif hasattr(res, "status_code") and res.status_code >= 400:
+            err = res.json() if hasattr(res, "json") else {}
+            raise HTTPException(
+                status_code=res.status_code, 
+                detail=err.get("message", err.get("error", "Upload failed"))
+            )
+            
+    except HTTPException:
+        raise
     except Exception as e:
+        # Do NOT blindly convert the dict to a string. Handle StorageException dicts.
+        if hasattr(e, "args") and len(e.args) > 0 and isinstance(e.args[0], dict):
+            err_dict = e.args[0]
+            raise HTTPException(
+                status_code=err_dict.get("statusCode", 500),
+                detail=err_dict.get("message", err_dict.get("error", "Upload failed"))
+            )
+            
+        # Catch the specific 'dict object has no attribute text' bug inside supabase-py
+        if isinstance(e, AttributeError) and "has no attribute 'text'" in str(e):
+            raise HTTPException(
+                status_code=500, 
+                detail="Storage configuration error: Bucket may not exist or permission denied."
+            )
+            
         raise HTTPException(status_code=500, detail=f"Failed to upload file: {str(e)}")
 
     metadata = {
