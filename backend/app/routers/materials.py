@@ -1,6 +1,7 @@
 import os
 import uuid
 import shutil
+import logging
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.orm import Session
 from fastapi.responses import FileResponse, RedirectResponse
@@ -8,6 +9,8 @@ from fastapi.responses import FileResponse, RedirectResponse
 from .. import models, auth
 from ..database import get_db
 from ..supabase_client import get_supabase
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/materials", tags=["materials"])
 
@@ -54,42 +57,48 @@ async def upload_material(
 
     stored_filename = f"{uuid.uuid4()}{ext}"
     supabase = get_supabase()
+    bucket = "materials"
 
     try:
-        res = supabase.storage.from_("materials").upload(
+        logger.info(f"Uploading to bucket '{bucket}', path '{stored_filename}', content-type '{ALLOWED_EXTENSIONS[ext]}'")
+        res = supabase.storage.from_(bucket).upload(
             file=file_bytes,
             path=stored_filename,
             file_options={"content-type": ALLOWED_EXTENSIONS[ext]}
         )
         
         if isinstance(res, dict):
-            if res.get("error") or res.get("statusCode", 200) >= 400:
-                raise HTTPException(
-                    status_code=res.get("statusCode", 400), 
-                    detail=res.get("message", res.get("error", "Upload failed"))
-                )
+            status = res.get("statusCode", res.get("status", 200))
+            if res.get("error") or status >= 400:
+                msg = res.get("message", res.get("error", "Upload failed"))
+                logger.error(f"Storage upload dict error (Bucket: {bucket}, Path: {stored_filename}): HTTP {status} - {msg}")
+                raise HTTPException(status_code=status if isinstance(status, int) else 500, detail=f"Storage upload failed (HTTP {status}): {msg}")
         elif hasattr(res, "status_code") and res.status_code >= 400:
             err = res.json() if hasattr(res, "json") else {}
-            raise HTTPException(
-                status_code=res.status_code, 
-                detail=err.get("message", err.get("error", "Upload failed"))
-            )
+            msg = err.get("message", err.get("error", "Upload failed"))
+            logger.error(f"Storage upload response error (Bucket: {bucket}, Path: {stored_filename}): HTTP {res.status_code} - {msg}")
+            raise HTTPException(status_code=res.status_code, detail=f"Storage upload failed (HTTP {res.status_code}): {msg}")
             
     except HTTPException:
         raise
     except Exception as e:
+        logger.error(f"Storage upload exception (Bucket: {bucket}, Path: {stored_filename}): {str(e)}", exc_info=True)
+        status_code = 500
+        err_msg = "Unknown exception during upload"
+        
         if hasattr(e, "args") and len(e.args) > 0 and isinstance(e.args[0], dict):
             err_dict = e.args[0]
-            raise HTTPException(
-                status_code=err_dict.get("statusCode", 500),
-                detail=err_dict.get("message", err_dict.get("error", "Upload failed"))
-            )
-        if isinstance(e, AttributeError) and "has no attribute 'text'" in str(e):
-            raise HTTPException(
-                status_code=500, 
-                detail="Storage configuration error: Bucket may not exist or permission denied."
-            )
-        raise HTTPException(status_code=500, detail=f"Failed to save file to Supabase: {str(e)}")
+            status_code = err_dict.get("statusCode", err_dict.get("status", 500))
+            err_msg = err_dict.get("message", err_dict.get("error", "Upload failed"))
+        elif isinstance(e, AttributeError) and "has no attribute 'text'" in str(e):
+            err_msg = "SDK AttributeError encountered. Check server logs for traceback."
+        else:
+            err_msg = str(e)
+            
+        raise HTTPException(
+            status_code=status_code if isinstance(status_code, int) else 500,
+            detail=f"Storage upload failed (HTTP {status_code}): {err_msg}"
+        )
 
     mat = models.LearningMaterial(
         session_id=session_id,

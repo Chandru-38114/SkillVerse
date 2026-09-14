@@ -1,24 +1,24 @@
 from typing import List, Optional
 import asyncio
-from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect, Query
+import logging
+from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect, Query, File, UploadFile
+import uuid
+import mimetypes
+from fastapi.responses import RedirectResponse
 from starlette.concurrency import run_in_threadpool
 from jose import jwt, JWTError
 from sqlalchemy.orm import Session
 from ..notification_service import create_notification
 from ..utils.timezone import enforce_utc_iso
+from ..supabase_client import get_supabase
 
 from .. import models, schemas, auth
 from ..database import get_db, SessionLocal
 from ..ws_manager import chat_manager
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/chat", tags=["chat"])
-
-
-import uuid
-import mimetypes
-from fastapi import UploadFile, File
-from fastapi.responses import RedirectResponse
-from ..supabase_client import get_supabase
 
 ALLOWED_EXTENSIONS = {
     "pdf": "application/pdf",
@@ -61,46 +61,46 @@ async def upload_attachment(
     supabase = get_supabase()
 
     try:
+        logger.info(f"Uploading to bucket '{bucket}', path '{filename}', content-type '{file.content_type}'")
         res = supabase.storage.from_(bucket).upload(
             file=file_bytes,
             path=filename,
             file_options={"content-type": file.content_type}
         )
         
-        # If the helper already returns a dict, handle it correctly
         if isinstance(res, dict):
-            if res.get("error") or res.get("statusCode", 200) >= 400:
-                raise HTTPException(
-                    status_code=res.get("statusCode", 400), 
-                    detail=res.get("message", res.get("error", "Upload failed"))
-                )
-        # If it returns an HTTP response object that failed
+            status = res.get("statusCode", res.get("status", 200))
+            if res.get("error") or status >= 400:
+                msg = res.get("message", res.get("error", "Upload failed"))
+                logger.error(f"Storage upload dict error (Bucket: {bucket}, Path: {filename}): HTTP {status} - {msg}")
+                raise HTTPException(status_code=status if isinstance(status, int) else 500, detail=f"Storage upload failed (HTTP {status}): {msg}")
         elif hasattr(res, "status_code") and res.status_code >= 400:
             err = res.json() if hasattr(res, "json") else {}
-            raise HTTPException(
-                status_code=res.status_code, 
-                detail=err.get("message", err.get("error", "Upload failed"))
-            )
+            msg = err.get("message", err.get("error", "Upload failed"))
+            logger.error(f"Storage upload response error (Bucket: {bucket}, Path: {filename}): HTTP {res.status_code} - {msg}")
+            raise HTTPException(status_code=res.status_code, detail=f"Storage upload failed (HTTP {res.status_code}): {msg}")
             
     except HTTPException:
         raise
     except Exception as e:
-        # Do NOT blindly convert the dict to a string. Handle StorageException dicts.
+        logger.error(f"Storage upload exception (Bucket: {bucket}, Path: {filename}): {str(e)}", exc_info=True)
+        
+        status_code = 500
+        err_msg = "Unknown exception during upload"
+        
         if hasattr(e, "args") and len(e.args) > 0 and isinstance(e.args[0], dict):
             err_dict = e.args[0]
-            raise HTTPException(
-                status_code=err_dict.get("statusCode", 500),
-                detail=err_dict.get("message", err_dict.get("error", "Upload failed"))
-            )
+            status_code = err_dict.get("statusCode", err_dict.get("status", 500))
+            err_msg = err_dict.get("message", err_dict.get("error", "Upload failed"))
+        elif isinstance(e, AttributeError) and "has no attribute 'text'" in str(e):
+            err_msg = "SDK AttributeError encountered. Check server logs for traceback."
+        else:
+            err_msg = str(e)
             
-        # Catch the specific 'dict object has no attribute text' bug inside supabase-py
-        if isinstance(e, AttributeError) and "has no attribute 'text'" in str(e):
-            raise HTTPException(
-                status_code=500, 
-                detail="Storage configuration error: Bucket may not exist or permission denied."
-            )
-            
-        raise HTTPException(status_code=500, detail=f"Failed to upload file: {str(e)}")
+        raise HTTPException(
+            status_code=status_code if isinstance(status_code, int) else 500,
+            detail=f"Storage upload failed (HTTP {status_code}): {err_msg}"
+        )
 
     metadata = {
         "type": type,
