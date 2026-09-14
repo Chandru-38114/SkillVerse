@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react'
+﻿import React, { useEffect, useRef, useState, useCallback } from 'react'
 import { formatTime, formatDateTime, createIstToUtcDate } from '../utils/dateTime'
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
 import { api, chatSocketUrl, getSessionUser, getAvatarUrl, BASE_URL } from '../api'
@@ -13,14 +13,14 @@ import DateTimePicker from '../components/DateTimePicker'
 
 const RECONNECT_DELAY_MS = 2000
 const MAX_RECONNECT_DELAY_MS = 10000
-const REACTION_EMOJIS = ['ðŸ‘', 'â¤ï¸', 'ðŸ˜‚', 'ðŸ˜®', 'ðŸ˜¢', 'ðŸ™']
-const COMPOSE_EMOJIS = ['ðŸ‘', 'ðŸ‘Ž', 'â¤ï¸', 'ðŸ”¥', 'âœ¨', 'âœ…', 'ðŸ’¯', 'ðŸŽ‰', 'ðŸ˜‚', 'ðŸ™', 'ðŸš€', 'ðŸ’¡', 'ðŸ‘', 'ðŸ˜Ž', 'ðŸ¤']
+const REACTION_EMOJIS = ['Ã°Å¸â€˜Â', 'Ã¢ÂÂ¤Ã¯Â¸Â', 'Ã°Å¸Ëœâ€š', 'Ã°Å¸ËœÂ®', 'Ã°Å¸ËœÂ¢', 'Ã°Å¸â„¢Â']
+const COMPOSE_EMOJIS = ['Ã°Å¸â€˜Â', 'Ã°Å¸â€˜Å½', 'Ã¢ÂÂ¤Ã¯Â¸Â', 'Ã°Å¸â€Â¥', 'Ã¢Å“Â¨', 'Ã¢Å“â€¦', 'Ã°Å¸â€™Â¯', 'Ã°Å¸Å½â€°', 'Ã°Å¸Ëœâ€š', 'Ã°Å¸â„¢Â', 'Ã°Å¸Å¡â‚¬', 'Ã°Å¸â€™Â¡', 'Ã°Å¸â€˜Â', 'Ã°Å¸ËœÅ½', 'Ã°Å¸Â¤Â']
 
-// â”€â”€ Utilities â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬ Utilities Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 function truncate(str, n = 60) {
   if (!str) return ''
-  return str.length > n ? str.slice(0, n) + 'â€¦' : str
+  return str.length > n ? str.slice(0, n) + 'Ã¢â‚¬Â¦' : str
 }
 
 function Toast({ message, onDone }) {
@@ -35,15 +35,15 @@ function Toast({ message, onDone }) {
   )
 }
 
-// â”€â”€ Message renderer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬ Message renderer Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 function MessageRenderer({ content }) {
   const imgMatch = content.match(/^!\[(.*?)\]\((.*?)\)$/)
   if (imgMatch) {
     return (
-      <div className="mt-1">
-        <a href={imgMatch[2]} target="_blank" rel="noreferrer">
-          <img src={imgMatch[2]} alt={imgMatch[1]} className="max-w-full h-auto rounded-lg max-h-48 object-cover border border-ink/10 cursor-pointer hover:opacity-90 transition-opacity" />
+      <div className="mt-2 mb-1 overflow-hidden rounded-xl border border-line/50 shadow-sm bg-black/5 dark:bg-white/5">
+        <a href={imgMatch[2]} target="_blank" rel="noreferrer" className="block cursor-zoom-in">
+          <img src={imgMatch[2]} alt={imgMatch[1]} className="max-w-full h-auto max-h-64 w-full object-cover hover:opacity-95 transition-opacity" />
         </a>
       </div>
     )
@@ -51,23 +51,26 @@ function MessageRenderer({ content }) {
   const fileMatch = content.match(/^\[(.*?)\]\((.*?)\)$/)
   if (fileMatch) {
     return (
-      <a href={fileMatch[2]} target="_blank" rel="noreferrer" className="flex items-center gap-2 mt-1 px-3 py-2 bg-ink/5 rounded-lg hover:bg-ink/10 transition-colors">
-        <span className="text-xs truncate font-medium underline-offset-2 hover:underline">{fileMatch[1]}</span>
+      <a href={fileMatch[2]} target="_blank" rel="noreferrer" className="flex items-center gap-3 mt-2 mb-1 px-4 py-3 bg-surface border border-line/40 rounded-xl hover:bg-lift transition-colors group shadow-sm w-fit max-w-full">
+        <div className="p-2 bg-brand/10 text-brand rounded-lg group-hover:bg-brand/20 transition-colors">
+          <FileText className="w-5 h-5 shrink-0" />
+        </div>
+        <span className="text-sm font-semibold text-ink truncate flex-1">{fileMatch[1]}</span>
       </a>
     )
   }
-  return <p className="whitespace-pre-wrap break-words">{content}</p>
+  return <p className="whitespace-pre-wrap break-words leading-relaxed">{content}</p>
 }
 
-// â”€â”€ Connection state badge â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬ Connection state badge Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 function ConnectionBadge({ state }) {
   const cfg = {
-    connecting:   { label: 'Connectingâ€¦',   dot: 'bg-amber-400 animate-pulse' },
+    connecting:   { label: 'ConnectingÃ¢â‚¬Â¦',   dot: 'bg-amber-400 animate-pulse' },
     live:         { label: 'Online',          dot: 'bg-emerald-500' },
-    reconnecting: { label: 'Reconnectingâ€¦',  dot: 'bg-orange-400 animate-pulse' },
+    reconnecting: { label: 'ReconnectingÃ¢â‚¬Â¦',  dot: 'bg-orange-400 animate-pulse' },
     offline:      { label: 'Offline',         dot: 'bg-ink/25' },
-  }[state] || { label: 'Connectingâ€¦', dot: 'bg-amber-400 animate-pulse' }
+  }[state] || { label: 'ConnectingÃ¢â‚¬Â¦', dot: 'bg-amber-400 animate-pulse' }
 
   return (
     <span className="flex items-center gap-1 text-[10px] text-ink/50 font-medium">
@@ -77,25 +80,25 @@ function ConnectionBadge({ state }) {
   )
 }
 
-// â”€â”€ Reply preview bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬ Reply preview bar Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 function ReplyPreview({ msg, onCancel }) {
   if (!msg) return null
   return (
-    <div className="flex items-center gap-2 px-3 py-2 bg-brand/10 border-t border-brand/20">
-      <CornerUpLeft className="w-4 h-4 text-brand shrink-0" />
-      <div className="flex-1 min-w-0">
-        <p className="text-[10px] font-bold text-brand">Replying to message</p>
-        <p className="text-xs text-clay truncate">{truncate(msg.content || 'Attachment', 50)}</p>
+    <div className="flex items-start gap-3 px-4 py-3 bg-surface border-t border-line">
+      <CornerUpLeft className="w-4 h-4 text-brand mt-0.5 shrink-0" />
+      <div className="flex-1 min-w-0 border-l-2 border-brand pl-3">
+        <p className="text-[10px] font-bold text-brand uppercase tracking-wider mb-0.5">Replying to</p>
+        <p className="text-sm text-ink truncate">{truncate(msg.content || 'Attachment', 80)}</p>
       </div>
-      <button onClick={onCancel} className="p-1 text-clay hover:text-ink rounded-full shrink-0 min-w-[32px] min-h-[32px] flex items-center justify-center">
+      <button onClick={onCancel} className="p-1.5 text-clay hover:text-ink hover:bg-line/50 rounded-full transition-colors shrink-0">
         <X className="w-4 h-4" />
       </button>
     </div>
   )
 }
 
-// â”€â”€ Reactions display â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬ Reactions display Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 function ReactionBubbles({ reactions, messageId, currentUserId, onToggle }) {
   if (!reactions || Object.keys(reactions).length === 0) return null
@@ -138,13 +141,16 @@ function VoicePlayer({ meta, reqId }) {
   }, [meta.audio_path, reqId])
 
   return (
-    <div className="flex items-center gap-2 mt-1 px-3 py-2 bg-lift/70 border border-line/50 rounded-full">
+    <div className="flex items-center gap-2 mt-1.5 px-3.5 py-2.5 bg-surface border border-line/40 rounded-full shadow-sm w-fit max-w-[280px]">
       {error ? (
-        <div className="h-8 w-48 flex items-center justify-center text-xs text-red-400 font-medium bg-red-500/10 rounded-full border border-red-500/20">Audio unavailable</div>
+        <div className="h-8 w-48 flex items-center justify-center text-[11px] text-red-500 font-bold tracking-wider uppercase bg-red-500/10 rounded-full border border-red-500/20">Unavailable</div>
       ) : signedUrl ? (
-        <audio controls src={signedUrl} className="h-8 w-48 max-w-full" controlsList="nodownload noplaybackrate" />
+        <audio controls src={signedUrl} className="h-9 w-52 max-w-full" controlsList="nodownload noplaybackrate" />
       ) : (
-        <div className="h-8 w-48 animate-pulse bg-line/60 rounded-full"></div>
+        <div className="h-9 w-52 flex items-center justify-center gap-2">
+           <div className="w-6 h-6 rounded-full bg-line/60 animate-pulse"></div>
+           <div className="flex-1 h-2 rounded-full bg-line/60 animate-pulse"></div>
+        </div>
       )}
     </div>
   )
@@ -166,17 +172,19 @@ function FileAttachment({ meta, reqId }) {
   }, [meta.file_path, reqId])
 
   return (
-    <a href={signedUrl || '#'} target={signedUrl ? "_blank" : "_self"} rel="noreferrer" className={`flex items-center gap-3 mt-1 px-3 py-2 ${error ? 'bg-red-500/10' : 'bg-ink/5 hover:bg-ink/10'} rounded-lg transition-colors w-full max-w-[240px] ${(!signedUrl && !error) ? 'opacity-50 pointer-events-none' : ''} ${error ? 'pointer-events-none' : ''}`}>
-      <FileText className={`w-6 h-6 shrink-0 ${error ? 'text-red-400' : 'opacity-70'}`} />
+    <a href={signedUrl || '#'} target={signedUrl ? "_blank" : "_self"} rel="noreferrer" className={`flex items-center gap-3 mt-1.5 px-3.5 py-2.5 ${error ? 'bg-red-500/10 border-red-500/20' : 'bg-surface border-line/40 hover:bg-lift shadow-sm'} border rounded-xl transition-colors w-full max-w-[260px] ${(!signedUrl && !error) ? 'opacity-50 pointer-events-none' : ''} ${error ? 'pointer-events-none' : 'group'}`}>
+      <div className={`p-2 rounded-lg transition-colors ${error ? 'bg-red-500/20 text-red-500' : 'bg-brand/10 text-brand group-hover:bg-brand/20'}`}>
+        <FileText className="w-5 h-5 shrink-0" />
+      </div>
       <div className="min-w-0 flex-1">
-        <p className={`text-sm font-medium truncate ${error ? 'text-red-500' : ''}`}>{error ? 'Attachment unavailable' : (meta.file_name || 'Attachment')}</p>
-        {!error && meta.size_bytes && <p className="text-[10px] opacity-60">{(meta.size_bytes / 1024).toFixed(1)} KB</p>}
+        <p className={`text-sm font-semibold truncate ${error ? 'text-red-500' : 'text-ink'}`}>{error ? 'Unavailable' : (meta.file_name || 'Attachment')}</p>
+        {!error && meta.size_bytes && <p className="text-[10px] text-clay uppercase tracking-wider font-bold">{(meta.size_bytes / 1024).toFixed(1)} KB</p>}
       </div>
     </a>
   )
 }
 
-// â”€â”€ Message bubble â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬ Message bubble Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 function MessageBubble({ m, reqId, isMe, isConsecutive, currentUserId, allMessages, onReply, onCopy, onEdit, onDeleteForEveryone, onDeleteForMe, onToggleReaction, onForward, onScrollToRef, msgRef }) {
   const [menuOpen, setMenuOpen] = useState(false)
@@ -219,7 +227,7 @@ function MessageBubble({ m, reqId, isMe, isConsecutive, currentUserId, allMessag
             onClick={handleScrollToReply}
             className="reply-quote"
           >
-            <p className="text-[10px] text-brand font-semibold">â†© Replied to</p>
+            <p className="text-[10px] text-brand font-semibold">Ã¢â€ Â© Replied to</p>
             <p className="text-[11px] text-clay truncate">{truncate(replyPreview, 55)}</p>
           </button>
         )}
@@ -266,7 +274,7 @@ function MessageBubble({ m, reqId, isMe, isConsecutive, currentUserId, allMessag
           />
         )}
 
-          {/* Context menu button â€” appears on hover/focus */}
+          {/* Context menu button Ã¢â‚¬â€ appears on hover/focus */}
           {!isDeleted && (
             <div
               ref={menuRef}
@@ -338,7 +346,7 @@ function MenuItem({ icon, label, onClick, danger }) {
   )
 }
 
-// â”€â”€ Forward modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬ Forward modal Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 function ForwardModal({ message, inbox, currentRequestId, onClose, onForward }) {
   const [selected, setSelected] = useState(null)
@@ -384,7 +392,7 @@ function ForwardModal({ message, inbox, currentRequestId, onClose, onForward }) 
   )
 }
 
-// â”€â”€ Schedule modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬ Schedule modal Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 function ScheduleModal({ requestId, onClose, onScheduled }) {
   const [date, setDate] = useState('')
@@ -453,7 +461,7 @@ function ScheduleModal({ requestId, onClose, onScheduled }) {
             <div className="p-4 bg-brand/5 border border-brand/20 rounded-xl mt-4">
               <p className="text-[10px] font-bold uppercase tracking-wider text-brand mb-1">Session Summary</p>
               <p className="text-sm text-ink font-medium">
-                {new Date(date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} • {startTime} to {endTime} <span className="text-clay font-normal ml-1">IST</span>
+                {new Date(date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} â€¢ {startTime} to {endTime} <span className="text-clay font-normal ml-1">IST</span>
               </p>
             </div>
           )}
@@ -468,7 +476,7 @@ function ScheduleModal({ requestId, onClose, onScheduled }) {
   )
 }
 
-// â”€â”€ Session card (inside chat) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬ Session card (inside chat) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 function SessionCard({ conv, onCancel, navigate }) {
   if (!conv?.session_id) return null
@@ -477,23 +485,29 @@ function SessionCard({ conv, onCancel, navigate }) {
     : `${conv.session_date || ''} ${conv.session_time || ''}`.trim()
 
   return (
-    <div className="mx-4 my-2 flex items-center gap-3 px-3 py-2 bg-brand/10 dark:bg-brand/20 border border-brand/20 dark:border-brand/30 rounded-xl text-sm">
-      <Calendar className="w-4 h-4 text-moss shrink-0" />
-      <div className="flex-1 min-w-0">
-        <p className="font-semibold text-moss text-xs">Session Scheduled</p>
-        <p className="text-ink/60 text-xs truncate">{dateStr}</p>
+    <div className="mx-4 my-3 flex flex-col sm:flex-row items-start sm:items-center gap-3 px-4 py-3 bg-gradient-to-r from-brand/5 to-transparent border border-brand/20 rounded-xl">
+      <div className="w-10 h-10 rounded-full bg-brand/10 text-brand flex items-center justify-center shrink-0">
+        <Calendar className="w-5 h-5" />
       </div>
-      <div className="flex items-center gap-1.5 shrink-0">
-        <button onClick={() => navigate('/sessions')} className="btn-primary text-xs px-2.5 py-1 h-auto">Join</button>
-        <button onClick={() => onCancel(conv.session_id)} className="p-1 text-ink/40 hover:text-red-500 transition-colors rounded min-w-[28px] min-h-[28px] flex items-center justify-center">
-          <Trash2 className="w-3.5 h-3.5" />
+            <div className="flex-1 min-w-0">
+        <p className="font-display font-bold text-ink text-sm">Session Scheduled</p>
+        <p className="text-clay text-xs mt-0.5 truncate uppercase tracking-wide font-bold">{dateStr}</p>
+      </div>
+      <div className="flex items-center gap-2 w-full sm:w-auto mt-2 sm:mt-0">
+        <button onClick={() => navigate('/sessions')} className="flex-1 sm:flex-none btn-primary text-xs px-4 py-2 h-auto shadow-sm">
+          Join
+        </button>
+        <button onClick={() => onCancel(conv.session_id)} className="p-2 text-clay hover:text-red-500 hover:bg-red-500/10 transition-colors rounded-lg flex items-center justify-center border border-transparent hover:border-red-500/20">
+          <Trash2 className="w-4 h-4" />
         </button>
       </div>
     </div>
   )
 }
 
-// â”€â”€ Main Connect page â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// =========================================================================
+// Main Connect page
+// =========================================================================
 
   export default function Messages() {
     const navigate = useNavigate()
@@ -561,7 +575,7 @@ function SessionCard({ conv, onCancel, navigate }) {
   
   const msgRefsMap = useRef({})   // id -> DOM ref
 
-  // â”€â”€ Inbox load â”€â”€
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Inbox load Ã¢â€â‚¬Ã¢â€â‚¬
   useEffect(() => {
     mountedRef.current = true
     loadInbox()
@@ -582,7 +596,7 @@ function SessionCard({ conv, onCancel, navigate }) {
     }
   }
 
-  // â”€â”€ WebSocket lifecycle â”€â”€
+  // Ã¢â€â‚¬Ã¢â€â‚¬ WebSocket lifecycle Ã¢â€â‚¬Ã¢â€â‚¬
   useEffect(() => {
     if (!selectedRequestId) return
     let isActive = true
@@ -675,7 +689,7 @@ function SessionCard({ conv, onCancel, navigate }) {
     }
   }, [selectedRequestId])
 
-  // â”€â”€ Handlers â”€â”€
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Handlers Ã¢â€â‚¬Ã¢â€â‚¬
 
   const showToast = useCallback((msg) => setToast(msg), [])
 
@@ -914,7 +928,7 @@ function SessionCard({ conv, onCancel, navigate }) {
   // Cancel editing
   const handleCancelEdit = () => { setEditingMsg(null); setDraft('') }
 
-  // â”€â”€ Derived â”€â”€
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Derived Ã¢â€â‚¬Ã¢â€â‚¬
 
   const filteredInbox = inbox.filter(c =>
     c.other_user_name.toLowerCase().includes(inboxSearch.toLowerCase()) ||
@@ -934,7 +948,7 @@ function SessionCard({ conv, onCancel, navigate }) {
       }, [])
     : []
 
-  // â”€â”€ Render â”€â”€
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Render Ã¢â€â‚¬Ã¢â€â‚¬
 
   return (
     <div className="max-w-6xl mx-auto flex flex-col bg-paper" style={{ height: 'calc(100dvh - 64px)' }}>
@@ -950,14 +964,14 @@ function SessionCard({ conv, onCancel, navigate }) {
       {/* Main panel */}
       <div className="flex-1 flex md:mx-6 md:mb-6 md:rounded-2xl border border-line bg-surface shadow-elev-2 overflow-hidden min-h-0">
 
-        {/* â”€â”€ Inbox sidebar â”€â”€ */}
+        {/* Ã¢â€â‚¬Ã¢â€â‚¬ Inbox sidebar Ã¢â€â‚¬Ã¢â€â‚¬ */}
         <div className={`${selectedRequestId ? 'hidden md:flex' : 'flex'} flex-col w-full md:w-72 lg:w-80 border-r border-line bg-paper shrink-0`}>
           {/* Sidebar header */}
           <div className="p-3 border-b border-line bg-surface flex items-center gap-2 shrink-0">
             <BackButton className="md:hidden shrink-0" />
             <input
               type="text"
-              placeholder="Search conversationsâ€¦"
+              placeholder="Search conversationsÃ¢â‚¬Â¦"
               value={inboxSearch}
               onChange={e => setInboxSearch(e.target.value)}
               className="input flex-1 text-sm bg-ink/5 border-transparent focus:bg-lift focus:border-brand transition-colors"
@@ -967,7 +981,7 @@ function SessionCard({ conv, onCancel, navigate }) {
           {/* Inbox list */}
           <div className="flex-1 overflow-y-auto">
             {loadingInbox ? (
-              <div className="p-6 text-center text-clay text-sm">Loadingâ€¦</div>
+              <div className="p-6 text-center text-clay text-sm">LoadingÃ¢â‚¬Â¦</div>
             ) : filteredInbox.length === 0 ? (
               <div className="p-8 text-center space-y-3">
                 <MessageCircle className="w-10 h-10 text-clay/40 mx-auto" />
@@ -984,28 +998,38 @@ function SessionCard({ conv, onCancel, navigate }) {
                   <button
                     key={conv.request_id}
                     onClick={() => handleSelectConversation(conv.request_id)}
-                    className={`w-full text-left p-3.5 hover:bg-brand/5 dark:hover:bg-brand/10 transition-colors flex gap-3 relative ${selectedRequestId === conv.request_id ? 'bg-brand/10 dark:bg-brand/20 border-r-2 border-brand' : ''}`}
+                    className={`w-full text-left p-4 hover:bg-brand/5 transition-colors flex gap-3.5 relative ${
+                      selectedRequestId === conv.request_id 
+                        ? 'bg-brand/10 border-r-[3px] border-brand shadow-[inset_2px_0_0_0_rgba(var(--color-brand),0.05)]' 
+                        : ''
+                    }`}
                   >
                     <div className="relative shrink-0">
                       <img
                         src={getAvatarUrl(conv.other_user_avatar)}
                         alt=""
-                        className="w-11 h-11 rounded-full object-cover border border-line bg-surface"
+                        className="w-12 h-12 rounded-full object-cover border border-line bg-surface shadow-sm"
                         onError={e => e.target.src = 'https://api.dicebear.com/7.x/avataaars/svg?seed=fallback'}
                       />
                       {conv.unread_count > 0 && (
-                        <span className="absolute -top-1 -right-1 bg-brand text-white text-[10px] font-bold min-w-[18px] h-[18px] rounded-full flex items-center justify-center border-2 border-surface px-1">
+                        <span className="absolute -top-1 -right-1 bg-brand text-white text-[10px] font-bold min-w-[20px] h-[20px] rounded-full flex items-center justify-center border-2 border-surface px-1.5 shadow-sm">
                           {conv.unread_count > 99 ? '99+' : conv.unread_count}
                         </span>
                       )}
+                      {/* Subtle online indicator (mocked for active conversation) */}
+                      {conv.unread_count === 0 && (
+                        <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-surface rounded-full shadow-sm"></span>
+                      )}
                     </div>
-                    <div className="flex-1 min-w-0">
+                    <div className="flex-1 min-w-0 flex flex-col justify-center">
                       <div className="flex justify-between items-baseline mb-0.5">
-                        <h3 className="font-bold text-ink text-sm truncate pr-1">{conv.other_user_name}</h3>
-                        <span className="text-[10px] text-clay whitespace-nowrap">{formatTime(conv.latest_message_time)}</span>
+                        <h3 className="font-display font-bold text-ink text-[15px] truncate pr-2">{conv.other_user_name}</h3>
+                        <span className="text-[10px] font-bold text-clay uppercase tracking-wider whitespace-nowrap">
+                          {formatTime(conv.latest_message_time)}
+                        </span>
                       </div>
-                      <p className="text-[11px] text-brand font-medium truncate mb-0.5">{conv.skill_name}</p>
-                      <p className={`text-xs truncate ${conv.unread_count > 0 ? 'text-ink font-semibold' : 'text-clay'}`}>
+                      <p className="text-[10px] text-brand font-bold uppercase tracking-wider truncate mb-1.5 opacity-80">{conv.skill_name}</p>
+                      <p className={`text-xs truncate ${conv.unread_count > 0 ? 'text-ink font-bold' : 'text-clay font-medium'}`}>
                         {conv.latest_message || 'No messages yet'}
                       </p>
                     </div>
@@ -1016,38 +1040,44 @@ function SessionCard({ conv, onCancel, navigate }) {
           </div>
         </div>
 
-        {/* â”€â”€ Chat area â”€â”€ */}
+        {/* Ã¢â€â‚¬Ã¢â€â‚¬ Chat area Ã¢â€â‚¬Ã¢â€â‚¬ */}
         <div className={`${!selectedRequestId ? 'hidden md:flex' : 'flex'} flex-1 flex-col min-w-0 min-h-0`}>
           {selectedRequestId && activeConversation ? (
             <>
               {/* Chat header */}
-              <div className="h-14 px-3 border-b border-line bg-surface flex items-center justify-between shrink-0 shadow-sm z-10">
-                <div className="flex items-center gap-2.5 overflow-hidden min-w-0">
+              <div className="h-16 px-4 border-b border-line bg-surface flex items-center justify-between shrink-0 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] z-10">
+                <div className="flex items-center gap-3 overflow-hidden min-w-0">
                   <button
                     onClick={handleBackToList}
-                    className="md:hidden p-2 -ml-1 text-ink/50 hover:text-ink hover:bg-ink/5 rounded-full min-w-[40px] min-h-[40px] flex items-center justify-center"
+                    className="md:hidden p-2 -ml-2 text-ink/50 hover:text-ink hover:bg-ink/5 rounded-full min-w-[40px] min-h-[40px] flex items-center justify-center transition-colors"
                   >
                     <ArrowLeft className="w-5 h-5" />
                   </button>
-                  <img
-                    src={getAvatarUrl(activeConversation.other_user_avatar)}
-                    alt=""
-                    className="w-9 h-9 rounded-full object-cover border border-line shrink-0"
-                    onError={e => e.target.src = 'https://api.dicebear.com/7.x/avataaars/svg?seed=fallback'}
-                  />
-                  <div className="min-w-0">
-                    <h2 className="font-bold text-ink text-sm truncate leading-tight">{activeConversation.other_user_name}</h2>
-                    <div className="flex items-center gap-2 text-xs">
+                  <div className="relative shrink-0">
+                    <img
+                      src={getAvatarUrl(activeConversation.other_user_avatar)}
+                      alt=""
+                      className="w-10 h-10 rounded-full object-cover border-2 border-surface shadow-sm"
+                      onError={e => e.target.src = 'https://api.dicebear.com/7.x/avataaars/svg?seed=fallback'}
+                    />
+                    {otherPresence.status === 'online' && (
+                      <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-surface rounded-full"></span>
+                    )}
+                  </div>
+                  <div className="min-w-0 flex flex-col justify-center">
+                    <h2 className="font-display font-bold text-ink text-base truncate leading-tight tracking-tight">
+                      {activeConversation.other_user_name}
+                    </h2>
+                    <div className="flex items-center gap-2 text-[11px] font-medium mt-0.5">
                       <ConnectionBadge state={connectionState} />
-                      <span className="text-ink/40">â€¢</span>
-                      {otherPresence.status === 'online' ? (
-                        <span className="text-brand font-medium flex items-center gap-1">
-                          <span className="w-1.5 h-1.5 rounded-full bg-brand"></span>
-                          Online
-                        </span>
-                      ) : otherPresence.last_active ? (
-                        <span className="text-clay">Last active {formatTime(otherPresence.last_active)}</span>
-                      ) : null}
+                      <span className="text-line">&bull;</span>
+                      <span className="text-brand font-bold uppercase tracking-wider">{activeConversation.skill_name}</span>
+                      {otherPresence.status !== 'online' && otherPresence.last_active && (
+                        <>
+                          <span className="text-line">&bull;</span>
+                          <span className="text-clay">Active {formatTime(otherPresence.last_active)}</span>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1220,73 +1250,81 @@ function SessionCard({ conv, onCancel, navigate }) {
                 )}
 
                 {isRecording || voiceBlob ? (
-                  <div className="p-3 bg-surface border-t border-line flex items-center justify-between gap-3 shrink-0">
+                  <div className="p-4 bg-surface flex items-center justify-between gap-3 shrink-0 shadow-[0_-2px_10px_-4px_rgba(0,0,0,0.05)]">
                     <button
                       type="button"
                       onClick={cancelRecording}
-                      className="px-3 py-1.5 text-red-400 text-sm font-medium hover:bg-red-500/10 rounded-lg transition-colors"
+                      className="p-2.5 text-red-400 hover:text-red-500 hover:bg-red-500/10 rounded-full transition-colors shrink-0"
                     >
-                      {voiceBlob ? 'Delete' : 'Cancel'}
+                      <X className="w-5 h-5" />
                     </button>
                     {voiceBlob ? (
-                      <audio controls src={URL.createObjectURL(voiceBlob)} className="h-8 max-w-[200px]" />
+                      <audio controls src={URL.createObjectURL(voiceBlob)} className="h-10 flex-1 max-w-sm" />
                     ) : (
-                      <div className="flex items-center gap-2 text-red-400 font-medium">
-                        <span className="w-2.5 h-2.5 rounded-full bg-red-400 animate-pulse"></span>
+                      <div className="flex-1 flex items-center justify-center gap-3 bg-red-500/10 border border-red-500/20 py-2.5 rounded-full text-red-500 font-mono font-bold tracking-wider">
+                        <span className="w-3 h-3 rounded-full bg-red-500 animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.6)]"></span>
                         {Math.floor(recordingTime / 60)}:{(recordingTime % 60).toString().padStart(2, '0')}
                       </div>
                     )}
                     <button
                       type="button"
                       onClick={isRecording ? stopRecording : sendVoice}
-                      className="btn-primary text-sm px-4 py-1.5 h-auto"
+                      className="w-10 h-10 flex items-center justify-center bg-brand text-white hover:bg-brand/90 rounded-full shadow-lg shadow-brand/20 transition-all shrink-0"
                     >
-                      {isRecording ? 'Stop' : 'Send'}
+                      {isRecording ? <Square className="w-4 h-4 fill-current" /> : <Send className="w-4 h-4 ml-0.5" />}
                     </button>
                   </div>
                 ) : (
-                  <form onSubmit={handleSend} className="p-3 bg-surface flex items-end gap-2 shrink-0">
-                    <button
-                      type="button"
-                      className="p-2 text-clay hover:text-brand hover:bg-brand/10 rounded-full transition-colors shrink-0 min-w-[40px] min-h-[40px] flex items-center justify-center relative"
-                      onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                      title="Emojis"
-                    >
-                      <Smile className="w-5 h-5" />
-                    </button>
-                    <label className="p-2 text-clay hover:text-brand hover:bg-brand/10 rounded-full transition-colors cursor-pointer shrink-0 min-w-[40px] min-h-[40px] flex items-center justify-center" title="Attach file">
-                      <input type="file" className="hidden" onChange={handleFileUpload} accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg,.webp" />
-                      <Paperclip className="w-5 h-5" />
-                    </label>
-                    <button
-                      type="button"
-                      onClick={startRecording}
-                      className="p-2 text-clay hover:text-brand hover:bg-brand/10 rounded-full transition-colors shrink-0 min-w-[40px] min-h-[40px] flex items-center justify-center"
-                      title="Voice Message"
-                    >
-                      <Mic className="w-5 h-5" />
-                    </button>
-                    <textarea
-                      ref={inputRef}
-                      rows={1}
-                      className="input flex-1 bg-lift border-line/50 focus:bg-lift focus:border-brand text-sm resize-none min-w-0 leading-relaxed py-2.5"
-                      style={{ maxHeight: '120px', overflowY: 'auto' }}
-                      placeholder={editingMsg ? 'Edit messageâ€¦' : 'Messageâ€¦'}
-                      value={draft}
-                      onChange={e => {
-                        setDraft(e.target.value)
-                        e.target.style.height = 'auto'
-                        e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px'
-                      }}
-                      onKeyDown={handleKeyDown}
-                      autoComplete="off"
-                    />
+                  <form onSubmit={handleSend} className="p-3 sm:p-4 bg-surface flex items-end gap-2 sm:gap-3 shrink-0 shadow-[0_-2px_10px_-4px_rgba(0,0,0,0.05)]">
+                    <div className="flex items-center gap-1 mb-1 sm:mb-0">
+                      <label className="p-2 sm:p-2.5 text-clay hover:text-brand hover:bg-brand/10 rounded-full transition-colors cursor-pointer shrink-0" title="Attach file">
+                        <input type="file" className="hidden" onChange={handleFileUpload} accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg,.webp" />
+                        <Paperclip className="w-[22px] h-[22px]" />
+                      </label>
+                    </div>
+
+                    <div className="flex-1 relative bg-lift border border-line focus-within:border-brand/50 focus-within:ring-2 focus-within:ring-brand/20 rounded-3xl transition-all shadow-sm flex items-end min-w-0">
+                      <button
+                        type="button"
+                        className="p-2.5 sm:p-3 text-clay hover:text-brand transition-colors shrink-0"
+                        onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                        title="Emojis"
+                      >
+                        <Smile className="w-[22px] h-[22px]" />
+                      </button>
+                      <textarea
+                        ref={inputRef}
+                        rows={1}
+                        className="w-full bg-transparent text-ink placeholder:text-clay/60 px-1 py-3 min-h-[48px] max-h-32 resize-none outline-none text-sm leading-relaxed"
+                        placeholder={editingMsg ? 'Edit message...' : 'Message...'}
+                        value={draft}
+                        onChange={e => {
+                          setDraft(e.target.value)
+                          e.target.style.height = 'auto'
+                          e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px'
+                        }}
+                        onKeyDown={handleKeyDown}
+                      />
+                      <button
+                        type="button"
+                        onClick={startRecording}
+                        className={`p-2.5 sm:p-3 transition-colors shrink-0 ${draft.trim() ? 'hidden' : 'text-clay hover:text-brand'}`}
+                        title="Voice Message"
+                      >
+                        <Mic className="w-[22px] h-[22px]" />
+                      </button>
+                    </div>
+
                     <button
                       type="submit"
-                      disabled={!draft.trim()}
-                      className="p-2 bg-brand text-white rounded-full transition-colors disabled:opacity-40 shrink-0 min-w-[40px] min-h-[40px] flex items-center justify-center hover:bg-brand2 shadow-elev-1"
+                      disabled={!draft.trim() || sending}
+                      className={`mb-1 sm:mb-0 w-10 h-10 sm:w-11 sm:h-11 flex items-center justify-center rounded-full transition-all shrink-0 ${
+                        draft.trim() 
+                          ? 'bg-brand text-white shadow-lg shadow-brand/20 hover:scale-105 active:scale-95' 
+                          : 'bg-surface border border-line text-clay opacity-50 cursor-not-allowed'
+                      }`}
                     >
-                      <Send className="w-4 h-4" />
+                      <Send className="w-4 h-4 sm:w-5 sm:h-5 ml-0.5" />
                     </button>
                   </form>
                 )}
@@ -1329,4 +1367,6 @@ function SessionCard({ conv, onCancel, navigate }) {
     </div>
   )
 }
+
+
 

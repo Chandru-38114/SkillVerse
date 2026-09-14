@@ -1,5 +1,4 @@
-import { useState, useEffect } from 'react'
-import { formatDate, formatTime } from '../utils/dateTime'
+﻿import React, { useEffect, useState } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { api, getSessionUser } from '../api'
 import VideoChat from '../components/VideoChat'
@@ -7,181 +6,115 @@ import Compiler from '../components/Compiler'
 import Whiteboard from '../components/Whiteboard'
 import Materials from '../components/Materials'
 import Notes from '../components/Notes'
-import Chat from './chat'
-import { Code2, PenLine, FileText, FolderOpen, MessageSquare, ChevronDown, ChevronUp, Info } from 'lucide-react'
+import { Code2, PenLine, FileText, FolderOpen, ChevronDown, ChevronUp, Info, Hand } from 'lucide-react'
 
 const TABS = [
   { id: 'Code',       label: 'Code',   Icon: Code2 },
   { id: 'Whiteboard', label: 'Board',  Icon: PenLine },
   { id: 'Notes',      label: 'Notes',  Icon: FileText },
   { id: 'Materials',  label: 'Files',  Icon: FolderOpen },
-  { id: 'Chat',       label: 'Chat',   Icon: MessageSquare },
 ]
 
 function SessionRoomComponent() {
   const { sessionId } = useParams()
   const user = getSessionUser()
-  const [session, setSession] = useState(null)
-  const [error, setError] = useState('')
-  const [activeTab, setActiveTab] = useState('Code')
-  const [desktopSidebarTab, setDesktopSidebarTab] = useState('Agenda')
-  const [infoOpen, setInfoOpen] = useState(false)
   const navigate = useNavigate()
-
+  
+  const [session, setSession] = useState(null)
+  const [req, setReq] = useState(null)
+  const [error, setError] = useState(null)
+  const [activeTab, setActiveTab] = useState('Code')
+  const [prevTab, setPrevTab] = useState('Code')
+  const [infoOpen, setInfoOpen] = useState(false)
   const [timeLeft, setTimeLeft] = useState(null)
-  const [isEnded, setIsEnded] = useState(false)
 
   useEffect(() => {
-    if (!session) return;
-    const endObj = new Date(session.scheduled_end);
-    
-    const updateTimer = () => {
-      const now = new Date();
-      const diff = endObj - now;
-      if (diff <= 0) {
-        setIsEnded(true);
-        setTimeLeft('00:00');
-      } else {
-        const totalSecs = Math.floor(diff / 1000);
-        const m = Math.floor(totalSecs / 60);
-        const s = totalSecs % 60;
-        setTimeLeft(`${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`);
+    async function load() {
+      try {
+        const s = await api.getSession(sessionId)
+        setSession(s)
+        const r = await api.getConnectionRequest(s.request_id)
+        setReq(r)
+      } catch (err) {
+        setError(err.message || 'Failed to load session')
       }
-    };
-    
-    updateTimer();
-    const timer = setInterval(updateTimer, 1000);
-    return () => clearInterval(timer);
-  }, [session]);
-
-  useEffect(() => {
-    api.getSession(sessionId)
-      .then(setSession)
-      .catch(err => {
-        if (err.response?.status === 410 || String(err).includes('410') || String(err).includes('expired')) {
-          setIsEnded(true)
-        } else {
-          setError(err.message)
-        }
-      })
+    }
+    load()
   }, [sessionId])
 
-  if (error) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-paper p-4">
-        <div className="max-w-md w-full text-center p-8 card">
-          <div className="text-5xl mb-4">⚠️</div>
-          <h1 className="text-2xl font-display mb-2">Room Unavailable</h1>
-          <p className="text-ink/60 mb-8 text-sm">{error}</p>
-          <Link to="/sessions" className="btn-primary">Back to Sessions</Link>
-        </div>
-      </div>
-    )
+  useEffect(() => {
+    if (!session || session.status === 'completed' || !session.scheduled_end) return
+    const timer = setInterval(() => {
+      const diff = new Date(session.scheduled_end) - new Date()
+      if (diff <= 0) {
+        setTimeLeft('00:00')
+        clearInterval(timer)
+      } else {
+        const m = Math.floor(diff / 60000).toString().padStart(2, '0')
+        const s = Math.floor((diff % 60000) / 1000).toString().padStart(2, '0')
+        setTimeLeft(`${m}:${s}`)
+      }
+    }, 1000)
+    return () => clearInterval(timer)
+  }, [session])
+
+  if (error) return (
+    <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-paper h-[100dvh]">
+      <div className="w-16 h-16 bg-red-500/10 text-red-500 rounded-full flex items-center justify-center mb-4"><Info className="w-8 h-8" /></div>
+      <h2 className="text-xl font-bold mb-2">Session Error</h2>
+      <p className="text-clay mb-6">{error}</p>
+      <Link to="/sessions" className="btn-primary">Return to Dashboard</Link>
+    </div>
+  )
+  if (!session) return <div className="flex-1 flex items-center justify-center h-[100dvh] text-clay">Loading session...</div>
+
+  const isTutor = user.id === session.tutor_id
+  const peerName = isTutor ? session.learner_name : session.tutor_name
+
+  const formatDate = (ds) => {
+    if (!ds) return ''
+    const d = new Date(ds)
+    return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
   }
-
-  if (!session) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-paper">
-        <div className="text-center">
-          <div className="w-10 h-10 border-4 border-brand border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-ink/50 text-sm">Loading session...</p>
-        </div>
-      </div>
-    )
+  const formatTime = (ds) => {
+    if (!ds) return ''
+    const d = new Date(ds)
+    return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
   }
-
-  if (!user) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-paper p-4">
-        <div className="max-w-md w-full text-center p-8 card">
-          <h1 className="text-2xl font-display mb-2">Authentication Required</h1>
-          <p className="text-ink/60 mb-8 text-sm">Please log in to join this session.</p>
-          <Link to="/login" className="btn-primary">Login</Link>
-        </div>
-      </div>
-    )
-  }
-
-  if (session.status === 'cancelled') {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-paper p-4">
-        <div className="max-w-md w-full text-center p-8 card">
-          <div className="text-5xl mb-4">🚫</div>
-          <h1 className="text-2xl font-display mb-2">Session Cancelled</h1>
-          <p className="text-ink/60 mb-8 text-sm">This learning session has been cancelled.</p>
-          <Link to="/sessions" className="btn-primary">Back to Sessions</Link>
-        </div>
-      </div>
-    )
-  }
-
-  if (session.status === 'completed') {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-paper p-4">
-        <div className="max-w-md w-full text-center p-8 card">
-          <div className="text-5xl mb-4">✅</div>
-          <h1 className="text-2xl font-display mb-2">Session Completed</h1>
-          <p className="text-ink/60 mb-8 text-sm">This session has already ended.</p>
-          <Link to="/sessions" className="btn-primary">Back to Sessions</Link>
-        </div>
-      </div>
-    )
-  }
-
-
-  if (isEnded || (session && session.status === 'completed')) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-paper p-4">
-        <div className="max-w-md w-full text-center p-8 card border-t-4 border-t-brand">
-          <div className="text-5xl mb-4">⏱️</div>
-          <h1 className="text-2xl font-display mb-2">Session Ended</h1>
-          <p className="text-ink/60 mb-8 text-sm">This scheduled session has reached its end time and is no longer available.</p>
-          <Link to="/sessions" className="btn-primary inline-flex">Return to Sessions</Link>
-        </div>
-      </div>
-    )
-  }
-
-  const isLearner = session.learner_id === user.id
-  const isTutor = !isLearner
-  const peerName = isLearner ? session.tutor_name : session.learner_name
-  const req = session.request
 
   return (
-    <div className="h-[100dvh] flex flex-col bg-paper overflow-hidden font-body">
-      {/* ── Header ────────────────────────────────────────────── */}
-      <header className="shrink-0 border-b border-line bg-surface px-3 sm:px-5 flex items-center justify-between z-20 shadow-sm gap-3 h-[52px]">
-        {/* Logo + session info */}
-        <div className="flex items-center gap-2.5 min-w-0">
-          <Link to="/" className="flex items-center gap-2 shrink-0" title="SkillVerse Home">
-            <div className="w-7 h-7 rounded-full bg-brandLight/50 flex items-center justify-center shrink-0">
-              <svg className="w-4 h-4 text-brand" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-              </svg>
-            </div>
-            <span className="hidden sm:block font-display text-base font-bold tracking-tight text-ink">Skill<span className="text-brand">Verse</span></span>
+    <div className="flex flex-col bg-paper h-[100dvh] w-full overflow-hidden">
+      {/* 🚀 Header 🚀 */}
+      <header className="flex-none bg-surface border-b border-line px-4 sm:px-6 py-3 flex items-center justify-between shrink-0 z-20">
+        <div className="flex items-center gap-4">
+          <Link to="/sessions" className="w-8 h-8 flex items-center justify-center text-clay hover:text-ink hover:bg-line/50 rounded-lg transition-colors shrink-0">
+            <span className="text-xl leading-none">&times;</span>
           </Link>
-          <div className="h-5 w-px bg-line shrink-0 hidden sm:block" />
-          <div className="min-w-0">
-            <p className="hidden sm:block text-[10px] text-ink/40 font-bold uppercase tracking-wider leading-none mb-0.5">
-              {isTutor ? 'Teaching' : 'Learning'}
-            </p>
-            <h1 className="font-semibold text-sm capitalize text-ink tracking-tight truncate max-w-[180px] sm:max-w-[220px]">{session.skill}</h1>
+          <div>
+            <h1 className="font-display font-bold text-ink text-sm sm:text-base leading-tight">
+              {session.skill_name || session.skill}
+            </h1>
+            <div className="flex items-center gap-2 mt-0.5">
+              <span className={`w-2 h-2 rounded-full ${session.status === 'completed' ? 'bg-clay' : 'bg-green-500 animate-pulse'}`}></span>
+              <span className="text-xs font-semibold text-clay capitalize">
+                {session.status === 'completed' ? 'Ended' : 'Live'} • {peerName}
+              </span>
+            </div>
           </div>
         </div>
 
-        {/* Right side meta */}
-        <div className="flex items-center gap-2 shrink-0">
-          <div className="hidden lg:flex items-center gap-3 text-xs text-ink/50 font-medium">
-            <div className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-moss animate-pulse shrink-0" />
-              {peerName && <span>with <strong className="text-ink/70">{peerName}</strong></span>}
-            </div>
-            <span className="text-ink/20">·</span>
+        <div className="flex items-center gap-4">
+          <div className="hidden lg:flex flex-col items-end text-xs font-semibold text-clay">
             <span>{formatDate(session.scheduled_start || session.session_date)}, {session.scheduled_start ? formatTime(session.scheduled_start) : session.start_time}</span>
           </div>
-          {/* Right side: Timer & Mobile Info toggle */}
+          {/* Right side: Timer & Desktop Notes/Materials & Mobile Info toggle */}
           <div className="flex items-center gap-2">
+            <button onClick={() => { setPrevTab(activeTab); setActiveTab('Notes'); }} className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-ink/70 bg-ink/5 hover:bg-ink/10 transition-colors">
+              <FileText className="w-3.5 h-3.5" /> Notes
+            </button>
+            <button onClick={() => { setPrevTab(activeTab); setActiveTab('Materials'); }} className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-ink/70 bg-ink/5 hover:bg-ink/10 transition-colors">
+              <FolderOpen className="w-3.5 h-3.5" /> Files
+            </button>
             {timeLeft && (
               <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-clay/10 text-clay font-medium text-xs">
                 <span>Ends in</span>
@@ -200,7 +133,7 @@ function SessionRoomComponent() {
         </div>
       </header>
 
-      {/* ── Collapsible info banner (mobile/tablet) ─────────── */}
+      {/* 🚀 Collapsible info banner (mobile/tablet) 🚀 */}
       {infoOpen && (
         <div className="lg:hidden bg-surface border-b border-line px-4 py-3 shrink-0 z-10">
           <div className="flex gap-5 text-sm flex-wrap">
@@ -214,7 +147,7 @@ function SessionRoomComponent() {
             </div>
             <div>
               <span className="text-[10px] uppercase tracking-wider text-ink/40 font-bold block mb-0.5">Time</span>
-              <span className="font-semibold text-ink">{session.start_time} – {session.end_time}</span>
+              <span className="font-semibold text-ink">{session.start_time} — {session.end_time}</span>
             </div>
             <div>
               <span className="text-[10px] uppercase tracking-wider text-ink/40 font-bold block mb-0.5">Role</span>
@@ -227,17 +160,17 @@ function SessionRoomComponent() {
         </div>
       )}
 
-      {/* ── Main Body ─────────────────────────────────────────── */}
+      {/* 🚀 Main Body 🚀 */}
       <div className="flex-1 flex overflow-hidden min-h-0 relative">
         <VideoChat sessionId={session.id} onLeave={() => navigate('/sessions')}>
-          {/* ── Workspace: tabs + panels ────────────────────── */}
-          <div className="flex-1 flex flex-col overflow-hidden min-h-0 min-w-0 lg:pr-80">
+          {/* 🚀 Workspace: tabs + panels 🚀 */}
+          <div className="flex-1 flex flex-col overflow-hidden min-h-0 min-w-0">
             {/* Tab bar — ONLY ON MOBILE */}
             <div className="lg:hidden flex shrink-0 border-b border-line bg-surface overflow-x-auto overflow-y-hidden scrollbar-hide">
               {TABS.map(({ id, label, Icon }) => (
                 <button
                   key={id}
-                  onClick={() => setActiveTab(id)}
+                  onClick={() => { if(id !== 'Notes' && id !== 'Materials') setPrevTab(id); setActiveTab(id); }}
                   className={`flex items-center gap-1.5 px-3.5 sm:px-4 py-2.5 text-xs font-semibold border-b-2 whitespace-nowrap transition-colors flex-shrink-0 ${
                     activeTab === id
                       ? 'border-brand text-brand bg-brand/5'
@@ -270,100 +203,19 @@ function SessionRoomComponent() {
                 <Compiler sessionId={session.id} />
               </div>
             </div>
-          </div>
-
-          {/* Desktop Right Sidebar & Mobile overlay panels (Chat, Notes, Materials) */}
-          <div className={`
-             lg:flex flex-col absolute top-0 right-0 bottom-0 lg:w-80 bg-surface lg:border-l lg:border-line lg:z-30
-             ${(activeTab === 'Chat' || activeTab === 'Notes' || activeTab === 'Materials') ? 'flex w-full z-40' : 'hidden'}
-          `}>
-            {/* Desktop Sidebar Tabs */}
-            <div className="hidden lg:flex shrink-0 border-b border-line bg-surface overflow-x-auto">
-              {['Agenda', 'Chat', 'Notes', 'Materials'].map(tab => (
-                <button
-                  key={tab}
-                  onClick={() => setDesktopSidebarTab(tab)}
-                  className={`px-3 py-2.5 text-xs font-semibold border-b-2 whitespace-nowrap transition-colors flex-1 text-center ${
-                    desktopSidebarTab === tab
-                      ? 'border-brand text-brand bg-brand/5'
-                      : 'border-transparent text-ink/50 hover:text-ink hover:bg-ink/5'
-                  }`}
-                >
-                  {tab === 'Materials' ? 'Files' : tab}
-                </button>
-              ))}
-            </div>
-
-            <div className="flex-1 relative overflow-hidden min-h-0 bg-paper">
-              {/* Agenda (Desktop Only) */}
-              <div className={`absolute inset-0 overflow-y-auto p-4 ${desktopSidebarTab === 'Agenda' ? 'lg:block' : 'lg:hidden'} hidden`}>
-                <p className="text-[10px] uppercase tracking-wider text-ink/40 font-bold mb-3">Exchange</p>
-                <div className="space-y-3 text-sm bg-brand/5 dark:bg-brand/10 border border-brand/10 dark:border-brand/20 rounded-xl p-3 mb-3">
-                  <div>
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-moss/70 mb-0.5">You {isTutor ? 'teach' : 'learn'}</p>
-                    <p className="font-bold text-moss text-sm">{session.skill_name || session.skill}</p>
-                  </div>
-                  {req?.learner_can_teach && (
-                    <div>
-                      <p className="text-[10px] font-bold uppercase tracking-wider text-clay/70 mb-0.5">Can offer</p>
-                      <p className="font-semibold text-clay text-sm">{req.learner_can_teach}</p>
-                    </div>
-                  )}
-                </div>
-                <div className="space-y-2 text-sm bg-ink/5 border border-line/60 rounded-xl p-3">
-                  <div>
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-ink/50 mb-0.5">{peerName}</p>
-                    <p className="font-semibold text-ink text-sm">{isTutor ? 'Learning' : 'Teaching'} {session.skill_name || session.skill}</p>
-                  </div>
-                </div>
-                {session.notes && (
-                  <div className="mt-3 p-3 bg-surface rounded-xl text-sm border border-line">
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-ink/50 mb-1.5">Agenda</p>
-                    <p className="text-ink/70 leading-relaxed text-xs">{session.notes}</p>
-                  </div>
-                )}
-                {req && (req.learner_current_level || req.learner_topics || req.learner_goals) && (
-                  <div className="mt-4 p-4 bg-surface rounded-xl border border-line">
-                    <p className="text-[10px] uppercase tracking-wider text-ink/40 font-bold mb-3">Learner Context</p>
-                    <div className="space-y-3 text-sm">
-                      {req.learner_current_level && (
-                        <div>
-                          <p className="text-ink/40 text-[10px] font-bold uppercase tracking-wider mb-0.5">Level</p>
-                          <p className="font-medium text-ink/80 text-xs">{req.learner_current_level}</p>
-                        </div>
-                      )}
-                      {req.learner_topics && (
-                        <div>
-                          <p className="text-ink/40 text-[10px] font-bold uppercase tracking-wider mb-0.5">Topics</p>
-                          <p className="font-medium text-ink/80 text-xs">{req.learner_topics}</p>
-                        </div>
-                      )}
-                      {req.learner_goals && (
-                        <div>
-                          <p className="text-ink/40 text-[10px] font-bold uppercase tracking-wider mb-0.5">Goals</p>
-                          <p className="font-medium text-ink/80 leading-relaxed text-xs">{req.learner_goals}</p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
+            
+            {/* Full-screen overlays for Notes & Materials */}
+            {activeTab === 'Notes' && (
+              <div className="absolute inset-0 z-50 flex flex-col bg-surface overflow-y-auto">
+                <Notes session={session} onBack={() => setActiveTab(prevTab)} />
               </div>
-              
-              {/* Chat Panel */}
-              <div className={`absolute inset-0 flex flex-col bg-surface z-20 ${desktopSidebarTab === 'Chat' ? 'lg:flex' : 'lg:hidden'} ${activeTab === 'Chat' ? 'flex' : 'hidden'}`}>
-                <Chat embeddedRequestId={session.request_id} embedded={true} />
+            )}
+            
+            {activeTab === 'Materials' && (
+              <div className="absolute inset-0 z-50 flex flex-col bg-surface overflow-y-auto">
+                <Materials session={session} onBack={() => setActiveTab(prevTab)} />
               </div>
-
-              {/* Notes Panel */}
-              <div className={`absolute inset-0 flex flex-col overflow-y-auto bg-surface z-20 ${desktopSidebarTab === 'Notes' ? 'lg:flex' : 'lg:hidden'} ${activeTab === 'Notes' ? 'flex' : 'hidden'}`}>
-                <Notes session={session} onBack={() => { setActiveTab('Code'); setDesktopSidebarTab('Agenda'); }} />
-              </div>
-
-              {/* Materials Panel */}
-              <div className={`absolute inset-0 flex flex-col overflow-y-auto bg-surface z-20 ${desktopSidebarTab === 'Materials' ? 'lg:flex' : 'lg:hidden'} ${activeTab === 'Materials' ? 'flex' : 'hidden'}`}>
-                <Materials session={session} />
-              </div>
-            </div>
+            )}
           </div>
         </VideoChat>
       </div>
@@ -371,7 +223,6 @@ function SessionRoomComponent() {
   )
 }
 
-
-
 import ErrorBoundary from '../components/ErrorBoundary';
 export default function SessionRoom() { return <ErrorBoundary><SessionRoomComponent /></ErrorBoundary>; }
+

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+﻿import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getSessionUser } from '../api'
 
@@ -16,6 +16,9 @@ export default function VideoChat({ sessionId, children, onLeave }) {
   const [remoteStream, setRemoteStream] = useState(null)
   const [status, setStatus] = useState('waiting') // waiting, connecting, connected, disconnected
   const [errorMsg, setErrorMsg] = useState('')
+  const [handRaised, setHandRaised] = useState(false)
+  const [peerHandRaised, setPeerHandRaised] = useState(false)
+  const [activeEmojis, setActiveEmojis] = useState([])
   const [isMuted, setIsMuted] = useState(false)
   const [isVideoOff, setIsVideoOff] = useState(false)
 
@@ -114,6 +117,16 @@ export default function VideoChat({ sessionId, children, onLeave }) {
               } else {
                 pendingCandidates.push(data.candidate)
               }
+            } else if (data.type === 'reaction') {
+              if (data.reaction === 'raise_hand') {
+                setPeerHandRaised(data.active)
+              } else if (data.reaction === 'emoji') {
+                const id = Date.now()
+                setActiveEmojis(prev => [...prev, { id, emoji: data.emoji, isLocal: false }])
+                setTimeout(() => {
+                  setActiveEmojis(prev => prev.filter(e => e.id !== id))
+                }, 3000)
+              }
             } else if (data.type === 'peer_left') {
               setStatus('disconnected')
               setRemoteStream(null)
@@ -156,6 +169,25 @@ export default function VideoChat({ sessionId, children, onLeave }) {
     }
   }, [remoteStream])
 
+  const sendReaction = (emoji) => {
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ type: 'reaction', reaction: 'emoji', emoji }))
+    }
+    const id = Date.now()
+    setActiveEmojis(prev => [...prev, { id, emoji, isLocal: true }])
+    setTimeout(() => {
+      setActiveEmojis(prev => prev.filter(e => e.id !== id))
+    }, 3000)
+  }
+
+  const toggleHand = () => {
+    const nextState = !handRaised
+    setHandRaised(nextState)
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ type: 'reaction', reaction: 'raise_hand', active: nextState }))
+    }
+  }
+
   function toggleMute() {
     if (!stream) return
     const audioTrack = stream.getAudioTracks()[0]
@@ -181,8 +213,16 @@ export default function VideoChat({ sessionId, children, onLeave }) {
           <div className="h-32 sm:h-48 md:h-auto md:w-[240px] lg:w-[260px] xl:w-[280px] shrink-0 bg-[#1a1a2e] flex flex-col items-center justify-center border-b md:border-b-0 md:border-r border-ink/20 z-20 p-4 text-center">
             <p className="font-semibold text-white mb-1 text-sm">Media Unavailable</p>
             <p className="text-white/60 text-xs mb-4">{errorMsg}</p>
-            <button
-              onClick={() => (onLeave ? onLeave() : navigate('/sessions'))}
+            <div className="w-px h-6 bg-white/20 mx-1 md:hidden"></div>
+      <button
+        onClick={toggleHand}
+        className={`md:hidden w-8 h-8 rounded-full flex items-center justify-center transition-all text-xs ${handRaised ? 'bg-brand text-white shadow' : 'bg-white/20 text-white hover:bg-white/30 backdrop-blur-sm'}`}
+        title="Raise Hand"
+      >
+        âœ‹
+      </button>
+      <button
+        onClick={() => (onLeave ? onLeave() : navigate('/sessions'))}
               className="px-4 py-2 rounded-lg font-semibold bg-red-600 text-white hover:bg-red-700 text-xs"
             >
               Leave Session
@@ -201,14 +241,14 @@ export default function VideoChat({ sessionId, children, onLeave }) {
         className={`w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center transition-all text-xs md:text-base ${isMuted ? 'bg-red-500 text-white shadow' : 'bg-white/20 text-white hover:bg-white/30 backdrop-blur-sm'}`}
         title={isMuted ? 'Unmute' : 'Mute'}
       >
-        {isMuted ? '🔇' : '🎙️'}
+        {isMuted ? 'ðŸ”‡' : 'ðŸŽ™ï¸'}
       </button>
       <button
         onClick={toggleVideo}
         className={`w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center transition-all text-xs md:text-base ${isVideoOff ? 'bg-red-500 text-white shadow' : 'bg-white/20 text-white hover:bg-white/30 backdrop-blur-sm'}`}
         title={isVideoOff ? 'Turn Camera On' : 'Turn Camera Off'}
       >
-        {isVideoOff ? '🚫' : '📷'}
+        {isVideoOff ? 'ðŸš«' : 'ðŸ“·'}
       </button>
       {/* Mobile Leave Button overlaid */}
       <button
@@ -233,6 +273,19 @@ export default function VideoChat({ sessionId, children, onLeave }) {
               {status === 'waiting' ? 'Waiting...' : 'Connecting...'}
             </div>
           )}
+          {peerHandRaised && (
+            <div className="absolute top-12 left-1/2 -translate-x-1/2 md:top-2 md:left-auto md:right-2 z-30 bg-brand text-white px-3 py-1.5 rounded-lg text-sm font-bold animate-bounce shadow-lg shadow-brand/20 flex items-center gap-2">
+              âœ‹ Hand Raised
+            </div>
+          )}
+          {activeEmojis.map(e => (
+            <div 
+              key={e.id} 
+              className={`absolute z-40 text-4xl animate-float-up pointer-events-none ${e.isLocal ? 'right-4 bottom-4' : 'left-1/2 bottom-0 -translate-x-1/2'}`}
+            >
+              {e.emoji}
+            </div>
+          ))}
           {status === 'disconnected' && (
             <div className="absolute top-2 left-1/2 -translate-x-1/2 z-10 bg-red-600/90 text-white px-2 py-1 rounded text-[10px] font-medium whitespace-nowrap">
               Peer left
@@ -251,7 +304,7 @@ export default function VideoChat({ sessionId, children, onLeave }) {
               />
             ) : (
               <div className="w-full h-full flex flex-col items-center justify-center">
-                <span className="text-white/20 text-2xl mb-1">👤</span>
+                <span className="text-white/20 text-2xl mb-1">ðŸ‘¤</span>
                 <p className="font-medium text-white/30 text-[10px]">
                   {status === 'waiting' ? 'Waiting' : 'Connecting'}
                 </p>
@@ -305,17 +358,38 @@ export default function VideoChat({ sessionId, children, onLeave }) {
             className={`w-10 h-10 rounded-full flex items-center justify-center transition-all text-base ${isMuted ? 'bg-red-100 text-red-600 hover:bg-red-200' : 'bg-ink/5 text-ink hover:bg-ink/10'}`}
             title={isMuted ? 'Unmute' : 'Mute'}
           >
-            {isMuted ? '🔇' : '🎙️'}
+            {isMuted ? 'ðŸ”‡' : 'ðŸŽ™ï¸'}
           </button>
           <button
             onClick={toggleVideo}
             className={`w-10 h-10 rounded-full flex items-center justify-center transition-all text-base ${isVideoOff ? 'bg-red-100 text-red-600 hover:bg-red-200' : 'bg-ink/5 text-ink hover:bg-ink/10'}`}
             title={isVideoOff ? 'Turn Camera On' : 'Turn Camera Off'}
           >
-            {isVideoOff ? '🚫' : '📷'}
+            {isVideoOff ? 'ðŸš«' : 'ðŸ“·'}
           </button>
+          <div className="w-px h-8 bg-line mx-2"></div>
+          
+          <button
+            onClick={toggleHand}
+            className={`w-10 h-10 rounded-full flex items-center justify-center transition-all text-base ${handRaised ? 'bg-brand text-white shadow-lg shadow-brand/20' : 'bg-ink/5 text-ink hover:bg-ink/10'}`}
+            title="Raise Hand"
+          >
+            âœ‹
+          </button>
+          
+          <div className="relative group">
+            <button className="w-10 h-10 rounded-full flex items-center justify-center transition-all text-base bg-ink/5 text-ink hover:bg-ink/10" title="React">
+              ðŸ˜Š
+            </button>
+            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:flex bg-surface border border-line rounded-full shadow-xl p-1 gap-1 flex-col">
+              {['ðŸ‘', 'â¤ï¸', 'ðŸ˜‚', 'ðŸŽ‰', 'ðŸ”¥'].map(emoji => (
+                <button key={emoji} onClick={() => sendReaction(emoji)} className="w-8 h-8 rounded-full hover:bg-ink/5 flex items-center justify-center text-lg transition-transform hover:scale-125">
+                  {emoji}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
-
         <div className="flex-1 flex justify-end">
           <button
             onClick={() => (onLeave ? onLeave() : navigate('/sessions'))}
@@ -329,3 +403,4 @@ export default function VideoChat({ sessionId, children, onLeave }) {
     </div>
   )
 }
+
