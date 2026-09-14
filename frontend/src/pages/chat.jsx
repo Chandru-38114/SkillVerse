@@ -1,5 +1,5 @@
 ﻿import React, { useEffect, useRef, useState } from 'react'
-import { formatTime, createIstToUtcDate } from '../utils/dateTime'
+import { formatTime, createIstToUtcDate , getTodayIstYMD} from '../utils/dateTime'
 import { Link } from 'react-router-dom'
 import { api, chatSocketUrl, getSessionUser } from '../api'
 import { ArrowLeft, MessageCircle, Paperclip, Calendar, Image as ImageIcon, File as FileIcon, Smile, X, FileText } from 'lucide-react'
