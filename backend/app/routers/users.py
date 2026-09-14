@@ -158,7 +158,10 @@ def upload_avatar(
         if not SUPABASE_URL or not SUPABASE_KEY:
             raise HTTPException(status_code=500, detail="Storage configuration missing for fallback.")
             
-        url = f"{SUPABASE_URL.rstrip('/')}/storage/v1/object/{bucket}/{filename}"
+        from urllib.parse import urlparse
+        parsed = urlparse(SUPABASE_URL)
+        base_url = f"{parsed.scheme}://{parsed.netloc}"
+        url = f"{base_url}/storage/v1/object/{bucket}/{filename}"
         headers = {
             "apikey": SUPABASE_KEY,
             "Authorization": f"Bearer {SUPABASE_KEY}",
