@@ -146,16 +146,10 @@ def download_chat_file(
     request_id: int,
     bucket: str,
     filename: str,
-    token: str = Query(None),
+    current_user: models.User = Depends(auth.get_current_user),
     db: Session = Depends(get_db)
 ):
-    if not token:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-    user_id = auth.get_user_id_from_token_sync(token)
-    if not user_id:
-        raise HTTPException(status_code=401, detail="Invalid token")
-
-    _authorize(db, request_id, user_id)
+    _authorize(db, request_id, current_user.id)
     if bucket not in ["chat_audio", "chat_files"]:
         raise HTTPException(status_code=400, detail="Invalid bucket")
     if not filename.startswith(f"req_{request_id}_"):
@@ -167,7 +161,7 @@ def download_chat_file(
         signed_url = res if isinstance(res, str) else res.get("signedURL") or res.get("signedUrl")
         if not signed_url:
             raise Exception("No signed URL returned")
-        return RedirectResponse(url=signed_url)
+        return {"url": signed_url}
     except Exception as e:
         raise HTTPException(status_code=500, detail="Could not generate download link")
 

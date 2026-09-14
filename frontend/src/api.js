@@ -104,6 +104,7 @@ export const api = {
   listMessages: (requestId) => request(`/chat/${requestId}/messages`),
   markMessagesRead: (requestId) => request(`/chat/${requestId}/read`, { method: "POST" }),
   sendMessage: (requestId, content, metadata = {}) => request(`/chat/${requestId}/messages`, { method: "POST", body: { content, metadata } }),
+  getChatFileUrl: (requestId, bucket, filename) => request(`/chat/${requestId}/file/${bucket}/${filename}`),
   uploadChatAttachment: (requestId, file, type = "file") => {
     const formData = new FormData();
     formData.append("file", file);

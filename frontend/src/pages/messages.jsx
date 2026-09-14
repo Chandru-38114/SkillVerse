@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react'
 import { formatTime, formatDateTime, createIstToUtcDate } from '../utils/dateTime'
 import { useNavigate } from 'react-router-dom'
-import { api, chatSocketUrl, getSessionUser, getAvatarUrl, BASE_URL, getToken } from '../api'
+import { api, chatSocketUrl, getSessionUser, getAvatarUrl, BASE_URL } from '../api'
 import {
   ArrowLeft, Paperclip, Calendar, Smile, Search, X, Send,
   MoreVertical, Trash, Trash2, Pencil, Copy, CornerUpLeft, Forward,
@@ -118,22 +118,40 @@ function ReactionBubbles({ reactions, messageId, currentUserId, onToggle }) {
 }
 
 function VoicePlayer({ meta, reqId }) {
-  const token = getToken()
-  const tokenParam = token ? `?token=${encodeURIComponent(token)}` : ''
-  const url = meta.audio_path ? `${BASE_URL}/chat/${reqId}/file/chat_audio/${meta.audio_path}${tokenParam}` : ''
+  const [signedUrl, setSignedUrl] = useState('')
+
+  useEffect(() => {
+    if (meta.audio_path) {
+      api.getChatFileUrl(reqId, 'chat_audio', meta.audio_path)
+        .then(res => setSignedUrl(res.url))
+        .catch(err => console.error('Failed to load audio', err))
+    }
+  }, [meta.audio_path, reqId])
+
   return (
     <div className="flex items-center gap-2 mt-1 px-3 py-2 bg-ink/5 rounded-full">
-      <audio controls src={url} className="h-8 w-48 max-w-full" controlsList="nodownload noplaybackrate" />
+      {signedUrl ? (
+        <audio controls src={signedUrl} className="h-8 w-48 max-w-full" controlsList="nodownload noplaybackrate" />
+      ) : (
+        <div className="h-8 w-48 animate-pulse bg-ink/10 rounded-full"></div>
+      )}
     </div>
   )
 }
 
 function FileAttachment({ meta, reqId }) {
-  const token = getToken()
-  const tokenParam = token ? `?token=${encodeURIComponent(token)}` : ''
-  const url = meta.file_path ? `${BASE_URL}/chat/${reqId}/file/chat_files/${meta.file_path}${tokenParam}` : ''
+  const [signedUrl, setSignedUrl] = useState('')
+
+  useEffect(() => {
+    if (meta.file_path) {
+      api.getChatFileUrl(reqId, 'chat_files', meta.file_path)
+        .then(res => setSignedUrl(res.url))
+        .catch(err => console.error('Failed to load attachment', err))
+    }
+  }, [meta.file_path, reqId])
+
   return (
-    <a href={url} target="_blank" rel="noreferrer" className="flex items-center gap-3 mt-1 px-3 py-2 bg-ink/5 rounded-lg hover:bg-ink/10 transition-colors w-full max-w-[240px]">
+    <a href={signedUrl || '#'} target={signedUrl ? "_blank" : "_self"} rel="noreferrer" className={`flex items-center gap-3 mt-1 px-3 py-2 bg-ink/5 rounded-lg hover:bg-ink/10 transition-colors w-full max-w-[240px] ${!signedUrl ? 'opacity-50 pointer-events-none' : ''}`}>
       <FileText className="w-6 h-6 shrink-0 opacity-70" />
       <div className="min-w-0 flex-1">
         <p className="text-sm font-medium truncate">{meta.file_name || 'Attachment'}</p>
