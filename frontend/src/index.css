@@ -4,35 +4,65 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ─────────────────────────────────────────────────
+   DESIGN SYSTEM — SEMANTIC TOKENS
+   5-Level Elevation Model:
+     1. paper    — page background (deepest)
+     2. surface  — primary panels, cards, sidebars
+     3. lift     — modals, dropdowns, popovers, selected items
+     4. ink      — primary text
+     5. brand    — primary action colour
+──────────────────────────────────────────────────── */
 @layer base {
   :root {
-    --color-paper: 250 250 249; /* #FAFAF9 */
-    --color-ink: 15 23 42;      /* #0f172a */
-    --color-clay: 100 116 139;  /* #64748b */
-    --color-line: 226 232 240;  /* #e2e8f0 */
-    --color-surface: 255 255 255; /* #FFFFFF */
-    --color-brand: 16 185 129;      /* #10b981 */
-    --color-brand2: 5 150 105;      /* #059669 */
-    --color-brandLight: 209 250 229;/* #d1fae5 */
-    --color-gold: 217 119 6;        /* #d97706 */
-    --color-goldLight: 254 243 199; /* #fef3c7 */
+    /* ── Light palette ── */
+    --color-paper:      250 250 249;   /* #FAFAF9 — warm off-white page bg   */
+    --color-surface:    255 255 255;   /* #FFFFFF — cards, panels             */
+    --color-lift:       248 250 252;   /* #F8FAFC — hover/dropdown elevation  */
+    --color-ink:        15  23  42;    /* #0f172a — primary text              */
+    --color-clay:       100 116 139;   /* #64748b — secondary text            */
+    --color-line:       226 232 240;   /* #e2e8f0 — borders, dividers         */
+    /* Brand */
+    --color-brand:      16  185 129;   /* #10b981 emerald                     */
+    --color-brand2:     5   150 105;   /* #059669 emerald dark                */
+    --color-brandLight: 209 250 229;   /* #d1fae5 emerald tint                */
+    /* Gold */
+    --color-gold:       217 119 6;     /* #d97706 amber                       */
+    --color-goldLight:  254 243 199;   /* #fef3c7 amber tint                  */
+    /* Chat bubbles */
+    --color-bubbleMe:   16  185 129;   /* sent = brand green                  */
+    --color-bubbleThem: 255 255 255;   /* received = white card               */
   }
 
+  /* ── Dark palette ──
+     Strategy: layered slate surfaces, NOT pure black.
+     paper   = #0f172a (slate-900) — deepest background
+     surface = #1e293b (slate-800) — primary cards/panels
+     lift    = #293548 (slate-750) — elevated surfaces
+  */
   .dark {
-    --color-paper: 15 23 42;      /* #0f172a */
-    --color-ink: 241 245 249;     /* #f1f5f9 */
-    --color-clay: 148 163 184;    /* #94a3b8 */
-    --color-line: 51 65 85;       /* #334155 */
-    --color-surface: 30 41 59;    /* #1e293b */
-    --color-brand: 16 185 129;
-    --color-brand2: 5 150 105;
-    --color-brandLight: 6 78 59;    /* #064e3b */
-    --color-gold: 245 158 11;       /* #f59e0b */
-    --color-goldLight: 120 53 15;   /* #78350f */
+    --color-paper:      15  23  42;    /* #0f172a slate-900                   */
+    --color-surface:    30  41  59;    /* #1e293b slate-800                   */
+    --color-lift:       41  53  72;    /* #293548 slate-750 (elevated)        */
+    --color-ink:        226 232 240;   /* #e2e8f0 slate-200 — primary text    */
+    --color-clay:       148 163 184;   /* #94a3b8 slate-400 — secondary text  */
+    --color-line:       51  65  85;    /* #334155 slate-700 — subtle borders  */
+    /* Brand stays vivid on dark */
+    --color-brand:      52  211 153;   /* #34d399 emerald-400 (slightly brighter on dark) */
+    --color-brand2:     16  185 129;   /* #10b981 emerald-500                 */
+    --color-brandLight: 6   78  59;    /* #064e3b emerald-900 tint            */
+    /* Gold */
+    --color-gold:       251 191 36;    /* #fbbf24 amber-400 (brighter on dark) */
+    --color-goldLight:  120 53  15;    /* #78350f amber-900 tint              */
+    /* Chat bubbles — dark mode */
+    --color-bubbleMe:   16  185 129;   /* sent = emerald-500                  */
+    --color-bubbleThem: 41  53  72;    /* received = lift surface             */
   }
 }
 
-/* Base */
+/* ─────────────────────────────────────────────────
+   BASE STYLES
+──────────────────────────────────────────────────── */
 html, body {
   @apply bg-paper text-ink font-body overflow-x-hidden w-full break-words;
   -webkit-font-smoothing: antialiased;
@@ -43,51 +73,55 @@ input, textarea, select {
   @apply text-base md:text-sm;
 }
 
+/* ─────────────────────────────────────────────────
+   COMPONENT CLASSES
+──────────────────────────────────────────────────── */
+
 /* Cards */
 .card {
-  @apply bg-surface border border-line rounded-xl shadow-[0_2px_8px_-2px_rgba(15,23,42,0.05)];
+  @apply bg-surface border border-line rounded-xl shadow-elev-1;
 }
 
 .card-hover {
-  @apply card transition-all duration-200 hover:shadow-[0_8px_16px_-4px_rgba(15,23,42,0.08)] hover:-translate-y-0.5;
+  @apply card transition-all duration-200 hover:shadow-elev-2 hover:-translate-y-0.5;
 }
 
 /* Buttons */
 .btn-primary {
-  @apply bg-moss text-white px-5 py-2.5 rounded-lg font-medium text-sm
-         min-h-[44px] md:min-h-0 /* Mobile touch target */
-         hover:bg-moss2 active:scale-[0.98] transition-all duration-150
+  @apply bg-brand text-white px-5 py-2.5 rounded-lg font-semibold text-sm
+         min-h-[44px] md:min-h-0
+         hover:bg-brand2 active:scale-[0.98] transition-all duration-150
          disabled:opacity-40 disabled:cursor-not-allowed disabled:active:scale-100
-         inline-flex items-center justify-center gap-2 shadow-sm;
+         inline-flex items-center justify-center gap-2 shadow-elev-1;
 }
 
 .btn-brand {
-  @apply bg-brand text-white px-5 py-2.5 rounded-lg font-medium text-sm
-         min-h-[44px] md:min-h-0 /* Mobile touch target */
+  @apply bg-brand text-white px-5 py-2.5 rounded-lg font-semibold text-sm
+         min-h-[44px] md:min-h-0
          hover:bg-brand2 active:scale-[0.98] transition-all duration-150
          disabled:opacity-40 disabled:cursor-not-allowed disabled:active:scale-100
-         inline-flex items-center justify-center gap-2 shadow-sm;
+         inline-flex items-center justify-center gap-2 shadow-elev-1;
 }
 
 .btn-secondary {
   @apply bg-surface border border-line text-ink px-5 py-2.5 rounded-lg font-medium text-sm
-         min-h-[44px] md:min-h-0 /* Mobile touch target */
-         hover:border-ink/20 hover:bg-paper active:scale-[0.98] transition-all duration-150
-         inline-flex items-center justify-center gap-2 shadow-sm;
+         min-h-[44px] md:min-h-0
+         hover:border-ink/20 hover:bg-lift active:scale-[0.98] transition-all duration-150
+         inline-flex items-center justify-center gap-2 shadow-elev-1;
 }
 
 .btn-ghost {
-  @apply text-ink/70 px-3 py-1.5 rounded-lg text-sm font-medium
-         min-h-[44px] md:min-h-0 /* Mobile touch target */
-         hover:text-brand hover:bg-brandLight/30 transition-all duration-150;
+  @apply text-clay px-3 py-1.5 rounded-lg text-sm font-medium
+         min-h-[44px] md:min-h-0
+         hover:text-brand hover:bg-brand/10 transition-all duration-150;
 }
 
 /* Inputs */
 .input {
-  @apply w-full border border-line rounded-lg px-3.5 py-2.5 bg-surface text-base md:text-sm
-         min-h-[44px] md:min-h-[38px] /* Mobile touch target */
-         placeholder:text-ink/30
-         focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand
+  @apply w-full border border-line rounded-lg px-3.5 py-2.5 bg-surface text-ink text-base md:text-sm
+         min-h-[44px] md:min-h-[38px]
+         placeholder:text-clay/60
+         focus:outline-none focus:ring-2 focus:ring-brand/25 focus:border-brand
          transition-all duration-150;
 }
 
@@ -95,9 +129,14 @@ textarea.input {
   @apply resize-none min-h-[80px];
 }
 
+/* Disabled input look */
+.input:disabled {
+  @apply bg-lift opacity-70 cursor-not-allowed;
+}
+
 /* Labels */
 .label-eyebrow {
-  @apply text-[10px] md:text-xs uppercase tracking-[0.12em] text-ink/40 font-semibold;
+  @apply text-[10px] md:text-xs uppercase tracking-[0.12em] text-clay font-semibold;
 }
 
 .field-label {
@@ -109,18 +148,18 @@ textarea.input {
   @apply inline-flex items-center gap-1 text-[11px] md:text-xs font-medium px-2.5 py-1 rounded-full whitespace-nowrap;
 }
 
-.status-pending  { @apply status-pill bg-goldLight text-gold; }
-.status-accepted { @apply status-pill bg-mossLight text-moss2; }
-.status-declined { @apply status-pill bg-line text-clay; }
+.status-pending   { @apply status-pill bg-goldLight text-gold; }
+.status-accepted  { @apply status-pill bg-brandLight text-brand2; }
+.status-declined  { @apply status-pill bg-line text-clay; }
 .status-completed { @apply status-pill bg-brandLight text-brand2; }
 
 /* Alert / feedback */
 .alert-error {
-  @apply text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-4 py-3;
+  @apply text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-3;
 }
 
 .alert-success {
-  @apply text-sm text-moss2 bg-mossLight border border-moss/20 rounded-lg px-4 py-3;
+  @apply text-sm text-brand2 bg-brandLight border border-brand/20 rounded-lg px-4 py-3;
 }
 
 /* Section divider */
@@ -128,7 +167,7 @@ textarea.input {
   @apply border-t border-line my-4 md:my-6;
 }
 
-/* Page wrapper */
+/* Page wrappers */
 .page {
   @apply max-w-6xl mx-auto px-4 sm:px-6 py-6 md:py-10;
 }
@@ -139,10 +178,108 @@ textarea.input {
 
 /* Skeleton loading */
 .skeleton {
-  @apply bg-line rounded-lg animate-pulse;
+  @apply bg-line/60 rounded-lg animate-pulse;
 }
 
-/* Scrollbar */
-::-webkit-scrollbar { width: 4px; }
+/* ─────────────────────────────────────────────────
+   SCROLLBAR — theme-aware
+──────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 4px; height: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(15,23,42,0.1); border-radius: 4px; }
+::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, 0.25);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 0.45);
+}
+
+/* ─────────────────────────────────────────────────
+   CHAT BUBBLE COMPONENTS
+──────────────────────────────────────────────────── */
+/* Sent bubble */
+.bubble-me {
+  @apply bg-brand text-white rounded-2xl rounded-br-sm px-3 py-2 text-sm leading-relaxed shadow-elev-1;
+}
+
+/* Received bubble */
+.bubble-them {
+  @apply bg-lift border border-line/60 text-ink rounded-2xl rounded-bl-sm px-3 py-2 text-sm leading-relaxed shadow-elev-1;
+}
+
+/* Reply quote strip */
+.reply-quote {
+  @apply block w-full text-left mb-1 px-3 py-1.5 rounded-lg border-l-2 border-brand/60
+         bg-ink/5 hover:bg-ink/10 transition-colors cursor-pointer;
+}
+
+/* ─────────────────────────────────────────────────
+   CONTEXT MENU / DROPDOWNS
+──────────────────────────────────────────────────── */
+.dropdown-menu {
+  @apply bg-lift border border-line rounded-xl shadow-elev-3 overflow-hidden min-w-[150px] z-50;
+}
+
+.dropdown-item {
+  @apply w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-ink
+         hover:bg-brand/10 hover:text-brand transition-colors text-left;
+}
+
+.dropdown-item-danger {
+  @apply w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-red-400
+         hover:bg-red-500/10 transition-colors text-left;
+}
+
+/* ─────────────────────────────────────────────────
+   CONNECT SIDEBAR
+──────────────────────────────────────────────────── */
+.conv-item {
+  @apply w-full text-left px-4 py-3.5 flex gap-3 relative
+         hover:bg-brand/5 transition-colors duration-150;
+}
+
+.conv-item-active {
+  @apply bg-brand/10 border-r-2 border-brand;
+}
+
+/* ─────────────────────────────────────────────────
+   EMOJI / REACTION POPOVER
+──────────────────────────────────────────────────── */
+.emoji-popover {
+  @apply flex gap-1 bg-lift border border-line rounded-xl shadow-elev-3 p-1.5 z-30;
+}
+
+/* ─────────────────────────────────────────────────
+   AUDIO PLAYER COMPONENT
+──────────────────────────────────────────────────── */
+.audio-player {
+  @apply flex items-center gap-2 py-1;
+}
+
+/* ─────────────────────────────────────────────────
+   DARK MODE — ADDITIONAL OVERRIDES
+   These handle edge cases where Tailwind classes
+   alone are not sufficient.
+──────────────────────────────────────────────────── */
+
+/* Native date/time inputs in dark mode */
+.dark input[type="date"],
+.dark input[type="time"],
+.dark input[type="datetime-local"] {
+  color-scheme: dark;
+}
+
+/* Code editor wrapper inside session room */
+.dark .cm-editor {
+  background-color: rgb(var(--color-surface)) !important;
+}
+.dark .cm-gutters {
+  background-color: rgb(var(--color-paper)) !important;
+  border-right-color: rgb(var(--color-line)) !important;
+  color: rgb(var(--color-clay)) !important;
+}
+
+/* Whiteboard canvas — keep visible in dark mode */
+.dark canvas {
+  border-radius: 0.5rem;
+}

@@ -28,7 +28,7 @@ function Toast({ message, onDone }) {
     return () => clearTimeout(t)
   }, [onDone])
   return (
-    <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 bg-ink/90 text-white text-xs font-semibold px-4 py-2 rounded-full shadow-lg pointer-events-none">
+    <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 bg-lift border border-line text-ink text-xs font-semibold px-4 py-2 rounded-full shadow-elev-3 pointer-events-none">
       {message}
     </div>
   )
@@ -81,13 +81,13 @@ function ConnectionBadge({ state }) {
 function ReplyPreview({ msg, onCancel }) {
   if (!msg) return null
   return (
-    <div className="flex items-center gap-2 px-3 py-2 bg-moss/8 border-t border-moss/20">
-      <CornerUpLeft className="w-4 h-4 text-moss shrink-0" />
+    <div className="flex items-center gap-2 px-3 py-2 bg-brand/10 border-t border-brand/20">
+      <CornerUpLeft className="w-4 h-4 text-brand shrink-0" />
       <div className="flex-1 min-w-0">
-        <p className="text-[10px] font-bold text-moss">Replying to message</p>
-        <p className="text-xs text-ink/60 truncate">{truncate(msg.content || 'Attachment', 50)}</p>
+        <p className="text-[10px] font-bold text-brand">Replying to message</p>
+        <p className="text-xs text-clay truncate">{truncate(msg.content || 'Attachment', 50)}</p>
       </div>
-      <button onClick={onCancel} className="p-1 text-ink/40 hover:text-ink rounded-full shrink-0 min-w-[32px] min-h-[32px] flex items-center justify-center">
+      <button onClick={onCancel} className="p-1 text-clay hover:text-ink rounded-full shrink-0 min-w-[32px] min-h-[32px] flex items-center justify-center">
         <X className="w-4 h-4" />
       </button>
     </div>
@@ -106,7 +106,11 @@ function ReactionBubbles({ reactions, messageId, currentUserId, onToggle }) {
           <button
             key={emoji}
             onClick={() => onToggle(messageId, emoji)}
-            className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-xs border transition-colors ${mine ? 'bg-moss/15 border-moss/30 text-moss' : 'bg-ink/5 border-ink/10 text-ink/60 hover:bg-ink/10'}`}
+            className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-xs border transition-colors ${
+              mine
+                ? 'bg-brand/15 border-brand/30 text-brand font-semibold'
+                : 'bg-lift border-line text-clay hover:bg-brand/10 hover:border-brand/20 hover:text-brand'
+            }`}
           >
             <span>{emoji}</span>
             <span className="font-semibold">{users.length}</span>
@@ -133,13 +137,13 @@ function VoicePlayer({ meta, reqId }) {
   }, [meta.audio_path, reqId])
 
   return (
-    <div className="flex items-center gap-2 mt-1 px-3 py-2 bg-ink/5 rounded-full">
+    <div className="flex items-center gap-2 mt-1 px-3 py-2 bg-lift/70 border border-line/50 rounded-full">
       {error ? (
-        <div className="h-8 w-48 flex items-center justify-center text-xs text-red-500 font-medium bg-red-500/10 rounded-full">Audio unavailable</div>
+        <div className="h-8 w-48 flex items-center justify-center text-xs text-red-400 font-medium bg-red-500/10 rounded-full border border-red-500/20">Audio unavailable</div>
       ) : signedUrl ? (
         <audio controls src={signedUrl} className="h-8 w-48 max-w-full" controlsList="nodownload noplaybackrate" />
       ) : (
-        <div className="h-8 w-48 animate-pulse bg-ink/10 rounded-full"></div>
+        <div className="h-8 w-48 animate-pulse bg-line/60 rounded-full"></div>
       )}
     </div>
   )
@@ -203,7 +207,7 @@ function MessageBubble({ m, reqId, isMe, isConsecutive, currentUserId, allMessag
       <div className={`max-w-[82%] sm:max-w-[70%] relative`}>
         {/* Forwarded indicator */}
         {isForwarded && (
-          <p className={`text-[10px] font-medium mb-0.5 flex items-center gap-1 ${isMe ? 'text-right justify-end text-white/60' : 'text-ink/40'}`}>
+          <p className={`text-[10px] font-medium mb-0.5 flex items-center gap-1 ${isMe ? 'text-right justify-end text-brand/70' : 'text-clay'}`}>
             <Forward className="w-3 h-3" /> Forwarded
           </p>
         )}
@@ -212,23 +216,23 @@ function MessageBubble({ m, reqId, isMe, isConsecutive, currentUserId, allMessag
         {replyToId && replyPreview && (
           <button
             onClick={handleScrollToReply}
-            className={`block w-full text-left mb-1 px-2 py-1 rounded-lg border-l-2 border-moss/50 bg-ink/5 cursor-pointer hover:bg-ink/10 transition-colors`}
+            className="reply-quote"
           >
-            <p className="text-[10px] text-moss font-semibold">↩ Replied to</p>
-            <p className="text-[11px] text-ink/60 truncate">{truncate(replyPreview, 55)}</p>
+            <p className="text-[10px] text-brand font-semibold">↩ Replied to</p>
+            <p className="text-[11px] text-clay truncate">{truncate(replyPreview, 55)}</p>
           </button>
         )}
 
         {/* Bubble */}
         <div
-          className={`relative px-3 py-2 rounded-2xl text-sm leading-relaxed ${
+          className={`relative px-3 py-2 text-sm leading-relaxed ${
             isMe
-              ? 'bg-moss text-white rounded-br-sm'
-              : 'bg-surface border border-line text-ink rounded-bl-sm shadow-sm'
+              ? 'bubble-me'
+              : 'bubble-them'
           }`}
         >
           {isDeleted ? (
-            <p className="text-xs italic opacity-60">
+            <p className="text-xs italic opacity-50">
               {isMe ? 'You deleted this message' : 'This message was deleted'}
             </p>
           ) : (
@@ -236,7 +240,7 @@ function MessageBubble({ m, reqId, isMe, isConsecutive, currentUserId, allMessag
               {meta.type === 'voice' && <VoicePlayer meta={meta} reqId={reqId} />}
               {meta.type === 'file' && <FileAttachment meta={meta} reqId={reqId} />}
               {m.content && <MessageRenderer content={m.content} />}
-              <div className={`flex items-center justify-end gap-1 mt-0.5 ${isMe ? 'text-white/50' : 'text-ink/30'}`}>
+              <div className={`flex items-center justify-end gap-1 mt-0.5 ${isMe ? 'text-white/70' : 'text-clay'}`}>
                 {isEdited && <span className="text-[9px] italic">edited</span>}
                 {m.created_at && (
                   <span className="text-[9px]">{formatTime(m.created_at)}</span>
@@ -271,12 +275,12 @@ function MessageBubble({ m, reqId, isMe, isConsecutive, currentUserId, allMessag
               <div className="relative">
                 <button
                   onClick={() => setEmojiBarOpen(o => !o)}
-                  className="p-1 text-ink/40 hover:text-ink hover:bg-ink/5 rounded-full min-w-[32px] min-h-[32px] flex items-center justify-center"
+                  className="p-1 text-clay hover:text-brand hover:bg-brand/10 rounded-full min-w-[32px] min-h-[32px] flex items-center justify-center"
                 >
                   <Smile className="w-4 h-4" />
                 </button>
                 {emojiBarOpen && (
-                  <div className={`absolute bottom-full mb-1 ${isMe ? 'right-0' : 'left-0'} flex gap-1 bg-surface border border-line rounded-xl shadow-lg p-1.5 z-30`}>
+                  <div className={`absolute bottom-full mb-1 ${isMe ? 'right-0' : 'left-0'} emoji-popover`}>
                     {REACTION_EMOJIS.map(em => (
                       <button
                         key={em}
@@ -294,12 +298,12 @@ function MessageBubble({ m, reqId, isMe, isConsecutive, currentUserId, allMessag
               <div className="relative">
                 <button
                   onClick={() => setMenuOpen(o => !o)}
-                  className="p-1 text-ink/40 hover:text-ink hover:bg-ink/5 rounded-full min-w-[32px] min-h-[32px] flex items-center justify-center"
+                  className="p-1 text-clay hover:text-brand hover:bg-brand/10 rounded-full min-w-[32px] min-h-[32px] flex items-center justify-center"
                 >
                   <MoreVertical className="w-4 h-4" />
                 </button>
                 {menuOpen && (
-                  <div className={`absolute top-0 ${isMe ? 'right-full mr-1' : 'left-full ml-1'} bg-surface border border-line rounded-xl shadow-xl z-40 overflow-hidden min-w-[150px]`}>
+                  <div className={`absolute top-0 ${isMe ? 'right-full mr-1' : 'left-full ml-1'} dropdown-menu`}>
                     <MenuItem icon={<CornerUpLeft className="w-4 h-4" />} label="Reply" onClick={() => { onReply(m); setMenuOpen(false) }} />
                     <MenuItem icon={<Copy className="w-4 h-4" />} label="Copy" onClick={() => { onCopy(m.content); setMenuOpen(false) }} />
                     <MenuItem icon={<Forward className="w-4 h-4" />} label="Forward" onClick={() => { onForward(m); setMenuOpen(false) }} />
@@ -325,7 +329,7 @@ function MenuItem({ icon, label, onClick, danger }) {
   return (
     <button
       onClick={onClick}
-      className={`flex items-center gap-2.5 w-full px-3 py-2 text-sm text-left hover:bg-ink/5 transition-colors ${danger ? 'text-red-500' : 'text-ink'}`}
+      className={danger ? 'dropdown-item-danger' : 'dropdown-item'}
     >
       {icon}
       {label}
@@ -341,27 +345,27 @@ function ForwardModal({ message, inbox, currentRequestId, onClose, onForward }) 
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-ink/40 backdrop-blur-sm p-4">
-      <div className="bg-surface rounded-t-2xl sm:rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden">
+      <div className="bg-lift border border-line rounded-t-2xl sm:rounded-2xl w-full max-w-sm shadow-elev-3 overflow-hidden">
         <div className="flex items-center justify-between px-5 py-4 border-b border-line">
           <h3 className="font-bold text-ink">Forward message</h3>
-          <button onClick={onClose} className="p-1 text-ink/40 hover:text-ink rounded-full min-w-[36px] min-h-[36px] flex items-center justify-center"><X className="w-5 h-5" /></button>
+          <button onClick={onClose} className="p-1 text-clay hover:text-ink rounded-full min-w-[36px] min-h-[36px] flex items-center justify-center"><X className="w-5 h-5" /></button>
         </div>
-        <p className="px-5 py-3 text-xs text-ink/50 italic border-b border-line/50">"{truncate(message?.content, 60)}"</p>
+        <p className="px-5 py-3 text-xs text-clay italic border-b border-line/50">"{truncate(message?.content, 60)}"</p>
         <div className="max-h-56 overflow-y-auto divide-y divide-line/50">
           {others.length === 0 ? (
-            <p className="px-5 py-6 text-sm text-ink/40 text-center">No other conversations</p>
+            <p className="px-5 py-6 text-sm text-clay text-center">No other conversations</p>
           ) : others.map(c => (
             <button
               key={c.request_id}
               onClick={() => setSelected(c.request_id)}
-              className={`flex items-center gap-3 w-full px-5 py-3 hover:bg-ink/5 transition-colors ${selected === c.request_id ? 'bg-moss/5' : ''}`}
+              className={`flex items-center gap-3 w-full px-5 py-3 hover:bg-brand/5 transition-colors ${selected === c.request_id ? 'bg-brand/10 border-r-2 border-brand' : ''}`}
             >
               <img src={getAvatarUrl(c.other_user_avatar)} alt="" className="w-9 h-9 rounded-full object-cover border border-line" onError={e => e.target.src = 'https://api.dicebear.com/7.x/avataaars/svg?seed=fallback'} />
               <div className="text-left min-w-0">
-                <p className="font-semibold text-sm truncate">{c.other_user_name}</p>
-                <p className="text-xs text-ink/50 truncate">{c.skill_name}</p>
+                <p className="font-semibold text-sm truncate text-ink">{c.other_user_name}</p>
+                <p className="text-xs text-clay truncate">{c.skill_name}</p>
               </div>
-              {selected === c.request_id && <Check className="w-4 h-4 text-moss ml-auto shrink-0" />}
+              {selected === c.request_id && <Check className="w-4 h-4 text-brand ml-auto shrink-0" />}
             </button>
           ))}
         </div>
@@ -418,31 +422,31 @@ function ScheduleModal({ requestId, onClose, onScheduled }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-ink/40 backdrop-blur-sm">
-      <div className="bg-surface rounded-t-2xl sm:rounded-2xl shadow-xl border border-line w-full max-w-md max-h-[90vh] overflow-y-auto">
+      <div className="bg-lift border border-line rounded-t-2xl sm:rounded-2xl shadow-elev-3 w-full max-w-md max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between px-5 py-4 border-b border-line">
-          <h3 className="font-display font-bold text-lg">Schedule Session</h3>
-          <button onClick={onClose} className="p-1 text-ink/40 hover:text-ink rounded-full min-w-[36px] min-h-[36px] flex items-center justify-center"><X className="w-5 h-5" /></button>
+          <h3 className="font-display font-bold text-lg text-ink">Schedule Session</h3>
+          <button onClick={onClose} className="p-1 text-clay hover:text-ink rounded-full min-w-[36px] min-h-[36px] flex items-center justify-center"><X className="w-5 h-5" /></button>
         </div>
         <form onSubmit={handleSubmit} className="p-5 space-y-4">
           <div>
-            <label className="block text-xs font-bold text-ink/70 mb-1">Date (IST)</label>
-            <input required type="date" min={today} className="input w-full" value={date} onChange={e => setDate(e.target.value)} />
+            <label className="field-label">Date (IST)</label>
+            <input required type="date" min={today} className="input" value={date} onChange={e => setDate(e.target.value)} />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-bold text-ink/70 mb-1">Start Time (IST)</label>
-              <input required type="time" className="input w-full" value={startTime} onChange={e => setStartTime(e.target.value)} />
+              <label className="field-label">Start Time (IST)</label>
+              <input required type="time" className="input" value={startTime} onChange={e => setStartTime(e.target.value)} />
             </div>
             <div>
-              <label className="block text-xs font-bold text-ink/70 mb-1">End Time (IST)</label>
-              <input required type="time" className="input w-full" value={endTime} onChange={e => setEndTime(e.target.value)} />
+              <label className="field-label">End Time (IST)</label>
+              <input required type="time" className="input" value={endTime} onChange={e => setEndTime(e.target.value)} />
             </div>
           </div>
           <div>
-            <label className="block text-xs font-bold text-ink/70 mb-1">Notes (Optional)</label>
-            <input type="text" className="input w-full" placeholder="Agenda or topics to cover" value={notes} onChange={e => setNotes(e.target.value)} />
+            <label className="field-label">Notes (Optional)</label>
+            <input type="text" className="input" placeholder="Agenda or topics to cover" value={notes} onChange={e => setNotes(e.target.value)} />
           </div>
-          {error && <p className="text-xs text-red-500">{error}</p>}
+          {error && <p className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">{error}</p>}
           <div className="flex gap-2 pt-2">
             <button type="button" onClick={onClose} className="btn-secondary flex-1">Cancel</button>
             <button type="submit" disabled={submitting} className="btn-primary flex-1">{submitting ? 'Scheduling…' : 'Schedule'}</button>
@@ -462,7 +466,7 @@ function SessionCard({ conv, onCancel, navigate }) {
     : `${conv.session_date || ''} ${conv.session_time || ''}`.trim()
 
   return (
-    <div className="mx-4 my-2 flex items-center gap-3 px-3 py-2 bg-moss/8 border border-moss/20 rounded-xl text-sm">
+    <div className="mx-4 my-2 flex items-center gap-3 px-3 py-2 bg-brand/10 dark:bg-brand/20 border border-brand/20 dark:border-brand/30 rounded-xl text-sm">
       <Calendar className="w-4 h-4 text-moss shrink-0" />
       <div className="flex-1 min-w-0">
         <p className="font-semibold text-moss text-xs">Session Scheduled</p>
@@ -933,10 +937,10 @@ function SessionCard({ conv, onCancel, navigate }) {
       </div>
 
       {/* Main panel */}
-      <div className="flex-1 flex md:mx-6 md:mb-6 md:rounded-2xl border border-line bg-surface shadow-sm overflow-hidden min-h-0">
+      <div className="flex-1 flex md:mx-6 md:mb-6 md:rounded-2xl border border-line bg-surface shadow-elev-2 overflow-hidden min-h-0">
 
         {/* ── Inbox sidebar ── */}
-        <div className={`${selectedRequestId ? 'hidden md:flex' : 'flex'} flex-col w-full md:w-72 lg:w-80 border-r border-line bg-paper/30 shrink-0`}>
+        <div className={`${selectedRequestId ? 'hidden md:flex' : 'flex'} flex-col w-full md:w-72 lg:w-80 border-r border-line bg-paper shrink-0`}>
           {/* Sidebar header */}
           <div className="p-3 border-b border-line bg-surface flex items-center gap-2 shrink-0">
             <BackButton className="md:hidden shrink-0" />
@@ -945,22 +949,22 @@ function SessionCard({ conv, onCancel, navigate }) {
               placeholder="Search conversations…"
               value={inboxSearch}
               onChange={e => setInboxSearch(e.target.value)}
-              className="input flex-1 text-sm bg-ink/5 border-transparent focus:bg-surface focus:border-moss transition-colors"
+              className="input flex-1 text-sm bg-ink/5 border-transparent focus:bg-lift focus:border-brand transition-colors"
             />
           </div>
 
           {/* Inbox list */}
           <div className="flex-1 overflow-y-auto">
             {loadingInbox ? (
-              <div className="p-6 text-center text-ink/40 text-sm">Loading…</div>
+              <div className="p-6 text-center text-clay text-sm">Loading…</div>
             ) : filteredInbox.length === 0 ? (
               <div className="p-8 text-center space-y-3">
-                <MessageCircle className="w-10 h-10 text-ink/20 mx-auto" />
-                <p className="text-sm text-ink/40 font-medium">
+                <MessageCircle className="w-10 h-10 text-clay/40 mx-auto" />
+                <p className="text-sm text-clay font-medium">
                   {inboxSearch ? 'No matches found' : 'No conversations yet'}
                 </p>
                 {!inboxSearch && (
-                  <p className="text-xs text-ink/30">Accept a connection request to start chatting</p>
+                  <p className="text-xs text-clay/60">Accept a connection request to start chatting</p>
                 )}
               </div>
             ) : (
@@ -969,7 +973,7 @@ function SessionCard({ conv, onCancel, navigate }) {
                   <button
                     key={conv.request_id}
                     onClick={() => handleSelectConversation(conv.request_id)}
-                    className={`w-full text-left p-3.5 hover:bg-moss/5 transition-colors flex gap-3 relative ${selectedRequestId === conv.request_id ? 'bg-moss/8 border-r-2 border-moss' : ''}`}
+                    className={`w-full text-left p-3.5 hover:bg-brand/5 dark:hover:bg-brand/10 transition-colors flex gap-3 relative ${selectedRequestId === conv.request_id ? 'bg-brand/10 dark:bg-brand/20 border-r-2 border-brand' : ''}`}
                   >
                     <div className="relative shrink-0">
                       <img
@@ -987,10 +991,10 @@ function SessionCard({ conv, onCancel, navigate }) {
                     <div className="flex-1 min-w-0">
                       <div className="flex justify-between items-baseline mb-0.5">
                         <h3 className="font-bold text-ink text-sm truncate pr-1">{conv.other_user_name}</h3>
-                        <span className="text-[10px] text-ink/35 whitespace-nowrap">{formatTime(conv.latest_message_time)}</span>
+                        <span className="text-[10px] text-clay whitespace-nowrap">{formatTime(conv.latest_message_time)}</span>
                       </div>
-                      <p className="text-[11px] text-moss font-medium truncate mb-0.5">{conv.skill_name}</p>
-                      <p className={`text-xs truncate ${conv.unread_count > 0 ? 'text-ink font-semibold' : 'text-ink/50'}`}>
+                      <p className="text-[11px] text-brand font-medium truncate mb-0.5">{conv.skill_name}</p>
+                      <p className={`text-xs truncate ${conv.unread_count > 0 ? 'text-ink font-semibold' : 'text-clay'}`}>
                         {conv.latest_message || 'No messages yet'}
                       </p>
                     </div>
@@ -1026,12 +1030,12 @@ function SessionCard({ conv, onCancel, navigate }) {
                       <ConnectionBadge state={connectionState} />
                       <span className="text-ink/40">•</span>
                       {otherPresence.status === 'online' ? (
-                        <span className="text-moss font-medium flex items-center gap-1">
-                          <span className="w-1.5 h-1.5 rounded-full bg-moss"></span>
+                        <span className="text-brand font-medium flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-brand"></span>
                           Online
                         </span>
                       ) : otherPresence.last_active ? (
-                        <span className="text-ink/50">Last active {formatTime(otherPresence.last_active)}</span>
+                        <span className="text-clay">Last active {formatTime(otherPresence.last_active)}</span>
                       ) : null}
                     </div>
                   </div>
@@ -1041,7 +1045,7 @@ function SessionCard({ conv, onCancel, navigate }) {
                   {/* Search toggle */}
                   <button
                     onClick={() => setChatSearchOpen(o => !o)}
-                    className={`p-2 rounded-full transition-colors min-w-[40px] min-h-[40px] flex items-center justify-center ${chatSearchOpen ? 'bg-moss/10 text-moss' : 'text-ink/40 hover:text-ink hover:bg-ink/5'}`}
+                    className={`p-2 rounded-full transition-colors min-w-[40px] min-h-[40px] flex items-center justify-center ${chatSearchOpen ? 'bg-brand/10 text-brand' : 'text-clay hover:text-ink hover:bg-ink/5'}`}
                   >
                     <Search className="w-4 h-4" />
                   </button>
@@ -1063,19 +1067,19 @@ function SessionCard({ conv, onCancel, navigate }) {
 
               {/* Chat search bar */}
               {chatSearchOpen && (
-                <div className="flex items-center gap-2 px-3 py-2 border-b border-line bg-paper/60 shrink-0">
-                  <Search className="w-4 h-4 text-ink/40 shrink-0" />
+                <div className="flex items-center gap-2 px-3 py-2 border-b border-line bg-lift shrink-0">
+                  <Search className="w-4 h-4 text-clay shrink-0" />
                   <input
                     autoFocus
                     type="text"
                     placeholder="Search in conversation..."
                     value={chatSearch}
                     onChange={e => { setChatSearch(e.target.value); setSearchHighlightIdx(0) }}
-                    className="flex-1 text-sm bg-transparent outline-none text-ink placeholder-ink/40"
+                    className="flex-1 text-sm bg-transparent outline-none text-ink placeholder:text-clay"
                   />
                   {searchMatches.length > 0 && (
                     <div className="flex items-center gap-1">
-                      <span className="text-xs text-ink/40 whitespace-nowrap">{searchHighlightIdx + 1}/{searchMatches.length}</span>
+                      <span className="text-xs text-clay whitespace-nowrap">{searchHighlightIdx + 1}/{searchMatches.length}</span>
                       <button
                         onClick={() => {
                           const newIdx = (searchHighlightIdx - 1 + searchMatches.length) % searchMatches.length;
@@ -1083,7 +1087,7 @@ function SessionCard({ conv, onCancel, navigate }) {
                           const msgId = messages[searchMatches[newIdx]]?.id;
                           if (msgId) handleScrollToRef(msgId);
                         }}
-                        className="p-1 text-ink/40 hover:text-ink rounded min-w-[28px] min-h-[28px] flex items-center justify-center"
+                        className="p-1 text-clay hover:text-ink rounded min-w-[28px] min-h-[28px] flex items-center justify-center"
                       >
                         <ChevronUp className="w-4 h-4" />
                       </button>
@@ -1094,13 +1098,13 @@ function SessionCard({ conv, onCancel, navigate }) {
                           const msgId = messages[searchMatches[newIdx]]?.id;
                           if (msgId) handleScrollToRef(msgId);
                         }}
-                        className="p-1 text-ink/40 hover:text-ink rounded min-w-[28px] min-h-[28px] flex items-center justify-center"
+                        className="p-1 text-clay hover:text-ink rounded min-w-[28px] min-h-[28px] flex items-center justify-center"
                       >
                         <ChevronDown className="w-4 h-4" />
                       </button>
                     </div>
                   )}
-                  <button onClick={() => { setChatSearch(''); setChatSearchOpen(false) }} className="p-1 text-ink/40 hover:text-ink rounded min-w-[28px] min-h-[28px] flex items-center justify-center">
+                  <button onClick={() => { setChatSearch(''); setChatSearchOpen(false) }} className="p-1 text-clay hover:text-ink rounded min-w-[28px] min-h-[28px] flex items-center justify-center">
                     <X className="w-4 h-4" />
                   </button>
                 </div>
@@ -1108,7 +1112,7 @@ function SessionCard({ conv, onCancel, navigate }) {
 
               {/* Connection error */}
               {wsError && (
-                <div className="bg-red-500/10 text-red-500 px-4 py-2 text-xs font-medium border-b border-red-500/20 shrink-0">
+                <div className="bg-red-500/10 text-red-400 px-4 py-2 text-xs font-medium border-b border-red-500/20 shrink-0">
                   {wsError}
                 </div>
               )}
@@ -1119,15 +1123,15 @@ function SessionCard({ conv, onCancel, navigate }) {
               )}
 
               {/* Messages list */}
-              <div className="flex-1 overflow-y-auto px-3 py-4 bg-paper/30 min-h-0">
+              <div className="flex-1 overflow-y-auto px-3 py-4 bg-paper min-h-0">
                 {loadingMessages ? (
                   <div className="flex items-center justify-center h-full">
-                    <div className="w-6 h-6 border-2 border-moss border-t-transparent rounded-full animate-spin" />
+                    <div className="w-6 h-6 border-2 border-brand border-t-transparent rounded-full animate-spin" />
                   </div>
                 ) : messages.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center h-full text-ink/30 space-y-3">
+                  <div className="flex flex-col items-center justify-center h-full text-clay/60 space-y-3">
                     <Hand className="w-10 h-10" />
-                    <p className="text-sm font-medium">Say hello!</p>
+                    <p className="text-sm font-medium text-clay">Say hello!</p>
                   </div>
                 ) : (
                   <>
@@ -1164,10 +1168,10 @@ function SessionCard({ conv, onCancel, navigate }) {
               </div>
 
               {/* Composer */}
-              <div className="bg-surface border-t border-ink/8 shrink-0">
+              <div className="bg-surface border-t border-line/60 shrink-0">
                 {/* Emoji picker */}
                 {showEmojiPicker && (
-                  <div className="absolute bottom-full left-2 mb-2 bg-surface border border-line shadow-xl rounded-xl p-3 w-64 z-30">
+                  <div className="absolute bottom-full left-2 mb-2 bg-lift border border-line shadow-elev-3 rounded-xl p-3 w-64 z-30">
                     <div className="flex flex-wrap gap-1.5">
                       {COMPOSE_EMOJIS.map(em => (
                         <button
@@ -1188,18 +1192,18 @@ function SessionCard({ conv, onCancel, navigate }) {
                   <ReplyPreview msg={replyingTo} onCancel={() => setReplyingTo(null)} />
                 )}
                 {editingMsg && (
-                  <div className="flex items-center gap-2 px-3 py-2 bg-amber-500/10 border-t border-amber-500/20">
-                    <Pencil className="w-4 h-4 text-amber-500 shrink-0" />
-                    <p className="flex-1 text-xs text-amber-700 font-medium">Editing message</p>
-                    <button onClick={handleCancelEdit} className="p-1 text-amber-500 hover:text-amber-700 rounded-full min-w-[32px] min-h-[32px] flex items-center justify-center">
+                  <div className="flex items-center gap-2 px-3 py-2 bg-gold/10 border-t border-gold/20">
+                    <Pencil className="w-4 h-4 text-gold shrink-0" />
+                    <p className="flex-1 text-xs text-gold font-medium">Editing message</p>
+                    <button onClick={handleCancelEdit} className="p-1 text-gold/70 hover:text-gold rounded-full min-w-[32px] min-h-[32px] flex items-center justify-center">
                       <X className="w-4 h-4" />
                     </button>
                   </div>
                 )}
 
                 {uploadingFile && (
-                  <div className="px-4 pb-2 text-xs text-moss font-medium flex items-center gap-2 bg-surface">
-                    <span className="w-3 h-3 rounded-full border-2 border-moss border-t-transparent animate-spin" />
+                  <div className="px-4 pb-2 text-xs text-brand font-medium flex items-center gap-2 bg-surface">
+                    <span className="w-3 h-3 rounded-full border-2 border-brand border-t-transparent animate-spin" />
                     Uploading {uploadingFile}...
                   </div>
                 )}
@@ -1209,44 +1213,44 @@ function SessionCard({ conv, onCancel, navigate }) {
                     <button
                       type="button"
                       onClick={cancelRecording}
-                      className="px-3 py-1.5 text-red-500 text-sm font-medium hover:bg-red-500/10 rounded-lg transition-colors"
+                      className="px-3 py-1.5 text-red-400 text-sm font-medium hover:bg-red-500/10 rounded-lg transition-colors"
                     >
                       {voiceBlob ? 'Delete' : 'Cancel'}
                     </button>
                     {voiceBlob ? (
                       <audio controls src={URL.createObjectURL(voiceBlob)} className="h-8 max-w-[200px]" />
                     ) : (
-                      <div className="flex items-center gap-2 text-red-500 font-medium">
-                        <span className="w-2.5 h-2.5 rounded-full bg-red-500/100 animate-pulse"></span>
+                      <div className="flex items-center gap-2 text-red-400 font-medium">
+                        <span className="w-2.5 h-2.5 rounded-full bg-red-400 animate-pulse"></span>
                         {Math.floor(recordingTime / 60)}:{(recordingTime % 60).toString().padStart(2, '0')}
                       </div>
                     )}
                     <button
                       type="button"
                       onClick={isRecording ? stopRecording : sendVoice}
-                      className="px-4 py-1.5 bg-moss text-white text-sm font-medium rounded-lg hover:bg-moss/90 transition-colors"
+                      className="btn-primary text-sm px-4 py-1.5 h-auto"
                     >
                       {isRecording ? 'Stop' : 'Send'}
                     </button>
                   </div>
                 ) : (
-                  <form onSubmit={handleSend} className="p-3 bg-surface border-t border-line flex items-end gap-2 shrink-0">
+                  <form onSubmit={handleSend} className="p-3 bg-surface flex items-end gap-2 shrink-0">
                     <button
                       type="button"
-                      className="p-2 text-ink/40 hover:text-ink hover:bg-ink/5 rounded-full transition-colors shrink-0 min-w-[40px] min-h-[40px] flex items-center justify-center relative"
+                      className="p-2 text-clay hover:text-brand hover:bg-brand/10 rounded-full transition-colors shrink-0 min-w-[40px] min-h-[40px] flex items-center justify-center relative"
                       onClick={() => setShowEmojiPicker(!showEmojiPicker)}
                       title="Emojis"
                     >
                       <Smile className="w-5 h-5" />
                     </button>
-                    <label className="p-2 text-ink/40 hover:text-ink hover:bg-ink/5 rounded-full transition-colors cursor-pointer shrink-0 min-w-[40px] min-h-[40px] flex items-center justify-center" title="Attach file">
+                    <label className="p-2 text-clay hover:text-brand hover:bg-brand/10 rounded-full transition-colors cursor-pointer shrink-0 min-w-[40px] min-h-[40px] flex items-center justify-center" title="Attach file">
                       <input type="file" className="hidden" onChange={handleFileUpload} accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg,.webp" />
                       <Paperclip className="w-5 h-5" />
                     </label>
                     <button
                       type="button"
                       onClick={startRecording}
-                      className="p-2 text-ink/40 hover:text-ink hover:bg-ink/5 rounded-full transition-colors shrink-0 min-w-[40px] min-h-[40px] flex items-center justify-center"
+                      className="p-2 text-clay hover:text-brand hover:bg-brand/10 rounded-full transition-colors shrink-0 min-w-[40px] min-h-[40px] flex items-center justify-center"
                       title="Voice Message"
                     >
                       <Mic className="w-5 h-5" />
@@ -1254,7 +1258,7 @@ function SessionCard({ conv, onCancel, navigate }) {
                     <textarea
                       ref={inputRef}
                       rows={1}
-                      className="input flex-1 bg-ink/5 border-transparent focus:bg-surface focus:border-moss text-sm resize-none min-w-0 leading-relaxed py-2.5"
+                      className="input flex-1 bg-lift border-line/50 focus:bg-lift focus:border-brand text-sm resize-none min-w-0 leading-relaxed py-2.5"
                       style={{ maxHeight: '120px', overflowY: 'auto' }}
                       placeholder={editingMsg ? 'Edit message…' : 'Message…'}
                       value={draft}
@@ -1269,7 +1273,7 @@ function SessionCard({ conv, onCancel, navigate }) {
                     <button
                       type="submit"
                       disabled={!draft.trim()}
-                      className="p-2 bg-moss text-white rounded-full transition-colors disabled:opacity-40 shrink-0 min-w-[40px] min-h-[40px] flex items-center justify-center hover:bg-moss/90"
+                      className="p-2 bg-brand text-white rounded-full transition-colors disabled:opacity-40 shrink-0 min-w-[40px] min-h-[40px] flex items-center justify-center hover:bg-brand2 shadow-elev-1"
                     >
                       <Send className="w-4 h-4" />
                     </button>
@@ -1282,11 +1286,11 @@ function SessionCard({ conv, onCancel, navigate }) {
               <div className="w-6 h-6 border-2 border-moss border-t-transparent rounded-full animate-spin" />
             </div>
           ) : (
-            <div className="hidden md:flex flex-1 flex-col items-center justify-center text-ink/40 bg-paper/40 space-y-4">
+            <div className="hidden md:flex flex-1 flex-col items-center justify-center text-clay/50 bg-paper space-y-4">
               <MessageCircle className="w-16 h-16 opacity-15" />
               <div className="text-center">
-                <p className="font-semibold text-lg text-ink/50">Connect</p>
-                <p className="text-sm text-ink/35">Select a conversation to start collaborating</p>
+                <p className="font-semibold text-lg text-clay">Connect</p>
+                <p className="text-sm text-clay/70">Select a conversation to start collaborating</p>
               </div>
             </div>
           )}

@@ -131,7 +131,7 @@ export default function Settings() {
                 <p className="text-xs text-clay mt-0.5">{user?.email || 'Loading...'}</p>
               </div>
               {user?.provider === 'google' && (
-                <span className="text-[10px] font-bold bg-brandLight text-brand px-2 py-0.5 rounded-full">Google Auth</span>
+                <span className="text-[10px] font-bold bg-brand/10 dark:bg-brand/20 text-brand px-2 py-0.5 rounded-full">Google Auth</span>
               )}
             </div>
             

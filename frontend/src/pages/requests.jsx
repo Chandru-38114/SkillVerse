@@ -330,11 +330,11 @@ function SchedulePanel({ requestId, skill }) {
           <p className="text-xs font-semibold text-ink/50 uppercase tracking-wide mb-2">
             Scheduled Session
           </p>
-          <div className="bg-moss/5 border border-moss/20 rounded-lg p-3 flex items-center justify-between gap-4">
+          <div className="bg-brand/5 dark:bg-brand/10 border border-moss/20 rounded-lg p-3 flex items-center justify-between gap-4">
             <div className="space-y-0.5">
               <div className="flex items-center gap-2">
                 <span className="text-xs font-semibold text-moss capitalize">{session.skill}</span>
-                <span className="text-xs bg-moss/10 text-moss border border-moss/20 px-1.5 py-0.5 rounded-full font-medium">
+                <span className="text-xs bg-brand/10 dark:bg-brand/20 text-moss border border-moss/20 px-1.5 py-0.5 rounded-full font-medium">
                   Scheduled ●
                 </span>
               </div>

@@ -128,7 +128,7 @@ export default function Profile() {
         {/* Left Column: Avatar & Verification */}
         <div className="space-y-6">
           <div className="card p-4 sm:p-6 flex flex-col items-center">
-            <div className="w-32 h-32 rounded-full overflow-hidden bg-sand mb-4 flex items-center justify-center">
+            <div className="w-32 h-32 rounded-full overflow-hidden bg-ink/5 dark:bg-ink/10 mb-4 flex items-center justify-center">
               {user.profile_picture_url ? (
                 <img 
                   src={getAvatarUrl(user.profile_picture_url)} 
@@ -189,14 +189,14 @@ export default function Profile() {
                 </div>
                 <div>
                   <label className="field-label">Email <span className="text-xs font-normal text-ink/50">(Cannot be changed)</span></label>
-                  <input type="email" className="input bg-sand/50 cursor-not-allowed" value={user.email} disabled />
+                  <input type="email" className="input bg-ink/5 dark:bg-ink/10 cursor-not-allowed" value={user.email} disabled />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
                   <label className="field-label">Date of Birth <span className="text-xs font-normal text-ink/50">(Not verified)</span></label>
-                  <input type={isEditing ? "date" : "text"} className={`input ${!isEditing ? 'bg-sand/30' : ''}`} value={isEditing ? dob : (user.dob || 'Not provided')} onChange={e => setDob(e.target.value)} disabled={!isEditing} />
+                  <input type={isEditing ? "date" : "text"} className={`input ${!isEditing ? 'bg-ink/5 dark:bg-ink/10' : ''}`} value={isEditing ? dob : (user.dob || 'Not provided')} onChange={e => setDob(e.target.value)} disabled={!isEditing} />
                 </div>
                 <div>
                   <label className="field-label">Gender <span className="text-xs font-normal text-ink/50">(Not verified)</span></label>
@@ -209,34 +209,34 @@ export default function Profile() {
                       <option value="Prefer not to say">Prefer not to say</option>
                     </select>
                   ) : (
-                    <input type="text" className="input bg-sand/30" value={user.gender || 'Not provided'} disabled />
+                    <input type="text" className="input bg-ink/5 dark:bg-ink/10" value={user.gender || 'Not provided'} disabled />
                   )}
                 </div>
                 <div>
                   <label className="field-label">Age <span className="text-xs font-normal text-ink/50">(Not verified)</span></label>
-                  <input type="text" className="input bg-sand/50 cursor-not-allowed" value={user.age !== null && user.age !== undefined ? user.age : 'Not provided'} disabled />
+                  <input type="text" className="input bg-ink/5 dark:bg-ink/10 cursor-not-allowed" value={user.age !== null && user.age !== undefined ? user.age : 'Not provided'} disabled />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="field-label">Mobile Number</label>
-                  <input type="text" className={`input ${!isEditing ? 'bg-sand/30' : ''}`} value={isEditing ? mobileNumber : (user.mobile_number || 'Not provided')} onChange={e => setMobileNumber(e.target.value)} disabled={!isEditing} />
+                  <input type="text" className={`input ${!isEditing ? 'bg-ink/5 dark:bg-ink/10' : ''}`} value={isEditing ? mobileNumber : (user.mobile_number || 'Not provided')} onChange={e => setMobileNumber(e.target.value)} disabled={!isEditing} />
                 </div>
                 <div>
                   <label className="field-label">Organization / College</label>
-                  <input type="text" className={`input ${!isEditing ? 'bg-sand/30' : ''}`} value={isEditing ? college : (user.college || 'Not provided')} onChange={e => setCollege(e.target.value)} disabled={!isEditing} />
+                  <input type="text" className={`input ${!isEditing ? 'bg-ink/5 dark:bg-ink/10' : ''}`} value={isEditing ? college : (user.college || 'Not provided')} onChange={e => setCollege(e.target.value)} disabled={!isEditing} />
                 </div>
               </div>
 
               <div>
                 <label className="field-label">Country</label>
-                <input type="text" className={`input ${!isEditing ? 'bg-sand/30' : ''}`} value={isEditing ? country : (user.country || 'Not provided')} onChange={e => setCountry(e.target.value)} disabled={!isEditing} />
+                <input type="text" className={`input ${!isEditing ? 'bg-ink/5 dark:bg-ink/10' : ''}`} value={isEditing ? country : (user.country || 'Not provided')} onChange={e => setCountry(e.target.value)} disabled={!isEditing} />
               </div>
 
               <div>
                 <label className="field-label">Bio</label>
-                <textarea className={`input min-h-[100px] ${!isEditing ? 'bg-sand/30' : ''}`} value={isEditing ? bio : (user.bio || 'Not provided')} onChange={e => setBio(e.target.value)} disabled={!isEditing}></textarea>
+                <textarea className={`input min-h-[100px] ${!isEditing ? 'bg-ink/5 dark:bg-ink/10' : ''}`} value={isEditing ? bio : (user.bio || 'Not provided')} onChange={e => setBio(e.target.value)} disabled={!isEditing}></textarea>
               </div>
 
               {profileMsg && (

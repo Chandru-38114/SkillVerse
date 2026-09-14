@@ -148,9 +148,9 @@ function SessionRoomComponent() {
   const req = session.request
 
   return (
-    <div className="h-[100dvh] flex flex-col bg-[#FDFDFC] overflow-hidden font-body">
+    <div className="h-[100dvh] flex flex-col bg-paper overflow-hidden font-body">
       {/* ── Header ────────────────────────────────────────────── */}
-      <header className="shrink-0 border-b border-line bg-white px-3 sm:px-5 flex items-center justify-between z-20 shadow-sm gap-3 h-[52px]">
+      <header className="shrink-0 border-b border-line bg-surface px-3 sm:px-5 flex items-center justify-between z-20 shadow-sm gap-3 h-[52px]">
         {/* Logo + session info */}
         <div className="flex items-center gap-2.5 min-w-0">
           <Link to="/" className="flex items-center gap-2 shrink-0" title="SkillVerse Home">
@@ -202,7 +202,7 @@ function SessionRoomComponent() {
 
       {/* ── Collapsible info banner (mobile/tablet) ─────────── */}
       {infoOpen && (
-        <div className="lg:hidden bg-white border-b border-line px-4 py-3 shrink-0 z-10">
+        <div className="lg:hidden bg-surface border-b border-line px-4 py-3 shrink-0 z-10">
           <div className="flex gap-5 text-sm flex-wrap">
             <div>
               <span className="text-[10px] uppercase tracking-wider text-ink/40 font-bold block mb-0.5">Peer</span>
@@ -240,8 +240,8 @@ function SessionRoomComponent() {
                   onClick={() => setActiveTab(id)}
                   className={`flex items-center gap-1.5 px-3.5 sm:px-4 py-2.5 text-xs font-semibold border-b-2 whitespace-nowrap transition-colors flex-shrink-0 ${
                     activeTab === id
-                      ? 'border-moss text-moss bg-moss/5'
-                      : 'border-transparent text-ink/40 hover:text-ink/60 hover:bg-ink/5'
+                      ? 'border-brand text-brand bg-brand/5'
+                      : 'border-transparent text-ink/50 hover:text-ink hover:bg-ink/5'
                   }`}
                 >
                   <Icon className="w-3.5 h-3.5" />
@@ -285,8 +285,8 @@ function SessionRoomComponent() {
                   onClick={() => setDesktopSidebarTab(tab)}
                   className={`px-3 py-2.5 text-xs font-semibold border-b-2 whitespace-nowrap transition-colors flex-1 text-center ${
                     desktopSidebarTab === tab
-                      ? 'border-moss text-moss bg-moss/5'
-                      : 'border-transparent text-ink/40 hover:text-ink/60 hover:bg-ink/5'
+                      ? 'border-brand text-brand bg-brand/5'
+                      : 'border-transparent text-ink/50 hover:text-ink hover:bg-ink/5'
                   }`}
                 >
                   {tab === 'Materials' ? 'Files' : tab}
@@ -298,7 +298,7 @@ function SessionRoomComponent() {
               {/* Agenda (Desktop Only) */}
               <div className={`absolute inset-0 overflow-y-auto p-4 ${desktopSidebarTab === 'Agenda' ? 'lg:block' : 'lg:hidden'} hidden`}>
                 <p className="text-[10px] uppercase tracking-wider text-ink/40 font-bold mb-3">Exchange</p>
-                <div className="space-y-3 text-sm bg-moss/5 border border-moss/10 rounded-xl p-3 mb-3">
+                <div className="space-y-3 text-sm bg-brand/5 dark:bg-brand/10 border border-brand/10 dark:border-brand/20 rounded-xl p-3 mb-3">
                   <div>
                     <p className="text-[10px] font-bold uppercase tracking-wider text-moss/70 mb-0.5">You {isTutor ? 'teach' : 'learn'}</p>
                     <p className="font-bold text-moss text-sm">{session.skill_name || session.skill}</p>
