@@ -3,7 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { Home, Compass, MessageCircle, Calendar, Inbox, Bell, TrendingUp, Trophy, User, Settings, LogOut, Menu, X } from 'lucide-react'
 import { getSessionUser, clearSession, api } from '../api'
 
-const NAV_LINKS = [
+  const NAV_LINKS = [
   { to: '/dashboard', label: 'Dashboard' },
   { to: '/marketplace', label: 'Discover' },
   { to: '/messages', label: 'Connect' },
@@ -12,6 +12,7 @@ const NAV_LINKS = [
   { to: '/progress', label: 'Progress' },
   { to: '/gamification', label: 'Skill Journey' },
   { to: '/profile', label: 'Profile' },
+  { to: '/settings', label: 'Settings' },
 ]
 
 const MOBILE_NAV_LINKS = [
@@ -24,7 +25,7 @@ const MOBILE_NAV_LINKS = [
   { to: '/progress', label: 'Progress', icon: <TrendingUp className="w-5 h-5" /> },
   { to: '/gamification', label: 'Skill Journey', icon: <Trophy className="w-5 h-5" /> },
   { to: '/profile', label: 'Profile', icon: <User className="w-5 h-5" /> },
-  { to: '/profile', label: 'Settings', icon: <Settings className="w-5 h-5" /> },
+  { to: '/settings', label: 'Settings', icon: <Settings className="w-5 h-5" /> },
 ]
 
 function BellIcon() {

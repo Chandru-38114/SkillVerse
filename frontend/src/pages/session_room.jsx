@@ -24,6 +24,7 @@ function SessionRoomComponent() {
   const [session, setSession] = useState(null)
   const [error, setError] = useState('')
   const [activeTab, setActiveTab] = useState('Code')
+  const [desktopSidebarTab, setDesktopSidebarTab] = useState('Agenda')
   const [infoOpen, setInfoOpen] = useState(false)
   const navigate = useNavigate()
 
@@ -227,12 +228,12 @@ function SessionRoomComponent() {
       )}
 
       {/* ── Main Body ─────────────────────────────────────────── */}
-      <div className="flex-1 flex overflow-hidden min-h-0">
+      <div className="flex-1 flex overflow-hidden min-h-0 relative">
         <VideoChat sessionId={session.id} onLeave={() => navigate('/sessions')}>
           {/* ── Workspace: tabs + panels ────────────────────── */}
-          <div className="flex-1 flex flex-col overflow-hidden min-h-0 min-w-0">
-            {/* Tab bar — scrollable on small screens */}
-            <div className="flex shrink-0 border-b border-line bg-white overflow-x-auto overflow-y-hidden scrollbar-hide">
+          <div className="flex-1 flex flex-col overflow-hidden min-h-0 min-w-0 lg:pr-80">
+            {/* Tab bar — ONLY ON MOBILE */}
+            <div className="lg:hidden flex shrink-0 border-b border-line bg-surface overflow-x-auto overflow-y-hidden scrollbar-hide">
               {TABS.map(({ id, label, Icon }) => (
                 <button
                   key={id}
@@ -249,81 +250,121 @@ function SessionRoomComponent() {
               ))}
             </div>
 
-            {/* Tab panels — absolute layered for state preservation */}
-            <div className="flex-1 relative overflow-hidden min-h-0">
-              <div className={`absolute inset-0 ${activeTab === 'Code'       ? 'flex flex-col' : 'hidden'}`}>
-                <Compiler sessionId={session.id} />
-              </div>
-              <div className={`absolute inset-0 ${activeTab === 'Whiteboard' ? 'flex flex-col' : 'hidden'}`}>
+            {/* Content Area - Split on Desktop, Tabbed on Mobile */}
+            <div className="flex-1 relative overflow-hidden min-h-0 flex flex-col xl:flex-row">
+              {/* Whiteboard - Left on Desktop */}
+              <div className={`
+                absolute inset-0 bg-surface z-10
+                ${activeTab === 'Whiteboard' ? 'flex flex-col' : 'hidden'}
+                xl:relative xl:flex xl:flex-col xl:flex-1 xl:border-r xl:border-line xl:z-0
+              `}>
                 <Whiteboard sessionId={session.id} />
               </div>
-              <div className={`absolute inset-0 overflow-y-auto ${activeTab === 'Notes'     ? 'flex flex-col' : 'hidden'}`}>
-                <Notes sessionId={session.id} />
-              </div>
-              <div className={`absolute inset-0 overflow-y-auto ${activeTab === 'Materials' ? 'flex flex-col' : 'hidden'}`}>
-                <Materials session={session} />
-              </div>
-              <div className={`absolute inset-0 ${activeTab === 'Chat'       ? 'flex flex-col' : 'hidden'}`}>
-                <Chat embeddedRequestId={session.request_id} embedded={true} />
+
+              {/* Compiler - Right on Desktop */}
+              <div className={`
+                absolute inset-0 bg-surface z-10
+                ${activeTab === 'Code' ? 'flex flex-col' : 'hidden'}
+                xl:relative xl:flex xl:flex-col xl:flex-1 xl:z-0
+              `}>
+                <Compiler sessionId={session.id} />
               </div>
             </div>
           </div>
 
-          {/* ── Desktop right sidebar ──────────────────────── */}
-          <aside className="hidden xl:flex w-60 shrink-0 border-l border-line bg-white flex-col overflow-y-auto z-10">
-            <div className="p-4 border-b border-line">
-              <p className="text-[10px] uppercase tracking-wider text-ink/40 font-bold mb-3">Exchange</p>
-              <div className="space-y-3 text-sm bg-moss/5 border border-moss/10 rounded-xl p-3 mb-3">
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-moss/70 mb-0.5">You {isTutor ? 'teach' : 'learn'}</p>
-                  <p className="font-bold text-moss text-sm">{session.skill_name || session.skill}</p>
-                </div>
-                {req?.learner_can_teach && (
+          {/* Desktop Right Sidebar & Mobile overlay panels (Chat, Notes, Materials) */}
+          <div className={`
+             lg:flex flex-col absolute top-0 right-0 bottom-0 lg:w-80 bg-surface lg:border-l lg:border-line lg:z-30
+             ${(activeTab === 'Chat' || activeTab === 'Notes' || activeTab === 'Materials') ? 'flex w-full z-40' : 'hidden'}
+          `}>
+            {/* Desktop Sidebar Tabs */}
+            <div className="hidden lg:flex shrink-0 border-b border-line bg-surface overflow-x-auto">
+              {['Agenda', 'Chat', 'Notes', 'Materials'].map(tab => (
+                <button
+                  key={tab}
+                  onClick={() => setDesktopSidebarTab(tab)}
+                  className={`px-3 py-2.5 text-xs font-semibold border-b-2 whitespace-nowrap transition-colors flex-1 text-center ${
+                    desktopSidebarTab === tab
+                      ? 'border-moss text-moss bg-moss/5'
+                      : 'border-transparent text-ink/40 hover:text-ink/60 hover:bg-ink/5'
+                  }`}
+                >
+                  {tab === 'Materials' ? 'Files' : tab}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex-1 relative overflow-hidden min-h-0 bg-paper">
+              {/* Agenda (Desktop Only) */}
+              <div className={`absolute inset-0 overflow-y-auto p-4 ${desktopSidebarTab === 'Agenda' ? 'lg:block' : 'lg:hidden'} hidden`}>
+                <p className="text-[10px] uppercase tracking-wider text-ink/40 font-bold mb-3">Exchange</p>
+                <div className="space-y-3 text-sm bg-moss/5 border border-moss/10 rounded-xl p-3 mb-3">
                   <div>
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-clay/70 mb-0.5">Can offer</p>
-                    <p className="font-semibold text-clay text-sm">{req.learner_can_teach}</p>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-moss/70 mb-0.5">You {isTutor ? 'teach' : 'learn'}</p>
+                    <p className="font-bold text-moss text-sm">{session.skill_name || session.skill}</p>
+                  </div>
+                  {req?.learner_can_teach && (
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-clay/70 mb-0.5">Can offer</p>
+                      <p className="font-semibold text-clay text-sm">{req.learner_can_teach}</p>
+                    </div>
+                  )}
+                </div>
+                <div className="space-y-2 text-sm bg-ink/5 border border-line/60 rounded-xl p-3">
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-ink/50 mb-0.5">{peerName}</p>
+                    <p className="font-semibold text-ink text-sm">{isTutor ? 'Learning' : 'Teaching'} {session.skill_name || session.skill}</p>
+                  </div>
+                </div>
+                {session.notes && (
+                  <div className="mt-3 p-3 bg-surface rounded-xl text-sm border border-line">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-ink/50 mb-1.5">Agenda</p>
+                    <p className="text-ink/70 leading-relaxed text-xs">{session.notes}</p>
+                  </div>
+                )}
+                {req && (req.learner_current_level || req.learner_topics || req.learner_goals) && (
+                  <div className="mt-4 p-4 bg-surface rounded-xl border border-line">
+                    <p className="text-[10px] uppercase tracking-wider text-ink/40 font-bold mb-3">Learner Context</p>
+                    <div className="space-y-3 text-sm">
+                      {req.learner_current_level && (
+                        <div>
+                          <p className="text-ink/40 text-[10px] font-bold uppercase tracking-wider mb-0.5">Level</p>
+                          <p className="font-medium text-ink/80 text-xs">{req.learner_current_level}</p>
+                        </div>
+                      )}
+                      {req.learner_topics && (
+                        <div>
+                          <p className="text-ink/40 text-[10px] font-bold uppercase tracking-wider mb-0.5">Topics</p>
+                          <p className="font-medium text-ink/80 text-xs">{req.learner_topics}</p>
+                        </div>
+                      )}
+                      {req.learner_goals && (
+                        <div>
+                          <p className="text-ink/40 text-[10px] font-bold uppercase tracking-wider mb-0.5">Goals</p>
+                          <p className="font-medium text-ink/80 leading-relaxed text-xs">{req.learner_goals}</p>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
-              <div className="space-y-2 text-sm bg-ink/5 border border-line/60 rounded-xl p-3">
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-ink/50 mb-0.5">{peerName}</p>
-                  <p className="font-semibold text-ink text-sm">{isTutor ? 'Learning' : 'Teaching'} {session.skill_name || session.skill}</p>
-                </div>
+              
+              {/* Chat Panel */}
+              <div className={`absolute inset-0 flex flex-col bg-surface z-20 ${desktopSidebarTab === 'Chat' ? 'lg:flex' : 'lg:hidden'} ${activeTab === 'Chat' ? 'flex' : 'hidden'}`}>
+                <Chat embeddedRequestId={session.request_id} embedded={true} />
               </div>
-              {session.notes && (
-                <div className="mt-3 p-3 bg-paper rounded-xl text-sm border border-line">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-ink/50 mb-1.5">Agenda</p>
-                  <p className="text-ink/70 leading-relaxed text-xs">{session.notes}</p>
-                </div>
-              )}
+
+              {/* Notes Panel */}
+              <div className={`absolute inset-0 flex flex-col overflow-y-auto bg-surface z-20 ${desktopSidebarTab === 'Notes' ? 'lg:flex' : 'lg:hidden'} ${activeTab === 'Notes' ? 'flex' : 'hidden'}`}>
+                <Notes sessionId={session.id} />
+              </div>
+
+              {/* Materials Panel */}
+              <div className={`absolute inset-0 flex flex-col overflow-y-auto bg-surface z-20 ${desktopSidebarTab === 'Materials' ? 'lg:flex' : 'lg:hidden'} ${activeTab === 'Materials' ? 'flex' : 'hidden'}`}>
+                <Materials session={session} />
+              </div>
             </div>
-            {req && (req.learner_current_level || req.learner_topics || req.learner_goals) && (
-              <div className="p-4">
-                <p className="text-[10px] uppercase tracking-wider text-ink/40 font-bold mb-3">Learner Context</p>
-                <div className="space-y-3 text-sm">
-                  {req.learner_current_level && (
-                    <div>
-                      <p className="text-ink/40 text-[10px] font-bold uppercase tracking-wider mb-0.5">Level</p>
-                      <p className="font-medium text-ink/80 text-xs">{req.learner_current_level}</p>
-                    </div>
-                  )}
-                  {req.learner_topics && (
-                    <div>
-                      <p className="text-ink/40 text-[10px] font-bold uppercase tracking-wider mb-0.5">Topics</p>
-                      <p className="font-medium text-ink/80 text-xs">{req.learner_topics}</p>
-                    </div>
-                  )}
-                  {req.learner_goals && (
-                    <div>
-                      <p className="text-ink/40 text-[10px] font-bold uppercase tracking-wider mb-0.5">Goals</p>
-                      <p className="font-medium text-ink/80 leading-relaxed text-xs">{req.learner_goals}</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-          </aside>
+          </div>
         </VideoChat>
       </div>
     </div>

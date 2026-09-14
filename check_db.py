@@ -1,40 +1,24 @@
 import os
-import sys
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), 'backend')))
+from sqlalchemy import create_engine, text
 
-from app.database import SessionLocal, engine
-from app import models
-
-db = SessionLocal()
-
-tables = [
-    ("User", models.User),
-    ("EmailVerificationOTP", models.EmailVerificationOTP),
-    ("MobileVerificationOTP", models.MobileVerificationOTP),
-    ("PasswordResetOTP", models.PasswordResetOTP),
-    ("Skill", models.Skill),
-    ("UserSkill", models.UserSkill),
-    ("AssessmentAttempt", models.AssessmentAttempt),
-    ("ConnectionRequest", models.ConnectionRequest),
-    ("Message", models.Message),
-    ("Review", models.Review),
-    ("Session", models.Session),
-    ("WhiteboardState", models.WhiteboardState),
-    ("CompilerState", models.CompilerState),
-    ("LearningMaterial", models.LearningMaterial),
-    ("SessionProgress", models.SessionProgress),
-    ("Certificate", models.Certificate),
-    ("Notification", models.Notification)
-]
-
-print(f"Database dialect: {engine.dialect.name}")
-print(f"Database file: {engine.url.database}")
-
-for name, model in tables:
+DATABASE_URL = os.environ.get("DATABASE_URL")
+if not DATABASE_URL:
     try:
-        count = db.query(model).count()
-        print(f"{name}: {count}")
-    except Exception as e:
-        print(f"{name}: Error")
+        with open("backend/.env") as f:
+            for line in f:
+                if line.startswith("DATABASE_URL="):
+                    DATABASE_URL = line.strip().split("=", 1)[1]
+    except:
+        pass
 
-db.close()
+if not DATABASE_URL:
+    print("NO DATABASE_URL FOUND")
+else:
+    engine = create_engine(DATABASE_URL)
+    with engine.connect() as conn:
+        print("Connected. Dialect:", engine.dialect.name)
+        try:
+            res = conn.execute(text("SELECT id, session_date, start_time, end_time FROM sessions LIMIT 1"))
+            print("Session row:", res.fetchone())
+        except Exception as e:
+            print("Error:", e)

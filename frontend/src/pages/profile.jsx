@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import BackButton from "../components/BackButton";
 import { api, getAvatarUrl } from "../api";
-import PasswordInput from "../components/PasswordInput";
 import { Camera, Save, Lock } from "lucide-react";
 
 export default function Profile() {
@@ -23,12 +22,6 @@ export default function Profile() {
   const [savingProfile, setSavingProfile] = useState(false);
   const [profileMsg, setProfileMsg] = useState("");
   
-  // Password change form
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [savingPassword, setSavingPassword] = useState(false);
-  const [passwordMsg, setPasswordMsg] = useState("");
-
   // Avatar upload
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [avatarMsg, setAvatarMsg] = useState("");
@@ -47,7 +40,7 @@ export default function Profile() {
     } finally {
       setLoading(false);
     }
-  }
+  };
 
   const resetForm = (u = user) => {
     if (!u) return;
@@ -262,32 +255,6 @@ export default function Profile() {
               )}
             </form>
           </div>
-
-          <div className="card p-4 sm:p-6">
-            <h2 className="text-xl font-display mb-4">Change Password</h2>
-            <form onSubmit={handleChangePassword} className="space-y-4">
-              <div>
-                <label className="field-label">Current Password</label>
-                <PasswordInput value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} required />
-              </div>
-              <div>
-                <label className="field-label">New Password</label>
-                <PasswordInput value={newPassword} onChange={e => setNewPassword(e.target.value)} required />
-                <p className="text-xs text-ink/50 mt-1">Must be at least 6 characters, include uppercase, lowercase, number, and special character.</p>
-              </div>
-
-              {passwordMsg && (
-                <p className={`text-sm ${passwordMsg.startsWith('Error') ? 'text-clay' : 'text-moss'}`}>{passwordMsg}</p>
-              )}
-
-              <div className="flex justify-end">
-                <button type="submit" disabled={savingPassword || !currentPassword || !newPassword} className="btn-secondary">
-                  {savingPassword ? "Updating..." : "Update Password"}
-                </button>
-              </div>
-            </form>
-          </div>
-
         </div>
       </div>
     </div>

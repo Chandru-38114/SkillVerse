@@ -1,21 +1,23 @@
 /** @type {import('tailwindcss').Config} */
 export default {
   content: ["./index.html", "./src/**/*.{js,jsx}"],
+  darkMode: 'class',
   theme: {
     extend: {
       colors: {
-        brand: "#10b981",
-        brand2: "#059669",
-        brandLight: "#d1fae5",
-        moss: "#10b981",
-        moss2: "#059669",
-        mossLight: "#d1fae5",
-        gold: "#d97706",
-        goldLight: "#fef3c7",
-        paper: "#FAFAF9",
-        ink: "#0f172a",
-        clay: "#64748b",
-        line: "#e2e8f0",
+        brand: "rgb(var(--color-brand) / <alpha-value>)",
+        brand2: "rgb(var(--color-brand2) / <alpha-value>)",
+        brandLight: "rgb(var(--color-brandLight) / <alpha-value>)",
+        moss: "rgb(var(--color-brand) / <alpha-value>)",
+        moss2: "rgb(var(--color-brand2) / <alpha-value>)",
+        mossLight: "rgb(var(--color-brandLight) / <alpha-value>)",
+        gold: "rgb(var(--color-gold) / <alpha-value>)",
+        goldLight: "rgb(var(--color-goldLight) / <alpha-value>)",
+        paper: "rgb(var(--color-paper) / <alpha-value>)",
+        surface: "rgb(var(--color-surface) / <alpha-value>)",
+        ink: "rgb(var(--color-ink) / <alpha-value>)",
+        clay: "rgb(var(--color-clay) / <alpha-value>)",
+        line: "rgb(var(--color-line) / <alpha-value>)",
         cert: {
           bg: "#F8F7F2",
           primary: "#166534",

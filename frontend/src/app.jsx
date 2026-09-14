@@ -20,6 +20,7 @@ import CertificateView from './pages/CertificateView'
 import VerifyCertificate from './pages/VerifyCertificate'
 
 import Profile from './pages/profile'
+import Settings from './pages/settings'
 import Messages from './pages/messages'
 import Notifications from './pages/notifications'
 import Gamification from './pages/gamification'
@@ -83,6 +84,10 @@ export default function App() {
         <Route
           path="/profile"
           element={<ProtectedRoute><Profile /></ProtectedRoute>}
+        />
+        <Route
+          path="/settings"
+          element={<ProtectedRoute><Settings /></ProtectedRoute>}
         />
         <Route
           path="/messages"
