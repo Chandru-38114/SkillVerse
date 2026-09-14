@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react'
 import { formatTime, formatDateTime, createIstToUtcDate } from '../utils/dateTime'
 import { useNavigate } from 'react-router-dom'
-import { api, chatSocketUrl, getSessionUser, getAvatarUrl, BASE_URL } from '../api'
+import { api, chatSocketUrl, getSessionUser, getAvatarUrl, BASE_URL, getToken } from '../api'
 import {
   ArrowLeft, Paperclip, Calendar, Smile, Search, X, Send,
   MoreVertical, Trash, Trash2, Pencil, Copy, CornerUpLeft, Forward,
@@ -118,7 +118,9 @@ function ReactionBubbles({ reactions, messageId, currentUserId, onToggle }) {
 }
 
 function VoicePlayer({ meta, reqId }) {
-  const url = meta.audio_path ? `${BASE_URL}/chat/${reqId}/file/chat_audio/${meta.audio_path}` : ''
+  const token = getToken()
+  const tokenParam = token ? `?token=${encodeURIComponent(token)}` : ''
+  const url = meta.audio_path ? `${BASE_URL}/chat/${reqId}/file/chat_audio/${meta.audio_path}${tokenParam}` : ''
   return (
     <div className="flex items-center gap-2 mt-1 px-3 py-2 bg-ink/5 rounded-full">
       <audio controls src={url} className="h-8 w-48 max-w-full" controlsList="nodownload noplaybackrate" />
@@ -127,7 +129,9 @@ function VoicePlayer({ meta, reqId }) {
 }
 
 function FileAttachment({ meta, reqId }) {
-  const url = meta.file_path ? `${BASE_URL}/chat/${reqId}/file/chat_files/${meta.file_path}` : ''
+  const token = getToken()
+  const tokenParam = token ? `?token=${encodeURIComponent(token)}` : ''
+  const url = meta.file_path ? `${BASE_URL}/chat/${reqId}/file/chat_files/${meta.file_path}${tokenParam}` : ''
   return (
     <a href={url} target="_blank" rel="noreferrer" className="flex items-center gap-3 mt-1 px-3 py-2 bg-ink/5 rounded-lg hover:bg-ink/10 transition-colors w-full max-w-[240px]">
       <FileText className="w-6 h-6 shrink-0 opacity-70" />

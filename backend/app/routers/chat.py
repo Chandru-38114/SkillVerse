@@ -146,10 +146,16 @@ def download_chat_file(
     request_id: int,
     bucket: str,
     filename: str,
-    current_user: models.User = Depends(auth.get_current_user),
+    token: str = Query(None),
     db: Session = Depends(get_db)
 ):
-    _authorize(db, request_id, current_user.id)
+    if not token:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    user_id = auth.get_user_id_from_token_sync(token)
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    _authorize(db, request_id, user_id)
     if bucket not in ["chat_audio", "chat_files"]:
         raise HTTPException(status_code=400, detail="Invalid bucket")
     if not filename.startswith(f"req_{request_id}_"):
