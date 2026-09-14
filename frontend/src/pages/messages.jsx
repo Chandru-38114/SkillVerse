@@ -9,17 +9,18 @@ import {
   Mic, FileText
 } from 'lucide-react'
 import BackButton from '../components/BackButton'
+import DateTimePicker from '../components/DateTimePicker'
 
 const RECONNECT_DELAY_MS = 2000
 const MAX_RECONNECT_DELAY_MS = 10000
-const REACTION_EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '🙏']
-const COMPOSE_EMOJIS = ['👍', '👎', '❤️', '🔥', '✨', '✅', '💯', '🎉', '😂', '🙏', '🚀', '💡', '👏', '😎', '🤝']
+const REACTION_EMOJIS = ['ðŸ‘', 'â¤ï¸', 'ðŸ˜‚', 'ðŸ˜®', 'ðŸ˜¢', 'ðŸ™']
+const COMPOSE_EMOJIS = ['ðŸ‘', 'ðŸ‘Ž', 'â¤ï¸', 'ðŸ”¥', 'âœ¨', 'âœ…', 'ðŸ’¯', 'ðŸŽ‰', 'ðŸ˜‚', 'ðŸ™', 'ðŸš€', 'ðŸ’¡', 'ðŸ‘', 'ðŸ˜Ž', 'ðŸ¤']
 
-// ── Utilities ────────────────────────────────────────────────────────────────
+// â”€â”€ Utilities â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function truncate(str, n = 60) {
   if (!str) return ''
-  return str.length > n ? str.slice(0, n) + '…' : str
+  return str.length > n ? str.slice(0, n) + 'â€¦' : str
 }
 
 function Toast({ message, onDone }) {
@@ -34,7 +35,7 @@ function Toast({ message, onDone }) {
   )
 }
 
-// ── Message renderer ─────────────────────────────────────────────────────────
+// â”€â”€ Message renderer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function MessageRenderer({ content }) {
   const imgMatch = content.match(/^!\[(.*?)\]\((.*?)\)$/)
@@ -58,15 +59,15 @@ function MessageRenderer({ content }) {
   return <p className="whitespace-pre-wrap break-words">{content}</p>
 }
 
-// ── Connection state badge ───────────────────────────────────────────────────
+// â”€â”€ Connection state badge â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function ConnectionBadge({ state }) {
   const cfg = {
-    connecting:   { label: 'Connecting…',   dot: 'bg-amber-400 animate-pulse' },
+    connecting:   { label: 'Connectingâ€¦',   dot: 'bg-amber-400 animate-pulse' },
     live:         { label: 'Online',          dot: 'bg-emerald-500' },
-    reconnecting: { label: 'Reconnecting…',  dot: 'bg-orange-400 animate-pulse' },
+    reconnecting: { label: 'Reconnectingâ€¦',  dot: 'bg-orange-400 animate-pulse' },
     offline:      { label: 'Offline',         dot: 'bg-ink/25' },
-  }[state] || { label: 'Connecting…', dot: 'bg-amber-400 animate-pulse' }
+  }[state] || { label: 'Connectingâ€¦', dot: 'bg-amber-400 animate-pulse' }
 
   return (
     <span className="flex items-center gap-1 text-[10px] text-ink/50 font-medium">
@@ -76,7 +77,7 @@ function ConnectionBadge({ state }) {
   )
 }
 
-// ── Reply preview bar ────────────────────────────────────────────────────────
+// â”€â”€ Reply preview bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function ReplyPreview({ msg, onCancel }) {
   if (!msg) return null
@@ -94,7 +95,7 @@ function ReplyPreview({ msg, onCancel }) {
   )
 }
 
-// ── Reactions display ────────────────────────────────────────────────────────
+// â”€â”€ Reactions display â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function ReactionBubbles({ reactions, messageId, currentUserId, onToggle }) {
   if (!reactions || Object.keys(reactions).length === 0) return null
@@ -175,7 +176,7 @@ function FileAttachment({ meta, reqId }) {
   )
 }
 
-// ── Message bubble ───────────────────────────────────────────────────────────
+// â”€â”€ Message bubble â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function MessageBubble({ m, reqId, isMe, isConsecutive, currentUserId, allMessages, onReply, onCopy, onEdit, onDeleteForEveryone, onDeleteForMe, onToggleReaction, onForward, onScrollToRef, msgRef }) {
   const [menuOpen, setMenuOpen] = useState(false)
@@ -218,7 +219,7 @@ function MessageBubble({ m, reqId, isMe, isConsecutive, currentUserId, allMessag
             onClick={handleScrollToReply}
             className="reply-quote"
           >
-            <p className="text-[10px] text-brand font-semibold">↩ Replied to</p>
+            <p className="text-[10px] text-brand font-semibold">â†© Replied to</p>
             <p className="text-[11px] text-clay truncate">{truncate(replyPreview, 55)}</p>
           </button>
         )}
@@ -265,7 +266,7 @@ function MessageBubble({ m, reqId, isMe, isConsecutive, currentUserId, allMessag
           />
         )}
 
-          {/* Context menu button — appears on hover/focus */}
+          {/* Context menu button â€” appears on hover/focus */}
           {!isDeleted && (
             <div
               ref={menuRef}
@@ -337,7 +338,7 @@ function MenuItem({ icon, label, onClick, danger }) {
   )
 }
 
-// ── Forward modal ────────────────────────────────────────────────────────────
+// â”€â”€ Forward modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function ForwardModal({ message, inbox, currentRequestId, onClose, onForward }) {
   const [selected, setSelected] = useState(null)
@@ -383,7 +384,7 @@ function ForwardModal({ message, inbox, currentRequestId, onClose, onForward }) 
   )
 }
 
-// ── Schedule modal ───────────────────────────────────────────────────────────
+// â”€â”€ Schedule modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function ScheduleModal({ requestId, onClose, onScheduled }) {
   const [date, setDate] = useState('')
@@ -421,35 +422,45 @@ function ScheduleModal({ requestId, onClose, onScheduled }) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-ink/40 backdrop-blur-sm">
-      <div className="bg-lift border border-line rounded-t-2xl sm:rounded-2xl shadow-elev-3 w-full max-w-md max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-line">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-ink/60 backdrop-blur-sm">
+      <div className="bg-surface border border-line rounded-t-2xl sm:rounded-3xl shadow-elev-3 w-full max-w-md max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between px-6 py-5 border-b border-line bg-lift/30">
           <h3 className="font-display font-bold text-lg text-ink">Schedule Session</h3>
-          <button onClick={onClose} className="p-1 text-clay hover:text-ink rounded-full min-w-[36px] min-h-[36px] flex items-center justify-center"><X className="w-5 h-5" /></button>
+          <button onClick={onClose} className="p-1.5 text-clay hover:bg-line/50 hover:text-ink rounded-full transition-colors"><X className="w-5 h-5" /></button>
         </div>
-        <form onSubmit={handleSubmit} className="p-5 space-y-4">
+        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+          <DateTimePicker 
+            date={date}
+            startTime={startTime}
+            endTime={endTime}
+            onDateChange={setDate}
+            onStartTimeChange={setStartTime}
+            onEndTimeChange={setEndTime}
+            minDate={today}
+          />
+
           <div>
-            <label className="field-label">Date (IST)</label>
-            <input required type="date" min={today} className="input" value={date} onChange={e => setDate(e.target.value)} />
+            <label className="text-sm font-semibold text-ink flex items-center gap-2 mb-2">
+              <FileText className="w-4 h-4 text-clay" />
+              Notes (Optional)
+            </label>
+            <input type="text" className="w-full bg-lift border border-line text-ink text-sm rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-brand/50 placeholder:text-clay/50" placeholder="Agenda or topics to discuss" value={notes} onChange={e => setNotes(e.target.value)} />
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="field-label">Start Time (IST)</label>
-              <input required type="time" className="input" value={startTime} onChange={e => setStartTime(e.target.value)} />
+
+          {error && <div className="text-sm text-red-500 bg-red-500/10 p-3 rounded-xl border border-red-500/20">{error}</div>}
+
+          {date && startTime && endTime && !error && (
+            <div className="p-4 bg-brand/5 border border-brand/20 rounded-xl mt-4">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-brand mb-1">Session Summary</p>
+              <p className="text-sm text-ink font-medium">
+                {new Date(date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} • {startTime} to {endTime} <span className="text-clay font-normal ml-1">IST</span>
+              </p>
             </div>
-            <div>
-              <label className="field-label">End Time (IST)</label>
-              <input required type="time" className="input" value={endTime} onChange={e => setEndTime(e.target.value)} />
-            </div>
-          </div>
-          <div>
-            <label className="field-label">Notes (Optional)</label>
-            <input type="text" className="input" placeholder="Agenda or topics to cover" value={notes} onChange={e => setNotes(e.target.value)} />
-          </div>
-          {error && <p className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">{error}</p>}
-          <div className="flex gap-2 pt-2">
-            <button type="button" onClick={onClose} className="btn-secondary flex-1">Cancel</button>
-            <button type="submit" disabled={submitting} className="btn-primary flex-1">{submitting ? 'Scheduling…' : 'Schedule'}</button>
+          )}
+
+          <div className="flex gap-3 pt-4 border-t border-line">
+            <button type="button" onClick={onClose} className="flex-1 py-3 px-4 bg-lift hover:bg-line/50 text-ink rounded-xl font-semibold transition-colors">Cancel</button>
+            <button type="submit" disabled={submitting || !date || !startTime || !endTime} className="flex-1 py-3 px-4 bg-brand hover:bg-brandLight text-white rounded-xl font-semibold shadow-elev-1 shadow-brand/20 disabled:opacity-50 disabled:shadow-none transition-all">{submitting ? 'Scheduling...' : 'Schedule'}</button>
           </div>
         </form>
       </div>
@@ -457,7 +468,7 @@ function ScheduleModal({ requestId, onClose, onScheduled }) {
   )
 }
 
-// ── Session card (inside chat) ───────────────────────────────────────────────
+// â”€â”€ Session card (inside chat) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function SessionCard({ conv, onCancel, navigate }) {
   if (!conv?.session_id) return null
@@ -482,7 +493,7 @@ function SessionCard({ conv, onCancel, navigate }) {
   )
 }
 
-// ── Main Connect page ─────────────────────────────────────────────────────────
+// â”€â”€ Main Connect page â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   export default function Messages() {
     const navigate = useNavigate()
@@ -550,7 +561,7 @@ function SessionCard({ conv, onCancel, navigate }) {
   
   const msgRefsMap = useRef({})   // id -> DOM ref
 
-  // ── Inbox load ──
+  // â”€â”€ Inbox load â”€â”€
   useEffect(() => {
     mountedRef.current = true
     loadInbox()
@@ -571,7 +582,7 @@ function SessionCard({ conv, onCancel, navigate }) {
     }
   }
 
-  // ── WebSocket lifecycle ──
+  // â”€â”€ WebSocket lifecycle â”€â”€
   useEffect(() => {
     if (!selectedRequestId) return
     let isActive = true
@@ -664,7 +675,7 @@ function SessionCard({ conv, onCancel, navigate }) {
     }
   }, [selectedRequestId])
 
-  // ── Handlers ──
+  // â”€â”€ Handlers â”€â”€
 
   const showToast = useCallback((msg) => setToast(msg), [])
 
@@ -903,7 +914,7 @@ function SessionCard({ conv, onCancel, navigate }) {
   // Cancel editing
   const handleCancelEdit = () => { setEditingMsg(null); setDraft('') }
 
-  // ── Derived ──
+  // â”€â”€ Derived â”€â”€
 
   const filteredInbox = inbox.filter(c =>
     c.other_user_name.toLowerCase().includes(inboxSearch.toLowerCase()) ||
@@ -923,7 +934,7 @@ function SessionCard({ conv, onCancel, navigate }) {
       }, [])
     : []
 
-  // ── Render ──
+  // â”€â”€ Render â”€â”€
 
   return (
     <div className="max-w-6xl mx-auto flex flex-col bg-paper" style={{ height: 'calc(100dvh - 64px)' }}>
@@ -939,14 +950,14 @@ function SessionCard({ conv, onCancel, navigate }) {
       {/* Main panel */}
       <div className="flex-1 flex md:mx-6 md:mb-6 md:rounded-2xl border border-line bg-surface shadow-elev-2 overflow-hidden min-h-0">
 
-        {/* ── Inbox sidebar ── */}
+        {/* â”€â”€ Inbox sidebar â”€â”€ */}
         <div className={`${selectedRequestId ? 'hidden md:flex' : 'flex'} flex-col w-full md:w-72 lg:w-80 border-r border-line bg-paper shrink-0`}>
           {/* Sidebar header */}
           <div className="p-3 border-b border-line bg-surface flex items-center gap-2 shrink-0">
             <BackButton className="md:hidden shrink-0" />
             <input
               type="text"
-              placeholder="Search conversations…"
+              placeholder="Search conversationsâ€¦"
               value={inboxSearch}
               onChange={e => setInboxSearch(e.target.value)}
               className="input flex-1 text-sm bg-ink/5 border-transparent focus:bg-lift focus:border-brand transition-colors"
@@ -956,7 +967,7 @@ function SessionCard({ conv, onCancel, navigate }) {
           {/* Inbox list */}
           <div className="flex-1 overflow-y-auto">
             {loadingInbox ? (
-              <div className="p-6 text-center text-clay text-sm">Loading…</div>
+              <div className="p-6 text-center text-clay text-sm">Loadingâ€¦</div>
             ) : filteredInbox.length === 0 ? (
               <div className="p-8 text-center space-y-3">
                 <MessageCircle className="w-10 h-10 text-clay/40 mx-auto" />
@@ -1005,7 +1016,7 @@ function SessionCard({ conv, onCancel, navigate }) {
           </div>
         </div>
 
-        {/* ── Chat area ── */}
+        {/* â”€â”€ Chat area â”€â”€ */}
         <div className={`${!selectedRequestId ? 'hidden md:flex' : 'flex'} flex-1 flex-col min-w-0 min-h-0`}>
           {selectedRequestId && activeConversation ? (
             <>
@@ -1028,7 +1039,7 @@ function SessionCard({ conv, onCancel, navigate }) {
                     <h2 className="font-bold text-ink text-sm truncate leading-tight">{activeConversation.other_user_name}</h2>
                     <div className="flex items-center gap-2 text-xs">
                       <ConnectionBadge state={connectionState} />
-                      <span className="text-ink/40">•</span>
+                      <span className="text-ink/40">â€¢</span>
                       {otherPresence.status === 'online' ? (
                         <span className="text-brand font-medium flex items-center gap-1">
                           <span className="w-1.5 h-1.5 rounded-full bg-brand"></span>
@@ -1260,7 +1271,7 @@ function SessionCard({ conv, onCancel, navigate }) {
                       rows={1}
                       className="input flex-1 bg-lift border-line/50 focus:bg-lift focus:border-brand text-sm resize-none min-w-0 leading-relaxed py-2.5"
                       style={{ maxHeight: '120px', overflowY: 'auto' }}
-                      placeholder={editingMsg ? 'Edit message…' : 'Message…'}
+                      placeholder={editingMsg ? 'Edit messageâ€¦' : 'Messageâ€¦'}
                       value={draft}
                       onChange={e => {
                         setDraft(e.target.value)
@@ -1318,3 +1329,4 @@ function SessionCard({ conv, onCancel, navigate }) {
     </div>
   )
 }
+

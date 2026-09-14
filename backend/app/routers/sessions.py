@@ -174,20 +174,28 @@ def upcoming_sessions(
     current_user: models.User = Depends(auth.get_current_user),
     db: DBSession = Depends(get_db),
 ):
-    """Return my scheduled sessions whose date is today or in the future."""
-    today = dt.date.today().isoformat()
+    """Return my scheduled sessions whose date is today or in the future and haven't ended."""
+    now = utc_now()
     rows = (
         db.query(models.Session)
         .filter(
             models.Session.status == "scheduled",
-            models.Session.scheduled_start >= utc_now() - dt.timedelta(hours=24),
             (models.Session.tutor_id == current_user.id)
             | (models.Session.learner_id == current_user.id),
         )
         .order_by(models.Session.scheduled_start)
         .all()
     )
-    return [_to_out(s) for s in rows]
+    
+    # Filter out sessions that have already ended (or started > 2 hours ago if no end time)
+    valid_rows = []
+    for s in rows:
+        if s.scheduled_end and s.scheduled_end > now:
+            valid_rows.append(s)
+        elif not s.scheduled_end and s.scheduled_start and s.scheduled_start > now - dt.timedelta(hours=2):
+            valid_rows.append(s)
+            
+    return [_to_out(s) for s in valid_rows]
 
 
 @router.get("/my", response_model=List[schemas.SessionOut])

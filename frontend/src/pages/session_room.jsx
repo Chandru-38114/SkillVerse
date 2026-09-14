@@ -356,7 +356,7 @@ function SessionRoomComponent() {
 
               {/* Notes Panel */}
               <div className={`absolute inset-0 flex flex-col overflow-y-auto bg-surface z-20 ${desktopSidebarTab === 'Notes' ? 'lg:flex' : 'lg:hidden'} ${activeTab === 'Notes' ? 'flex' : 'hidden'}`}>
-                <Notes sessionId={session.id} />
+                <Notes session={session} onBack={() => { setActiveTab('Code'); setDesktopSidebarTab('Agenda'); }} />
               </div>
 
               {/* Materials Panel */}
