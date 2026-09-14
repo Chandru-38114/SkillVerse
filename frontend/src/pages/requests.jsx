@@ -159,7 +159,7 @@ function RequestCard({ r, tab, onAccept, onDecline, onComplete, reviewed, onRevi
 
             {r.status === 'accepted' && (
               <>
-                <Link to={`/chat/${r.id}`} className="btn-primary text-sm py-1.5 px-4">
+                <Link to={`/messages?request_id=${r.id}`} className="btn-primary text-sm py-1.5 px-4">
                   Open chat
                 </Link>
                 <button

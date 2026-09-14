@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react'
 import { formatTime, formatDateTime, createIstToUtcDate } from '../utils/dateTime'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
 import { api, chatSocketUrl, getSessionUser, getAvatarUrl, BASE_URL } from '../api'
 import {
   ArrowLeft, Paperclip, Calendar, Smile, Search, X, Send,
@@ -135,7 +135,7 @@ function VoicePlayer({ meta, reqId }) {
   return (
     <div className="flex items-center gap-2 mt-1 px-3 py-2 bg-ink/5 rounded-full">
       {error ? (
-        <div className="h-8 w-48 flex items-center justify-center text-xs text-red-500 font-medium bg-red-50 rounded-full">Audio unavailable</div>
+        <div className="h-8 w-48 flex items-center justify-center text-xs text-red-500 font-medium bg-red-500/10 rounded-full">Audio unavailable</div>
       ) : signedUrl ? (
         <audio controls src={signedUrl} className="h-8 w-48 max-w-full" controlsList="nodownload noplaybackrate" />
       ) : (
@@ -161,7 +161,7 @@ function FileAttachment({ meta, reqId }) {
   }, [meta.file_path, reqId])
 
   return (
-    <a href={signedUrl || '#'} target={signedUrl ? "_blank" : "_self"} rel="noreferrer" className={`flex items-center gap-3 mt-1 px-3 py-2 ${error ? 'bg-red-50' : 'bg-ink/5 hover:bg-ink/10'} rounded-lg transition-colors w-full max-w-[240px] ${(!signedUrl && !error) ? 'opacity-50 pointer-events-none' : ''} ${error ? 'pointer-events-none' : ''}`}>
+    <a href={signedUrl || '#'} target={signedUrl ? "_blank" : "_self"} rel="noreferrer" className={`flex items-center gap-3 mt-1 px-3 py-2 ${error ? 'bg-red-500/10' : 'bg-ink/5 hover:bg-ink/10'} rounded-lg transition-colors w-full max-w-[240px] ${(!signedUrl && !error) ? 'opacity-50 pointer-events-none' : ''} ${error ? 'pointer-events-none' : ''}`}>
       <FileText className={`w-6 h-6 shrink-0 ${error ? 'text-red-400' : 'opacity-70'}`} />
       <div className="min-w-0 flex-1">
         <p className={`text-sm font-medium truncate ${error ? 'text-red-500' : ''}`}>{error ? 'Attachment unavailable' : (meta.file_name || 'Attachment')}</p>
@@ -212,7 +212,7 @@ function MessageBubble({ m, reqId, isMe, isConsecutive, currentUserId, allMessag
         {replyToId && replyPreview && (
           <button
             onClick={handleScrollToReply}
-            className={`block w-full text-left mb-1 px-2 py-1 rounded-lg border-l-2 border-moss/50 bg-black/5 cursor-pointer hover:bg-black/10 transition-colors`}
+            className={`block w-full text-left mb-1 px-2 py-1 rounded-lg border-l-2 border-moss/50 bg-ink/5 cursor-pointer hover:bg-ink/10 transition-colors`}
           >
             <p className="text-[10px] text-moss font-semibold">↩ Replied to</p>
             <p className="text-[11px] text-ink/60 truncate">{truncate(replyPreview, 55)}</p>
@@ -224,7 +224,7 @@ function MessageBubble({ m, reqId, isMe, isConsecutive, currentUserId, allMessag
           className={`relative px-3 py-2 rounded-2xl text-sm leading-relaxed ${
             isMe
               ? 'bg-moss text-white rounded-br-sm'
-              : 'bg-white border border-line text-ink rounded-bl-sm shadow-sm'
+              : 'bg-surface border border-line text-ink rounded-bl-sm shadow-sm'
           }`}
         >
           {isDeleted ? (
@@ -276,7 +276,7 @@ function MessageBubble({ m, reqId, isMe, isConsecutive, currentUserId, allMessag
                   <Smile className="w-4 h-4" />
                 </button>
                 {emojiBarOpen && (
-                  <div className={`absolute bottom-full mb-1 ${isMe ? 'right-0' : 'left-0'} flex gap-1 bg-white border border-line rounded-xl shadow-lg p-1.5 z-30`}>
+                  <div className={`absolute bottom-full mb-1 ${isMe ? 'right-0' : 'left-0'} flex gap-1 bg-surface border border-line rounded-xl shadow-lg p-1.5 z-30`}>
                     {REACTION_EMOJIS.map(em => (
                       <button
                         key={em}
@@ -299,7 +299,7 @@ function MessageBubble({ m, reqId, isMe, isConsecutive, currentUserId, allMessag
                   <MoreVertical className="w-4 h-4" />
                 </button>
                 {menuOpen && (
-                  <div className={`absolute top-0 ${isMe ? 'right-full mr-1' : 'left-full ml-1'} bg-white border border-line rounded-xl shadow-xl z-40 overflow-hidden min-w-[150px]`}>
+                  <div className={`absolute top-0 ${isMe ? 'right-full mr-1' : 'left-full ml-1'} bg-surface border border-line rounded-xl shadow-xl z-40 overflow-hidden min-w-[150px]`}>
                     <MenuItem icon={<CornerUpLeft className="w-4 h-4" />} label="Reply" onClick={() => { onReply(m); setMenuOpen(false) }} />
                     <MenuItem icon={<Copy className="w-4 h-4" />} label="Copy" onClick={() => { onCopy(m.content); setMenuOpen(false) }} />
                     <MenuItem icon={<Forward className="w-4 h-4" />} label="Forward" onClick={() => { onForward(m); setMenuOpen(false) }} />
@@ -341,7 +341,7 @@ function ForwardModal({ message, inbox, currentRequestId, onClose, onForward }) 
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-ink/40 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden">
+      <div className="bg-surface rounded-t-2xl sm:rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden">
         <div className="flex items-center justify-between px-5 py-4 border-b border-line">
           <h3 className="font-bold text-ink">Forward message</h3>
           <button onClick={onClose} className="p-1 text-ink/40 hover:text-ink rounded-full min-w-[36px] min-h-[36px] flex items-center justify-center"><X className="w-5 h-5" /></button>
@@ -418,7 +418,7 @@ function ScheduleModal({ requestId, onClose, onScheduled }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-ink/40 backdrop-blur-sm">
-      <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-xl border border-line w-full max-w-md max-h-[90vh] overflow-y-auto">
+      <div className="bg-surface rounded-t-2xl sm:rounded-2xl shadow-xl border border-line w-full max-w-md max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between px-5 py-4 border-b border-line">
           <h3 className="font-display font-bold text-lg">Schedule Session</h3>
           <button onClick={onClose} className="p-1 text-ink/40 hover:text-ink rounded-full min-w-[36px] min-h-[36px] flex items-center justify-center"><X className="w-5 h-5" /></button>
@@ -442,7 +442,7 @@ function ScheduleModal({ requestId, onClose, onScheduled }) {
             <label className="block text-xs font-bold text-ink/70 mb-1">Notes (Optional)</label>
             <input type="text" className="input w-full" placeholder="Agenda or topics to cover" value={notes} onChange={e => setNotes(e.target.value)} />
           </div>
-          {error && <p className="text-xs text-red-600">{error}</p>}
+          {error && <p className="text-xs text-red-500">{error}</p>}
           <div className="flex gap-2 pt-2">
             <button type="button" onClick={onClose} className="btn-secondary flex-1">Cancel</button>
             <button type="submit" disabled={submitting} className="btn-primary flex-1">{submitting ? 'Scheduling…' : 'Schedule'}</button>
@@ -480,23 +480,35 @@ function SessionCard({ conv, onCancel, navigate }) {
 
 // ── Main Connect page ─────────────────────────────────────────────────────────
 
-export default function Messages() {
-  const navigate = useNavigate()
-  const user = getSessionUser()
-  const userId = Number(user?.id)
-
-  // Inbox
-  const [inbox, setInbox] = useState([])
-  const [loadingInbox, setLoadingInbox] = useState(true)
-  const [inboxSearch, setInboxSearch] = useState('')
-  const [globalError, setGlobalError] = useState('')
-
-  // Active conversation
-  const [selectedRequestId, setSelectedRequestId] = useState(null)
-  const [messages, setMessages] = useState([])
-  const [loadingMessages, setLoadingMessages] = useState(false)
-  const [connectionState, setConnectionState] = useState('offline')
-  const [wsError, setWsError] = useState('')
+  export default function Messages() {
+    const navigate = useNavigate()
+    const [searchParams, setSearchParams] = useSearchParams()
+    const urlRequestId = searchParams.get('request_id')
+    const user = getSessionUser()
+    const userId = user ? Number(user.id) : null
+  
+    // Refs
+    const socketRef = useRef(null)
+    const bottomRef = useRef(null)
+    const inputRef = useRef(null)
+    const inboxTimerRef = useRef(null)
+    const mountedRef = useRef(true)
+  
+    // UI state
+    const [toast, setToast] = useState('')
+  
+    // Inbox
+    const [inbox, setInbox] = useState([])
+    const [loadingInbox, setLoadingInbox] = useState(true)
+    const [inboxSearch, setInboxSearch] = useState('')
+    const [globalError, setGlobalError] = useState('')
+  
+    // Active conversation
+    const [selectedRequestId, setSelectedRequestId] = useState(urlRequestId || null)
+    const [messages, setMessages] = useState([])
+    const [loadingMessages, setLoadingMessages] = useState(false)
+    const [connectionState, setConnectionState] = useState('offline')
+    const [wsError, setWsError] = useState('')
 
   // Compose
   const [draft, setDraft] = useState('')
@@ -525,13 +537,13 @@ export default function Messages() {
   const [otherPresence, setOtherPresence] = useState({ status: "offline", last_active: null })
 
   // Toast
-  const [toast, setToast] = useState(null)
+  
 
-  const inputRef = useRef(null)
-  const bottomRef = useRef(null)
-  const socketRef = useRef(null)
-  const mountedRef = useRef(true)
-  const inboxTimerRef = useRef(null)
+  
+  
+  
+  
+  
   const msgRefsMap = useRef({})   // id -> DOM ref
 
   // ── Inbox load ──
@@ -654,6 +666,7 @@ export default function Messages() {
 
   const handleSelectConversation = (id) => {
     setSelectedRequestId(id)
+    setSearchParams({ request_id: id })
     const conv = inbox.find(c => c.request_id === id)
     if (conv) {
       setOtherPresence({ status: 'offline', last_active: conv.other_last_active })
@@ -669,6 +682,7 @@ export default function Messages() {
 
   const handleBackToList = () => {
     setSelectedRequestId(null)
+    setSearchParams({})
     setReplyingTo(null)
     setEditingMsg(null)
   }
@@ -919,19 +933,19 @@ export default function Messages() {
       </div>
 
       {/* Main panel */}
-      <div className="flex-1 flex md:mx-6 md:mb-6 md:rounded-2xl border border-line bg-white shadow-sm overflow-hidden min-h-0">
+      <div className="flex-1 flex md:mx-6 md:mb-6 md:rounded-2xl border border-line bg-surface shadow-sm overflow-hidden min-h-0">
 
         {/* ── Inbox sidebar ── */}
         <div className={`${selectedRequestId ? 'hidden md:flex' : 'flex'} flex-col w-full md:w-72 lg:w-80 border-r border-line bg-paper/30 shrink-0`}>
           {/* Sidebar header */}
-          <div className="p-3 border-b border-line bg-white flex items-center gap-2 shrink-0">
+          <div className="p-3 border-b border-line bg-surface flex items-center gap-2 shrink-0">
             <BackButton className="md:hidden shrink-0" />
             <input
               type="text"
               placeholder="Search conversations…"
               value={inboxSearch}
               onChange={e => setInboxSearch(e.target.value)}
-              className="input flex-1 text-sm bg-ink/5 border-transparent focus:bg-white focus:border-moss transition-colors"
+              className="input flex-1 text-sm bg-ink/5 border-transparent focus:bg-surface focus:border-moss transition-colors"
             />
           </div>
 
@@ -961,11 +975,11 @@ export default function Messages() {
                       <img
                         src={getAvatarUrl(conv.other_user_avatar)}
                         alt=""
-                        className="w-11 h-11 rounded-full object-cover border border-line bg-white"
+                        className="w-11 h-11 rounded-full object-cover border border-line bg-surface"
                         onError={e => e.target.src = 'https://api.dicebear.com/7.x/avataaars/svg?seed=fallback'}
                       />
                       {conv.unread_count > 0 && (
-                        <span className="absolute -top-1 -right-1 bg-brand text-white text-[10px] font-bold min-w-[18px] h-[18px] rounded-full flex items-center justify-center border-2 border-white px-1">
+                        <span className="absolute -top-1 -right-1 bg-brand text-white text-[10px] font-bold min-w-[18px] h-[18px] rounded-full flex items-center justify-center border-2 border-surface px-1">
                           {conv.unread_count > 99 ? '99+' : conv.unread_count}
                         </span>
                       )}
@@ -992,7 +1006,7 @@ export default function Messages() {
           {selectedRequestId && activeConversation ? (
             <>
               {/* Chat header */}
-              <div className="h-14 px-3 border-b border-line bg-white flex items-center justify-between shrink-0 shadow-sm z-10">
+              <div className="h-14 px-3 border-b border-line bg-surface flex items-center justify-between shrink-0 shadow-sm z-10">
                 <div className="flex items-center gap-2.5 overflow-hidden min-w-0">
                   <button
                     onClick={handleBackToList}
@@ -1094,7 +1108,7 @@ export default function Messages() {
 
               {/* Connection error */}
               {wsError && (
-                <div className="bg-red-50 text-red-600 px-4 py-2 text-xs font-medium border-b border-red-100 shrink-0">
+                <div className="bg-red-500/10 text-red-500 px-4 py-2 text-xs font-medium border-b border-red-500/20 shrink-0">
                   {wsError}
                 </div>
               )}
@@ -1123,7 +1137,7 @@ export default function Messages() {
                       const isMatch = chatSearch && m.content?.toLowerCase().includes(chatSearch.toLowerCase())
 
                       return (
-                        <div key={m.id || idx} className={isMatch ? 'bg-yellow-50/60 rounded-lg -mx-1 px-1' : ''}>
+                        <div key={m.id || idx} className={isMatch ? 'bg-brand/10 rounded-lg -mx-1 px-1' : ''}>
                           <MessageBubble
                             m={m}
                             reqId={selectedRequestId}
@@ -1150,10 +1164,10 @@ export default function Messages() {
               </div>
 
               {/* Composer */}
-              <div className="bg-white border-t border-ink/8 shrink-0">
+              <div className="bg-surface border-t border-ink/8 shrink-0">
                 {/* Emoji picker */}
                 {showEmojiPicker && (
-                  <div className="absolute bottom-full left-2 mb-2 bg-white border border-line shadow-xl rounded-xl p-3 w-64 z-30">
+                  <div className="absolute bottom-full left-2 mb-2 bg-surface border border-line shadow-xl rounded-xl p-3 w-64 z-30">
                     <div className="flex flex-wrap gap-1.5">
                       {COMPOSE_EMOJIS.map(em => (
                         <button
@@ -1174,8 +1188,8 @@ export default function Messages() {
                   <ReplyPreview msg={replyingTo} onCancel={() => setReplyingTo(null)} />
                 )}
                 {editingMsg && (
-                  <div className="flex items-center gap-2 px-3 py-2 bg-amber-50 border-t border-amber-200">
-                    <Pencil className="w-4 h-4 text-amber-600 shrink-0" />
+                  <div className="flex items-center gap-2 px-3 py-2 bg-amber-500/10 border-t border-amber-500/20">
+                    <Pencil className="w-4 h-4 text-amber-500 shrink-0" />
                     <p className="flex-1 text-xs text-amber-700 font-medium">Editing message</p>
                     <button onClick={handleCancelEdit} className="p-1 text-amber-500 hover:text-amber-700 rounded-full min-w-[32px] min-h-[32px] flex items-center justify-center">
                       <X className="w-4 h-4" />
@@ -1184,18 +1198,18 @@ export default function Messages() {
                 )}
 
                 {uploadingFile && (
-                  <div className="px-4 pb-2 text-xs text-moss font-medium flex items-center gap-2 bg-white">
+                  <div className="px-4 pb-2 text-xs text-moss font-medium flex items-center gap-2 bg-surface">
                     <span className="w-3 h-3 rounded-full border-2 border-moss border-t-transparent animate-spin" />
                     Uploading {uploadingFile}...
                   </div>
                 )}
 
                 {isRecording || voiceBlob ? (
-                  <div className="p-3 bg-white border-t border-line flex items-center justify-between gap-3 shrink-0">
+                  <div className="p-3 bg-surface border-t border-line flex items-center justify-between gap-3 shrink-0">
                     <button
                       type="button"
                       onClick={cancelRecording}
-                      className="px-3 py-1.5 text-red-500 text-sm font-medium hover:bg-red-50 rounded-lg transition-colors"
+                      className="px-3 py-1.5 text-red-500 text-sm font-medium hover:bg-red-500/10 rounded-lg transition-colors"
                     >
                       {voiceBlob ? 'Delete' : 'Cancel'}
                     </button>
@@ -1203,7 +1217,7 @@ export default function Messages() {
                       <audio controls src={URL.createObjectURL(voiceBlob)} className="h-8 max-w-[200px]" />
                     ) : (
                       <div className="flex items-center gap-2 text-red-500 font-medium">
-                        <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse"></span>
+                        <span className="w-2.5 h-2.5 rounded-full bg-red-500/100 animate-pulse"></span>
                         {Math.floor(recordingTime / 60)}:{(recordingTime % 60).toString().padStart(2, '0')}
                       </div>
                     )}
@@ -1216,7 +1230,7 @@ export default function Messages() {
                     </button>
                   </div>
                 ) : (
-                  <form onSubmit={handleSend} className="p-3 bg-white border-t border-line flex items-end gap-2 shrink-0">
+                  <form onSubmit={handleSend} className="p-3 bg-surface border-t border-line flex items-end gap-2 shrink-0">
                     <button
                       type="button"
                       className="p-2 text-ink/40 hover:text-ink hover:bg-ink/5 rounded-full transition-colors shrink-0 min-w-[40px] min-h-[40px] flex items-center justify-center relative"
@@ -1240,7 +1254,7 @@ export default function Messages() {
                     <textarea
                       ref={inputRef}
                       rows={1}
-                      className="input flex-1 bg-ink/5 border-transparent focus:bg-white focus:border-moss text-sm resize-none min-w-0 leading-relaxed py-2.5"
+                      className="input flex-1 bg-ink/5 border-transparent focus:bg-surface focus:border-moss text-sm resize-none min-w-0 leading-relaxed py-2.5"
                       style={{ maxHeight: '120px', overflowY: 'auto' }}
                       placeholder={editingMsg ? 'Edit message…' : 'Message…'}
                       value={draft}

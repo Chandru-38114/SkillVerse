@@ -188,13 +188,9 @@ export default function Settings() {
           </div>
           
           <div className="card p-4">
-            <p className="text-sm font-semibold text-ink">SkillVerse</p>
-            <p className="text-xs text-clay mt-1">Version 1.0.0 Phase 2</p>
-            <div className="mt-4 pt-4 border-t border-line">
-              <a href="https://github.com/Chandru-38114/SkillVerse" target="_blank" rel="noreferrer" className="text-xs font-semibold text-brand hover:underline">
-                View Source Code
-              </a>
-            </div>
+            <p className="text-sm font-semibold text-ink">About SkillVerse</p>
+            <p className="text-xs text-clay mt-1">Version: 1.0.0 (Phase 2)</p>
+            <p className="text-xs text-ink/70 mt-3 pt-3 border-t border-line">A peer-to-peer skill learning and collaboration platform.</p>
           </div>
         </section>
 

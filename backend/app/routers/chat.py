@@ -257,7 +257,12 @@ def get_inbox(
 
     users_map = {u.id: u for u in db.query(models.User).filter(models.User.id.in_(other_user_ids)).all()}
     skills_map = {s.id: s for s in db.query(models.Skill).filter(models.Skill.id.in_(skill_ids)).all()}
-    sessions_map = {s.request_id: s for s in db.query(models.Session).filter(models.Session.request_id.in_(req_ids)).all()}
+    
+    # Only map sessions that are currently 'scheduled'. Exclude completed or cancelled ones.
+    sessions_map = {s.request_id: s for s in db.query(models.Session).filter(
+        models.Session.request_id.in_(req_ids),
+        models.Session.status == "scheduled"
+    ).all()}
 
     # Hidden messages subquery
     hidden_subq = db.query(models.MessageUserState.message_id).filter(
