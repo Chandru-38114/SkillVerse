@@ -105,6 +105,7 @@ async def upload_attachment(
             
         url = f"{SUPABASE_URL.rstrip('/')}/storage/v1/object/{bucket}/{filename}"
         headers = {
+            "apikey": SUPABASE_KEY,
             "Authorization": f"Bearer {SUPABASE_KEY}",
             "Content-Type": content_type
         }

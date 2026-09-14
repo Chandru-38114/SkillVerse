@@ -91,6 +91,7 @@ async def upload_material(
             
         url = f"{SUPABASE_URL.rstrip('/')}/storage/v1/object/{bucket}/{stored_filename}"
         headers = {
+            "apikey": SUPABASE_KEY,
             "Authorization": f"Bearer {SUPABASE_KEY}",
             "Content-Type": ALLOWED_EXTENSIONS[ext]
         }
