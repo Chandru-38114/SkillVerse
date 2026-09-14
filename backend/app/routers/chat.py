@@ -151,13 +151,19 @@ def get_inbox(
     skills_map = {s.id: s for s in db.query(models.Skill).filter(models.Skill.id.in_(skill_ids)).all()}
     sessions_map = {s.request_id: s for s in db.query(models.Session).filter(models.Session.request_id.in_(req_ids)).all()}
 
+    # Hidden messages subquery
+    hidden_subq = db.query(models.MessageUserState.message_id).filter(
+        models.MessageUserState.user_id == current_user.id
+    ).subquery()
+
     # Unread counts map
     unread_counts = db.query(
         models.Message.request_id, func.count(models.Message.id)
     ).filter(
         models.Message.request_id.in_(req_ids),
         models.Message.sender_id != current_user.id,
-        models.Message.is_read == False
+        models.Message.is_read == False,
+        ~models.Message.id.in_(hidden_subq)
     ).group_by(models.Message.request_id).all()
     unread_map = {row[0]: row[1] for row in unread_counts}
 
@@ -165,7 +171,10 @@ def get_inbox(
     subq = db.query(
         models.Message.request_id,
         func.max(models.Message.created_at).label('max_dt')
-    ).filter(models.Message.request_id.in_(req_ids)).group_by(models.Message.request_id).subquery()
+    ).filter(
+        models.Message.request_id.in_(req_ids),
+        ~models.Message.id.in_(hidden_subq)
+    ).group_by(models.Message.request_id).subquery()
 
     latest_msgs = db.query(models.Message).join(
         subq,
@@ -206,7 +215,7 @@ def get_inbox(
     return inbox
 
 @router.post("/{request_id}/read")
-def mark_conversation_read(
+async def mark_conversation_read(
     request_id: int,
     current_user: models.User = Depends(auth.get_current_user),
     db: Session = Depends(get_db),
@@ -221,11 +230,27 @@ def mark_conversation_read(
         models.Message.is_read == False
     ).all()
 
+    if not unread_messages:
+        return {"detail": "No unread messages"}
+
+    msg_ids = []
     for msg in unread_messages:
         msg.is_read = True
+        msg_ids.append(msg.id)
 
     db.commit()
-    return {"detail": "Messages marked as read"}
+
+    try:
+        await chat_manager.broadcast(request_id, {
+            "type": "messages_read",
+            "request_id": request_id,
+            "reader_id": current_user.id,
+            "message_ids": msg_ids
+        })
+    except Exception:
+        pass
+
+    return {"detail": "Messages marked as read", "message_ids": msg_ids}
 
 @router.get("/{request_id}/messages", response_model=List[schemas.MessageOut])
 def list_messages(
@@ -234,7 +259,13 @@ def list_messages(
     db: Session = Depends(get_db),
 ):
     _authorize(db, request_id, current_user.id)
-    rows = db.query(models.Message).filter(models.Message.request_id == request_id).order_by(models.Message.created_at).all()
+    hidden_subq = db.query(models.MessageUserState.message_id).filter(
+        models.MessageUserState.user_id == current_user.id
+    ).subquery()
+    rows = db.query(models.Message).filter(
+        models.Message.request_id == request_id,
+        ~models.Message.id.in_(hidden_subq)
+    ).order_by(models.Message.created_at).all()
     return rows
 
 
@@ -284,17 +315,18 @@ def _ws_auth_and_authz(token: str, request_id: int):
     finally:
         db.close()
 
-def _fetch_history(request_id: int):
+def _fetch_history(request_id: int, user_id: int):
     db_hist = SessionLocal()
     try:
-        messages = db_hist.query(models.Message).filter(models.Message.request_id == request_id).order_by(models.Message.created_at).all()
-        return [{
-            "id": m.id,
-            "sender_id": m.sender_id,
-            "content": m.content,
-            "created_at": enforce_utc_iso(m.created_at),
-            "metadata": m.message_metadata
-        } for m in messages]
+        hidden_subq = db_hist.query(models.MessageUserState.message_id).filter(
+            models.MessageUserState.user_id == user_id
+        ).subquery()
+        
+        messages = db_hist.query(models.Message).filter(
+            models.Message.request_id == request_id,
+            ~models.Message.id.in_(hidden_subq)
+        ).order_by(models.Message.created_at).all()
+        return [_serialize_message(m) for m in messages]
     finally:
         db_hist.close()
 
@@ -310,13 +342,7 @@ def _save_message_and_notify(request_id: int, user_id: int, user_name: str, cont
             other_user_id = req.to_user_id if req.from_user_id == user_id else req.from_user_id
             create_notification(db_msg, other_user_id, "message", "New Message", f"{user_name} sent you a message", request_id, "chat")
 
-        return {
-            "id": msg.id,
-            "sender_id": msg.sender_id,
-            "content": msg.content,
-            "created_at": enforce_utc_iso(msg.created_at),
-            "metadata": msg.message_metadata
-        }
+        return _serialize_message(msg)
     finally:
         db_msg.close()
 
@@ -330,7 +356,7 @@ async def chat_websocket(websocket: WebSocket, request_id: int, token: str = Que
     await chat_manager.connect(request_id, websocket)
 
     # Send history immediately upon connection
-    hist_messages = await run_in_threadpool(_fetch_history, request_id)
+    hist_messages = await run_in_threadpool(_fetch_history, request_id, user.id)
     await websocket.send_json({"type": "history", "messages": hist_messages})
 
     try:
@@ -408,6 +434,26 @@ async def delete_message_for_everyone(
     # Broadcast real-time update to both participants
     await _broadcast_message_update(request_id, msg)
     return {"detail": "Message deleted", "id": message_id, "request_id": request_id}
+
+
+@router.post("/messages/{message_id}/hide")
+def delete_message_for_me(
+    message_id: int,
+    current_user: models.User = Depends(auth.get_current_user),
+    db: Session = Depends(get_db),
+):
+    msg = _get_message_authorized(db, message_id, current_user.id)
+    existing = db.query(models.MessageUserState).filter(
+        models.MessageUserState.message_id == message_id,
+        models.MessageUserState.user_id == current_user.id
+    ).first()
+    
+    if not existing:
+        state = models.MessageUserState(message_id=message_id, user_id=current_user.id)
+        db.add(state)
+        db.commit()
+        
+    return {"detail": "Message hidden successfully", "id": message_id}
 
 
 @router.post("/messages/{message_id}/react")

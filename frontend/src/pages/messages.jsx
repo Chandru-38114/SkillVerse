@@ -4,8 +4,8 @@ import { useNavigate } from 'react-router-dom'
 import { api, chatSocketUrl, getSessionUser, getAvatarUrl } from '../api'
 import {
   ArrowLeft, Paperclip, Calendar, Smile, Search, X, Send,
-  MoreVertical, Trash2, Pencil, Copy, CornerUpLeft, Forward,
-  MessageCircle, Hand, Check, CheckCheck
+  MoreVertical, Trash, Trash2, Pencil, Copy, CornerUpLeft, Forward,
+  MessageCircle, Hand, Check, CheckCheck, ChevronUp, ChevronDown, MoreHorizontal
 } from 'lucide-react'
 import BackButton from '../components/BackButton'
 
@@ -118,7 +118,7 @@ function ReactionBubbles({ reactions, messageId, currentUserId, onToggle }) {
 
 // ── Message bubble ───────────────────────────────────────────────────────────
 
-function MessageBubble({ m, isMe, isConsecutive, currentUserId, allMessages, onReply, onCopy, onEdit, onDeleteForEveryone, onToggleReaction, onForward, onScrollToRef, msgRef }) {
+function MessageBubble({ m, isMe, isConsecutive, currentUserId, allMessages, onReply, onCopy, onEdit, onDeleteForEveryone, onDeleteForMe, onToggleReaction, onForward, onScrollToRef, msgRef }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [emojiBarOpen, setEmojiBarOpen] = useState(false)
   const menuRef = useRef(null)
@@ -204,64 +204,65 @@ function MessageBubble({ m, isMe, isConsecutive, currentUserId, allMessages, onR
           />
         )}
 
-        {/* Context menu button — appears on hover/focus */}
-        {!isDeleted && (
-          <div
-            ref={menuRef}
-            className={`absolute top-0 ${isMe ? 'right-full mr-1' : 'left-full ml-1'} opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity flex items-center gap-0.5`}
-          >
-            {/* Quick emoji react */}
-            <div className="relative">
-              <button
-                onClick={() => setEmojiBarOpen(o => !o)}
-                className="p-1 text-ink/40 hover:text-ink hover:bg-ink/5 rounded-full min-w-[32px] min-h-[32px] flex items-center justify-center"
-              >
-                <Smile className="w-4 h-4" />
-              </button>
-              {emojiBarOpen && (
-                <div className={`absolute bottom-full mb-1 ${isMe ? 'right-0' : 'left-0'} flex gap-1 bg-white border border-line rounded-xl shadow-lg p-1.5 z-30`}>
-                  {REACTION_EMOJIS.map(em => (
-                    <button
-                      key={em}
-                      onClick={() => { onToggleReaction(m.id, em); setEmojiBarOpen(false) }}
-                      className="text-lg hover:scale-125 transition-transform p-0.5 min-w-[32px] min-h-[32px]"
-                    >
-                      {em}
-                    </button>
-                  ))}
-                </div>
-              )}
+          {/* Context menu button — appears on hover/focus */}
+          {!isDeleted && (
+            <div
+              ref={menuRef}
+              className={`absolute top-0 ${isMe ? 'right-full mr-1' : 'left-full ml-1'} opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity flex items-center gap-0.5 z-20`}
+            >
+              {/* Quick emoji react */}
+              <div className="relative">
+                <button
+                  onClick={() => setEmojiBarOpen(o => !o)}
+                  className="p-1 text-ink/40 hover:text-ink hover:bg-ink/5 rounded-full min-w-[32px] min-h-[32px] flex items-center justify-center"
+                >
+                  <Smile className="w-4 h-4" />
+                </button>
+                {emojiBarOpen && (
+                  <div className={`absolute bottom-full mb-1 ${isMe ? 'right-0' : 'left-0'} flex gap-1 bg-white border border-line rounded-xl shadow-lg p-1.5 z-30`}>
+                    {REACTION_EMOJIS.map(em => (
+                      <button
+                        key={em}
+                        onClick={() => { onToggleReaction(m.id, em); setEmojiBarOpen(false) }}
+                        className="text-lg hover:scale-125 transition-transform p-0.5 min-w-[32px] min-h-[32px]"
+                      >
+                        {em}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+  
+              {/* More menu */}
+              <div className="relative">
+                <button
+                  onClick={() => setMenuOpen(o => !o)}
+                  className="p-1 text-ink/40 hover:text-ink hover:bg-ink/5 rounded-full min-w-[32px] min-h-[32px] flex items-center justify-center"
+                >
+                  <MoreVertical className="w-4 h-4" />
+                </button>
+                {menuOpen && (
+                  <div className={`absolute top-0 ${isMe ? 'right-full mr-1' : 'left-full ml-1'} bg-white border border-line rounded-xl shadow-xl z-40 overflow-hidden min-w-[150px]`}>
+                    <MenuItem icon={<CornerUpLeft className="w-4 h-4" />} label="Reply" onClick={() => { onReply(m); setMenuOpen(false) }} />
+                    <MenuItem icon={<Copy className="w-4 h-4" />} label="Copy" onClick={() => { onCopy(m.content); setMenuOpen(false) }} />
+                    <MenuItem icon={<Forward className="w-4 h-4" />} label="Forward" onClick={() => { onForward(m); setMenuOpen(false) }} />
+                    <div className="border-t border-line/50 my-0.5" />
+                    <MenuItem icon={<Trash className="w-4 h-4" />} label="Delete for Me" onClick={() => { onDeleteForMe(m.id); setMenuOpen(false) }} />
+                    {isMe && !isDeleted && (
+                      <>
+                        <MenuItem icon={<Pencil className="w-4 h-4" />} label="Edit" onClick={() => { onEdit(m); setMenuOpen(false) }} />
+                        <MenuItem icon={<Trash2 className="w-4 h-4" />} label="Delete for Everyone" danger onClick={() => { onDeleteForEveryone(m.id); setMenuOpen(false) }} />
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
-
-            {/* More menu */}
-            <div className="relative">
-              <button
-                onClick={() => setMenuOpen(o => !o)}
-                className="p-1 text-ink/40 hover:text-ink hover:bg-ink/5 rounded-full min-w-[32px] min-h-[32px] flex items-center justify-center"
-              >
-                <MoreVertical className="w-4 h-4" />
-              </button>
-              {menuOpen && (
-                <div className={`absolute top-0 ${isMe ? 'right-full mr-1' : 'left-full ml-1'} bg-white border border-line rounded-xl shadow-xl z-40 overflow-hidden min-w-[140px]`}>
-                  <MenuItem icon={<CornerUpLeft className="w-4 h-4" />} label="Reply" onClick={() => { onReply(m); setMenuOpen(false) }} />
-                  <MenuItem icon={<Copy className="w-4 h-4" />} label="Copy" onClick={() => { onCopy(m.content); setMenuOpen(false) }} />
-                  <MenuItem icon={<Forward className="w-4 h-4" />} label="Forward" onClick={() => { onForward(m); setMenuOpen(false) }} />
-                  {isMe && !isDeleted && (
-                    <>
-                      <MenuItem icon={<Pencil className="w-4 h-4" />} label="Edit" onClick={() => { onEdit(m); setMenuOpen(false) }} />
-                      <div className="border-t border-line/50 my-0.5" />
-                      <MenuItem icon={<Trash2 className="w-4 h-4" />} label="Delete" danger onClick={() => { onDeleteForEveryone(m.id); setMenuOpen(false) }} />
-                    </>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
-    </div>
-  )
-}
+    )
+  }
 
 function MenuItem({ icon, label, onClick, danger }) {
   return (
@@ -524,6 +525,11 @@ export default function Messages() {
           api.markMessagesRead(reqId).then(() => loadInbox(false)).catch(console.error)
         } else if (data.type === 'message_update') {
           setMessages(prev => prev ? prev.map(m => m.id === data.message.id ? data.message : m) : null)
+        } else if (data.type === 'messages_read') {
+          // data has reader_id and message_ids
+          if (data.reader_id !== user?.id) {
+            setMessages(prev => prev ? prev.map(m => data.message_ids.includes(m.id) ? { ...m, is_read: true } : m) : null)
+          }
         }
       }
 
@@ -686,6 +692,16 @@ export default function Messages() {
     try {
       await api.deleteMessageForEveryone(msgId)
       setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: '', metadata: { ...m.metadata, deleted_for_everyone: true } } : m))
+    } catch (err) {
+      showToast(err.message || 'Failed to delete')
+    }
+  }
+
+  const handleDeleteForMe = async (msgId) => {
+    if (!window.confirm('Delete this message for yourself?')) return
+    try {
+      await api.deleteMessageForMe(msgId)
+      setMessages(prev => prev.filter(m => m.id !== msgId))
     } catch (err) {
       showToast(err.message || 'Failed to delete')
     }
@@ -892,13 +908,37 @@ export default function Messages() {
                   <input
                     autoFocus
                     type="text"
-                    placeholder="Search in conversation…"
+                    placeholder="Search in conversation..."
                     value={chatSearch}
                     onChange={e => { setChatSearch(e.target.value); setSearchHighlightIdx(0) }}
                     className="flex-1 text-sm bg-transparent outline-none text-ink placeholder-ink/40"
                   />
                   {searchMatches.length > 0 && (
-                    <span className="text-xs text-ink/40 whitespace-nowrap">{searchHighlightIdx + 1}/{searchMatches.length}</span>
+                    <div className="flex items-center gap-1">
+                      <span className="text-xs text-ink/40 whitespace-nowrap">{searchHighlightIdx + 1}/{searchMatches.length}</span>
+                      <button
+                        onClick={() => {
+                          const newIdx = (searchHighlightIdx - 1 + searchMatches.length) % searchMatches.length;
+                          setSearchHighlightIdx(newIdx);
+                          const msgId = messages[searchMatches[newIdx]]?.id;
+                          if (msgId) handleScrollToRef(msgId);
+                        }}
+                        className="p-1 text-ink/40 hover:text-ink rounded min-w-[28px] min-h-[28px] flex items-center justify-center"
+                      >
+                        <ChevronUp className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => {
+                          const newIdx = (searchHighlightIdx + 1) % searchMatches.length;
+                          setSearchHighlightIdx(newIdx);
+                          const msgId = messages[searchMatches[newIdx]]?.id;
+                          if (msgId) handleScrollToRef(msgId);
+                        }}
+                        className="p-1 text-ink/40 hover:text-ink rounded min-w-[28px] min-h-[28px] flex items-center justify-center"
+                      >
+                        <ChevronDown className="w-4 h-4" />
+                      </button>
+                    </div>
                   )}
                   <button onClick={() => { setChatSearch(''); setChatSearchOpen(false) }} className="p-1 text-ink/40 hover:text-ink rounded min-w-[28px] min-h-[28px] flex items-center justify-center">
                     <X className="w-4 h-4" />
@@ -948,6 +988,7 @@ export default function Messages() {
                             onCopy={handleCopy}
                             onEdit={handleEdit}
                             onDeleteForEveryone={handleDeleteForEveryone}
+                            onDeleteForMe={handleDeleteForMe}
                             onToggleReaction={handleToggleReaction}
                             onForward={setForwardingMsg}
                             onScrollToRef={handleScrollToRef}

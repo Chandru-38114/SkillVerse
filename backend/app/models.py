@@ -1,7 +1,7 @@
 import datetime as dt
 from .utils.timezone import utc_now
 from sqlalchemy import (
-    Column, Integer, String, Float, ForeignKey, DateTime, Date, Text, Boolean, JSON, Index
+    Column, Integer, String, Float, ForeignKey, DateTime, Date, Text, Boolean, JSON, Index, UniqueConstraint
 )
 from sqlalchemy.orm import relationship
 from .database import Base
@@ -142,6 +142,20 @@ class Message(Base):
     __table_args__ = (
         Index("ix_messages_request_id_created_at", "request_id", "created_at"),
     )
+
+class MessageUserState(Base):
+    __tablename__ = "message_user_states"
+
+    id = Column(Integer, primary_key=True, index=True)
+    message_id = Column(Integer, ForeignKey("messages.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    hidden_at = Column(DateTime, default=utc_now)
+
+    __table_args__ = (
+        UniqueConstraint("message_id", "user_id", name="uix_message_user_state"),
+        Index("ix_message_user_states_user_message", "user_id", "message_id"),
+    )
+
 
 class Review(Base):
     __tablename__ = "reviews"

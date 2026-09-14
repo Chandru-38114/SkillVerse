@@ -161,6 +161,7 @@ export const api = {
   markChatRead: (requestId) => request(`/chat/${requestId}/read`, { method: "POST" }),
   editMessage: (messageId, content) => request(`/chat/messages/${messageId}`, { method: "PUT", body: { content } }),
   deleteMessageForEveryone: (messageId) => request(`/chat/messages/${messageId}`, { method: "DELETE" }),
+  deleteMessageForMe: (messageId) => request(`/chat/messages/${messageId}/hide`, { method: "POST" }),
   toggleReaction: (messageId, emoji) => request(`/chat/messages/${messageId}/react`, { method: "POST", body: { emoji } }),
   forwardMessage: (requestId, content) => request(`/chat/${requestId}/messages`, { method: "POST", body: { content, metadata: { forwarded: true } } }),
 
