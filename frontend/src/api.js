@@ -103,11 +103,11 @@ export const api = {
 
   listMessages: (requestId) => request(`/chat/${requestId}/messages`),
   markMessagesRead: (requestId) => request(`/chat/${requestId}/read`, { method: "POST" }),
-  sendMessage: (requestId, content) => request(`/chat/${requestId}/messages`, { method: "POST", body: { content } }),
-  uploadChatAttachment: (requestId, file) => {
+  sendMessage: (requestId, content, metadata = {}) => request(`/chat/${requestId}/messages`, { method: "POST", body: { content, metadata } }),
+  uploadChatAttachment: (requestId, file, type = "file") => {
     const formData = new FormData();
     formData.append("file", file);
-    return fetch(`${BASE_URL}/chat/${requestId}/upload`, {
+    return fetch(`${BASE_URL}/chat/${requestId}/upload?type=${type}`, {
       method: "POST",
       headers: { Authorization: `Bearer ${getToken()}` },
       body: formData,

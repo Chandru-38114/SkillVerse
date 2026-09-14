@@ -33,55 +33,73 @@ ALLOWED_EXTENSIONS = {
 @router.post("/{request_id}/upload")
 async def upload_attachment(
     request_id: int,
+    type: str = Query("file"), # "voice" or "file"
     file: UploadFile = File(...),
     current_user: models.User = Depends(auth.get_current_user),
     db: Session = Depends(get_db)
 ):
     _authorize(db, request_id, current_user.id)
 
-    ext = file.filename.split(".")[-1].lower() if "." in file.filename else ""
-    if ext not in ALLOWED_EXTENSIONS:
-        raise HTTPException(status_code=400, detail="Unsupported file type")
-
+    ext = file.filename.split(".")[-1].lower() if file.filename and "." in file.filename else ""
     file_bytes = await file.read()
-    if len(file_bytes) > 5 * 1024 * 1024:
-        raise HTTPException(status_code=400, detail="File too large (max 5MB)")
+    size_bytes = len(file_bytes)
 
-    filename = f"chat_{request_id}_{uuid.uuid4().hex}_{file.filename}"
+    if type == "file":
+        if size_bytes > 25 * 1024 * 1024:
+            raise HTTPException(status_code=400, detail="File too large (max 25MB)")
+        if ext in ["exe", "bat", "cmd", "ps1", "sh", "js", "vbs"]:
+            raise HTTPException(status_code=400, detail="Executable files are not allowed")
+    elif type == "voice":
+        if size_bytes > 10 * 1024 * 1024:
+            raise HTTPException(status_code=400, detail="Voice message too large")
+        ext = ext or "webm"
+    else:
+        raise HTTPException(status_code=400, detail="Invalid attachment type")
+
+    filename = f"req_{request_id}_{current_user.id}_{uuid.uuid4().hex}.{ext}"
+    bucket = "chat_audio" if type == "voice" else "chat_files"
     supabase = get_supabase()
 
     try:
-        supabase.storage.from_("materials").upload(
+        supabase.storage.from_(bucket).upload(
             file=file_bytes,
             path=filename,
-            file_options={"content-type": ALLOWED_EXTENSIONS[ext]}
+            file_options={"content-type": file.content_type}
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to upload file: {str(e)}")
 
-    # We return a standard markdown string that the frontend can insert into the chat
-    url = f"/api/chat/{request_id}/attachment/{filename}"
-
-    if ext in ["png", "jpg", "jpeg"]:
-        md = f"![{file.filename}]({url})"
+    metadata = {
+        "type": type,
+        "mime_type": file.content_type,
+        "size_bytes": size_bytes
+    }
+    if type == "voice":
+        metadata["audio_path"] = filename
     else:
-        md = f"[{file.filename}]({url})"
+        metadata["file_path"] = filename
+        metadata["file_name"] = file.filename
 
-    return {"markdown": md, "url": url, "filename": file.filename}
+    return {"metadata": metadata}
 
 
-@router.get("/{request_id}/attachment/{filename}")
-def download_attachment(
+@router.get("/{request_id}/file/{bucket}/{filename}")
+def download_chat_file(
     request_id: int,
+    bucket: str,
     filename: str,
     current_user: models.User = Depends(auth.get_current_user),
     db: Session = Depends(get_db)
 ):
     _authorize(db, request_id, current_user.id)
+    if bucket not in ["chat_audio", "chat_files"]:
+        raise HTTPException(status_code=400, detail="Invalid bucket")
+    if not filename.startswith(f"req_{request_id}_"):
+        raise HTTPException(status_code=403, detail="Unauthorized access to this file")
 
     supabase = get_supabase()
     try:
-        res = supabase.storage.from_("materials").create_signed_url(filename, 3600)
+        res = supabase.storage.from_(bucket).create_signed_url(filename, 3600)
         signed_url = res if isinstance(res, str) else res.get("signedURL") or res.get("signedUrl")
         if not signed_url:
             raise Exception("No signed URL returned")
@@ -198,6 +216,7 @@ def get_inbox(
             other_user_id=other_user.id if other_user else other_user_id,
             other_user_name=other_user.name if other_user else "Unknown",
             other_user_avatar=other_user.profile_picture_url if (other_user and hasattr(other_user, 'profile_picture_url')) else None,
+            other_last_active=other_user.last_active if other_user else None,
             skill_name=skill.name if skill else "Unknown",
             latest_message=latest_msg.content if latest_msg else ("Request " + req.status),
             latest_message_time=latest_msg.created_at if latest_msg else req.created_at,
@@ -306,12 +325,13 @@ def _ws_auth_and_authz(token: str, request_id: int):
     try:
         user = _authenticate_ws(token, db)
         if not user:
-            return None, 4401
+            return None, 4401, None
         try:
-            _authorize(db, request_id, user.id)
-            return user, None
+            req = _authorize(db, request_id, user.id)
+            other_user_id = req.to_user_id if req.from_user_id == user.id else req.from_user_id
+            return user, None, other_user_id
         except HTTPException:
-            return None, 4403
+            return None, 4403, None
     finally:
         db.close()
 
@@ -348,12 +368,27 @@ def _save_message_and_notify(request_id: int, user_id: int, user_name: str, cont
 
 @router.websocket("/ws/{request_id}")
 async def chat_websocket(websocket: WebSocket, request_id: int, token: str = Query(...)):
-    user, error_code = await run_in_threadpool(_ws_auth_and_authz, token, request_id)
+    user, error_code, other_user_id = await run_in_threadpool(_ws_auth_and_authz, token, request_id)
     if error_code:
         await websocket.close(code=error_code)
         return
 
     await chat_manager.connect(request_id, websocket)
+
+    # Broadcast presence online
+    await chat_manager.broadcast(request_id, {
+        "type": "presence_update",
+        "user_id": user.id,
+        "status": "online"
+    })
+
+    # Tell me if the other user is already online
+    if chat_manager.room_size(request_id) > 1:
+        await websocket.send_json({
+            "type": "presence_update",
+            "user_id": other_user_id,
+            "status": "online"
+        })
 
     # Send history immediately upon connection
     hist_messages = await run_in_threadpool(_fetch_history, request_id, user.id)
@@ -372,6 +407,24 @@ async def chat_websocket(websocket: WebSocket, request_id: int, token: str = Que
             await chat_manager.broadcast(request_id, msg_payload)
     except WebSocketDisconnect:
         chat_manager.disconnect(request_id, websocket)
+        last_active_iso = await run_in_threadpool(_update_last_active, user.id)
+        await chat_manager.broadcast(request_id, {
+            "type": "presence_update",
+            "user_id": user.id,
+            "status": "offline",
+            "last_active": last_active_iso
+        })
+
+def _update_last_active(user_id: int) -> str:
+    db = SessionLocal()
+    try:
+        from ..utils.timezone import utc_now
+        now = utc_now()
+        db.query(models.User).filter(models.User.id == user_id).update({"last_active": now})
+        db.commit()
+        return enforce_utc_iso(now)
+    finally:
+        db.close()
 
 
 # ── Message operations ────────────────────────────────────────────────────────

@@ -193,6 +193,7 @@ class InboxConversationOut(BaseModel):
     unread_count: int = 0
     request_status: str
     session_id: Optional[int] = None
+    other_last_active: Optional[dt.datetime] = None
     session_date: Optional[str] = None
     session_time: Optional[str] = None
     scheduled_start: Optional[dt.datetime] = None

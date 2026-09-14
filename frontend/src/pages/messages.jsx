@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react'
 import { formatTime, formatDateTime, createIstToUtcDate } from '../utils/dateTime'
 import { useNavigate } from 'react-router-dom'
-import { api, chatSocketUrl, getSessionUser, getAvatarUrl } from '../api'
+import { api, chatSocketUrl, getSessionUser, getAvatarUrl, BASE_URL } from '../api'
 import {
   ArrowLeft, Paperclip, Calendar, Smile, Search, X, Send,
   MoreVertical, Trash, Trash2, Pencil, Copy, CornerUpLeft, Forward,
@@ -116,9 +116,31 @@ function ReactionBubbles({ reactions, messageId, currentUserId, onToggle }) {
   )
 }
 
+function VoicePlayer({ meta, reqId }) {
+  const url = meta.audio_path ? `${BASE_URL}/chat/${reqId}/file/chat_audio/${meta.audio_path}` : ''
+  return (
+    <div className="flex items-center gap-2 mt-1 px-3 py-2 bg-ink/5 rounded-full">
+      <audio controls src={url} className="h-8 w-48 max-w-full" controlsList="nodownload noplaybackrate" />
+    </div>
+  )
+}
+
+function FileAttachment({ meta, reqId }) {
+  const url = meta.file_path ? `${BASE_URL}/chat/${reqId}/file/chat_files/${meta.file_path}` : ''
+  return (
+    <a href={url} target="_blank" rel="noreferrer" className="flex items-center gap-3 mt-1 px-3 py-2 bg-ink/5 rounded-lg hover:bg-ink/10 transition-colors w-full max-w-[240px]">
+      <FileText className="w-6 h-6 shrink-0 opacity-70" />
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-medium truncate">{meta.file_name || 'Attachment'}</p>
+        {meta.size_bytes && <p className="text-[10px] opacity-60">{(meta.size_bytes / 1024).toFixed(1)} KB</p>}
+      </div>
+    </a>
+  )
+}
+
 // ── Message bubble ───────────────────────────────────────────────────────────
 
-function MessageBubble({ m, isMe, isConsecutive, currentUserId, allMessages, onReply, onCopy, onEdit, onDeleteForEveryone, onDeleteForMe, onToggleReaction, onForward, onScrollToRef, msgRef }) {
+function MessageBubble({ m, reqId, isMe, isConsecutive, currentUserId, allMessages, onReply, onCopy, onEdit, onDeleteForEveryone, onDeleteForMe, onToggleReaction, onForward, onScrollToRef, msgRef }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [emojiBarOpen, setEmojiBarOpen] = useState(false)
   const menuRef = useRef(null)
@@ -178,7 +200,9 @@ function MessageBubble({ m, isMe, isConsecutive, currentUserId, allMessages, onR
             </p>
           ) : (
             <>
-              <MessageRenderer content={m.content} />
+              {meta.type === 'voice' && <VoicePlayer meta={meta} reqId={reqId} />}
+              {meta.type === 'file' && <FileAttachment meta={meta} reqId={reqId} />}
+              {m.content && <MessageRenderer content={m.content} />}
               <div className={`flex items-center justify-end gap-1 mt-0.5 ${isMe ? 'text-white/50' : 'text-ink/30'}`}>
                 {isEdited && <span className="text-[9px] italic">edited</span>}
                 {m.created_at && (
@@ -457,6 +481,16 @@ export default function Messages() {
   const [chatSearchOpen, setChatSearchOpen] = useState(false)
   const [searchHighlightIdx, setSearchHighlightIdx] = useState(0)
 
+  // Voice
+  const [isRecording, setIsRecording] = useState(false)
+  const [recordingTime, setRecordingTime] = useState(0)
+  const [voiceBlob, setVoiceBlob] = useState(null)
+  const mediaRecorderRef = useRef(null)
+  const timerRef = useRef(null)
+
+  // Presence
+  const [otherPresence, setOtherPresence] = useState({ status: "offline", last_active: null })
+
   // Toast
   const [toast, setToast] = useState(null)
 
@@ -530,6 +564,10 @@ export default function Messages() {
           if (data.reader_id !== user?.id) {
             setMessages(prev => prev ? prev.map(m => data.message_ids.includes(m.id) ? { ...m, is_read: true } : m) : null)
           }
+        } else if (data.type === 'presence_update') {
+          if (data.user_id !== user?.id) {
+            setOtherPresence({ status: data.status, last_active: data.last_active })
+          }
         }
       }
 
@@ -583,6 +621,10 @@ export default function Messages() {
 
   const handleSelectConversation = (id) => {
     setSelectedRequestId(id)
+    const conv = inbox.find(c => c.request_id === id)
+    if (conv) {
+      setOtherPresence({ status: 'offline', last_active: conv.other_last_active })
+    }
     setReplyingTo(null)
     setEditingMsg(null)
     setShowEmojiPicker(false)
@@ -655,15 +697,19 @@ export default function Messages() {
   const handleFileUpload = async (e) => {
     const file = e.target.files?.[0]
     if (!file || !selectedRequestId) return
-    if (file.size > 5 * 1024 * 1024) { showToast('File too large (max 5MB)'); return }
+    if (file.size > 25 * 1024 * 1024) { showToast('File too large (max 25MB)'); return }
+    const ext = file.name.split('.').pop().toLowerCase()
+    if (['exe', 'bat', 'cmd', 'ps1', 'sh', 'js', 'vbs'].includes(ext)) {
+      showToast('Executable files are not allowed'); return
+    }
     setUploadingFile(file.name)
     try {
-      const res = await api.uploadChatAttachment(selectedRequestId, file)
+      const res = await api.uploadChatAttachment(selectedRequestId, file, 'file')
       const ws = socketRef.current
       if (ws && ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({ content: res.markdown }))
+        ws.send(JSON.stringify({ content: '', metadata: res.metadata }))
       } else {
-        const msg = await api.sendMessage(selectedRequestId, res.markdown)
+        const msg = await api.sendMessage(selectedRequestId, '', res.metadata)
         setMessages(prev => [...prev, msg])
       }
     } catch (err) {
@@ -671,6 +717,62 @@ export default function Messages() {
     } finally {
       setUploadingFile(null)
       e.target.value = ''
+    }
+  }
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const recorder = new MediaRecorder(stream)
+      mediaRecorderRef.current = recorder
+      const chunks = []
+      recorder.ondataavailable = e => chunks.push(e.data)
+      recorder.onstop = () => {
+        const blob = new Blob(chunks, { type: recorder.mimeType || 'audio/webm' })
+        setVoiceBlob(blob)
+      }
+      recorder.start()
+      setIsRecording(true)
+      setRecordingTime(0)
+      timerRef.current = setInterval(() => setRecordingTime(t => t + 1), 1000)
+    } catch (err) {
+      showToast('Microphone access denied or unavailable')
+    }
+  }
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current) {
+      mediaRecorderRef.current.stop()
+      mediaRecorderRef.current.stream.getTracks().forEach(t => t.stop())
+    }
+    setIsRecording(false)
+    clearInterval(timerRef.current)
+  }
+
+  const cancelRecording = () => {
+    if (isRecording) stopRecording()
+    setVoiceBlob(null)
+    setRecordingTime(0)
+  }
+
+  const sendVoice = async () => {
+    if (!voiceBlob || !selectedRequestId) return
+    setUploadingFile('Voice Message')
+    try {
+      const file = new File([voiceBlob], 'voice.webm', { type: voiceBlob.type })
+      const res = await api.uploadChatAttachment(selectedRequestId, file, 'voice')
+      const ws = socketRef.current
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ content: '', metadata: res.metadata }))
+      } else {
+        const msg = await api.sendMessage(selectedRequestId, '', res.metadata)
+        setMessages(prev => [...prev, msg])
+      }
+      cancelRecording()
+    } catch (err) {
+      showToast(err.message || 'Failed to send voice')
+    } finally {
+      setUploadingFile(null)
     }
   }
 
@@ -873,7 +975,18 @@ export default function Messages() {
                   />
                   <div className="min-w-0">
                     <h2 className="font-bold text-ink text-sm truncate leading-tight">{activeConversation.other_user_name}</h2>
-                    <ConnectionBadge state={connectionState} />
+                    <div className="flex items-center gap-2 text-xs">
+                      <ConnectionBadge state={connectionState} />
+                      <span className="text-ink/40">•</span>
+                      {otherPresence.status === 'online' ? (
+                        <span className="text-moss font-medium flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-moss"></span>
+                          Online
+                        </span>
+                      ) : otherPresence.last_active ? (
+                        <span className="text-ink/50">Last active {formatTime(otherPresence.last_active)}</span>
+                      ) : null}
+                    </div>
                   </div>
                 </div>
 
@@ -980,6 +1093,7 @@ export default function Messages() {
                         <div key={m.id || idx} className={isMatch ? 'bg-yellow-50/60 rounded-lg -mx-1 px-1' : ''}>
                           <MessageBubble
                             m={m}
+                            reqId={selectedRequestId}
                             isMe={isMe}
                             isConsecutive={isConsecutive}
                             currentUserId={userId}
@@ -1036,47 +1150,83 @@ export default function Messages() {
                   </div>
                 )}
 
-                <form onSubmit={handleSend} className="flex items-end gap-1 p-2.5 sm:p-3">
-                  <button
-                    type="button"
-                    onClick={() => setShowEmojiPicker(o => !o)}
-                    className="p-2 text-ink/40 hover:text-ink hover:bg-ink/5 rounded-full transition-colors shrink-0 min-w-[40px] min-h-[40px] flex items-center justify-center"
-                  >
-                    <Smile className="w-5 h-5" />
-                  </button>
-                  <label className="p-2 text-ink/40 hover:text-ink hover:bg-ink/5 rounded-full transition-colors cursor-pointer shrink-0 min-w-[40px] min-h-[40px] flex items-center justify-center" title="Attach file">
-                    <input type="file" className="hidden" onChange={handleFileUpload} accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg,.webp" />
-                    <Paperclip className="w-5 h-5" />
-                  </label>
-                  <textarea
-                    ref={inputRef}
-                    rows={1}
-                    className="input flex-1 bg-ink/5 border-transparent focus:bg-white focus:border-moss text-sm resize-none min-w-0 leading-relaxed py-2.5"
-                    style={{ maxHeight: '120px', overflowY: 'auto' }}
-                    placeholder={editingMsg ? 'Edit message…' : 'Message…'}
-                    value={draft}
-                    onChange={e => {
-                      setDraft(e.target.value)
-                      e.target.style.height = 'auto'
-                      e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px'
-                    }}
-                    onKeyDown={handleKeyDown}
-                    autoComplete="off"
-                  />
-                  <button
-                    type="submit"
-                    disabled={!draft.trim()}
-                    className="p-2 bg-moss text-white rounded-full transition-colors disabled:opacity-40 shrink-0 min-w-[40px] min-h-[40px] flex items-center justify-center hover:bg-moss/90"
-                  >
-                    <Send className="w-4 h-4" />
-                  </button>
-                </form>
-
                 {uploadingFile && (
-                  <div className="px-4 pb-2 text-xs text-moss font-medium flex items-center gap-2">
+                  <div className="px-4 pb-2 text-xs text-moss font-medium flex items-center gap-2 bg-white">
                     <span className="w-3 h-3 rounded-full border-2 border-moss border-t-transparent animate-spin" />
-                    Uploading {uploadingFile}…
+                    Uploading {uploadingFile}...
                   </div>
+                )}
+
+                {isRecording || voiceBlob ? (
+                  <div className="p-3 bg-white border-t border-line flex items-center justify-between gap-3 shrink-0">
+                    <button
+                      type="button"
+                      onClick={cancelRecording}
+                      className="px-3 py-1.5 text-red-500 text-sm font-medium hover:bg-red-50 rounded-lg transition-colors"
+                    >
+                      {voiceBlob ? 'Delete' : 'Cancel'}
+                    </button>
+                    {voiceBlob ? (
+                      <audio controls src={URL.createObjectURL(voiceBlob)} className="h-8 max-w-[200px]" />
+                    ) : (
+                      <div className="flex items-center gap-2 text-red-500 font-medium">
+                        <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse"></span>
+                        {Math.floor(recordingTime / 60)}:{(recordingTime % 60).toString().padStart(2, '0')}
+                      </div>
+                    )}
+                    <button
+                      type="button"
+                      onClick={isRecording ? stopRecording : sendVoice}
+                      className="px-4 py-1.5 bg-moss text-white text-sm font-medium rounded-lg hover:bg-moss/90 transition-colors"
+                    >
+                      {isRecording ? 'Stop' : 'Send'}
+                    </button>
+                  </div>
+                ) : (
+                  <form onSubmit={handleSend} className="p-3 bg-white border-t border-line flex items-end gap-2 shrink-0">
+                    <button
+                      type="button"
+                      className="p-2 text-ink/40 hover:text-ink hover:bg-ink/5 rounded-full transition-colors shrink-0 min-w-[40px] min-h-[40px] flex items-center justify-center relative"
+                      onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                      title="Emojis"
+                    >
+                      <Smile className="w-5 h-5" />
+                    </button>
+                    <label className="p-2 text-ink/40 hover:text-ink hover:bg-ink/5 rounded-full transition-colors cursor-pointer shrink-0 min-w-[40px] min-h-[40px] flex items-center justify-center" title="Attach file">
+                      <input type="file" className="hidden" onChange={handleFileUpload} accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg,.webp" />
+                      <Paperclip className="w-5 h-5" />
+                    </label>
+                    <button
+                      type="button"
+                      onClick={startRecording}
+                      className="p-2 text-ink/40 hover:text-ink hover:bg-ink/5 rounded-full transition-colors shrink-0 min-w-[40px] min-h-[40px] flex items-center justify-center"
+                      title="Voice Message"
+                    >
+                      <Mic className="w-5 h-5" />
+                    </button>
+                    <textarea
+                      ref={inputRef}
+                      rows={1}
+                      className="input flex-1 bg-ink/5 border-transparent focus:bg-white focus:border-moss text-sm resize-none min-w-0 leading-relaxed py-2.5"
+                      style={{ maxHeight: '120px', overflowY: 'auto' }}
+                      placeholder={editingMsg ? 'Edit message…' : 'Message…'}
+                      value={draft}
+                      onChange={e => {
+                        setDraft(e.target.value)
+                        e.target.style.height = 'auto'
+                        e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px'
+                      }}
+                      onKeyDown={handleKeyDown}
+                      autoComplete="off"
+                    />
+                    <button
+                      type="submit"
+                      disabled={!draft.trim()}
+                      className="p-2 bg-moss text-white rounded-full transition-colors disabled:opacity-40 shrink-0 min-w-[40px] min-h-[40px] flex items-center justify-center hover:bg-moss/90"
+                    >
+                      <Send className="w-4 h-4" />
+                    </button>
+                  </form>
                 )}
               </div>
             </>

@@ -25,6 +25,7 @@ class User(Base):
     dob = Column(String, nullable=True)
     gender = Column(String, nullable=True)
     created_at = Column(DateTime, default=utc_now)
+    last_active = Column(DateTime, nullable=True)
 
     user_skills = relationship("UserSkill", back_populates="user", cascade="all, delete-orphan")
     sent_requests = relationship("ConnectionRequest", foreign_keys="ConnectionRequest.from_user_id", back_populates="from_user")
