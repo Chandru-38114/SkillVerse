@@ -20,7 +20,7 @@ import { REACTION_EMOJIS, getEmojiForKey } from '../utils/emojis'
 
 function truncate(str, n = 60) {
   if (!str) return ''
-  return str.length > n ? str.slice(0, n) + 'Ã¢â‚¬Â¦' : str
+  return str.length > n ? str.slice(0, n) + '...' : str
 }
 
 function Toast({ message, onDone }) {
@@ -971,7 +971,7 @@ function SessionCard({ conv, onCancel, navigate }) {
             <BackButton className="md:hidden shrink-0" />
             <input
               type="text"
-              placeholder="Search conversationsÃ¢â‚¬Â¦"
+              placeholder="Search conversations..."
               value={inboxSearch}
               onChange={e => setInboxSearch(e.target.value)}
               className="input flex-1 text-sm bg-ink/5 border-transparent focus:bg-lift focus:border-brand transition-colors"
@@ -981,7 +981,7 @@ function SessionCard({ conv, onCancel, navigate }) {
           {/* Inbox list */}
           <div className="flex-1 overflow-y-auto">
             {loadingInbox ? (
-              <div className="p-6 text-center text-clay text-sm">LoadingÃ¢â‚¬Â¦</div>
+              <div className="p-6 text-center text-clay text-sm">Loading...</div>
             ) : filteredInbox.length === 0 ? (
               <div className="p-8 text-center space-y-3">
                 <MessageCircle className="w-10 h-10 text-clay/40 mx-auto" />

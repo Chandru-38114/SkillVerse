@@ -61,6 +61,19 @@ export default function VideoChat({ sessionId, children, onLeave }) {
         pc = new RTCPeerConnection(iceServers)
         pcRef.current = pc
 
+        pc.oniceconnectionstatechange = () => {
+          console.log('[WebRTC-Diag] ICE Connection State:', pc.iceConnectionState)
+        }
+        pc.onconnectionstatechange = () => {
+          console.log('[WebRTC-Diag] Connection State:', pc.connectionState)
+        }
+        pc.onsignalingstatechange = () => {
+          console.log('[WebRTC-Diag] Signaling State:', pc.signalingState)
+        }
+        pc.onicegatheringstatechange = () => {
+          console.log('[WebRTC-Diag] ICE Gathering State:', pc.iceGatheringState)
+        }
+
         localStream.getTracks().forEach((track) => pc.addTrack(track, localStream))
 
         pc.ontrack = (event) => {
@@ -170,7 +183,7 @@ export default function VideoChat({ sessionId, children, onLeave }) {
         }
 
       } catch (err) {
-        console.error('[WebRTC] Initialization error:', err)
+        console.error('[WebRTC-Diag] local getUserMedia or init failed:', err)
         if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
           setErrorMsg('Camera or microphone permission denied. Please allow access.')
         } else if (err.name === 'NotFoundError') {
@@ -196,6 +209,7 @@ export default function VideoChat({ sessionId, children, onLeave }) {
 
   useEffect(() => {
     if (remoteVideoRef.current && remoteStream) {
+      console.log('[WebRTC-Diag] Remote video stream assigned to video element')
       remoteVideoRef.current.srcObject = remoteStream
     }
   }, [remoteStream])
