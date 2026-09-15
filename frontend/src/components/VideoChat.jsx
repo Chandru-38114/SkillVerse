@@ -87,7 +87,7 @@ export default function VideoChat({ sessionId, children, onLeave }) {
         pc.ontrack = (event) => {
           console.log('[WebRTC-Diag] remote track received', event.track.kind, 'readyState:', event.track.readyState)
           if (event.streams && event.streams[0]) {
-            setRemoteStream(event.streams[0])
+            setRemoteStream(new MediaStream(event.streams[0].getTracks()))
             setStatus('connected')
           }
         }
@@ -128,10 +128,10 @@ export default function VideoChat({ sessionId, children, onLeave }) {
               setStatus('connecting')
               const remoteUserId = data.userId || data.user_id
               
-              if (remoteUserId && currentUser?.id > remoteUserId) {
+              if (remoteUserId && Number(currentUser?.id) > Number(remoteUserId)) {
                 if (pc.signalingState === 'stable' || pc.signalingState === 'have-local-offer') {
                   console.log('[WebRTC-Diag] offer/answer state: Creating offer')
-                  const offer = await pc.createOffer({ iceRestart: true })
+                  const offer = await pc.createOffer()
                   await pc.setLocalDescription(offer)
                   ws.send(JSON.stringify({ type: 'offer', offer }))
                 }
