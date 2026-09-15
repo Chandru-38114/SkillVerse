@@ -31,19 +31,27 @@ export default function VideoChat({ sessionId, children, onLeave }) {
   const streamRef = useRef(null)
 
   useEffect(() => {
+    console.log('[WebRTC-Diag] VideoChat mounted')
+    return () => console.log('[WebRTC-Diag] VideoChat unmounted')
+  }, [])
+
+  useEffect(() => {
     let ignore = false
     let ws = null
     let pc = null
 
     async function init() {
       try {
-        console.log('[WebRTC] Requesting local media...')
+        console.log('[WebRTC-Diag] mediaDevices available:', !!navigator.mediaDevices)
+        console.log('[WebRTC-Diag] requesting camera/microphone')
         const localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true })
         if (ignore) {
           localStream.getTracks().forEach((track) => track.stop())
           return
         }
-        console.log('[WebRTC] Local media obtained')
+        console.log('[WebRTC-Diag] local stream obtained')
+        console.log('[WebRTC-Diag] video tracks count:', localStream.getVideoTracks().length, 'readyState:', localStream.getVideoTracks()[0]?.readyState)
+        console.log('[WebRTC-Diag] audio tracks count:', localStream.getAudioTracks().length, 'readyState:', localStream.getAudioTracks()[0]?.readyState)
         setStream(localStream)
         streamRef.current = localStream
 
@@ -62,7 +70,7 @@ export default function VideoChat({ sessionId, children, onLeave }) {
         pcRef.current = pc
 
         pc.oniceconnectionstatechange = () => {
-          console.log('[WebRTC-Diag] ICE Connection State:', pc.iceConnectionState)
+          console.log('[WebRTC-Diag] ICE state:', pc.iceConnectionState)
         }
         pc.onconnectionstatechange = () => {
           console.log('[WebRTC-Diag] Connection State:', pc.connectionState)
@@ -77,7 +85,7 @@ export default function VideoChat({ sessionId, children, onLeave }) {
         localStream.getTracks().forEach((track) => pc.addTrack(track, localStream))
 
         pc.ontrack = (event) => {
-          console.log('[WebRTC] Remote track received')
+          console.log('[WebRTC-Diag] remote track received', event.track.kind, 'readyState:', event.track.readyState)
           if (event.streams && event.streams[0]) {
             setRemoteStream(event.streams[0])
             setStatus('connected')
@@ -103,7 +111,7 @@ export default function VideoChat({ sessionId, children, onLeave }) {
         wsRef.current = ws
 
         ws.onopen = () => {
-          console.log('[WebRTC] Signaling server connected')
+          console.log('[WebRTC-Diag] signaling WebSocket connected')
           ws.send(JSON.stringify({ type: 'hello', userId: currentUser?.id }))
         }
 
@@ -113,6 +121,7 @@ export default function VideoChat({ sessionId, children, onLeave }) {
 
           try {
             if (data.type === 'peer_joined') {
+              console.log('[WebRTC-Diag] peer joined')
               setStatus('connecting')
               ws.send(JSON.stringify({ type: 'hello', userId: currentUser?.id }))
             } else if (data.type === 'hello') {
@@ -121,7 +130,7 @@ export default function VideoChat({ sessionId, children, onLeave }) {
               
               if (remoteUserId && currentUser?.id > remoteUserId) {
                 if (pc.signalingState === 'stable' || pc.signalingState === 'have-local-offer') {
-                  console.log('[WebRTC] Creating offer')
+                  console.log('[WebRTC-Diag] offer/answer state: Creating offer')
                   const offer = await pc.createOffer({ iceRestart: true })
                   await pc.setLocalDescription(offer)
                   ws.send(JSON.stringify({ type: 'offer', offer }))
@@ -130,7 +139,7 @@ export default function VideoChat({ sessionId, children, onLeave }) {
             } else if (data.type === 'offer') {
               if (pc.signalingState !== 'stable') return
               setStatus('connecting')
-              console.log('[WebRTC] Received offer, setting remote description')
+              console.log('[WebRTC-Diag] offer/answer state: Received offer, setting remote description')
               await pc.setRemoteDescription(new RTCSessionDescription(data.offer))
               
               for (const c of pendingCandidates) {
@@ -138,12 +147,12 @@ export default function VideoChat({ sessionId, children, onLeave }) {
               }
               pendingCandidates = []
 
-              console.log('[WebRTC] Creating answer')
+              console.log('[WebRTC-Diag] offer/answer state: Creating answer')
               const answer = await pc.createAnswer()
               await pc.setLocalDescription(answer)
               ws.send(JSON.stringify({ type: 'answer', answer }))
             } else if (data.type === 'answer') {
-              console.log('[WebRTC] Received answer, setting remote description')
+              console.log('[WebRTC-Diag] offer/answer state: Received answer, setting remote description')
               await pc.setRemoteDescription(new RTCSessionDescription(data.answer))
               for (const c of pendingCandidates) {
                 await pc.addIceCandidate(new RTCIceCandidate(c))
@@ -183,7 +192,7 @@ export default function VideoChat({ sessionId, children, onLeave }) {
         }
 
       } catch (err) {
-        console.error('[WebRTC-Diag] local getUserMedia or init failed:', err)
+        console.error('[WebRTC-Diag] local getUserMedia or init failed:', err.name, err.message, err)
         if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
           setErrorMsg('Camera or microphone permission denied. Please allow access.')
         } else if (err.name === 'NotFoundError') {
@@ -207,9 +216,17 @@ export default function VideoChat({ sessionId, children, onLeave }) {
     }
   }, [sessionId])
 
+
+  useEffect(() => {
+    if (localVideoRef.current && stream) {
+      console.log('[WebRTC-Diag] local video element stream assigned')
+      localVideoRef.current.srcObject = stream
+    }
+  }, [stream])
+
   useEffect(() => {
     if (remoteVideoRef.current && remoteStream) {
-      console.log('[WebRTC-Diag] Remote video stream assigned to video element')
+      console.log('[WebRTC-Diag] remote stream assigned')
       remoteVideoRef.current.srcObject = remoteStream
     }
   }, [remoteStream])
