@@ -206,7 +206,7 @@ function SessionRoomComponent() {
             {/* Full-screen overlays for Notes & Materials */}
             {activeTab === 'Notes' && (
               <div className="absolute inset-0 z-50 flex flex-col bg-surface overflow-y-auto">
-                <Notes session={session} onBack={() => setActiveTab(prevTab)} />
+                <Notes session={session} onBack={() => setActiveTab(prevTab)} onCompleteSuccess={() => navigate('/dashboard')} />
               </div>
             )}
             

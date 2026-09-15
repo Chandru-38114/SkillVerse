@@ -1,9 +1,9 @@
-﻿import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { api, getSessionUser } from "../api";
 import { ChevronLeft, CheckCircle2 } from "lucide-react";
 
 
-export default function Notes({ session, onBack }) {
+export default function Notes({ session, onBack, onCompleteSuccess }) {
   const [data, setData] = useState({
     topics_discussed: "",
     topics_completed: "",
@@ -70,10 +70,13 @@ export default function Notes({ session, onBack }) {
       await api.saveSessionNotes(sessionId, data);
       const res = await api.completeSessionProgress(sessionId);
       setIsCompleted(true);
-      alert(`Session completed successfully! New progress: ${res.progress_percentage}%`);
+      if (typeof onCompleteSuccess === 'function') {
+        onCompleteSuccess();
+      } else {
+        alert(`Session completed successfully! New progress: ${res.progress_percentage}%`);
+      }
     } catch (err) {
       setError(err.message);
-    } finally {
       setCompleting(false);
     }
   };

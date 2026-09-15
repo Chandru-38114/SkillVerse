@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { REACTION_EMOJIS, getEmojiForKey } from '../utils/emojis'
 import { getSessionUser } from '../api'
-import { Mic, MicOff, Video, VideoOff, Hand, Smile } from 'lucide-react'
+import { Mic, MicOff, Video, VideoOff, Hand, Smile , User } from 'lucide-react'
 
 // STUN servers for WebRTC
 const iceServers = {
@@ -276,7 +277,7 @@ export default function VideoChat({ sessionId, children, onLeave }) {
           )}
           {peerHandRaised && (
             <div className="absolute top-12 left-1/2 -translate-x-1/2 md:top-2 md:left-auto md:right-2 z-30 bg-brand text-white px-3 py-1.5 rounded-lg text-sm font-bold animate-bounce shadow-lg shadow-brand/20 flex items-center gap-2">
-              âœ‹ Hand Raised
+              <Hand size={18} /> Hand Raised
             </div>
           )}
           {activeEmojis.map(e => (
@@ -284,7 +285,7 @@ export default function VideoChat({ sessionId, children, onLeave }) {
               key={e.id} 
               className={`absolute z-40 text-4xl animate-float-up pointer-events-none ${e.isLocal ? 'right-4 bottom-4' : 'left-1/2 bottom-0 -translate-x-1/2'}`}
             >
-              {e.emoji}
+              {getEmojiForKey(e.emoji)}
             </div>
           ))}
           {status === 'disconnected' && (
@@ -305,7 +306,7 @@ export default function VideoChat({ sessionId, children, onLeave }) {
               />
             ) : (
               <div className="w-full h-full flex flex-col items-center justify-center">
-                <span className="text-white/20 text-2xl mb-1">ðŸ‘¤</span>
+                <span className="text-white/20 text-2xl mb-1"><User size={32} /></span>
                 <p className="font-medium text-white/30 text-[10px]">
                   {status === 'waiting' ? 'Waiting' : 'Connecting'}
                 </p>
@@ -383,9 +384,9 @@ export default function VideoChat({ sessionId, children, onLeave }) {
               <Smile size={18} />
             </button>
             <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:flex bg-surface border border-line rounded-full shadow-xl p-1 gap-1 flex-col">
-              {['👍', '❤️', '😂', '🔥', '🎉'].map(emoji => (
-                <button key={emoji} onClick={() => sendReaction(emoji)} className="w-8 h-8 rounded-full hover:bg-ink/5 flex items-center justify-center text-lg transition-transform hover:scale-125">
-                  {emoji}
+              {REACTION_EMOJIS.map(em => (
+                <button key={em.key} onClick={() => sendReaction(em.key)} className="w-8 h-8 rounded-full hover:bg-ink/5 flex items-center justify-center text-lg transition-transform hover:scale-125">
+                  {em.emoji}
                 </button>
               ))}
             </div>

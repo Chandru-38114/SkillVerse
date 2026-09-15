@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useRef, useState, useCallback } from 'react'
+import React, { useEffect, useRef, useState, useCallback } from 'react'
 import { formatTime, formatDateTime, createIstToUtcDate , getTodayIstYMD} from '../utils/dateTime'
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
 import { api, chatSocketUrl, getSessionUser, getAvatarUrl, BASE_URL } from '../api'
@@ -13,8 +13,8 @@ import DateTimePicker from '../components/DateTimePicker'
 
 const RECONNECT_DELAY_MS = 2000
 const MAX_RECONNECT_DELAY_MS = 10000
-const REACTION_EMOJIS = ['👍', '❤️', '😂', '🔥', '🎉']
-const COMPOSE_EMOJIS = ['👍', '❤️', '😂', '🔥', '🎉']
+import { REACTION_EMOJIS, getEmojiForKey } from '../utils/emojis'
+
 
 // Ã¢â€â‚¬Ã¢â€â‚¬ Utilities Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
@@ -98,25 +98,25 @@ function ReplyPreview({ msg, onCancel }) {
   )
 }
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ Reactions display Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// Reactions display
 
 function ReactionBubbles({ reactions, messageId, currentUserId, onToggle }) {
   if (!reactions || Object.keys(reactions).length === 0) return null
   return (
     <div className="flex flex-wrap gap-1 mt-1">
-      {Object.entries(reactions).map(([emoji, users]) => {
+      {Object.entries(reactions).map(([reactionKey, users]) => {
         const mine = users.includes(currentUserId)
         return (
           <button
-            key={emoji}
-            onClick={() => onToggle(messageId, emoji)}
+            key={reactionKey}
+            onClick={() => onToggle(messageId, reactionKey)}
             className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-xs border transition-colors ${
               mine
                 ? 'bg-brand/15 border-brand/30 text-brand font-semibold'
                 : 'bg-lift border-line text-clay hover:bg-brand/10 hover:border-brand/20 hover:text-brand'
             }`}
           >
-            <span>{emoji}</span>
+            <span>{getEmojiForKey(reactionKey)}</span>
             <span className="font-semibold">{users.length}</span>
           </button>
         )
@@ -292,11 +292,11 @@ function MessageBubble({ m, reqId, isMe, isConsecutive, currentUserId, allMessag
                   <div className={`absolute bottom-full mb-1 ${isMe ? 'right-0' : 'left-0'} emoji-popover`}>
                     {REACTION_EMOJIS.map(em => (
                       <button
-                        key={em}
-                        onClick={() => { onToggleReaction(m.id, em); setEmojiBarOpen(false) }}
+                        key={em.key}
+                        onClick={() => { onToggleReaction(m.id, em.key); setEmojiBarOpen(false) }}
                         className="text-lg hover:scale-125 transition-transform p-0.5 min-w-[32px] min-h-[32px]"
                       >
-                        {em}
+                        {em.emoji}
                       </button>
                     ))}
                   </div>
@@ -1214,14 +1214,14 @@ function SessionCard({ conv, onCancel, navigate }) {
                 {showEmojiPicker && (
                   <div className="absolute bottom-full left-2 mb-2 bg-lift border border-line shadow-elev-3 rounded-xl p-3 w-64 z-30">
                     <div className="flex flex-wrap gap-1.5">
-                      {COMPOSE_EMOJIS.map(em => (
+                      {REACTION_EMOJIS.map(em => (
                         <button
-                          key={em}
+                          key={em.key}
                           type="button"
-                          onClick={() => { setDraft(d => d + em); setShowEmojiPicker(false); inputRef.current?.focus() }}
+                          onClick={() => { setDraft(d => d + em.emoji); setShowEmojiPicker(false); inputRef.current?.focus() }}
                           className="text-xl hover:scale-125 transition-transform p-1 min-w-[36px] min-h-[36px]"
                         >
-                          {em}
+                          {em.emoji}
                         </button>
                       ))}
                     </div>
