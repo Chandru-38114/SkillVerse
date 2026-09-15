@@ -1,4 +1,6 @@
-import React, { useState, useEffect } from 'react';
+﻿const fs = require('fs');
+
+const newContent = import React, { useState, useEffect } from 'react';
 import { Calendar as CalendarIcon, Clock, X } from 'lucide-react';
 
 function formatTimeDisplay(time24) {
@@ -7,7 +9,7 @@ function formatTimeDisplay(time24) {
   let h = parseInt(hStr, 10);
   const ampm = h >= 12 ? 'PM' : 'AM';
   h = h % 12 || 12;
-  return `${h}:${mStr} ${ampm}`;
+  return \\:\ \\;
 }
 
 export default function DateTimePicker({ date, startTime, endTime, onDateChange, onStartTimeChange, onEndTimeChange, minDate }) {
@@ -36,7 +38,7 @@ export default function DateTimePicker({ date, startTime, endTime, onDateChange,
     const y = d.getFullYear();
     const m = String(d.getMonth() + 1).padStart(2, '0');
     const day = String(d.getDate()).padStart(2, '0');
-    return `${y}-${m}-${day}`;
+    return \\-\-\\;
   };
 
   const formatDay = (d) => {
@@ -69,7 +71,7 @@ export default function DateTimePicker({ date, startTime, endTime, onDateChange,
   const handleDone = () => {
     let h24 = selectedHour === 12 ? 0 : selectedHour;
     if (selectedPeriod === 'PM') h24 += 12;
-    const time24 = `${String(h24).padStart(2, '0')}:${String(selectedMin).padStart(2, '0')}`;
+    const time24 = \\:\\;
     if (pickerType === 'start') {
       onStartTimeChange(time24);
       if (!endTime || time24 >= endTime) {
@@ -79,7 +81,7 @@ export default function DateTimePicker({ date, startTime, endTime, onDateChange,
           em -= 60;
           eh24 = (eh24 + 1) % 24;
         }
-        onEndTimeChange(`${String(eh24).padStart(2, '0')}:${String(em).padStart(2, '0')}`);
+        onEndTimeChange(\\:\\);
       }
     } else {
       onEndTimeChange(time24);
@@ -107,14 +109,10 @@ export default function DateTimePicker({ date, startTime, endTime, onDateChange,
                 key={i}
                 type="button"
                 onClick={() => onDateChange(full)}
-                className={`snap-start shrink-0 flex flex-col items-center justify-center w-16 h-20 rounded-xl border transition-all ${
-                  selected 
-                    ? 'bg-brand text-white border-brand shadow-md shadow-brand/20 ring-2 ring-brand/20 ring-offset-2 ring-offset-surface' 
-                    : 'bg-lift border-line text-clay hover:bg-line/50 hover:text-ink'
-                }`}
+                className={\snap-start shrink-0 flex flex-col items-center justify-center w-16 h-20 rounded-xl border transition-all \\}
               >
-                <span className={`text-xs font-medium mb-1 ${selected ? 'text-brandLight' : ''}`}>{dayName}</span>
-                <span className={`text-xl font-bold ${selected ? 'text-white' : 'text-ink'}`}>{dateNum}</span>
+                <span className={\	ext-xs font-medium mb-1 \\}>{dayName}</span>
+                <span className={\	ext-xl font-bold \\}>{dateNum}</span>
               </button>
             );
           })}
@@ -161,14 +159,14 @@ export default function DateTimePicker({ date, startTime, endTime, onDateChange,
             <div className="flex justify-center items-end gap-2 mb-6">
               <button 
                 onClick={() => setStep('hour')}
-                className={`text-4xl font-display font-bold px-2 py-1 rounded-lg transition-colors ${step === 'hour' ? 'text-brand bg-brand/10' : 'text-ink hover:bg-lift'}`}
+                className={\	ext-4xl font-display font-bold px-2 py-1 rounded-lg transition-colors \\}
               >
                 {String(selectedHour).padStart(2, '0')}
               </button>
               <span className="text-4xl font-display font-bold text-clay pb-1">:</span>
               <button 
                 onClick={() => setStep('minute')}
-                className={`text-4xl font-display font-bold px-2 py-1 rounded-lg transition-colors ${step === 'minute' ? 'text-brand bg-brand/10' : 'text-ink hover:bg-lift'}`}
+                className={\	ext-4xl font-display font-bold px-2 py-1 rounded-lg transition-colors \\}
               >
                 {String(selectedMin).padStart(2, '0')}
               </button>
@@ -176,11 +174,11 @@ export default function DateTimePicker({ date, startTime, endTime, onDateChange,
               <div className="flex flex-col ml-2 bg-lift rounded-lg overflow-hidden border border-line">
                 <button 
                   onClick={() => setSelectedPeriod('AM')}
-                  className={`px-3 py-1.5 text-sm font-semibold transition-colors ${selectedPeriod === 'AM' ? 'bg-brand text-white' : 'text-clay hover:text-ink hover:bg-surface'}`}
+                  className={\px-3 py-1.5 text-sm font-semibold transition-colors \\}
                 >AM</button>
                 <button 
                   onClick={() => setSelectedPeriod('PM')}
-                  className={`px-3 py-1.5 text-sm font-semibold transition-colors ${selectedPeriod === 'PM' ? 'bg-brand text-white' : 'text-clay hover:text-ink hover:bg-surface'}`}
+                  className={\px-3 py-1.5 text-sm font-semibold transition-colors \\}
                 >PM</button>
               </div>
             </div>
@@ -190,9 +188,9 @@ export default function DateTimePicker({ date, startTime, endTime, onDateChange,
                 <div className="grid grid-cols-4 gap-2">
                   {[1,2,3,4,5,6,7,8,9,10,11,12].map(h => (
                     <button
-                      key={`h-${h}`}
+                      key={\h-\\}
                       onClick={() => { setSelectedHour(h); setStep('minute'); }}
-                      className={`h-12 rounded-xl text-lg font-medium transition-all ${selectedHour === h ? 'bg-brand text-white shadow-md shadow-brand/20' : 'bg-lift text-ink border border-line hover:border-brand/30 hover:bg-brand/5'}`}
+                      className={\h-12 rounded-xl text-lg font-medium transition-all \\}
                     >
                       {h}
                     </button>
@@ -202,9 +200,9 @@ export default function DateTimePicker({ date, startTime, endTime, onDateChange,
                 <div className="grid grid-cols-6 gap-2">
                   {Array.from({ length: 60 }).map((_, m) => (
                     <button
-                      key={`m-${m}`}
+                      key={\m-\\}
                       onClick={() => setSelectedMin(m)}
-                      className={`h-10 rounded-lg text-sm font-medium transition-all ${selectedMin === m ? 'bg-brand text-white shadow-md shadow-brand/20' : 'bg-lift text-ink border border-line hover:border-brand/30 hover:bg-brand/5'}`}
+                      className={\h-10 rounded-lg text-sm font-medium transition-all \\}
                     >
                       {String(m).padStart(2, '0')}
                     </button>
@@ -223,3 +221,6 @@ export default function DateTimePicker({ date, startTime, endTime, onDateChange,
     </div>
   );
 }
+;
+
+fs.writeFileSync('frontend/src/components/DateTimePicker.jsx', newContent, 'utf8');

@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { api, getSessionUser } from '../api'
 import VideoChat from '../components/VideoChat'
@@ -33,8 +33,7 @@ function SessionRoomComponent() {
       try {
         const s = await api.getSession(sessionId)
         setSession(s)
-        const r = await api.getConnectionRequest(s.request_id)
-        setReq(r)
+        setReq(s.request)
       } catch (err) {
         setError(err.message || 'Failed to load session')
       }

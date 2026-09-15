@@ -1,20 +1,27 @@
+﻿import os
 import re
 
-def fix_imports(filepath, new_import):
-    with open(filepath, 'r', encoding='utf-8') as f:
-        content = f.read()
-    
-    if new_import not in content:
-        # Just insert it after the React import
-        content = re.sub(
-            r"(import React.*?from 'react'.*?\n)",
-            r"\1" + new_import + "\n",
-            content,
-            count=1
-        )
-        with open(filepath, 'w', encoding='utf-8') as f:
-            f.write(content)
-        print(f"Fixed imports for {filepath}")
+files = [
+    'frontend/src/pages/messages.jsx',
+    'frontend/src/pages/requests.jsx',
+    'frontend/src/pages/sessions.jsx',
+    'frontend/src/pages/chat.jsx'
+]
 
-fix_imports('frontend/src/pages/chat.jsx', "import { formatTime, createIstToUtcDate } from '../utils/dateTime'")
-fix_imports('frontend/src/pages/requests.jsx', "import { createIstToUtcDate } from '../utils/dateTime'")
+for f in files:
+    with open(f, 'r', encoding='utf-8') as file:
+        content = file.read()
+    
+    # We want to add getTodayIstYMD to the import block from '../utils/dateTime'
+    # It looks like: import { something, something } from '../utils/dateTime'
+    
+    def replacer(match):
+        imports = match.group(1)
+        if 'getTodayIstYMD' not in imports:
+            imports += ', getTodayIstYMD'
+        return f"import {{{imports}}} from '../utils/dateTime'"
+        
+    content = re.sub(r"import\s+\{([^}]+)\}\s+from\s+'\.\./utils/dateTime'", replacer, content)
+    
+    with open(f, 'w', encoding='utf-8') as file:
+        file.write(content)

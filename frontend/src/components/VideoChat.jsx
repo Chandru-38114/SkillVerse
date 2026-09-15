@@ -1,6 +1,7 @@
-﻿import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getSessionUser } from '../api'
+import { Mic, MicOff, Video, VideoOff, Hand, Smile } from 'lucide-react'
 
 // STUN servers for WebRTC
 const iceServers = {
@@ -358,14 +359,14 @@ export default function VideoChat({ sessionId, children, onLeave }) {
             className={`w-10 h-10 rounded-full flex items-center justify-center transition-all text-base ${isMuted ? 'bg-red-100 text-red-600 hover:bg-red-200' : 'bg-ink/5 text-ink hover:bg-ink/10'}`}
             title={isMuted ? 'Unmute' : 'Mute'}
           >
-            {isMuted ? 'ðŸ”‡' : 'ðŸŽ™ï¸'}
+            {isMuted ? <MicOff size={18} /> : <Mic size={18} />}
           </button>
           <button
             onClick={toggleVideo}
             className={`w-10 h-10 rounded-full flex items-center justify-center transition-all text-base ${isVideoOff ? 'bg-red-100 text-red-600 hover:bg-red-200' : 'bg-ink/5 text-ink hover:bg-ink/10'}`}
             title={isVideoOff ? 'Turn Camera On' : 'Turn Camera Off'}
           >
-            {isVideoOff ? 'ðŸš«' : 'ðŸ“·'}
+            {isVideoOff ? <VideoOff size={18} /> : <Video size={18} />}
           </button>
           <div className="w-px h-8 bg-line mx-2"></div>
           
@@ -374,15 +375,15 @@ export default function VideoChat({ sessionId, children, onLeave }) {
             className={`w-10 h-10 rounded-full flex items-center justify-center transition-all text-base ${handRaised ? 'bg-brand text-white shadow-lg shadow-brand/20' : 'bg-ink/5 text-ink hover:bg-ink/10'}`}
             title="Raise Hand"
           >
-            âœ‹
+            <Hand size={18} />
           </button>
           
           <div className="relative group">
             <button className="w-10 h-10 rounded-full flex items-center justify-center transition-all text-base bg-ink/5 text-ink hover:bg-ink/10" title="React">
-              ðŸ˜Š
+              <Smile size={18} />
             </button>
             <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:flex bg-surface border border-line rounded-full shadow-xl p-1 gap-1 flex-col">
-              {['ðŸ‘', 'â¤ï¸', 'ðŸ˜‚', 'ðŸŽ‰', 'ðŸ”¥'].map(emoji => (
+              {['👍', '❤️', '😂', '🔥', '🎉'].map(emoji => (
                 <button key={emoji} onClick={() => sendReaction(emoji)} className="w-8 h-8 rounded-full hover:bg-ink/5 flex items-center justify-center text-lg transition-transform hover:scale-125">
                   {emoji}
                 </button>
