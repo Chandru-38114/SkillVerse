@@ -6,7 +6,7 @@ import {
   ArrowLeft, Paperclip, Calendar, Smile, Search, X, Send,
   MoreVertical, Trash, Trash2, Pencil, Copy, CornerUpLeft, Forward,
   MessageCircle, Hand, Check, CheckCheck, ChevronUp, ChevronDown, MoreHorizontal,
-  Mic, FileText
+  Mic, FileText, Square
 } from 'lucide-react'
 import BackButton from '../components/BackButton'
 import DateTimePicker from '../components/DateTimePicker'

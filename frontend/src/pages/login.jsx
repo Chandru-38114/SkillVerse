@@ -33,7 +33,11 @@ export default function Login() {
         navigate('/verify-email')
       } else {
         console.log('[LOGIN] Navigating to /dashboard')
+        if (!user.college || user.college.trim() === '') {
+        navigate('/onboarding')
+      } else {
         navigate('/dashboard')
+      }
       }
     } catch (err) {
       console.error('[LOGIN] Error caught in handleSubmit:', err)
@@ -48,7 +52,11 @@ export default function Login() {
     try {
       const { access_token, user } = await api.googleAuth(credentialResponse.credential)
       saveSession(access_token, user)
-      navigate('/dashboard')
+      if (!user.college || user.college.trim() === '') {
+        navigate('/onboarding')
+      } else {
+        navigate('/dashboard')
+      }
     } catch (err) {
       setError(err.message || 'Google authentication failed')
     }

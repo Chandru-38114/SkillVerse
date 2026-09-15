@@ -1,3 +1,5 @@
+const COMMON_EMOJIS = ["👍","👎","❤️","🔥","✨","✅","👀","💯","🎉","😂","🙏","🚀","💡","🤷","👏","😅","🙌","😎","😭","🤝"];
+
 ﻿import React, { useEffect, useRef, useState } from 'react'
 import { formatTime, createIstToUtcDate , getTodayIstYMD} from '../utils/dateTime'
 import { Link } from 'react-router-dom'
@@ -6,8 +8,6 @@ import { ArrowLeft, MessageCircle, Paperclip, Calendar, Image as ImageIcon, File
 
 const RECONNECT_DELAY_MS = 2000
 const MAX_RECONNECT_DELAY_MS = 10000
-
-const COMMON_EMOJIS = ["Ã°Å¸â€˜Â","Ã°Å¸â€˜Å½","Ã¢ÂÂ¤Ã¯Â¸Â","Ã°Å¸â€Â¥","Ã¢Å“Â¨","Ã¢Å“â€¦","Ã°Å¸Â¤â€Ã°Å¸â€˜â‚¬","Ã°Å¸â€™Â¯","Ã°Å¸Å½â€°","Ã°Å¸Ëœâ€š","Ã°Å¸â„¢Â","Ã°Å¸Å¡â‚¬","Ã°Å¸â€™Â¡","Ã°Å¸Â¤Â·","Ã°Å¸â€˜Â","Ã°Å¸Ëœâ€¦","Ã°Å¸â„¢Å’","Ã°Å¸ËœÅ½","Ã°Å¸ËœÂ­","Ã°Å¸Â¤Â"]
 
 export default function Chat({ requestId, embedded = false }) {
   const user = getSessionUser()

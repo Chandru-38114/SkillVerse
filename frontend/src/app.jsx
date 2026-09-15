@@ -5,6 +5,7 @@ import Navbar from './components/navbar'
 import ProtectedRoute from './components/protectedroute'
 import Landing from './pages/landing'
 import Signup from './pages/signup'
+import Onboarding from './pages/onboarding'
 import Login from './pages/login'
 import ForgotPassword from './pages/forgot_password'
 import VerifyEmail from './pages/verify_email'
@@ -74,6 +75,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<RootRedirect />} /><Route path="/landing" element={<Landing />} />
           <Route path="/signup" element={<Signup />} />
+          <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
           <Route path="/login" element={<Login />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/verify-email" element={<VerifyEmail />} />
