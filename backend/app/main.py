@@ -1,4 +1,5 @@
 import os
+from sqlalchemy import text
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -63,7 +64,6 @@ async def lifespan(app: FastAPI):
             # Manual safe migration for existing DBs that lack dob/gender
 
             with engine.begin() as conn:
-                from sqlalchemy import text
                 try:
                     conn.execute(text("ALTER TABLE users ADD COLUMN dob VARCHAR;"))
                     print("[startup] Added dob column.")
