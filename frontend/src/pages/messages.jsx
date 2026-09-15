@@ -66,11 +66,11 @@ function MessageRenderer({ content }) {
 
 function ConnectionBadge({ state }) {
   const cfg = {
-    connecting:   { label: 'ConnectingÃ¢â‚¬Â¦',   dot: 'bg-amber-400 animate-pulse' },
+    connecting:   { label: 'Connecting...',   dot: 'bg-amber-400 animate-pulse' },
     live:         { label: 'Online',          dot: 'bg-emerald-500' },
-    reconnecting: { label: 'ReconnectingÃ¢â‚¬Â¦',  dot: 'bg-orange-400 animate-pulse' },
+    reconnecting: { label: 'Reconnecting...',  dot: 'bg-orange-400 animate-pulse' },
     offline:      { label: 'Offline',         dot: 'bg-ink/25' },
-  }[state] || { label: 'ConnectingÃ¢â‚¬Â¦', dot: 'bg-amber-400 animate-pulse' }
+  }[state] || { label: 'Connecting...', dot: 'bg-amber-400 animate-pulse' }
 
   return (
     <span className="flex items-center gap-1 text-[10px] text-ink/50 font-medium">
@@ -1069,7 +1069,10 @@ function SessionCard({ conv, onCancel, navigate }) {
                       {activeConversation.other_user_name}
                     </h2>
                     <div className="flex items-center gap-2 text-[11px] font-medium mt-0.5">
-                      <ConnectionBadge state={connectionState} />
+                      <span className="flex items-center gap-1.5 text-xs text-ink/40 font-mono">
+                        <span className={`w-1.5 h-1.5 rounded-full ${otherPresence.status === 'online' ? 'bg-emerald-500' : 'bg-ink/30'}`} />
+                        {otherPresence.status === 'online' ? 'Online' : 'Offline'}
+                      </span>
                       <span className="text-line">&bull;</span>
                       <span className="text-brand font-bold uppercase tracking-wider">{activeConversation.skill_name}</span>
                       {otherPresence.status !== 'online' && otherPresence.last_active && (
@@ -1317,7 +1320,7 @@ function SessionCard({ conv, onCancel, navigate }) {
 
                     <button
                       type="submit"
-                      disabled={!draft.trim() || sending}
+                      disabled={!draft.trim() || connectionState === 'connecting'}
                       className={`mb-1 sm:mb-0 w-10 h-10 sm:w-11 sm:h-11 flex items-center justify-center rounded-full transition-all shrink-0 ${
                         draft.trim() 
                           ? 'bg-brand text-white shadow-lg shadow-brand/20 hover:scale-105 active:scale-95' 

@@ -31,25 +31,40 @@ export default function VideoChat({ sessionId, children, onLeave }) {
   const streamRef = useRef(null)
 
   useEffect(() => {
+    let ignore = false
     let ws = null
     let pc = null
 
     async function init() {
       try {
+        console.log('[WebRTC] Requesting local media...')
         const localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+        if (ignore) {
+          localStream.getTracks().forEach((track) => track.stop())
+          return
+        }
+        console.log('[WebRTC] Local media obtained')
         setStream(localStream)
         streamRef.current = localStream
+
+        // Update state from actual tracks (important if permissions auto-muted)
+        const audioTrack = localStream.getAudioTracks()[0]
+        const videoTrack = localStream.getVideoTracks()[0]
+        if (audioTrack) setIsMuted(!audioTrack.enabled)
+        if (videoTrack) setIsVideoOff(!videoTrack.enabled)
 
         if (localVideoRef.current) {
           localVideoRef.current.srcObject = localStream
         }
 
+        console.log('[WebRTC] Creating RTCPeerConnection...')
         pc = new RTCPeerConnection(iceServers)
         pcRef.current = pc
 
         localStream.getTracks().forEach((track) => pc.addTrack(track, localStream))
 
         pc.ontrack = (event) => {
+          console.log('[WebRTC] Remote track received')
           if (event.streams && event.streams[0]) {
             setRemoteStream(event.streams[0])
             setStatus('connected')
@@ -65,19 +80,23 @@ export default function VideoChat({ sessionId, children, onLeave }) {
 
         pc.onicecandidate = (event) => {
           if (event.candidate && ws && ws.readyState === WebSocket.OPEN) {
+            console.log('[WebRTC] Sending ICE candidate')
             ws.send(JSON.stringify({ type: 'candidate', candidate: event.candidate }))
           }
         }
 
+        console.log('[WebRTC] Connecting to signaling server...')
         ws = new WebSocket(wsUrl)
         wsRef.current = ws
 
         ws.onopen = () => {
+          console.log('[WebRTC] Signaling server connected')
           ws.send(JSON.stringify({ type: 'hello', userId: currentUser?.id }))
         }
 
         ws.onmessage = async (event) => {
           const data = JSON.parse(event.data)
+          console.log('[WebRTC] Signaling message received:', data.type)
 
           try {
             if (data.type === 'peer_joined') {
@@ -88,7 +107,8 @@ export default function VideoChat({ sessionId, children, onLeave }) {
               const remoteUserId = data.userId || data.user_id
               
               if (remoteUserId && currentUser?.id > remoteUserId) {
-                if (pc.signalingState === 'stable') {
+                if (pc.signalingState === 'stable' || pc.signalingState === 'have-local-offer') {
+                  console.log('[WebRTC] Creating offer')
                   const offer = await pc.createOffer({ iceRestart: true })
                   await pc.setLocalDescription(offer)
                   ws.send(JSON.stringify({ type: 'offer', offer }))
@@ -97,6 +117,7 @@ export default function VideoChat({ sessionId, children, onLeave }) {
             } else if (data.type === 'offer') {
               if (pc.signalingState !== 'stable') return
               setStatus('connecting')
+              console.log('[WebRTC] Received offer, setting remote description')
               await pc.setRemoteDescription(new RTCSessionDescription(data.offer))
               
               for (const c of pendingCandidates) {
@@ -104,19 +125,23 @@ export default function VideoChat({ sessionId, children, onLeave }) {
               }
               pendingCandidates = []
 
+              console.log('[WebRTC] Creating answer')
               const answer = await pc.createAnswer()
               await pc.setLocalDescription(answer)
               ws.send(JSON.stringify({ type: 'answer', answer }))
             } else if (data.type === 'answer') {
+              console.log('[WebRTC] Received answer, setting remote description')
               await pc.setRemoteDescription(new RTCSessionDescription(data.answer))
               for (const c of pendingCandidates) {
                 await pc.addIceCandidate(new RTCIceCandidate(c))
               }
               pendingCandidates = []
             } else if (data.type === 'candidate') {
-              if (pc.remoteDescription) {
+              if (pc.remoteDescription && pc.remoteDescription.type) {
+                console.log('[WebRTC] Adding ICE candidate')
                 await pc.addIceCandidate(new RTCIceCandidate(data.candidate))
               } else {
+                console.log('[WebRTC] Queuing ICE candidate (no remote desc yet)')
                 pendingCandidates.push(data.candidate)
               }
             } else if (data.type === 'reaction') {
@@ -130,20 +155,22 @@ export default function VideoChat({ sessionId, children, onLeave }) {
                 }, 3000)
               }
             } else if (data.type === 'peer_left') {
+              console.log('[WebRTC] Peer left')
               setStatus('disconnected')
               setRemoteStream(null)
             }
           } catch (err) {
-            console.error('WebRTC signaling error:', err)
+            console.error('[WebRTC] Signaling processing error:', err)
           }
         }
 
         ws.onerror = () => {
+          console.error('[WebRTC] Signaling server connection error')
           setErrorMsg('Signaling server connection error.')
         }
 
       } catch (err) {
-        console.error(err)
+        console.error('[WebRTC] Initialization error:', err)
         if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
           setErrorMsg('Camera or microphone permission denied. Please allow access.')
         } else if (err.name === 'NotFoundError') {
@@ -157,6 +184,8 @@ export default function VideoChat({ sessionId, children, onLeave }) {
     init()
 
     return () => {
+      console.log('[WebRTC] Cleanup called')
+      ignore = true
       if (ws) ws.close()
       if (pc) pc.close()
       if (streamRef.current) {
@@ -221,7 +250,7 @@ export default function VideoChat({ sessionId, children, onLeave }) {
         className={`md:hidden w-8 h-8 rounded-full flex items-center justify-center transition-all text-xs ${handRaised ? 'bg-brand text-white shadow' : 'bg-white/20 text-white hover:bg-white/30 backdrop-blur-sm'}`}
         title="Raise Hand"
       >
-        âœ‹
+        <Hand size={16} />
       </button>
       <button
         onClick={() => (onLeave ? onLeave() : navigate('/sessions'))}
@@ -243,14 +272,14 @@ export default function VideoChat({ sessionId, children, onLeave }) {
         className={`w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center transition-all text-xs md:text-base ${isMuted ? 'bg-red-500 text-white shadow' : 'bg-white/20 text-white hover:bg-white/30 backdrop-blur-sm'}`}
         title={isMuted ? 'Unmute' : 'Mute'}
       >
-        {isMuted ? 'ðŸ”‡' : 'ðŸŽ™ï¸'}
+        {isMuted ? <MicOff size={16} /> : <Mic size={16} />}
       </button>
       <button
         onClick={toggleVideo}
         className={`w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center transition-all text-xs md:text-base ${isVideoOff ? 'bg-red-500 text-white shadow' : 'bg-white/20 text-white hover:bg-white/30 backdrop-blur-sm'}`}
         title={isVideoOff ? 'Turn Camera On' : 'Turn Camera Off'}
       >
-        {isVideoOff ? 'ðŸš«' : 'ðŸ“·'}
+        {isVideoOff ? <VideoOff size={16} /> : <Video size={16} />}
       </button>
       {/* Mobile Leave Button overlaid */}
       <button
