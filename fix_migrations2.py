@@ -1,28 +1,12 @@
-import os
-from sqlalchemy import text
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
+import re
 
-import asyncio
-from contextlib import asynccontextmanager
+with open('backend/app/main.py', 'r', encoding='utf-8') as f:
+    text = f.read()
 
-from .database import Base, engine
-from .routers import (
-    auth, users, assessments, marketplace, requests, chat, reviews,
-    sessions, compiler, whiteboard, materials, progress, certificates,
-    notifications, gamification,
-)
+# Replace the manual safe migration section
+old_block_pattern = re.compile(r'# Manual safe migration for timezone handling.*?except Exception as e:\s*print\(f"\[startup\] Database schema creation failed: \{e\}"\)', re.DOTALL)
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    def init_db():
-        try:
-            Base.metadata.create_all(engine)
-            print("[startup] Database schema ready.")
-            
-            
-            from sqlalchemy import inspect
+new_block = """from sqlalchemy import inspect
             inspector = inspect(engine)
             sessions_cols = [c['name'] for c in inspector.get_columns('sessions')] if inspector.has_table('sessions') else []
             users_cols = [c['name'] for c in inspector.get_columns('users')] if inspector.has_table('users') else []
@@ -92,97 +76,9 @@ async def lifespan(app: FastAPI):
                 else:
                     print("[startup] gender column already exists.")
         except Exception as e:
-            print(f"[startup] Database schema creation failed: {e}")
+            print(f"[startup] Database schema creation failed: {e}")"""
 
-    # Run DB schema creation in a background thread without awaiting it.
-    # This allows the lifespan to yield immediately, letting Uvicorn bind 
-    # the port instantly while the DB connection happens in the background.
-    loop = asyncio.get_event_loop()
-    loop.run_in_executor(None, init_db)
-    
-    yield
-    # (shutdown: nothing to clean up)
+text = old_block_pattern.sub(new_block, text)
 
-app = FastAPI(title="SkillVerse AI API", version="0.1.0", lifespan=lifespan)
-
-os.makedirs("uploads", exist_ok=True)
-app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
-
-# ---------------------------------------------------------------------------
-# CORS — allowed origins
-# Set FRONTEND_URL on Render to all production frontend origins, comma-separated.
-# Example:
-#   FRONTEND_URL=https://skill-verse-theta.vercel.app,https://whimsical-raindrop-f3df51.netlify.app
-# ADDITIONAL_ORIGINS can be used to append extra origins without replacing FRONTEND_URL.
-# localhost:5173 is always included for local development.
-# ---------------------------------------------------------------------------
-_ALWAYS_ALLOWED = ["http://localhost:5173"]
-
-_raw_frontend = os.environ.get("FRONTEND_URL", "")
-_raw_additional = os.environ.get("ADDITIONAL_ORIGINS", "")
-
-_all_raw = ",".join(filter(None, [_raw_frontend, _raw_additional]))
-_parsed = [o.strip().rstrip('/') for o in _all_raw.split(",") if o.strip()]
-
-# Merge and deduplicate while preserving order
-_seen: set = set()
-origins: list = []
-for _o in _ALWAYS_ALLOWED + _parsed:
-    if _o not in _seen:
-        _seen.add(_o)
-        origins.append(_o)
-
-print(f"[CORS] Allowed origins ({len(origins)}): {origins}")
-
-from fastapi.responses import JSONResponse
-from fastapi.requests import Request
-import traceback
-
-@app.exception_handler(Exception)
-async def global_exception_handler(request: Request, exc: Exception):
-    print(f"Unhandled Exception: {exc}")
-    traceback.print_exc()
-    
-    # We must explicitly add CORS headers here because FastAPI's default 500 handler strips them
-    origin = request.headers.get("origin")
-    headers = {}
-    if origin:
-        headers["access-control-allow-origin"] = origin
-        headers["access-control-allow-credentials"] = "true"
-        
-    return JSONResponse(
-        status_code=500,
-        content={"detail": f"Internal Server Error: {str(exc)}"},
-        headers=headers
-    )
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,
-    allow_origin_regex=r"https://.*\.vercel\.app",
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-app.include_router(auth.router)
-app.include_router(users.router)
-app.include_router(assessments.router)
-app.include_router(marketplace.router)
-app.include_router(requests.router)
-app.include_router(chat.router)
-app.include_router(sessions.router)
-app.include_router(compiler.router)
-app.include_router(whiteboard.router)
-app.include_router(materials.router)
-app.include_router(progress.router)
-app.include_router(reviews.router)
-app.include_router(certificates.router)
-app.include_router(notifications.router)
-app.include_router(gamification.router)
-
-
-
-@app.get("/")
-def root():
-    return {"status": "ok", "service": "SkillVerse AI API"}
+with open('backend/app/main.py', 'w', encoding='utf-8') as f:
+    f.write(text)
