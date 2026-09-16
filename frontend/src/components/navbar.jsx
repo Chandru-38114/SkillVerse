@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { Home, Compass, MessageCircle, Calendar, Inbox, Bell, TrendingUp, Trophy, User, Settings, LogOut, Menu, X } from 'lucide-react'
-import { getSessionUser, clearSession, api } from '../api'
+import { getSessionUser, clearSession, api, getAvatarUrl } from '../api'
 
 const NAV_LINKS = [
   { to: '/dashboard', label: 'Dashboard' },
@@ -248,11 +248,21 @@ export default function Navbar() {
                 )}
               </div>
 
-              {/* Desktop Points & Logout */}
+              {/* Desktop Points, Avatar & Logout */}
               <div className="items-center hidden xl:flex">
                 <span className="text-gold font-mono text-[11px] font-bold bg-gold/15 border border-gold/25 px-2.5 py-1 rounded-full shadow-sm mx-2">
                   {user.points ?? 0} pts
                 </span>
+                
+                {/* Desktop Avatar */}
+                <Link to="/profile" className="w-8 h-8 rounded-full bg-ink/10 flex items-center justify-center mx-2 overflow-hidden hover:opacity-80 transition-opacity border border-line">
+                  {user.profile_picture_url ? (
+                    <img src={getAvatarUrl(user.profile_picture_url)} alt="Profile" className="w-full h-full object-cover" />
+                  ) : (
+                    <User className="w-4 h-4 text-clay" />
+                  )}
+                </Link>
+
                 <div className="w-px h-5 bg-line mx-2"></div>
                 <button onClick={handleLogout} className="btn-ghost text-sm py-1.5 font-semibold text-clay">
                   Log out
@@ -302,7 +312,15 @@ export default function Navbar() {
                       : 'text-ink hover:bg-lift hover:text-brand'
                   }`}
                 >
-                  <span className={`w-6 flex items-center justify-center ${active ? 'text-brand' : 'text-clay'}`}>{icon}</span>
+                  <span className={`w-6 flex items-center justify-center ${active ? 'text-brand' : 'text-clay'}`}>
+                    {label === 'Profile' && user.profile_picture_url ? (
+                      <div className="w-5 h-5 rounded-full overflow-hidden border border-line flex-shrink-0">
+                        <img src={getAvatarUrl(user.profile_picture_url)} alt="Profile" className="w-full h-full object-cover" />
+                      </div>
+                    ) : (
+                      icon
+                    )}
+                  </span>
                   {label}
                   {label === 'Notifications' && unreadCount > 0 && (
                     <span className="ml-auto bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm">

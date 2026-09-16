@@ -61,17 +61,33 @@ export const api = {
   me: () => request("/users/me"),
   updateMe: (data) => request("/users/me", { method: "PUT", body: data }),
   changePassword: (current_password, new_password) => request("/users/me/password", { method: "PUT", body: { current_password, new_password } }),
-  uploadAvatar: (file) => {
+  uploadAvatar: async (file) => {
     const formData = new FormData();
     formData.append("file", file);
-    return fetch(`${BASE_URL}/users/me/avatar`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${getToken()}` },
-      body: formData,
-    }).then(res => {
-      if (!res.ok) throw new Error("Upload failed");
-      return res.json();
-    });
+    try {
+      const res = await fetch(`${BASE_URL}/users/me/avatar`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${getToken()}` },
+        body: formData,
+      });
+      if (!res.ok) {
+        let errMsg = `Upload failed (${res.status})`;
+        try {
+          const errData = await res.json();
+          errMsg = errData.detail || errData.message || res.statusText;
+        } catch (e) {}
+        throw new Error(errMsg);
+      }
+      const u = await res.json();
+      localStorage.setItem("skillverse_user", JSON.stringify(u));
+      window.dispatchEvent(new Event("skillverse_user_updated"));
+      return u;
+    } catch (error) {
+      if (error.name === 'TypeError' && error.message === 'Failed to fetch') {
+        throw new Error("Network connection failed.");
+      }
+      throw error;
+    }
   },
 
   refreshMe: async () => {
