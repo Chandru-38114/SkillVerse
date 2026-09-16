@@ -129,6 +129,8 @@ export const api = {
   mySessions: () => request("/sessions/my"),
   updateSession: (id, data) => request(`/sessions/${id}`, { method: "PUT", body: data }),
   cancelSession: (id) => request(`/sessions/${id}/cancel`, { method: "POST" }),
+  getTurnCredentials: () => request("/sessions/turn-credentials"),
+
 
   // Auth Verification
   requestEmailVerification: () => request("/auth/verify-email/request", { method: "POST" }),

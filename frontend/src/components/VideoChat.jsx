@@ -72,13 +72,16 @@ export default function VideoChat({ sessionId, children, onLeave }) {
           ]
         }
         try {
-          const resp = await api.get('/sessions/turn-credentials')
-          if (resp.data && resp.data.iceServers && resp.data.iceServers.length > 0) {
-            iceConfig.iceServers = [...iceConfig.iceServers, ...resp.data.iceServers]
-            console.log('[WebRTC] Successfully fetched dynamic TURN credentials')
+          console.log('[WebRTC] Request started: GET /sessions/turn-credentials')
+          const resp = await api.getTurnCredentials()
+          if (resp && resp.iceServers && resp.iceServers.length > 0) {
+            iceConfig.iceServers = [...iceConfig.iceServers, ...resp.iceServers]
+            console.log(`[WebRTC] Request succeeded - Status: 200, Added ${resp.iceServers.length} dynamic TURN credentials`)
+          } else {
+            console.log('[WebRTC] Request succeeded - Status: 200, but 0 TURN credentials returned.')
           }
         } catch (e) {
-          console.warn('[WebRTC-Diag] Failed to fetch TURN credentials from backend, falling back to STUN-only', e)
+          console.warn(`[WebRTC-Diag] Request failed - Status: Error, Message: ${e.message}. Falling back to STUN-only.`)
         }
 
         console.log('[WebRTC] Creating RTCPeerConnection...')
