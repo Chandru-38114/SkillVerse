@@ -205,20 +205,72 @@ def remove_avatar(
     supabase = get_supabase()
     old_url = current_user.profile_picture_url
     if old_url:
-        if "supabase.co/storage/v1/object/public/avatars/" in old_url:
-            old_filename = old_url.split("/")[-1]
+        target_path = "/storage/v1/object/public/avatars/"
+        if target_path in old_url:
+            old_filename = old_url.split(target_path)[-1].split("?")[0]
+            logger.info(f"Attempting to remove avatar object: {old_filename}")
+            
+            # 1. Try SDK deletion
+            deleted = False
             try:
-                supabase.storage.from_("avatars").remove([old_filename])
+                res = supabase.storage.from_("avatars").remove([old_filename])
+                if isinstance(res, list) and len(res) > 0:
+                    deleted = True
+                elif isinstance(res, dict) and res.get("error"):
+                    raise Exception(res.get("message", "SDK deletion error"))
             except Exception as e:
-                logger.warning(f"Failed to remove avatar from storage: {e}")
+                logger.warning(f"SDK failed to remove avatar '{old_filename}': {e}")
+            
+            # 2. If SDK didn't confirm deletion, try REST fallback
+            if not deleted:
+                from ..supabase_client import SUPABASE_URL, SUPABASE_KEY
+                import os
+                import requests
+                from urllib.parse import urlparse
+                
+                env_url = os.getenv("SUPABASE_URL")
+                if env_url:
+                    parsed = urlparse(env_url)
+                    base_url = f"{parsed.scheme}://{parsed.netloc}"
+                    url = f"{base_url}/storage/v1/object/avatars/{old_filename}"
+                    headers = {
+                        "apikey": SUPABASE_KEY,
+                        "Authorization": f"Bearer {SUPABASE_KEY}",
+                    }
+                    try:
+                        resp = requests.delete(url, headers=headers, timeout=30)
+                        if resp.status_code >= 400:
+                            err_dict = resp.json() if resp.text else {}
+                            msg = err_dict.get("message", err_dict.get("error", resp.text or "REST Delete failed"))
+                            # If it's already missing (404/400 containing 'not found'), we consider it success
+                            if resp.status_code == 404 or "not found" in msg.lower():
+                                logger.info(f"Avatar '{old_filename}' already missing from storage.")
+                                deleted = True
+                            else:
+                                logger.error(f"REST fallback delete failed: HTTP {resp.status_code} - {msg}")
+                                raise HTTPException(status_code=resp.status_code, detail=f"Storage deletion failed (HTTP {resp.status_code}): {msg}")
+                        else:
+                            logger.info(f"REST fallback delete succeeded for '{old_filename}'.")
+                            deleted = True
+                    except HTTPException:
+                        raise
+                    except Exception as rest_e:
+                        logger.error(f"REST fallback also failed: {str(rest_e)}")
+                        raise HTTPException(status_code=500, detail="Storage deletion failed. Check server logs.")
+                else:
+                    raise HTTPException(status_code=500, detail="Missing SUPABASE_URL for robust deletion.")
+                    
+            if not deleted:
+                raise HTTPException(status_code=500, detail="Failed to delete avatar from storage.")
+
         elif old_url.startswith("/uploads/avatars/"):
             old_path = old_url.lstrip("/")
             import os
             if os.path.exists(old_path):
                 try:
                     os.remove(old_path)
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.warning(f"Failed to remove local avatar file: {e}")
 
     current_user.profile_picture_url = None
     db.commit()
