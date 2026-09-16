@@ -77,7 +77,7 @@ class WebRTCManager:
         
         for uid in dead:
             del room[uid]
-        if room and not self.rooms[session_id]: # Cleanup if empty
+        if not room: # Cleanup if empty
             del self.rooms[session_id]
 
 

@@ -148,6 +148,37 @@ def save_compiler_state(
 
 from fastapi import WebSocket, WebSocketDisconnect
 import json
+import asyncio
+from starlette.concurrency import run_in_threadpool
+
+compiler_save_tasks = {}
+
+def _sync_save_compiler(session_id: int, new_code: str):
+    db_loop = SessionLocal()
+    try:
+        comp = db_loop.query(models.CompilerState).filter_by(session_id=session_id).first()
+        if not comp:
+            comp = models.CompilerState(session_id=session_id, code=new_code, version=1)
+            db_loop.add(comp)
+        else:
+            comp.code = new_code
+            comp.version += 1
+        db_loop.commit()
+    finally:
+        db_loop.close()
+
+async def debounced_save_compiler(session_id: int, new_code: str):
+    try:
+        await asyncio.sleep(2.0)
+        await run_in_threadpool(_sync_save_compiler, session_id, new_code)
+    except asyncio.CancelledError:
+        pass
+    finally:
+        if session_id in compiler_save_tasks:
+            # We don't want to delete a task if a new one replaced us, so this is risky.
+            # Usually it's fine to just let the dict be overwritten.
+            pass
+
 
 @router.websocket("/{session_id}/ws")
 async def compiler_websocket(websocket: WebSocket, session_id: int, token: str):
@@ -174,27 +205,20 @@ async def compiler_websocket(websocket: WebSocket, session_id: int, token: str):
                 msg = json.loads(data)
                 if msg.get("type") == "update_code":
                     new_code = msg.get("code")
-                    db_loop = SessionLocal()
-                    try:
-                        comp = db_loop.query(models.CompilerState).filter_by(session_id=session_id).first()
-                        if not comp:
-                            comp = models.CompilerState(session_id=session_id, code=new_code, version=1)
-                            db_loop.add(comp)
-                        else:
-                            comp.code = new_code
-                            comp.version += 1
-                        db_loop.commit()
-                        db_loop.refresh(comp)
-                        c_code = comp.code
-                        c_version = comp.version
-                    finally:
-                        db_loop.close()
+                    
+                    if session_id in compiler_save_tasks:
+                        compiler_save_tasks[session_id].cancel()
                         
-                    # Broadcast the event with version
+                    compiler_save_tasks[session_id] = asyncio.create_task(
+                        debounced_save_compiler(session_id, new_code)
+                    )
+                    
+                    # Broadcast immediately with a timestamp version
+                    import time
                     await compiler_manager.broadcast(session_id, user_id, json.dumps({
                         "type": "update_code",
-                        "code": c_code,
-                        "version": c_version
+                        "code": new_code,
+                        "version": int(time.time() * 1000)
                     }))
                 elif msg.get("type") == "execution_result":
                     await compiler_manager.broadcast(session_id, user_id, json.dumps({

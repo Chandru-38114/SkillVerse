@@ -391,21 +391,21 @@ export default function Whiteboard({ sessionId }) {
     }
 
     return (
-      <g key={el.id} onPointerDown={(e) => handleElementPointerDown(e, el)} onTouchStart={(e) => handleElementPointerDown(e, el)}>
+      <g key={el.id} onPointerDown={(e) => handleElementPointerDown(e, el)}>
         {hitArea}
         {shape}
         {isSelected && tool === 'select' && el.type !== 'pencil' && el.type !== 'text' && (el.type === 'line' || el.type === 'arrow') && (
           <>
-            <circle cx={el.x1} cy={el.y1} r={6} fill="white" stroke="#0d9488" strokeWidth={2} onPointerDown={(e) => handleResizeDown(e, el, 'tl')} onTouchStart={(e) => handleResizeDown(e, el, 'tl')} style={{cursor: 'pointer'}} />
-            <circle cx={el.x2} cy={el.y2} r={6} fill="white" stroke="#0d9488" strokeWidth={2} onPointerDown={(e) => handleResizeDown(e, el, 'br')} onTouchStart={(e) => handleResizeDown(e, el, 'br')} style={{cursor: 'pointer'}} />
+            <circle cx={el.x1} cy={el.y1} r={6} fill="white" stroke="#0d9488" strokeWidth={2} onPointerDown={(e) => handleResizeDown(e, el, 'tl')} style={{cursor: 'pointer'}} />
+            <circle cx={el.x2} cy={el.y2} r={6} fill="white" stroke="#0d9488" strokeWidth={2} onPointerDown={(e) => handleResizeDown(e, el, 'br')} style={{cursor: 'pointer'}} />
           </>
         )}
         {isSelected && tool === 'select' && el.type !== 'pencil' && el.type !== 'text' && el.type !== 'line' && el.type !== 'arrow' && (
           <>
-            <circle cx={el.x1} cy={el.y1} r={6} fill="white" stroke="#0d9488" strokeWidth={2} onPointerDown={(e) => handleResizeDown(e, el, 'tl')} onTouchStart={(e) => handleResizeDown(e, el, 'tl')} style={{cursor: 'nwse-resize'}} />
-            <circle cx={el.x2} cy={el.y1} r={6} fill="white" stroke="#0d9488" strokeWidth={2} onPointerDown={(e) => handleResizeDown(e, el, 'tr')} onTouchStart={(e) => handleResizeDown(e, el, 'tr')} style={{cursor: 'nesw-resize'}} />
-            <circle cx={el.x1} cy={el.y2} r={6} fill="white" stroke="#0d9488" strokeWidth={2} onPointerDown={(e) => handleResizeDown(e, el, 'bl')} onTouchStart={(e) => handleResizeDown(e, el, 'bl')} style={{cursor: 'nesw-resize'}} />
-            <circle cx={el.x2} cy={el.y2} r={6} fill="white" stroke="#0d9488" strokeWidth={2} onPointerDown={(e) => handleResizeDown(e, el, 'br')} onTouchStart={(e) => handleResizeDown(e, el, 'br')} style={{cursor: 'nwse-resize'}} />
+            <circle cx={el.x1} cy={el.y1} r={6} fill="white" stroke="#0d9488" strokeWidth={2} onPointerDown={(e) => handleResizeDown(e, el, 'tl')} style={{cursor: 'nwse-resize'}} />
+            <circle cx={el.x2} cy={el.y1} r={6} fill="white" stroke="#0d9488" strokeWidth={2} onPointerDown={(e) => handleResizeDown(e, el, 'tr')} style={{cursor: 'nesw-resize'}} />
+            <circle cx={el.x1} cy={el.y2} r={6} fill="white" stroke="#0d9488" strokeWidth={2} onPointerDown={(e) => handleResizeDown(e, el, 'bl')} style={{cursor: 'nesw-resize'}} />
+            <circle cx={el.x2} cy={el.y2} r={6} fill="white" stroke="#0d9488" strokeWidth={2} onPointerDown={(e) => handleResizeDown(e, el, 'br')} style={{cursor: 'nwse-resize'}} />
           </>
         )}
         {isSelected && tool === 'select' && (
@@ -491,9 +491,6 @@ export default function Whiteboard({ sessionId }) {
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onPointerLeave={handlePointerUp}
-        onTouchStart={handlePointerDown}
-        onTouchMove={handlePointerMove}
-        onTouchEnd={handlePointerUp}
       >
         <defs>
           <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse" patternTransform={`translate(${pan.x % 40}, ${pan.y % 40}) scale(${zoom})`}>

@@ -26,6 +26,7 @@ export default function Sessions() {
   useEffect(() => { load() }, [])
 
   async function handleCancel(id) {
+    if (!window.confirm("Are you sure you want to cancel this session?")) return;
     setError('')
     try {
       await api.cancelSession(id)
@@ -35,9 +36,13 @@ export default function Sessions() {
     }
   }
 
-  const upcoming = sessions.filter(
-    (s) => s.status === 'scheduled' && s.session_date >= getTodayIstYMD()
-  )
+  const upcoming = sessions.filter((s) => {
+    if (s.status !== 'scheduled') return false;
+    if (s.scheduled_end) {
+      return new Date(s.scheduled_end) > new Date();
+    }
+    return s.session_date >= getTodayIstYMD();
+  })
   const past = sessions.filter((s) => !upcoming.includes(s))
 
   return (

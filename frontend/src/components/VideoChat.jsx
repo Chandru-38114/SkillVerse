@@ -43,26 +43,29 @@ export default function VideoChat({ sessionId, children, onLeave }) {
     async function init() {
       try {
         console.log('[WebRTC-Diag] mediaDevices available:', !!navigator.mediaDevices)
-        console.log('[WebRTC-Diag] requesting camera/microphone')
-        const localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true })
-        if (ignore) {
-          localStream.getTracks().forEach((track) => track.stop())
-          return
-        }
-        console.log('[WebRTC-Diag] local stream obtained')
-        console.log('[WebRTC-Diag] video tracks count:', localStream.getVideoTracks().length, 'readyState:', localStream.getVideoTracks()[0]?.readyState)
-        console.log('[WebRTC-Diag] audio tracks count:', localStream.getAudioTracks().length, 'readyState:', localStream.getAudioTracks()[0]?.readyState)
-        setStream(localStream)
-        streamRef.current = localStream
+        let localStream = null;
+        try {
+          console.log('[WebRTC-Diag] requesting camera/microphone')
+          localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+          if (ignore) {
+            localStream.getTracks().forEach((track) => track.stop())
+            return
+          }
+          console.log('[WebRTC-Diag] local stream obtained')
+          setStream(localStream)
+          streamRef.current = localStream
 
-        // Update state from actual tracks (important if permissions auto-muted)
-        const audioTrack = localStream.getAudioTracks()[0]
-        const videoTrack = localStream.getVideoTracks()[0]
-        if (audioTrack) setIsMuted(!audioTrack.enabled)
-        if (videoTrack) setIsVideoOff(!videoTrack.enabled)
+          const audioTrack = localStream.getAudioTracks()[0]
+          const videoTrack = localStream.getVideoTracks()[0]
+          if (audioTrack) setIsMuted(!audioTrack.enabled)
+          if (videoTrack) setIsVideoOff(!videoTrack.enabled)
 
-        if (localVideoRef.current) {
-          localVideoRef.current.srcObject = localStream
+          if (localVideoRef.current) {
+            localVideoRef.current.srcObject = localStream
+          }
+        } catch (err) {
+          console.warn('[WebRTC-Diag] Media access denied or not found, continuing in spectator mode:', err.message)
+          // We intentionally do not set errorMsg to allow signaling and viewing remote streams
         }
 
         console.log('[WebRTC] Creating RTCPeerConnection...')
@@ -71,6 +74,9 @@ export default function VideoChat({ sessionId, children, onLeave }) {
 
         pc.oniceconnectionstatechange = () => {
           console.log('[WebRTC-Diag] ICE state:', pc.iceConnectionState)
+          if (pc.iceConnectionState === 'disconnected' || pc.iceConnectionState === 'failed') {
+            setStatus('disconnected')
+          }
         }
         pc.onconnectionstatechange = () => {
           console.log('[WebRTC-Diag] Connection State:', pc.connectionState)
@@ -82,12 +88,14 @@ export default function VideoChat({ sessionId, children, onLeave }) {
           console.log('[WebRTC-Diag] ICE Gathering State:', pc.iceGatheringState)
         }
 
-        localStream.getTracks().forEach((track) => pc.addTrack(track, localStream))
+        if (localStream) {
+          localStream.getTracks().forEach((track) => pc.addTrack(track, localStream))
+        }
 
         pc.ontrack = (event) => {
           console.log('[WebRTC-Diag] remote track received', event.track.kind, 'readyState:', event.track.readyState)
           if (event.streams && event.streams[0]) {
-            setRemoteStream(new MediaStream(event.streams[0].getTracks()))
+            setRemoteStream(event.streams[0])
             setStatus('connected')
           }
         }
@@ -143,7 +151,11 @@ export default function VideoChat({ sessionId, children, onLeave }) {
               await pc.setRemoteDescription(new RTCSessionDescription(data.offer))
               
               for (const c of pendingCandidates) {
-                await pc.addIceCandidate(new RTCIceCandidate(c))
+                try {
+                  await pc.addIceCandidate(new RTCIceCandidate(c))
+                } catch (e) {
+                  console.warn('[WebRTC] Failed to add pending ICE candidate', e)
+                }
               }
               pendingCandidates = []
 
@@ -155,13 +167,21 @@ export default function VideoChat({ sessionId, children, onLeave }) {
               console.log('[WebRTC-Diag] offer/answer state: Received answer, setting remote description')
               await pc.setRemoteDescription(new RTCSessionDescription(data.answer))
               for (const c of pendingCandidates) {
-                await pc.addIceCandidate(new RTCIceCandidate(c))
+                try {
+                  await pc.addIceCandidate(new RTCIceCandidate(c))
+                } catch (e) {
+                  console.warn('[WebRTC] Failed to add pending ICE candidate', e)
+                }
               }
               pendingCandidates = []
             } else if (data.type === 'candidate') {
               if (pc.remoteDescription && pc.remoteDescription.type) {
                 console.log('[WebRTC] Adding ICE candidate')
-                await pc.addIceCandidate(new RTCIceCandidate(data.candidate))
+                try {
+                  await pc.addIceCandidate(new RTCIceCandidate(data.candidate))
+                } catch (e) {
+                  console.warn('[WebRTC] Failed to add ICE candidate', e)
+                }
               } else {
                 console.log('[WebRTC] Queuing ICE candidate (no remote desc yet)')
                 pendingCandidates.push(data.candidate)
@@ -192,14 +212,8 @@ export default function VideoChat({ sessionId, children, onLeave }) {
         }
 
       } catch (err) {
-        console.error('[WebRTC-Diag] local getUserMedia or init failed:', err.name, err.message, err)
-        if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-          setErrorMsg('Camera or microphone permission denied. Please allow access.')
-        } else if (err.name === 'NotFoundError') {
-          setErrorMsg('No camera or microphone found.')
-        } else {
-          setErrorMsg(err.message || 'Failed to initialize video.')
-        }
+        console.error('[WebRTC-Diag] Initial WebRTC setup failed:', err)
+        setErrorMsg(err.message || 'Failed to initialize session.')
       }
     }
 
@@ -362,7 +376,7 @@ export default function VideoChat({ sessionId, children, onLeave }) {
                 autoPlay
                 playsInline
                 onLoadedMetadata={(e) => e.target.play().catch(console.error)}
-                className="w-full h-full object-cover"
+                className="w-full h-full object-contain bg-black"
               />
             ) : (
               <div className="w-full h-full flex flex-col items-center justify-center">

@@ -81,6 +81,8 @@ def _get_my_session(session_id: int, current_user: models.User, db: DBSession) -
     # Enforce expiration logic on the backend
     try:
         end_dt = s.scheduled_end
+        if end_dt and end_dt.tzinfo is None:
+            end_dt = end_dt.replace(tzinfo=dt.timezone.utc)
         if end_dt and utc_now() >= end_dt:
             if s.status not in ('completed', 'cancelled'):
                 s.status = 'completed'
@@ -190,9 +192,17 @@ def upcoming_sessions(
     # Filter out sessions that have already ended (or started > 2 hours ago if no end time)
     valid_rows = []
     for s in rows:
-        if s.scheduled_end and s.scheduled_end > now:
+        end_dt = s.scheduled_end
+        if end_dt and end_dt.tzinfo is None:
+            end_dt = end_dt.replace(tzinfo=dt.timezone.utc)
+            
+        start_dt = s.scheduled_start
+        if start_dt and start_dt.tzinfo is None:
+            start_dt = start_dt.replace(tzinfo=dt.timezone.utc)
+            
+        if end_dt and end_dt > now:
             valid_rows.append(s)
-        elif not s.scheduled_end and s.scheduled_start and s.scheduled_start > now - dt.timedelta(hours=2):
+        elif not end_dt and start_dt and start_dt > now - dt.timedelta(hours=2):
             valid_rows.append(s)
             
     return [_to_out(s) for s in valid_rows]
@@ -304,6 +314,8 @@ async def webrtc_signaling(
 
         import asyncio
         end_dt = s.scheduled_end
+        if end_dt and end_dt.tzinfo is None:
+            end_dt = end_dt.replace(tzinfo=dt.timezone.utc)
         if end_dt and utc_now() >= end_dt:
             s.status = "completed"
             db.commit()
@@ -322,6 +334,8 @@ async def webrtc_signaling(
     })
 
     async def enforce_end():
+        if not end_dt:
+            return
         while True:
             now = utc_now()
             if now >= end_dt:

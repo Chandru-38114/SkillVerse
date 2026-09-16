@@ -262,12 +262,28 @@ class SessionCreate(BaseModel):
     scheduled_end: dt.datetime
     notes:        Optional[str] = None
 
+    @field_validator('scheduled_start', 'scheduled_end')
+    @classmethod
+    def ensure_tz_aware(cls, v: dt.datetime) -> dt.datetime:
+        if v.tzinfo is None:
+            v = v.replace(tzinfo=dt.timezone.utc)
+        return v
+
 
 class SessionUpdate(BaseModel):
     session_date: Optional[str] = None
     start_time:   Optional[str] = None
     end_time:     Optional[str] = None
+    scheduled_start: Optional[dt.datetime] = None
+    scheduled_end: Optional[dt.datetime] = None
     notes:        Optional[str] = None
+
+    @field_validator('scheduled_start', 'scheduled_end')
+    @classmethod
+    def ensure_tz_aware(cls, v: Optional[dt.datetime]) -> Optional[dt.datetime]:
+        if v and v.tzinfo is None:
+            v = v.replace(tzinfo=dt.timezone.utc)
+        return v
 
 
 class SessionOut(BaseModel):

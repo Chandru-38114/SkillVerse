@@ -27,7 +27,7 @@ ALLOWED_EXTENSIONS = {
 }
 
 @router.post("/{session_id}")
-async def upload_material(
+def upload_material(
     session_id: int,
     file: UploadFile = File(...),
     current_user: models.User = Depends(auth.get_current_user),

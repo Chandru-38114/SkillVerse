@@ -31,7 +31,7 @@ ALLOWED_EXTENSIONS = {
 }
 
 @router.post("/{request_id}/upload")
-async def upload_attachment(
+def upload_attachment(
     request_id: int,
     type: str = Query("file"), # "voice" or "file"
     file: UploadFile = File(...),
@@ -41,7 +41,7 @@ async def upload_attachment(
     _authorize(db, request_id, current_user.id)
 
     ext = file.filename.split(".")[-1].lower() if file.filename and "." in file.filename else ""
-    file_bytes = await file.read()
+    file_bytes = file.file.read()
     size_bytes = len(file_bytes)
 
     # 1. Safely normalize the MIME type (browser often sends audio/webm;codecs=opus or video/webm for audio)
@@ -329,7 +329,7 @@ def get_inbox(
     return inbox
 
 @router.post("/{request_id}/read")
-async def mark_conversation_read(
+def mark_conversation_read(
     request_id: int,
     current_user: models.User = Depends(auth.get_current_user),
     db: Session = Depends(get_db),
@@ -355,12 +355,14 @@ async def mark_conversation_read(
     db.commit()
 
     try:
-        await chat_manager.broadcast(request_id, {
+        import asyncio
+        loop = asyncio.get_running_loop()
+        loop.create_task(chat_manager.broadcast(request_id, {
             "type": "messages_read",
             "request_id": request_id,
             "reader_id": current_user.id,
             "message_ids": msg_ids
-        })
+        }))
     except Exception:
         pass
 
@@ -536,7 +538,7 @@ def _get_message_authorized(db: Session, message_id: int, user_id: int) -> model
 
 
 @router.put("/messages/{message_id}", response_model=schemas.MessageOut)
-async def edit_message(
+def edit_message(
     message_id: int,
     payload: schemas.MessageEdit,
     current_user: models.User = Depends(auth.get_current_user),
@@ -557,12 +559,17 @@ async def edit_message(
     db.refresh(msg)
 
     # Broadcast real-time update to both participants
-    await _broadcast_message_update(msg.request_id, msg)
+    import asyncio
+    try:
+        loop = asyncio.get_running_loop()
+        loop.create_task(_broadcast_message_update(msg.request_id, msg))
+    except Exception:
+        pass
     return msg
 
 
 @router.delete("/messages/{message_id}")
-async def delete_message_for_everyone(
+def delete_message_for_everyone(
     message_id: int,
     current_user: models.User = Depends(auth.get_current_user),
     db: Session = Depends(get_db),
@@ -580,7 +587,12 @@ async def delete_message_for_everyone(
     db.refresh(msg)
 
     # Broadcast real-time update to both participants
-    await _broadcast_message_update(request_id, msg)
+    import asyncio
+    try:
+        loop = asyncio.get_running_loop()
+        loop.create_task(_broadcast_message_update(request_id, msg))
+    except Exception:
+        pass
     return {"detail": "Message deleted", "id": message_id, "request_id": request_id}
 
 
@@ -605,7 +617,7 @@ def delete_message_for_me(
 
 
 @router.post("/messages/{message_id}/react")
-async def toggle_reaction(
+def toggle_reaction(
     message_id: int,
     payload: schemas.ReactionUpdate,
     current_user: models.User = Depends(auth.get_current_user),
@@ -636,7 +648,12 @@ async def toggle_reaction(
     db.refresh(msg)
 
     # Broadcast real-time update to both participants
-    await _broadcast_message_update(msg.request_id, msg)
+    import asyncio
+    try:
+        loop = asyncio.get_running_loop()
+        loop.create_task(_broadcast_message_update(msg.request_id, msg))
+    except Exception:
+        pass
     return {
         "id": msg.id,
         "request_id": msg.request_id,
