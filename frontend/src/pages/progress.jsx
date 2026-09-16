@@ -50,7 +50,7 @@ export default function Progress() {
     <div className="page">
       <div className="flex justify-between items-center mb-8">
         <h1 className="font-display text-4xl">My Learning Progress</h1>
-        {import.meta.env.DEV && (
+        {import.meta.env.VITE_CERT_TEST_MODE === "true" && (
           <button 
             onClick={async () => {
               if(window.confirm('Prepare Test Skill for Certificates?')) {
