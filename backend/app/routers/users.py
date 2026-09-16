@@ -197,6 +197,34 @@ def upload_avatar(
     db.refresh(current_user)
     return current_user
 
+@router.delete("/me/avatar", response_model=schemas.UserOut)
+def remove_avatar(
+    current_user: models.User = Depends(auth.get_current_user),
+    db: Session = Depends(get_db)
+):
+    supabase = get_supabase()
+    old_url = current_user.profile_picture_url
+    if old_url:
+        if "supabase.co/storage/v1/object/public/avatars/" in old_url:
+            old_filename = old_url.split("/")[-1]
+            try:
+                supabase.storage.from_("avatars").remove([old_filename])
+            except Exception as e:
+                logger.warning(f"Failed to remove avatar from storage: {e}")
+        elif old_url.startswith("/uploads/avatars/"):
+            old_path = old_url.lstrip("/")
+            import os
+            if os.path.exists(old_path):
+                try:
+                    os.remove(old_path)
+                except Exception:
+                    pass
+
+    current_user.profile_picture_url = None
+    db.commit()
+    db.refresh(current_user)
+    return current_user
+
 @router.get("/me/skills", response_model=List[schemas.UserSkillOut])
 def get_my_skills(
     current_user: models.User = Depends(auth.get_current_user),

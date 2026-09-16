@@ -24,6 +24,7 @@ export default function Profile() {
   
   // Avatar upload
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [removingAvatar, setRemovingAvatar] = useState(false);
   const [avatarMsg, setAvatarMsg] = useState("");
 
   useEffect(() => {
@@ -117,6 +118,22 @@ export default function Profile() {
     }
   };
 
+  const handleAvatarRemove = async () => {
+    if (!window.confirm("Remove your profile picture?")) return;
+    
+    setRemovingAvatar(true);
+    setAvatarMsg("");
+    try {
+      const u = await api.removeAvatar();
+      setUser(u);
+      setAvatarMsg("Avatar removed!");
+    } catch (err) {
+      setAvatarMsg("Error: " + err.message);
+    } finally {
+      setRemovingAvatar(false);
+    }
+  };
+
   if (loading) return <div className="p-8 text-center text-ink/60">Loading...</div>;
   if (!user) return <div className="p-8 text-center text-clay">Failed to load user data</div>;
 
@@ -140,16 +157,28 @@ export default function Profile() {
               )}
             </div>
             
-            <label className="btn-secondary cursor-pointer relative overflow-hidden w-full text-center">
-              <span>{uploadingAvatar ? "Uploading..." : "Change Avatar"}</span>
-              <input 
-                type="file" 
-                className="absolute inset-0 opacity-0 cursor-pointer"
-                accept="image/*"
-                onChange={handleAvatarUpload}
-                disabled={uploadingAvatar}
-              />
-            </label>
+            <div className="flex flex-col gap-2 w-full">
+              <label className="btn-secondary cursor-pointer relative overflow-hidden text-center">
+                <span>{uploadingAvatar ? "Uploading..." : "Change Avatar"}</span>
+                <input 
+                  type="file" 
+                  className="absolute inset-0 opacity-0 cursor-pointer"
+                  accept="image/*"
+                  onChange={handleAvatarUpload}
+                  disabled={uploadingAvatar || removingAvatar}
+                />
+              </label>
+              
+              {user.profile_picture_url && (
+                <button 
+                  onClick={handleAvatarRemove}
+                  disabled={uploadingAvatar || removingAvatar}
+                  className="px-4 py-2 text-sm font-medium rounded-lg transition-colors border border-clay/30 text-clay hover:bg-clay/5 disabled:opacity-50"
+                >
+                  {removingAvatar ? "Removing..." : "Remove Avatar"}
+                </button>
+              )}
+            </div>
             {avatarMsg && <p className="text-xs text-center mt-2 text-moss">{avatarMsg}</p>}
           </div>
 

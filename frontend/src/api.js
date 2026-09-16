@@ -89,6 +89,31 @@ export const api = {
       throw error;
     }
   },
+  removeAvatar: async () => {
+    try {
+      const res = await fetch(`${BASE_URL}/users/me/avatar`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${getToken()}` },
+      });
+      if (!res.ok) {
+        let errMsg = `Remove failed (${res.status})`;
+        try {
+          const errData = await res.json();
+          errMsg = errData.detail || errData.message || res.statusText;
+        } catch (e) {}
+        throw new Error(errMsg);
+      }
+      const u = await res.json();
+      localStorage.setItem("skillverse_user", JSON.stringify(u));
+      window.dispatchEvent(new Event("skillverse_user_updated"));
+      return u;
+    } catch (error) {
+      if (error.name === 'TypeError' && error.message === 'Failed to fetch') {
+        throw new Error("Network connection failed.");
+      }
+      throw error;
+    }
+  },
 
   refreshMe: async () => {
     const user = await request("/users/me");
