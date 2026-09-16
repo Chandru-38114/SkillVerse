@@ -127,6 +127,18 @@ def upload_avatar(
                     pass
 
     bucket = "avatars"
+    
+    # Generate public URL securely and accurately to bypass Python SDK bugs (missing slashes/extra query params)
+    import os
+    from urllib.parse import urlparse
+    env_url = os.getenv("SUPABASE_URL")
+    if env_url:
+        parsed = urlparse(env_url)
+        base_url = f"{parsed.scheme}://{parsed.netloc}"
+        public_url = f"{base_url}/storage/v1/object/public/{bucket}/{filename}"
+    else:
+        public_url = supabase.storage.from_(bucket).get_public_url(filename)
+
     try:
         logger.info(f"Uploading to bucket '{bucket}', path '{filename}', content-type '{file.content_type}'")
         res = supabase.storage.from_(bucket).upload(
@@ -146,8 +158,6 @@ def upload_avatar(
             msg = err.get("message", err.get("error", "Upload failed"))
             logger.error(f"Storage upload response error (Bucket: {bucket}, Path: {filename}): HTTP {res.status_code} - {msg}")
             raise HTTPException(status_code=res.status_code, detail=f"Storage upload failed (HTTP {res.status_code}): {msg}")
-            
-        public_url = supabase.storage.from_(bucket).get_public_url(filename)
     except HTTPException:
         raise
     except Exception as e:
@@ -176,7 +186,6 @@ def upload_avatar(
                 logger.error(f"REST fallback upload failed: HTTP {resp.status_code} - {msg}")
                 raise HTTPException(status_code=resp.status_code, detail=f"Storage upload failed (HTTP {resp.status_code}): {msg}")
             logger.info("REST fallback upload succeeded.")
-            public_url = supabase.storage.from_(bucket).get_public_url(filename)
         except HTTPException:
             raise
         except Exception as rest_e:
