@@ -190,6 +190,7 @@ export const api = {
   getMyCertificates: () => request("/certificates/my"),
   generateCertificate: (skillName) => request(`/certificates/generate?skill_name=${encodeURIComponent(skillName)}`, { method: "POST" }),
   verifyCertificate: (certId) => request(`/certificates/verify/${certId}`, { auth: false }),
+  devPrepCertificateTest: () => request("/certificates/dev-prep-test", { method: "POST" }),
 
   // Progress & Notes
   getSessionProgress: (sessionId) => request(`/progress/session/${sessionId}`),

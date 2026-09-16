@@ -48,7 +48,27 @@ export default function Progress() {
 
   return (
     <div className="page">
-      <h1 className="font-display text-4xl mb-8">My Learning Progress</h1>
+      <div className="flex justify-between items-center mb-8">
+        <h1 className="font-display text-4xl">My Learning Progress</h1>
+        {import.meta.env.DEV && (
+          <button 
+            onClick={async () => {
+              if(window.confirm('Prepare Test Skill for Certificates?')) {
+                try {
+                  await api.devPrepCertificateTest();
+                  alert('Test skill prepared successfully! Refreshing...');
+                  window.location.reload();
+                } catch(e) {
+                  alert('Error: ' + e.message);
+                }
+              }
+            }}
+            className="btn-secondary border-red-500 text-red-500"
+          >
+            Complete Test Skill (DEV ONLY)
+          </button>
+        )}
+      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
         {progressData.map((skill) => {

@@ -25,16 +25,25 @@ export default function VideoChat({ sessionId, children, onLeave }) {
   const pcRef = useRef(null)
   const wsRef = useRef(null)
   const streamRef = useRef(null)
+  const remoteUserIdRef = useRef(null)
+  const iceRestartInProgressRef = useRef(false)
+  const isComponentMounted = useRef(true)
 
   useEffect(() => {
     console.log('[WebRTC-Diag] VideoChat mounted')
-    return () => console.log('[WebRTC-Diag] VideoChat unmounted')
+    isComponentMounted.current = true
+    return () => {
+      console.log('[WebRTC-Diag] VideoChat unmounted')
+      isComponentMounted.current = false
+    }
   }, [])
 
   useEffect(() => {
     let ignore = false
     let ws = null
     let pc = null
+    let pingInterval = null
+    const currentUser = getSessionUser()
 
     async function init() {
       try {
@@ -61,7 +70,6 @@ export default function VideoChat({ sessionId, children, onLeave }) {
           }
         } catch (err) {
           console.warn('[WebRTC-Diag] Media access denied or not found, continuing in spectator mode:', err.message)
-          // We intentionally do not set errorMsg to allow signaling and viewing remote streams
         }
 
         console.log('[WebRTC] Fetching TURN credentials from backend...')
@@ -84,17 +92,61 @@ export default function VideoChat({ sessionId, children, onLeave }) {
           console.warn(`[WebRTC-Diag] Request failed - Status: Error, Message: ${e.message}. Falling back to STUN-only.`)
         }
 
+        if (ignore) return
+
         console.log('[WebRTC] Creating RTCPeerConnection...')
         pc = new RTCPeerConnection(iceConfig)
         pcRef.current = pc
 
-        pc.oniceconnectionstatechange = () => {
+        pc.oniceconnectionstatechange = async () => {
           console.log('[WebRTC-Diag] ICE state:', pc.iceConnectionState)
-          if (pc.iceConnectionState === 'disconnected' || pc.iceConnectionState === 'failed') {
-            console.log('[WebRTC-Diag] ICE connection disrupted, waiting for reconnect...')
-            // ICE failure != session cancellation
+          if (pc.iceConnectionState === 'disconnected') {
+            console.log('[WebRTC-Diag] ICE connection disconnected, waiting for reconnect...')
+          } else if (pc.iceConnectionState === 'failed') {
+            console.log('[WebRTC-Diag] ICE connection failed. Evaluating restart...')
+            
+            const remoteUserId = remoteUserIdRef.current
+
+            if (!isComponentMounted.current || ignore || pc !== pcRef.current) return
+            
+            // Do not restart if session is functionally over
+            setStatus(s => {
+               if (s === 'ended' || s === 'disconnected') return s
+               if (ws && ws.readyState !== WebSocket.OPEN) return s
+               
+               if (remoteUserId && Number(currentUser?.id) > Number(remoteUserId)) {
+                 if (iceRestartInProgressRef.current) {
+                   console.log('[WebRTC-Diag] ICE restart already in progress, ignoring.')
+                   return s
+                 }
+                 
+                 console.log('[WebRTC-Diag] Designated caller initiating ICE restart...')
+                 iceRestartInProgressRef.current = true
+                 
+                 pc.createOffer({ iceRestart: true })
+                   .then(offer => {
+                     return pc.setLocalDescription(offer).then(() => offer)
+                   })
+                   .then(offer => {
+                     if (ws && ws.readyState === WebSocket.OPEN && !ignore) {
+                       ws.send(JSON.stringify({ type: 'offer', offer }))
+                     }
+                   })
+                   .catch(e => {
+                     console.error('[WebRTC-Diag] ICE restart failed:', e)
+                     iceRestartInProgressRef.current = false
+                   })
+               }
+               return s
+            })
+          } else if (pc.iceConnectionState === 'connected' || pc.iceConnectionState === 'completed') {
+            if (iceRestartInProgressRef.current) {
+              console.log('[WebRTC-Diag] ICE connection restored. Resetting restart guard.')
+              iceRestartInProgressRef.current = false
+            }
           }
         }
+
         pc.onconnectionstatechange = () => {
           console.log('[WebRTC-Diag] Connection State:', pc.connectionState)
           if (pc.connectionState === 'connected') {
@@ -108,6 +160,7 @@ export default function VideoChat({ sessionId, children, onLeave }) {
                 }
               });
             });
+            setStatus('connected')
           }
         }
         pc.onsignalingstatechange = () => {
@@ -129,7 +182,6 @@ export default function VideoChat({ sessionId, children, onLeave }) {
           }
         }
 
-        const currentUser = getSessionUser()
         const token = localStorage.getItem('skillverse_token')
         const wsUrl = (import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000')
           .replace('http', 'ws') + `/sessions/ws/${sessionId}?token=${token}`
@@ -140,7 +192,6 @@ export default function VideoChat({ sessionId, children, onLeave }) {
           if (event.candidate) {
             console.log(`[WebRTC-Diag] Generated ICE candidate: ${event.candidate.type} (${event.candidate.protocol})`)
             if (ws && ws.readyState === WebSocket.OPEN) {
-              console.log('[WebRTC] Sending ICE candidate')
               ws.send(JSON.stringify({ type: 'candidate', candidate: event.candidate }))
             }
           }
@@ -150,8 +201,6 @@ export default function VideoChat({ sessionId, children, onLeave }) {
         ws = new WebSocket(wsUrl)
         wsRef.current = ws
         setSharedWs(ws)
-        
-        let pingInterval;
 
         ws.addEventListener('open', () => {
           console.log('[WebRTC-Diag] signaling WebSocket connected')
@@ -164,95 +213,162 @@ export default function VideoChat({ sessionId, children, onLeave }) {
           }, 30000)
         })
 
-        ws.addEventListener('message', async (event) => {
-          const data = JSON.parse(event.data)
-          console.log('[WebRTC] Signaling message received:', data.type)
+        // Sequential message queue implementation
+        let isProcessingQueue = false
+        const messageQueue = []
 
-          try {
-            if (data.type === 'peer_joined') {
-              console.log('[WebRTC-Diag] peer joined')
-              setStatus('connecting')
-              ws.send(JSON.stringify({ type: 'hello', userId: currentUser?.id }))
-            } else if (data.type === 'hello') {
-              setStatus('connecting')
-              const remoteUserId = data.userId || data.user_id
-              
-              if (remoteUserId && Number(currentUser?.id) > Number(remoteUserId)) {
-                if (pc.signalingState === 'stable' || pc.signalingState === 'have-local-offer') {
-                  console.log('[WebRTC-Diag] offer/answer state: Creating offer')
-                  const offer = await pc.createOffer()
-                  await pc.setLocalDescription(offer)
-                  ws.send(JSON.stringify({ type: 'offer', offer }))
-                }
-              }
-            } else if (data.type === 'offer') {
-              if (pc.signalingState !== 'stable') return
-              setStatus('connecting')
-              console.log('[WebRTC-Diag] offer/answer state: Received offer, setting remote description')
-              await pc.setRemoteDescription(new RTCSessionDescription(data.offer))
-              
-              for (const c of pendingCandidates) {
-                try {
-                  await pc.addIceCandidate(new RTCIceCandidate(c))
-                } catch (e) {
-                  console.warn('[WebRTC] Failed to add pending ICE candidate', e)
-                }
-              }
-              pendingCandidates = []
+        const processQueue = async () => {
+          if (isProcessingQueue) return
+          isProcessingQueue = true
 
-              console.log('[WebRTC-Diag] offer/answer state: Creating answer')
-              const answer = await pc.createAnswer()
-              await pc.setLocalDescription(answer)
-              ws.send(JSON.stringify({ type: 'answer', answer }))
-            } else if (data.type === 'answer') {
-              console.log('[WebRTC-Diag] offer/answer state: Received answer, setting remote description')
-              await pc.setRemoteDescription(new RTCSessionDescription(data.answer))
-              for (const c of pendingCandidates) {
-                try {
-                  await pc.addIceCandidate(new RTCIceCandidate(c))
-                } catch (e) {
-                  console.warn('[WebRTC] Failed to add pending ICE candidate', e)
+          while (messageQueue.length > 0) {
+            const event = messageQueue.shift()
+            if (ignore || pc !== pcRef.current) continue
+            
+            try {
+              const data = JSON.parse(event.data)
+              if (data.type !== 'candidate' && data.type !== 'reaction') {
+                console.log('[WebRTC] Signaling message received:', data.type)
+              }
+
+              if (data.type === 'peer_joined') {
+                console.log('[WebRTC-Diag] peer joined')
+                setStatus(s => s === 'ended' || s === 'disconnected' ? s : 'connecting')
+                ws.send(JSON.stringify({ type: 'hello', userId: currentUser?.id }))
+              } else if (data.type === 'hello') {
+                setStatus(s => s === 'ended' || s === 'disconnected' ? s : 'connecting')
+                const remoteUserId = data.userId || data.user_id
+                if (remoteUserId) {
+                  remoteUserIdRef.current = remoteUserId
                 }
-              }
-              pendingCandidates = []
-            } else if (data.type === 'candidate') {
-              if (pc.remoteDescription && pc.remoteDescription.type) {
-                console.log('[WebRTC] Adding ICE candidate')
-                try {
-                  await pc.addIceCandidate(new RTCIceCandidate(data.candidate))
-                } catch (e) {
-                  console.warn('[WebRTC] Failed to add ICE candidate', e)
+                
+                if (remoteUserId && Number(currentUser?.id) > Number(remoteUserId)) {
+                  if (pc.signalingState === 'stable' || pc.signalingState === 'have-local-offer') {
+                    console.log('[WebRTC-Diag] offer/answer state: Creating offer')
+                    const offer = await pc.createOffer()
+                    await pc.setLocalDescription(offer)
+                    if (ws && ws.readyState === WebSocket.OPEN && !ignore) {
+                      ws.send(JSON.stringify({ type: 'offer', offer }))
+                    }
+                  }
                 }
-              } else {
-                console.log('[WebRTC] Queuing ICE candidate (no remote desc yet)')
-                pendingCandidates.push(data.candidate)
+              } else if (data.type === 'offer') {
+                if (pc.signalingState !== 'stable' && pc.signalingState !== 'have-local-offer') {
+                  console.warn('[WebRTC-Diag] Received offer in wrong signaling state:', pc.signalingState)
+                }
+                setStatus(s => s === 'ended' || s === 'disconnected' ? s : 'connecting')
+                console.log('[WebRTC-Diag] offer/answer state: Received offer, setting remote description')
+                try {
+                  await pc.setRemoteDescription(new RTCSessionDescription(data.offer))
+                } catch (e) {
+                  console.error('[WebRTC-Diag] Failed to set remote description (offer):', e)
+                  continue
+                }
+                
+                const candidatesToProcess = [...pendingCandidates]
+                pendingCandidates = []
+                for (const c of candidatesToProcess) {
+                  try {
+                    await pc.addIceCandidate(new RTCIceCandidate(c))
+                  } catch (e) {
+                    console.warn('[WebRTC] Failed to add pending ICE candidate', e)
+                  }
+                }
+
+                console.log('[WebRTC-Diag] offer/answer state: Creating answer')
+                try {
+                  const answer = await pc.createAnswer()
+                  await pc.setLocalDescription(answer)
+                  if (ws && ws.readyState === WebSocket.OPEN && !ignore) {
+                    ws.send(JSON.stringify({ type: 'answer', answer }))
+                  }
+                } catch (e) {
+                  console.error('[WebRTC-Diag] Failed to create answer:', e)
+                }
+              } else if (data.type === 'answer') {
+                console.log('[WebRTC-Diag] offer/answer state: Received answer, setting remote description')
+                try {
+                  await pc.setRemoteDescription(new RTCSessionDescription(data.answer))
+                  if (iceRestartInProgressRef.current) {
+                    iceRestartInProgressRef.current = false
+                    console.log('[WebRTC-Diag] ICE restart negotiation completed.')
+                  }
+                } catch (e) {
+                  console.error('[WebRTC-Diag] Failed to set remote description (answer):', e)
+                }
+                const candidatesToProcess = [...pendingCandidates]
+                pendingCandidates = []
+                for (const c of candidatesToProcess) {
+                  try {
+                    await pc.addIceCandidate(new RTCIceCandidate(c))
+                  } catch (e) {
+                    console.warn('[WebRTC] Failed to add pending ICE candidate', e)
+                  }
+                }
+              } else if (data.type === 'candidate') {
+                if (pc.remoteDescription && pc.remoteDescription.type) {
+                  try {
+                    await pc.addIceCandidate(new RTCIceCandidate(data.candidate))
+                  } catch (e) {
+                    console.warn('[WebRTC] Failed to add ICE candidate', e)
+                  }
+                } else {
+                  console.log('[WebRTC] Queuing ICE candidate (no remote desc yet)')
+                  pendingCandidates.push(data.candidate)
+                }
+              } else if (data.type === 'reaction') {
+                if (data.reaction === 'raise_hand') {
+                  setPeerHandRaised(data.active)
+                } else if (data.reaction === 'emoji') {
+                  const id = Date.now()
+                  setActiveEmojis(prev => [...prev, { id, emoji: data.emoji, isLocal: false }])
+                  setTimeout(() => {
+                    setActiveEmojis(prev => prev.filter(e => e.id !== id))
+                  }, 3000)
+                }
+              } else if (data.type === 'peer_disconnected') {
+                console.log('[WebRTC] Peer disconnected (temporary network drop)')
+                setStatus(s => s === 'ended' || s === 'disconnected' ? s : 'connecting')
+              } else if (data.type === 'peer_left') {
+                console.log('[WebRTC] Peer left permanently')
+                setStatus('disconnected')
+                setRemoteStream(null)
               }
-            } else if (data.type === 'reaction') {
-              if (data.reaction === 'raise_hand') {
-                setPeerHandRaised(data.active)
-              } else if (data.reaction === 'emoji') {
-                const id = Date.now()
-                setActiveEmojis(prev => [...prev, { id, emoji: data.emoji, isLocal: false }])
-                setTimeout(() => {
-                  setActiveEmojis(prev => prev.filter(e => e.id !== id))
-                }, 3000)
-              }
-            } else if (data.type === 'peer_disconnected') {
-              console.log('[WebRTC] Peer disconnected (temporary)')
-              setStatus('connecting')
-            } else if (data.type === 'peer_left') {
-              console.log('[WebRTC] Peer left permanently')
-              setStatus('disconnected')
-              setRemoteStream(null)
+            } catch (err) {
+              console.error('[WebRTC] Signaling processing error:', err)
             }
-          } catch (err) {
-            console.error('[WebRTC] Signaling processing error:', err)
+          }
+          isProcessingQueue = false
+        }
+
+        ws.addEventListener('message', (event) => {
+          messageQueue.push(event)
+          processQueue()
+        })
+
+        ws.addEventListener('close', (event) => {
+          console.log(`[WebRTC-Diag] WebSocket closed with code: ${event.code}`)
+          if (event.code === 1008) {
+            console.log('[WebRTC] Backend terminated session (ended).')
+            setStatus('ended')
+            setRemoteStream(null)
+            if (pcRef.current) {
+               pcRef.current.close()
+            }
+          } else {
+            console.log('[WebRTC] Signaling connection disconnected unexpectedly.')
+            setStatus(s => (s === 'ended' || s === 'disconnected' ? s : 'connecting'))
           }
         })
 
         ws.onerror = () => {
           console.error('[WebRTC] Signaling server connection error')
-          setErrorMsg('Signaling server connection error.')
+          setStatus(s => {
+            if (s !== 'ended' && s !== 'disconnected') {
+              setErrorMsg('Signaling server connection error.')
+            }
+            return s
+          })
         }
 
       } catch (err) {
@@ -267,13 +383,25 @@ export default function VideoChat({ sessionId, children, onLeave }) {
       console.log('[WebRTC] Cleanup called')
       ignore = true
       if (pingInterval) clearInterval(pingInterval)
-      if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-          wsRef.current.send(JSON.stringify({ type: 'peer_left', userId: currentUser?.id }))
-          wsRef.current.close()
+      
+      // Allow current status check by passing a callback
+      setStatus(currentStatus => {
+        if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN && currentStatus !== 'ended') {
+            wsRef.current.send(JSON.stringify({ type: 'peer_left', userId: currentUser?.id }))
+            wsRef.current.close()
+        } else if (wsRef.current) {
+            wsRef.current.close()
+        }
+        return currentStatus
+      })
+
+      if (pcRef.current) {
+        pcRef.current.close()
+        pcRef.current = null
       }
-      if (pc) pc.close()
-      if (localStream) {
-        localStream.getTracks().forEach(track => track.stop())
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop())
+        streamRef.current = null
       }
     }
   }, [sessionId])
@@ -410,6 +538,11 @@ export default function VideoChat({ sessionId, children, onLeave }) {
               {getEmojiForKey(e.emoji)}
             </div>
           ))}
+          {status === 'ended' && (
+            <div className="absolute top-2 left-1/2 -translate-x-1/2 z-10 bg-indigo-600/90 text-white px-2 py-1 rounded text-[10px] font-medium whitespace-nowrap">
+              Session ended
+            </div>
+          )}
           {status === 'disconnected' && (
             <div className="absolute top-2 left-1/2 -translate-x-1/2 z-10 bg-red-600/90 text-white px-2 py-1 rounded text-[10px] font-medium whitespace-nowrap">
               Peer left
