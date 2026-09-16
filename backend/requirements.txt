@@ -30,3 +30,4 @@ requests==2.32.3
 websockets
 supabase>=2.3.0
 pytz
+pytz
