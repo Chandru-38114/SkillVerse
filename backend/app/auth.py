@@ -31,13 +31,43 @@ def verify_password(plain: str, hashed: str) -> bool:
     return pwd_context.verify(plain, hashed)
 
 
+import base64
+import hashlib
+import json
+from cryptography.fernet import Fernet, InvalidToken
+
+def get_fernet() -> Fernet:
+    # Derive a 32-byte url-safe base64 key from SECRET_KEY
+    key = base64.urlsafe_b64encode(hashlib.sha256(SECRET_KEY.encode()).digest())
+    return Fernet(key)
+
+def create_encrypted_token(data: dict, expires_delta: Optional[dt.timedelta] = None) -> str:
+    """Creates a securely encrypted token containing arbitrary JSON data and an expiration."""
+    expire = dt.datetime.utcnow() + (expires_delta or dt.timedelta(minutes=15))
+    payload = {
+        "data": data,
+        "exp": expire.timestamp()
+    }
+    f = get_fernet()
+    return f.encrypt(json.dumps(payload).encode()).decode()
+
+def verify_encrypted_token(token: str) -> Optional[dict]:
+    """Decrypts token and returns data if not expired, else None."""
+    f = get_fernet()
+    try:
+        decrypted = f.decrypt(token.encode(), ttl=None)  # We handle TTL via payload
+        payload = json.loads(decrypted.decode())
+        if dt.datetime.utcnow().timestamp() > payload.get("exp", 0):
+            return None
+        return payload.get("data")
+    except (InvalidToken, json.JSONDecodeError, ValueError):
+        return None
+
 def create_access_token(data: dict, expires_delta: Optional[dt.timedelta] = None) -> str:
     to_encode = data.copy()
     expire = dt.datetime.utcnow() + (expires_delta or dt.timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-
-
 def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> models.User:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,

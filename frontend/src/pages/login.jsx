@@ -50,12 +50,18 @@ export default function Login() {
 
   async function handleGoogleSuccess(credentialResponse) {
     try {
-      const { access_token, user } = await api.googleAuth(credentialResponse.credential)
-      saveSession(access_token, user)
-      if (!user.college || user.college.trim() === '') {
-        navigate('/onboarding')
+      const res = await api.googleAuth(credentialResponse.credential)
+      
+      if (res.onboarding_required) {
+        navigate('/onboarding', { state: { onboardingToken: res.onboarding_token } })
       } else {
-        navigate('/dashboard')
+        const { access_token, user } = res
+        saveSession(access_token, user)
+        if (!user.college || user.college.trim() === '') {
+          navigate('/onboarding')
+        } else {
+          navigate('/dashboard')
+        }
       }
     } catch (err) {
       setError(err.message || 'Google authentication failed')

@@ -54,8 +54,10 @@ async function request(path, { method = "GET", body, auth = true } = {}) {
 
 export const api = {
   signup: (data) => request("/auth/signup", { method: "POST", body: data, auth: false }),
+  verifyGoogleSignup: (signup_token, credential) => request("/auth/verify-google-signup", { method: "POST", body: { signup_token, credential }, auth: false }),
   login: (data) => request("/auth/login", { method: "POST", body: data, auth: false }),
   googleAuth: (credential) => request("/auth/google", { method: "POST", body: { credential }, auth: false }),
+  completeGoogle: (onboarding_token, details) => request("/auth/complete-google", { method: "POST", body: { onboarding_token, ...details }, auth: false }),
   forgotPassword: (email) => request("/auth/forgot-password", { method: "POST", body: { email }, auth: false }),
   resetPassword: (data) => request("/auth/reset-password", { method: "POST", body: data, auth: false }),
   me: () => request("/users/me"),

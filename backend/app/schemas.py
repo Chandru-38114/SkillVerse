@@ -79,10 +79,38 @@ class PasswordChangeRequest(BaseModel):
     new_password: str
 
 class Token(BaseModel):
-    access_token: str
+    access_token: Optional[str] = None
     token_type: str = "bearer"
-    user: UserOut
+    user: Optional[UserOut] = None
     dev_otp: Optional[str] = None
+    onboarding_required: Optional[bool] = False
+    onboarding_token: Optional[str] = None
+    signup_token: Optional[str] = None
+
+class GoogleSignupVerify(BaseModel):
+    signup_token: str
+    credential: str
+
+class GoogleOnboardingComplete(BaseModel):
+    onboarding_token: str
+    name: str
+    mobile_number: str
+    college: str
+    password: str
+    confirm_password: str
+    country: Optional[str] = ""
+    dob: Optional[Union[dt.date, str]] = None
+    gender: Optional[str] = None
+    bio: Optional[str] = ""
+
+    @model_validator(mode='after')
+    def check_passwords_match(self):
+        if self.password != self.confirm_password:
+            raise ValueError('Passwords do not match')
+        pw = self.password
+        if len(pw) < 6 or not re.search(r'[A-Z]', pw) or not re.search(r'[a-z]', pw) or not re.search(r'[0-9]', pw) or not re.search(r'[^a-zA-Z0-9]', pw):
+            raise ValueError('Password must contain at least 6 characters, one uppercase letter, one lowercase letter, one number, and one special character.')
+        return self
 
 
 class UserSkillOut(BaseModel):

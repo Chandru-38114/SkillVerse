@@ -57,53 +57,77 @@ def signup(payload: schemas.UserCreate, db: Session = Depends(get_db)):
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-    existing_email = db.query(models.User).filter(models.User.email == payload.email).first()
+    email = payload.email.strip().lower()
+    existing_email = db.query(models.User).filter(models.User.email == email).first()
     if existing_email:
         raise HTTPException(status_code=400, detail="Email already registered")
         
-    # Convert empty mobile_number to None
-    mobile_val = payload.mobile_number if payload.mobile_number and payload.mobile_number.strip() != "" else None
-    
+    mobile_val = payload.mobile_number.strip() if payload.mobile_number and payload.mobile_number.strip() != "" else None
     if mobile_val:
         existing_mobile = db.query(models.User).filter(models.User.mobile_number == mobile_val).first()
         if existing_mobile:
             raise HTTPException(status_code=400, detail="Mobile number already registered")
 
-    user = models.User(
-        name=payload.name,
-        email=payload.email,
-        mobile_number=mobile_val,
-        hashed_password=auth.hash_password(payload.password),
-        college=payload.college,
-        country=payload.country or "",
-        is_email_verified=False,
-        is_mobile_verified=False
+    # Do not save to DB yet. Store in Fernet encrypted token.
+    signup_data = {
+        "name": payload.name,
+        "email": email,
+        "mobile_number": mobile_val,
+        "hashed_password": auth.hash_password(payload.password),
+        "college": payload.college,
+        "country": payload.country or ""
+    }
+    signup_token = auth.create_encrypted_token(signup_data)
+    
+    return schemas.Token(
+        signup_token=signup_token,
+        onboarding_required=False
     )
 
-    db.add(user)
-    db.commit()
-    db.refresh(user)
+@router.post("/verify-google-signup", response_model=schemas.Token)
+def verify_google_signup(payload: schemas.GoogleSignupVerify, db: Session = Depends(get_db)):
+    if not GOOGLE_CLIENT_ID:
+        raise HTTPException(status_code=500, detail="Google authentication is not configured on the server")
 
-    # Generate and send development email OTP
-    import secrets
-    import string
-    now = dt.datetime.utcnow()
-    otp = ''.join(secrets.choice(string.digits) for _ in range(6))
-    
-    entry = models.EmailVerificationOTP(
-        user_id=user.id,
-        hashed_otp=auth.hash_password(otp),
-        expires_at=now + dt.timedelta(minutes=10)
-    )
-    db.add(entry)
-    db.commit()
-    
-    from .. import email_service
-    email_service.send_otp_email(user.email, otp, "email_verification")
+    signup_data = auth.verify_encrypted_token(payload.signup_token)
+    if not signup_data:
+        raise HTTPException(status_code=400, detail="Signup session expired or invalid. Please sign up again.")
 
-    token = auth.create_access_token({"sub": str(user.id)})
-    dev_otp = otp if os.getenv("DEV_OTP_MODE", "true").lower() == "true" else None
-    return schemas.Token(access_token=token, user=schemas.UserOut.model_validate(user), dev_otp=dev_otp)
+    try:
+        idinfo = id_token.verify_oauth2_token(
+            payload.credential, google_requests.Request(), GOOGLE_CLIENT_ID
+        )
+        google_email = idinfo.get("email")
+        if not google_email:
+            raise HTTPException(status_code=400, detail="No email provided by Google")
+            
+        google_email = google_email.strip().lower()
+        if google_email != signup_data["email"]:
+            raise HTTPException(status_code=400, detail="Google email does not match registration email.")
+            
+        # Check DB one last time before insert
+        if db.query(models.User).filter(models.User.email == google_email).first():
+            raise HTTPException(status_code=400, detail="Email already registered")
+
+        user = models.User(
+            name=signup_data["name"],
+            email=google_email,
+            mobile_number=signup_data["mobile_number"],
+            hashed_password=signup_data["hashed_password"],
+            college=signup_data["college"],
+            country=signup_data["country"],
+            is_email_verified=True,
+            is_mobile_verified=False
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+        token = auth.create_access_token({"sub": str(user.id)})
+        return schemas.Token(access_token=token, user=schemas.UserOut.model_validate(user))
+
+    except ValueError as e:
+        raise HTTPException(status_code=401, detail=f"Invalid Google token: {str(e)}")
 
 
 @router.post("/login", response_model=schemas.Token)
@@ -141,16 +165,6 @@ def google_auth(payload: schemas.GoogleAuth, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail="Google authentication is not configured on the server")
         
     try:
-        from jose import jwt # using python-jose to peek
-        try:
-            unverified = jwt.get_unverified_claims(payload.credential) if hasattr(jwt, 'get_unverified_claims') else jwt.decode(payload.credential, options={"verify_signature": False})
-            print(f"[GOOGLE AUTH DIAGNOSTICS] Expected Client ID: {GOOGLE_CLIENT_ID}")
-            print(f"[GOOGLE AUTH DIAGNOSTICS] Received Token Audience: {unverified.get('aud')}")
-            print(f"[GOOGLE AUTH DIAGNOSTICS] Received Token Issuer: {unverified.get('iss')}")
-            print(f"[GOOGLE AUTH DIAGNOSTICS] Token Expiration: {unverified.get('exp')}")
-        except Exception as peek_err:
-            print(f"[GOOGLE AUTH DIAGNOSTICS] Failed to peek token: {peek_err}")
-
         idinfo = id_token.verify_oauth2_token(
             payload.credential, google_requests.Request(), GOOGLE_CLIENT_ID
         )
@@ -159,39 +173,64 @@ def google_auth(payload: schemas.GoogleAuth, db: Session = Depends(get_db)):
         if not email:
             raise HTTPException(status_code=400, detail="No email provided by Google")
             
+        email = email.strip().lower()
         user = db.query(models.User).filter(models.User.email == email).first()
-        if not user:
-            # We must not bypass mandatory fields. The prompt says: 
-            # "If college/organization is mandatory: do not silently create an incomplete account"
-            # Since the frontend will redirect to a profile completion step if fields are missing,
-            # we will create it here but mark it as needing completion or just leave college empty for them to fill later.
-            # To adhere to "do not silently create an incomplete account", we could return an error requiring signup,
-            # but standard Google OAuth flows usually create the user and redirect to a completion screen.
-            # We'll create it, but the frontend needs to handle empty college.
-            random_pwd = ''.join(random.choices(string.ascii_letters + string.digits, k=32))
-            user = models.User(
-                name=name,
-                email=email,
-                hashed_password=auth.hash_password(random_pwd),
-                college="",
-                country="",
-                is_email_verified=True # Google already verified the email
-            )
-            db.add(user)
-            db.commit()
-            db.refresh(user)
-            
-        token = auth.create_access_token({"sub": str(user.id)})
-        return schemas.Token(access_token=token, user=schemas.UserOut.model_validate(user))
         
+        if user:
+            # Login
+            token = auth.create_access_token({"sub": str(user.id)})
+            return schemas.Token(access_token=token, user=schemas.UserOut.model_validate(user))
+        else:
+            # Onboarding Required
+            onboarding_data = {
+                "email": email,
+                "name": name
+            }
+            onboarding_token = auth.create_encrypted_token(onboarding_data)
+            return schemas.Token(
+                onboarding_required=True,
+                onboarding_token=onboarding_token
+            )
+            
     except ValueError as e:
-        print(f"[GOOGLE AUTH] Token verification failed: {e}")
         raise HTTPException(status_code=401, detail=f"Invalid Google token: {str(e)}")
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        print(f"[GOOGLE AUTH] Unexpected error: {e}")
-        raise HTTPException(status_code=500, detail=f"Unexpected error during Google authentication: {str(e)}")
+
+@router.post("/complete-google", response_model=schemas.Token)
+def complete_google(payload: schemas.GoogleOnboardingComplete, db: Session = Depends(get_db)):
+    onboarding_data = auth.verify_encrypted_token(payload.onboarding_token)
+    if not onboarding_data:
+        raise HTTPException(status_code=400, detail="Onboarding session expired. Please sign in with Google again.")
+        
+    email = onboarding_data["email"].strip().lower()
+    if db.query(models.User).filter(models.User.email == email).first():
+        raise HTTPException(status_code=400, detail="Account already exists. Please log in.")
+        
+    try:
+        auth.validate_password_strength(payload.password)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+        
+    mobile_val = payload.mobile_number.strip() if payload.mobile_number and payload.mobile_number.strip() != "" else None
+    
+    user = models.User(
+        name=payload.name,
+        email=email,
+        mobile_number=mobile_val,
+        hashed_password=auth.hash_password(payload.password),
+        college=payload.college,
+        country=payload.country or "",
+        gender=payload.gender,
+        dob=payload.dob,
+        bio=payload.bio or "",
+        is_email_verified=True,
+        is_mobile_verified=False
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+
+    token = auth.create_access_token({"sub": str(user.id)})
+    return schemas.Token(access_token=token, user=schemas.UserOut.model_validate(user))
 
 
 @router.post("/forgot-password")
