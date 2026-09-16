@@ -359,6 +359,8 @@ async def webrtc_signaling(
     try:
         while True:
             data = await websocket.receive_json()
+            if data.get("type") == "ping":
+                continue
             # For WebRTC, just relay to the other participant
             await webrtc_manager.send_to_peer(session_id, user.id, data)
     except WebSocketDisconnect:
@@ -368,6 +370,6 @@ async def webrtc_signaling(
         webrtc_manager.disconnect(session_id, user.id)
         # Try to notify peer if still possible
         asyncio.create_task(webrtc_manager.send_to_peer(session_id, user.id, {
-            "type": "peer_left",
-            "user_id": user.id
+            "type": "peer_disconnected",
+            "userId": user.id
         }))

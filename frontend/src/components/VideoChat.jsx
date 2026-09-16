@@ -1,22 +1,40 @@
-import { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useRef, useState, createContext } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { REACTION_EMOJIS, getEmojiForKey } from '../utils/emojis'
 import { getSessionUser } from '../api'
 import { Mic, MicOff, Video, VideoOff, Hand, Smile , User } from 'lucide-react'
 
-// STUN servers for WebRTC
-const iceServers = {
-  iceServers: [
+// STUN and TURN servers for WebRTC
+const getIceServers = () => {
+  const servers = [
     { urls: 'stun:stun.l.google.com:19302' },
     { urls: 'stun:stun1.l.google.com:19302' },
-  ]
-}
+  ];
+
+  const turnUrl = import.meta.env.VITE_TURN_URL;
+  const turnUsername = import.meta.env.VITE_TURN_USERNAME;
+  const turnCredential = import.meta.env.VITE_TURN_CREDENTIAL;
+
+  if (turnUrl && turnUsername && turnCredential) {
+    const urls = turnUrl.split(',').map(u => u.trim());
+    servers.push({
+      urls: urls,
+      username: turnUsername,
+      credential: turnCredential,
+    });
+  }
+
+  return { iceServers: servers };
+};
+
+export const SessionWebSocketContext = createContext(null)
 
 export default function VideoChat({ sessionId, children, onLeave }) {
   const navigate = useNavigate()
   const [stream, setStream] = useState(null)
   const [remoteStream, setRemoteStream] = useState(null)
   const [status, setStatus] = useState('waiting') // waiting, connecting, connected, disconnected
+  const [sharedWs, setSharedWs] = useState(null)
   const [errorMsg, setErrorMsg] = useState('')
   const [handRaised, setHandRaised] = useState(false)
   const [peerHandRaised, setPeerHandRaised] = useState(false)
@@ -69,17 +87,31 @@ export default function VideoChat({ sessionId, children, onLeave }) {
         }
 
         console.log('[WebRTC] Creating RTCPeerConnection...')
-        pc = new RTCPeerConnection(iceServers)
+        const iceConfig = getIceServers();
+        pc = new RTCPeerConnection(iceConfig)
         pcRef.current = pc
 
         pc.oniceconnectionstatechange = () => {
           console.log('[WebRTC-Diag] ICE state:', pc.iceConnectionState)
           if (pc.iceConnectionState === 'disconnected' || pc.iceConnectionState === 'failed') {
-            setStatus('disconnected')
+            console.log('[WebRTC-Diag] ICE connection disrupted, waiting for reconnect...')
+            // ICE failure != session cancellation
           }
         }
         pc.onconnectionstatechange = () => {
           console.log('[WebRTC-Diag] Connection State:', pc.connectionState)
+          if (pc.connectionState === 'connected') {
+            pc.getStats(null).then(stats => {
+              stats.forEach(report => {
+                if (report.type === 'transport' && report.state === 'connected') {
+                  const localCandidate = stats.get(report.localCertificateId || report.localCandidateId);
+                  const remoteCandidate = stats.get(report.remoteCertificateId || report.remoteCandidateId);
+                  console.log('[WebRTC-Diag] Selected Pair:', 
+                    localCandidate?.candidateType, '-to-', remoteCandidate?.candidateType);
+                }
+              });
+            });
+          }
         }
         pc.onsignalingstatechange = () => {
           console.log('[WebRTC-Diag] Signaling State:', pc.signalingState)
@@ -95,7 +127,7 @@ export default function VideoChat({ sessionId, children, onLeave }) {
         pc.ontrack = (event) => {
           console.log('[WebRTC-Diag] remote track received', event.track.kind, 'readyState:', event.track.readyState)
           if (event.streams && event.streams[0]) {
-            setRemoteStream(event.streams[0])
+            setRemoteStream(new MediaStream(event.streams[0].getTracks()))
             setStatus('connected')
           }
         }
@@ -108,22 +140,34 @@ export default function VideoChat({ sessionId, children, onLeave }) {
         let pendingCandidates = []
 
         pc.onicecandidate = (event) => {
-          if (event.candidate && ws && ws.readyState === WebSocket.OPEN) {
-            console.log('[WebRTC] Sending ICE candidate')
-            ws.send(JSON.stringify({ type: 'candidate', candidate: event.candidate }))
+          if (event.candidate) {
+            console.log(`[WebRTC-Diag] Generated ICE candidate: ${event.candidate.type} (${event.candidate.protocol})`)
+            if (ws && ws.readyState === WebSocket.OPEN) {
+              console.log('[WebRTC] Sending ICE candidate')
+              ws.send(JSON.stringify({ type: 'candidate', candidate: event.candidate }))
+            }
           }
         }
 
         console.log('[WebRTC] Connecting to signaling server...')
         ws = new WebSocket(wsUrl)
         wsRef.current = ws
+        setSharedWs(ws)
+        
+        let pingInterval;
 
-        ws.onopen = () => {
+        ws.addEventListener('open', () => {
           console.log('[WebRTC-Diag] signaling WebSocket connected')
           ws.send(JSON.stringify({ type: 'hello', userId: currentUser?.id }))
-        }
+          
+          pingInterval = setInterval(() => {
+            if (ws.readyState === WebSocket.OPEN) {
+              ws.send(JSON.stringify({ type: 'ping' }))
+            }
+          }, 30000)
+        })
 
-        ws.onmessage = async (event) => {
+        ws.addEventListener('message', async (event) => {
           const data = JSON.parse(event.data)
           console.log('[WebRTC] Signaling message received:', data.type)
 
@@ -196,15 +240,18 @@ export default function VideoChat({ sessionId, children, onLeave }) {
                   setActiveEmojis(prev => prev.filter(e => e.id !== id))
                 }, 3000)
               }
+            } else if (data.type === 'peer_disconnected') {
+              console.log('[WebRTC] Peer disconnected (temporary)')
+              setStatus('connecting')
             } else if (data.type === 'peer_left') {
-              console.log('[WebRTC] Peer left')
+              console.log('[WebRTC] Peer left permanently')
               setStatus('disconnected')
               setRemoteStream(null)
             }
           } catch (err) {
             console.error('[WebRTC] Signaling processing error:', err)
           }
-        }
+        })
 
         ws.onerror = () => {
           console.error('[WebRTC] Signaling server connection error')
@@ -222,10 +269,14 @@ export default function VideoChat({ sessionId, children, onLeave }) {
     return () => {
       console.log('[WebRTC] Cleanup called')
       ignore = true
-      if (ws) ws.close()
+      if (pingInterval) clearInterval(pingInterval)
+      if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+          wsRef.current.send(JSON.stringify({ type: 'peer_left', userId: currentUser?.id }))
+          wsRef.current.close()
+      }
       if (pc) pc.close()
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach((t) => t.stop())
+      if (localStream) {
+        localStream.getTracks().forEach(track => track.stop())
       }
     }
   }, [sessionId])
@@ -338,8 +389,8 @@ export default function VideoChat({ sessionId, children, onLeave }) {
   )
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden min-h-0">
-      <div className="flex-1 flex flex-col md:flex-row overflow-hidden min-h-0">
+    <div className="flex-1 flex flex-col overflow-hidden min-h-0 min-w-0 w-full h-full">
+      <div className="flex-1 flex flex-col md:flex-row overflow-hidden min-h-0 min-w-0 w-full h-full">
 
         {/* Video panel - mobile-optimized compact height */}
         <div className="h-28 sm:h-36 md:h-auto md:w-[240px] lg:w-[260px] xl:w-[280px] shrink-0 bg-[#111] flex flex-col relative border-b md:border-b-0 md:border-r border-ink/20 z-20">
@@ -411,8 +462,10 @@ export default function VideoChat({ sessionId, children, onLeave }) {
         </div>
 
         {/* Workspace + sidebar */}
-        <div className="flex-1 flex flex-col md:flex-row overflow-hidden min-h-0 min-w-0">
-          {children}
+        <div className="flex-1 flex flex-col md:flex-row overflow-hidden min-h-0 min-w-0 w-full h-full">
+          <SessionWebSocketContext.Provider value={sharedWs}>
+            {children}
+          </SessionWebSocketContext.Provider>
         </div>
       </div>
 

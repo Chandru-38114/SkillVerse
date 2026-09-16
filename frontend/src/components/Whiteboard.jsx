@@ -1,6 +1,7 @@
 import { MousePointer2, Move, Pencil, Minus, ArrowRight, Square, Circle, Diamond, Type, Eraser, Undo, Redo, Trash2 } from 'lucide-react';
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useContext } from 'react';
 import { api, getSessionUser } from '../api';
+import { SessionWebSocketContext } from './VideoChat';
 
 export default function Whiteboard({ sessionId }) {
   const svgRef = useRef(null);
@@ -27,9 +28,10 @@ export default function Whiteboard({ sessionId }) {
   const textInputRef = useRef(null);
 
   // Status and Sync
-  const [syncStatus, setSyncStatus] = useState('🟡 Connecting...'); // 🟢 Connected, 🔴 Disconnected
+  const [syncStatus, setSyncStatus] = useState('🟢 Connected'); // 🟢 Connected, 🔴 Disconnected
   const [saveStatus, setSaveStatus] = useState(''); // Saving..., Saved, Save failed
   const wsRef = useRef(null);
+  const sharedWs = useContext(SessionWebSocketContext);
   const isRemoteUpdate = useRef(false);
 
   // Fetch initial board state
@@ -51,35 +53,40 @@ export default function Whiteboard({ sessionId }) {
     loadBoard();
   }, [sessionId]);
 
-  // WebSocket Connection
+  // WebSocket Connection using shared socket
   useEffect(() => {
-    const token = localStorage.getItem("skillverse_token");
-    if (!token) return;
-
-    let wsUrl = (import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000').replace('http', 'ws');
-    const ws = new WebSocket(`${wsUrl}/sessions/${sessionId}/whiteboard/ws?token=${token}`);
-    wsRef.current = ws;
-
-    ws.onopen = () => setSyncStatus('🟢 Connected');
-    ws.onclose = () => setSyncStatus('🔴 Disconnected');
-    ws.onerror = () => setSyncStatus('🔴 Error');
-
-    ws.onmessage = (event) => {
+    if (!sharedWs) {
+      setSyncStatus('🔴 Disconnected');
+      return;
+    }
+    
+    wsRef.current = sharedWs;
+    setSyncStatus(sharedWs.readyState === WebSocket.OPEN ? '🟢 Connected' : '🟡 Connecting...');
+    
+    const handleMessage = (event) => {
       try {
         const msg = JSON.parse(event.data);
         if (msg.type === 'update_elements') {
           isRemoteUpdate.current = true;
           setElements(msg.elements);
+          // Also update history so we don't overwrite remote changes
+          setHistory(prev => {
+            const newHist = [...prev, msg.elements];
+            setHistoryStep(newHist.length - 1);
+            return newHist;
+          });
         }
       } catch (err) {
         console.error(err);
       }
     };
-
+    
+    sharedWs.addEventListener('message', handleMessage);
+    
     return () => {
-      if (wsRef.current) wsRef.current.close();
+      sharedWs.removeEventListener('message', handleMessage);
     };
-  }, [sessionId]);
+  }, [sharedWs]);
 
   // Debounced Auto-Save
   useEffect(() => {

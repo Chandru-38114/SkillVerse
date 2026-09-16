@@ -1,5 +1,6 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useContext } from 'react';
 import { api, getSessionUser } from '../api';
+import { SessionWebSocketContext } from './VideoChat';
 
 const DEFAULT_CODE = 'print("Hello, SkillVerse!")\n';
 
@@ -10,10 +11,11 @@ export default function Compiler({ sessionId }) {
   const [error, setError] = useState('');
   const [isRunning, setIsRunning] = useState(false);
 
-  // Sync state
-  const [syncStatus, setSyncStatus] = useState('dYY Connecting...');
+  // Sync status
+  const [syncStatus, setSyncStatus] = useState('🟢 Connected');
   const [saveStatus, setSaveStatus] = useState('');
   const wsRef = useRef(null);
+  const sharedWs = useContext(SessionWebSocketContext);
   const isRemoteUpdate = useRef(false);
 
   // Indicator for when remote user runs code
@@ -39,29 +41,25 @@ export default function Compiler({ sessionId }) {
     loadCompiler();
   }, [sessionId]);
 
-  // 2. WebSocket Connection
+  // 2. WebSocket listener for shared socket
   useEffect(() => {
-    const token = localStorage.getItem("skillverse_token");
-    if (!token) return;
+    if (!sharedWs) {
+      setSyncStatus('🔴 Disconnected');
+      return;
+    }
 
-    const wsUrl = (import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000').replace('http', 'ws');
-    const ws = new WebSocket(`${wsUrl}/compiler/${sessionId}/ws?token=${token}`);
-    wsRef.current = ws;
+    wsRef.current = sharedWs;
+    setSyncStatus(sharedWs.readyState === WebSocket.OPEN ? '🟢 Connected' : '🟡 Connecting...');
 
-    ws.onopen = () => setSyncStatus('Connected');
-    ws.onclose = () => setSyncStatus('Disconnected');
-    ws.onerror = () => setSyncStatus('Error');
-
-    ws.onmessage = (event) => {
+    const handleMessage = (event) => {
       try {
         const msg = JSON.parse(event.data);
-        if (msg.type === 'update_code') {
-          if (msg.version && msg.version <= versionRef.current) {
-            return; // ignore stale version
+        if (msg.type === 'update_code' && msg.code !== undefined) {
+          if (msg.version && msg.version > versionRef.current) {
+            versionRef.current = msg.version;
+            isRemoteUpdate.current = true;
+            setCode(msg.code);
           }
-          versionRef.current = msg.version;
-          isRemoteUpdate.current = true;
-          setCode(msg.code);
         } else if (msg.type === 'execution_result') {
           if (msg.timestamp && msg.timestamp <= execTimestampRef.current) {
             return; // ignore stale execution
@@ -80,31 +78,26 @@ export default function Compiler({ sessionId }) {
       }
     };
 
+    sharedWs.addEventListener('message', handleMessage);
+
     return () => {
-      if (wsRef.current) wsRef.current.close();
+      sharedWs.removeEventListener('message', handleMessage);
     };
-  }, [sessionId]);
+  }, [sharedWs]);
 
-  // 3. Debounced Sync & Save via WebSocket
-  useEffect(() => {
-    if (isRemoteUpdate.current) {
-      isRemoteUpdate.current = false;
-      return;
+  const broadcastCode = (newCode) => {
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ type: 'update_code', code: newCode }));
+      setSaveStatus('Saved');
+      setTimeout(() => setSaveStatus(''), 2000);
     }
+  };
 
-    setSaveStatus('Saving...');
-    const timer = setTimeout(() => {
-      if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-        wsRef.current.send(JSON.stringify({ type: 'update_code', code }));
-        setSaveStatus('Saved');
-        setTimeout(() => setSaveStatus(''), 2000);
-      } else {
-        setSaveStatus('Save failed (offline)');
-      }
-    }, 300);
-
-    return () => clearTimeout(timer);
-  }, [code, sessionId]);
+  const handleCodeChange = (e) => {
+    const newCode = e.target.value;
+    setCode(newCode);
+    broadcastCode(newCode);
+  };
 
   const handleRun = async () => {
     setIsRunning(true);
@@ -142,6 +135,7 @@ export default function Compiler({ sessionId }) {
 
   const handleReset = () => {
     setCode(DEFAULT_CODE);
+    broadcastCode(DEFAULT_CODE);
     handleClear();
   };
 
@@ -153,6 +147,7 @@ export default function Compiler({ sessionId }) {
       const end = e.target.selectionEnd;
       const newCode = code.substring(0, start) + '    ' + code.substring(end);
       setCode(newCode);
+      broadcastCode(newCode);
       // Wait for React to update the state before setting cursor
       setTimeout(() => {
         e.target.selectionStart = e.target.selectionEnd = start + 4;
@@ -205,7 +200,7 @@ export default function Compiler({ sessionId }) {
         {/* Code textarea */}
         <textarea
           value={code}
-          onChange={(e) => setCode(e.target.value)}
+          onChange={handleCodeChange}
           onKeyDown={handleKeyDown}
           className="flex-1 w-full p-3 sm:p-4 font-mono text-sm leading-relaxed resize-none focus:outline-none bg-[#1e1e1e] text-[#d4d4d4] min-h-[120px]"
           spellCheck="false"
