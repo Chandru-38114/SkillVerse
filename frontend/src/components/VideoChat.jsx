@@ -1,31 +1,9 @@
 import React, { useEffect, useRef, useState, createContext } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { REACTION_EMOJIS, getEmojiForKey } from '../utils/emojis'
-import { getSessionUser } from '../api'
+import { api, getSessionUser } from '../api'
 import { Mic, MicOff, Video, VideoOff, Hand, Smile , User } from 'lucide-react'
 
-// STUN and TURN servers for WebRTC
-const getIceServers = () => {
-  const servers = [
-    { urls: 'stun:stun.l.google.com:19302' },
-    { urls: 'stun:stun1.l.google.com:19302' },
-  ];
-
-  const turnUrl = import.meta.env.VITE_TURN_URL;
-  const turnUsername = import.meta.env.VITE_TURN_USERNAME;
-  const turnCredential = import.meta.env.VITE_TURN_CREDENTIAL;
-
-  if (turnUrl && turnUsername && turnCredential) {
-    const urls = turnUrl.split(',').map(u => u.trim());
-    servers.push({
-      urls: urls,
-      username: turnUsername,
-      credential: turnCredential,
-    });
-  }
-
-  return { iceServers: servers };
-};
 
 export const SessionWebSocketContext = createContext(null)
 
@@ -86,8 +64,24 @@ export default function VideoChat({ sessionId, children, onLeave }) {
           // We intentionally do not set errorMsg to allow signaling and viewing remote streams
         }
 
+        console.log('[WebRTC] Fetching TURN credentials from backend...')
+        let iceConfig = {
+          iceServers: [
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:stun1.l.google.com:19302' },
+          ]
+        }
+        try {
+          const resp = await api.get('/sessions/turn-credentials')
+          if (resp.data && resp.data.iceServers && resp.data.iceServers.length > 0) {
+            iceConfig.iceServers = [...iceConfig.iceServers, ...resp.data.iceServers]
+            console.log('[WebRTC] Successfully fetched dynamic TURN credentials')
+          }
+        } catch (e) {
+          console.warn('[WebRTC-Diag] Failed to fetch TURN credentials from backend, falling back to STUN-only', e)
+        }
+
         console.log('[WebRTC] Creating RTCPeerConnection...')
-        const iceConfig = getIceServers();
         pc = new RTCPeerConnection(iceConfig)
         pcRef.current = pc
 

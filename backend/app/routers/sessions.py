@@ -12,6 +12,9 @@ Endpoints:
 """
 import datetime as dt
 from typing import List
+import os
+import requests
+
 
 from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect, Query
 from sqlalchemy.orm import Session as DBSession
@@ -25,6 +28,26 @@ from ..ws_manager import webrtc_manager
 from ..utils.timezone import utc_now, IST, enforce_utc_iso
 
 router = APIRouter(prefix="/sessions", tags=["sessions"])
+
+@router.get("/turn-credentials")
+def get_turn_credentials(current_user: models.User = Depends(auth.get_current_user)):
+    """Fetch time-limited TURN credentials securely from backend variables."""
+    metered_domain = os.environ.get("METERED_DOMAIN")
+    metered_api_key = os.environ.get("METERED_API_KEY")
+    
+    if not metered_domain or not metered_api_key:
+        print("[TURN] Backend metered config missing, returning empty array")
+        return {"iceServers": []}
+        
+    url = f"https://{metered_domain}/api/v1/turn/credentials?apiKey={metered_api_key}"
+    try:
+        resp = requests.get(url, timeout=5)
+        resp.raise_for_status()
+        return {"iceServers": resp.json()}
+    except Exception as e:
+        print(f"[TURN] Failed to fetch credentials from Metered: {e}")
+        return {"iceServers": []}
+
 
 
 def _authenticate_ws(token: str, db: DBSession) -> Optional[models.User]:
