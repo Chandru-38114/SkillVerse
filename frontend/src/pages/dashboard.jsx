@@ -160,8 +160,10 @@ export default function Dashboard() {
         </p>
       </section>
 
-      {showLoading ? (
-        <div className="skeleton h-48 w-full rounded-2xl mb-8" />
+      {loading ? (
+        showLoading ? (
+          <div className="skeleton h-48 w-full rounded-2xl mb-8" />
+        ) : null
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           

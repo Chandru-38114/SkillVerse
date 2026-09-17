@@ -1,4 +1,4 @@
-import { Navigate, Routes, Route, useLocation } from 'react-router-dom'
+import { Navigate, Routes, Route, useLocation, useNavigate } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import { GoogleOAuthProvider } from '@react-oauth/google'
 import Navbar from './components/navbar'
@@ -40,22 +40,24 @@ function RootRedirect() {
 
 export default function App() {
   const location = useLocation();
-  const [authChecked, setAuthChecked] = useState(false);
+  const navigate = useNavigate();
+  const [authChecked, setAuthChecked] = useState(() => !!(getToken() && getSessionUser()));
 
   useEffect(() => {
     const token = getToken();
     if (token) {
       api.me().then(user => {
           saveSession(token, user);
-          setAuthChecked(true);
+          if (!authChecked) setAuthChecked(true);
         }).catch(() => {
           clearSession();
           setAuthChecked(true);
+          navigate('/login');
         });
     } else {
       setAuthChecked(true);
     }
-  }, []);
+  }, [navigate]);
 
   const authRoutes = ['/login', '/signup', '/verify-email', '/forgot-password', '/reset-password', '/verify/'];
   const isAuthRoute = authRoutes.some(path => location.pathname.startsWith(path)) || location.pathname === '/' || location.pathname === '/landing';

@@ -7,26 +7,42 @@ export default function Progress() {
   const [historyData, setHistoryData] = useState([]);
   const [certificates, setCertificates] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showLoading, setShowLoading] = useState(false);
   const [error, setError] = useState(null);
   const [generating, setGenerating] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
+    let isMounted = true;
+    const timer = setTimeout(() => {
+      if (isMounted) setShowLoading(true);
+    }, 150);
+
     async function loadData() {
       try {
         const pData = await api.getMyProgress();
         const hData = await api.getProgressHistory();
         const cData = await api.getMyCertificates();
-        setProgressData(pData);
-        setHistoryData(hData);
-        setCertificates(cData);
+        if (isMounted) {
+          setProgressData(pData);
+          setHistoryData(hData);
+          setCertificates(cData);
+        }
       } catch (err) {
-        setError(err.message);
+        if (isMounted) setError(err.message);
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          clearTimeout(timer);
+          setLoading(false);
+          setShowLoading(false);
+        }
       }
     }
     loadData();
+    return () => {
+      isMounted = false;
+      clearTimeout(timer);
+    };
   }, []);
 
   const handleGenerateCertificate = async (skillName) => {
@@ -43,7 +59,9 @@ export default function Progress() {
     }
   };
 
-  if (loading) return <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-12"><div className="skeleton h-32 w-full mb-6"></div><div className="grid md:grid-cols-3 gap-6"><div className="skeleton h-64 w-full"></div></div></div>;
+  if (loading) {
+    return showLoading ? <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-12"><div className="skeleton h-32 w-full mb-6"></div><div className="grid md:grid-cols-3 gap-6"><div className="skeleton h-64 w-full"></div></div></div> : null;
+  }
   if (error) return <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-12"><div className="alert-error">{error}</div></div>;
 
   return (

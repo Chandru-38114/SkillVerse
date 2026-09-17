@@ -16,21 +16,38 @@ export default function Gamification() {
   const [leaderboard, setLeaderboard] = useState([])
   const [summary, setSummary] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [showLoading, setShowLoading] = useState(false)
   const currentUser = getSessionUser()
 
   useEffect(() => {
+    let isMounted = true;
+    const timer = setTimeout(() => {
+      if (isMounted) setShowLoading(true);
+    }, 150);
+
     Promise.all([
-      api.getLeaderboard().then(setLeaderboard),
-      api.getGamificationSummary().then(setSummary)
-    ]).finally(() => setLoading(false))
+      api.getLeaderboard().then(data => { if (isMounted) setLeaderboard(data) }),
+      api.getGamificationSummary().then(data => { if (isMounted) setSummary(data) })
+    ]).finally(() => {
+      if (isMounted) {
+        clearTimeout(timer);
+        setLoading(false);
+        setShowLoading(false);
+      }
+    })
+
+    return () => {
+      isMounted = false;
+      clearTimeout(timer);
+    }
   }, [])
 
   if (loading) {
-    return (
+    return showLoading ? (
       <div className="max-w-5xl mx-auto px-6 py-12 flex justify-center">
         <div className="skeleton h-32 w-full mb-6"></div><div className="grid md:grid-cols-3 gap-6"><div className="skeleton h-64 w-full"></div><div className="md:col-span-2 skeleton h-96 w-full"></div></div>
       </div>
-    )
+    ) : null;
   }
 
   return (
