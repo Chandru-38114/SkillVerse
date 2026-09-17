@@ -92,7 +92,8 @@ export default function Dashboard() {
     title: "Start your SkillVerse journey",
     description: "Discover partners and begin learning a new skill.",
     actionText: "Discover Partners →",
-    actionUrl: "/marketplace"
+    actionUrl: "/marketplace",
+    step: 1 // Connect
   }
 
   if (nextSession) {
@@ -100,14 +101,16 @@ export default function Dashboard() {
       title: "Your next learning session is ready",
       description: `Session in ${nextSession.skill} on ${nextSession.session_date} at ${nextSession.start_time}.`,
       actionText: "Join Session →",
-      actionUrl: `/session/${nextSession.id}`
+      actionUrl: `/session/${nextSession.id}`,
+      step: 2 // Learn
     }
   } else if (weakTopic) {
     heroState = {
       title: "Keep working on your weak topics",
       description: `Based on your recent assessment, focus on improving: ${weakTopic}.`,
       actionText: `Find a teacher for ${weakTopic} →`,
-      actionUrl: `/marketplace?q=${encodeURIComponent(weakTopic)}`
+      actionUrl: `/marketplace?q=${encodeURIComponent(weakTopic)}`,
+      step: 3 // Practice
     }
   } else if (activeLearningSkill) {
     if (activeLearningSkill.progress_percentage === 0) {
@@ -115,28 +118,32 @@ export default function Dashboard() {
         title: `Assess your ${activeLearningSkill.skill_name} to see where you stand`,
         description: "Take an initial assessment to benchmark your current level and earn points.",
         actionText: "Take Assessment →",
-        actionUrl: "/assessment"
+        actionUrl: "/assessment",
+        step: 0 // Assess
       }
     } else if (activeLearningSkill.progress_percentage > 0 && activeLearningSkill.progress_percentage < 100) {
       heroState = {
         title: `Continue building your ${activeLearningSkill.skill_name} progress`,
         description: `You are at ${activeLearningSkill.progress_percentage}% progress. Schedule a session to keep growing.`,
         actionText: "Find a teacher →",
-        actionUrl: "/marketplace"
+        actionUrl: "/marketplace",
+        step: 1 // Connect
       }
     } else if (activeLearningSkill.progress_percentage === 100 && !activeLearningSkill.badge) {
       heroState = {
         title: `You're ready to prove your ${activeLearningSkill.skill_name} skills`,
         description: "You've reached 100% progress. Take the final assessment to earn your verified badge.",
         actionText: "Assess your skill →",
-        actionUrl: "/assessment"
+        actionUrl: "/assessment",
+        step: 0 // Assess
       }
     } else if (activeLearningSkill.progress_percentage === 100 && activeLearningSkill.badge) {
       heroState = {
         title: `You've mastered ${activeLearningSkill.skill_name}`,
         description: "You hold a verified badge. Start teaching this skill or discover a new one to learn.",
         actionText: "Discover skill exchanges →",
-        actionUrl: "/marketplace"
+        actionUrl: "/marketplace",
+        step: 4 // Teach
       }
     }
   } else if (teachingSkills.length > 0) {
@@ -144,7 +151,8 @@ export default function Dashboard() {
       title: "Keep growing your teaching skills",
       description: "You have skills ready to teach. Check your pending requests or find someone to help.",
       actionText: "View Requests →",
-      actionUrl: "/requests"
+      actionUrl: "/requests",
+      step: 4 // Teach
     }
   }
 
@@ -171,7 +179,18 @@ export default function Dashboard() {
           <div className="lg:col-span-2 space-y-6">
             
             {/* JOURNEY HERO */}
-            <div className="card bg-gradient-to-br from-brand/5 to-transparent border-0">
+            <div className="card bg-gradient-to-br from-brand/5 to-transparent border-0 relative overflow-hidden">
+              {/* Skill Journey Stepper */}
+              <div className="mb-8 pb-4 border-b border-line/40 hidden md:flex items-center justify-between relative">
+                <div className="absolute left-0 top-3 w-full h-0.5 bg-line/50 z-0"></div>
+                {['Assess', 'Connect', 'Learn', 'Practice', 'Teach', 'Grow'].map((step, idx) => (
+                  <div key={step} className="relative z-10 flex flex-col items-center gap-2 bg-transparent px-2" style={{ background: 'var(--surface)' }}>
+                    <div className={`w-3 h-3 rounded-full ${idx === heroState.step ? 'bg-brand ring-4 ring-brand/20' : idx < heroState.step ? 'bg-brand' : 'bg-line'}`} />
+                    <span className={`text-[10px] uppercase tracking-wider font-semibold ${idx === heroState.step ? 'text-brand' : 'text-clay/60'}`}>{step}</span>
+                  </div>
+                ))}
+              </div>
+
               <p className="text-xs font-bold text-brand uppercase tracking-wider mb-3">Your Next Step</p>
               <h2 className="text-2xl md:text-3xl font-bold text-ink mb-2 leading-tight">
                 {heroState.title}
@@ -184,33 +203,33 @@ export default function Dashboard() {
 
             {/* PROGRESS SNAPSHOT */}
             {learningSkills.length > 0 && (
-              <section className="card">
+              <section className="card border-0 shadow-sm">
                 <div className="flex items-center justify-between mb-5">
                   <h3 className="font-bold text-ink flex items-center gap-2">
-                    <BookOpen className="w-5 h-5 text-clay" /> Active Learning
+                    <BookOpen className="w-5 h-5 text-brand" /> Active Learning
                   </h3>
                   <Link to="/progress" className="text-sm font-semibold text-brand hover:underline flex items-center gap-1">
                     View full progress <ArrowRight className="w-4 h-4" />
                   </Link>
                 </div>
                 
-                <div className="space-y-4">
+                <div className="space-y-5">
                   {learningSkills.slice(0, 2).map(s => (
                     <div key={s.id}>
-                      <div className="flex justify-between items-center mb-2">
+                      <div className="flex justify-between items-center mb-3">
                         <div>
-                          <p className="font-bold text-ink">{s.skill_name}</p>
+                          <p className="font-bold text-ink text-base">{s.skill_name}</p>
                           <p className="text-xs text-clay font-medium capitalize">{s.level} • {s.sessions_completed} sessions</p>
                         </div>
                         <div className="text-right flex flex-col items-end gap-1">
-                          <span className="text-xs font-bold text-brand2 bg-brandLight px-2 py-0.5 rounded-md">
+                          <span className="text-xs font-bold text-brand bg-brand/10 px-2.5 py-1 rounded-md">
                             {s.progress_percentage || 0}%
                           </span>
                           {s.badge && <SkillBadge badge={s.badge} />}
                         </div>
                       </div>
-                      <div className="w-full bg-line rounded-full h-1.5">
-                        <div className="bg-brand2 h-1.5 rounded-full transition-all duration-500" style={{ width: `${s.progress_percentage || 0}%` }} />
+                      <div className="w-full bg-line/50 rounded-full h-2 overflow-hidden">
+                        <div className="bg-brand h-full rounded-full transition-all duration-700 ease-out" style={{ width: `${s.progress_percentage || 0}%` }} />
                       </div>
                     </div>
                   ))}
@@ -219,16 +238,16 @@ export default function Dashboard() {
             )}
             
             {teachingSkills.length > 0 && (
-              <section className="card">
+              <section className="card border-0 shadow-sm">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="font-bold text-ink flex items-center gap-2">
-                    <Compass className="w-5 h-5 text-clay" /> Teaching Skills
+                    <Compass className="w-5 h-5 text-brand" /> Teaching Skills
                   </h3>
                 </div>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-3">
                   {teachingSkills.map(s => (
-                    <div key={s.id} className="bg-lift px-4 py-2 rounded-xl flex items-center gap-2">
-                      <span className="font-semibold text-sm">{s.skill_name}</span>
+                    <div key={s.id} className="bg-surface border border-line/40 px-4 py-2.5 rounded-full flex items-center gap-2 shadow-sm">
+                      <span className="font-semibold text-sm text-ink">{s.skill_name}</span>
                       {s.badge && <SkillBadge badge={s.badge} />}
                     </div>
                   ))}
@@ -242,7 +261,8 @@ export default function Dashboard() {
           <div className="space-y-6">
             
             {/* GAMIFICATION / GROWTH SNAPSHOT */}
-            <section className="card">
+            {/* GAMIFICATION / GROWTH SNAPSHOT */}
+            <section className="card border-0 shadow-sm bg-surface">
               <div className="flex items-center justify-between mb-5">
                 <h3 className="font-bold text-ink flex items-center gap-2">
                   <Trophy className="w-5 h-5 text-gold" /> Your Growth
@@ -260,16 +280,16 @@ export default function Dashboard() {
                     <p className="text-xs font-bold text-ink/60">Next: {gamification.next_milestone_title}</p>
                     <p className="text-xs text-ink/40">{gamification.total_points} / {gamification.next_milestone_points}</p>
                   </div>
-                  <div className="w-full bg-paper h-2 rounded-full overflow-hidden">
+                  <div className="w-full bg-line/40 h-2 rounded-full overflow-hidden">
                     <div 
-                      className="bg-gold h-full transition-all duration-500" 
+                      className="bg-gold h-full rounded-full transition-all duration-700 ease-out" 
                       style={{ width: `${Math.min(100, ((gamification.total_points || 0) / gamification.next_milestone_points) * 100)}%` }} 
                     />
                   </div>
                 </div>
               )}
 
-              <Link to="/gamification" className="btn-secondary w-full justify-center text-sm">
+              <Link to="/gamification" className="btn-secondary w-full justify-center text-sm border-line/40 hover:bg-lift">
                 View Achievements & Leaderboard
               </Link>
             </section>

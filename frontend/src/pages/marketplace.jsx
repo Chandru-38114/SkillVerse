@@ -255,7 +255,7 @@ export default function Marketplace() {
                       
                       {teacher.match_context && (
                         <div className="ml-auto flex items-start">
-                          <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider font-bold text-moss2 bg-mossLight/50 border border-moss/20 px-2 py-1 rounded">
+                          <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider font-bold text-brand bg-brand/10 border border-brand/20 px-2 py-1 rounded">
                             <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
                             {teacher.match_context === "Perfect skill exchange" ? "Perfect Match" : "Strong Match"}
                           </span>
@@ -264,8 +264,8 @@ export default function Marketplace() {
                     </div>
                     
                     {teacher.match_context && (
-                      <div className="mb-5 bg-moss/5 rounded-lg px-4 py-3 border border-moss/10">
-                        <p className="text-sm font-medium text-moss2 flex items-center gap-2">
+                      <div className="mb-5 bg-brand/5 rounded-lg px-4 py-3 border border-brand/10">
+                        <p className="text-sm font-medium text-brand flex items-center gap-2">
                           <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
                           {teacher.match_context}
                         </p>
@@ -280,9 +280,9 @@ export default function Marketplace() {
                         </h4>
                         <div className="flex flex-wrap gap-2">
                           {teacher.teaching_skills.length === 0 ? <span className="text-xs text-ink/40 italic">None</span> : teacher.teaching_skills.map(s => (
-                            <div key={s.skill_name} className="flex flex-col bg-paper px-3 py-1.5 rounded-md border border-line">
+                            <div key={s.skill_name} className="flex flex-col bg-paper px-3 py-1.5 rounded-md border border-line/40">
                               <span className="text-sm font-semibold text-ink">{s.skill_name}</span> 
-                              <span className="text-[10px] text-moss2 uppercase tracking-wide font-bold">{s.level}</span>
+                              <span className="text-[10px] text-brand uppercase tracking-wide font-bold">{s.level}</span>
                             </div>
                           ))}
                         </div>
@@ -295,7 +295,7 @@ export default function Marketplace() {
                         </h4>
                         <div className="flex flex-wrap gap-2">
                           {teacher.learning_skills.length === 0 ? <span className="text-xs text-ink/40 italic">None</span> : teacher.learning_skills.map(s => (
-                            <div key={s.skill_name} className="flex flex-col bg-paper px-3 py-1.5 rounded-md border border-line">
+                            <div key={s.skill_name} className="flex flex-col bg-paper px-3 py-1.5 rounded-md border border-line/40">
                               <span className="text-sm font-semibold text-ink">{s.skill_name}</span> 
                               <span className="text-[10px] text-brand2 uppercase tracking-wide font-bold">{s.level === 'Unassessed' ? 'Beginner' : s.level}</span>
                             </div>
