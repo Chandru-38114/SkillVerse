@@ -230,7 +230,12 @@ export default function Assessment() {
           </div>
 
           <div className="flex flex-wrap gap-3">
-            <Link to="/dashboard" className="btn-primary">Back to dashboard</Link>
+            <Link 
+              to={result.weak_topics.length > 0 ? `/dashboard?weakTopic=${encodeURIComponent(result.weak_topics[0])}` : `/dashboard`} 
+              className="btn-primary"
+            >
+              Back to Skill Journey
+            </Link>
             <Link to="/marketplace" className="btn-secondary">Find teachers →</Link>
           </div>
         </>

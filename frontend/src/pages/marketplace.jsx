@@ -154,12 +154,12 @@ export default function Marketplace() {
     <div className="min-h-screen bg-paper font-body text-ink pb-24">
       <section className="pt-16 pb-12 px-4 sm:px-6 max-w-6xl mx-auto border-b border-line/40 mb-8">
         <div className="max-w-3xl mx-auto text-center mb-10">
-          <h1 className="text-4xl md:text-5xl font-display font-bold mb-4 text-ink tracking-tight">Find Your Learning Partner</h1>
+          <h1 className="text-3xl md:text-4xl font-bold mb-4 text-ink tracking-tight">Find Your Learning Partner</h1>
           <p className="text-lg text-ink/70">Connect with peers to teach what you know, and learn what you don't.</p>
         </div>
 
         <div className="max-w-2xl mx-auto">
-          <form onSubmit={handleSearchSubmit} className="relative shadow-sm mb-6 flex rounded-xl bg-surface border border-line focus-within:border-brand focus-within:ring-2 focus-within:ring-brand/20 transition-all overflow-hidden">
+          <form onSubmit={handleSearchSubmit} className="relative shadow-sm mb-6 flex rounded-2xl bg-surface border border-line focus-within:border-brand focus-within:ring-2 focus-within:ring-brand/20 transition-all overflow-hidden">
             <div className="pl-4 pr-2 py-3.5 flex items-center justify-center text-ink/40">
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
             </div>
@@ -170,7 +170,7 @@ export default function Marketplace() {
               value={query}
               onChange={e => setQuery(e.target.value)}
             />
-            <button type="submit" className="bg-moss hover:bg-moss2 transition-colors text-white px-6 font-bold text-sm tracking-wide">
+            <button type="submit" className="bg-brand hover:bg-brand2 transition-colors text-white px-6 font-bold text-sm tracking-wide">
               Search
             </button>
           </form>
@@ -181,8 +181,7 @@ export default function Marketplace() {
               <button 
                 key={c}
                 onClick={() => handleCategoryClick(c)}
-                className="px-3 py-1 text-xs font-semibold rounded-full bg-paper border border-line text-ink/70 hover:border-moss hover:text-moss transition-colors"
-              >
+                className="px-3 py-1 text-xs font-semibold rounded-full bg-paper border border-line text-ink/70 hover:border-brand hover:text-brand transition-colors"              >
                 {c}
               </button>
             ))}
@@ -245,11 +244,11 @@ export default function Marketplace() {
                   
                   <div className="p-6 flex-1 flex flex-col">
                     <div className="flex gap-4 mb-6">
-                      <div className="w-16 h-16 bg-moss/10 rounded-full flex items-center justify-center text-moss font-display text-2xl font-bold shrink-0 border border-moss/20">
+                      <div className="w-16 h-16 bg-brand/10 rounded-full flex items-center justify-center text-brand text-2xl font-bold shrink-0 border border-brand/20">
                         {teacher.name.charAt(0)}
                       </div>
                       <div>
-                        <h3 className="font-display text-xl font-bold text-ink">{teacher.name}</h3>
+                        <h3 className="text-xl font-bold text-ink">{teacher.name}</h3>
                         {teacher.college && <p className="text-xs font-semibold text-clay uppercase tracking-wider mt-0.5">{teacher.college}</p>}
                         <RatingSummary data={ratings} />
                       </div>
@@ -469,7 +468,7 @@ function EmptyTeachers({ query, filter, proficiency }) {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
         </svg>
       </div>
-      <h2 className="font-display text-2xl font-bold text-ink mb-2">No partners found{query ? ` for "${query}"` : ''}</h2>
+      <h2 className="text-xl md:text-2xl font-bold text-ink mb-2">No partners found{query ? ` for "${query}"` : ''}</h2>
       <p className="text-sm text-clay max-w-sm mx-auto font-medium mb-6">
         {message}
       </p>

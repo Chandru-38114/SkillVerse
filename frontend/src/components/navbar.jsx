@@ -283,8 +283,8 @@ export default function Navbar() {
         
         {/* Sub-Nav Bars */}
         {user && isConnectActive && (
-          <div className="bg-lift border-t border-line overflow-x-auto no-scrollbar">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 flex gap-2 py-2">
+          <div className="bg-surface border-t border-line overflow-x-auto no-scrollbar">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 flex gap-4 py-1.5">
               {[
                 { to: '/messages', label: 'Inbox' },
                 { to: '/requests', label: 'Requests' },
@@ -292,7 +292,7 @@ export default function Navbar() {
               ].map(link => {
                 const active = location.pathname.startsWith(link.to);
                 return (
-                  <Link key={link.to} to={link.to} className={`px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors ${active ? 'bg-ink text-paper' : 'text-clay hover:bg-surface hover:text-ink border border-transparent hover:border-line'}`}>
+                  <Link key={link.to} to={link.to} className={`px-2 py-1.5 text-xs font-semibold whitespace-nowrap transition-colors border-b-2 ${active ? 'border-brand text-brand' : 'border-transparent text-clay hover:text-ink'}`}>
                     {link.label}
                   </Link>
                 )
@@ -301,8 +301,8 @@ export default function Navbar() {
           </div>
         )}
         {user && isJourneyActive && (
-          <div className="bg-lift border-t border-line overflow-x-auto no-scrollbar">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 flex gap-2 py-2">
+          <div className="bg-surface border-t border-line overflow-x-auto no-scrollbar">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 flex gap-4 py-1.5">
               {[
                 { to: '/gamification', label: 'Skill Journey' },
                 { to: '/progress', label: 'Progress' },
@@ -310,7 +310,7 @@ export default function Navbar() {
               ].map(link => {
                 const active = location.pathname.startsWith(link.to);
                 return (
-                  <Link key={link.to} to={link.to} className={`px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors ${active ? 'bg-ink text-paper' : 'text-clay hover:bg-surface hover:text-ink border border-transparent hover:border-line'}`}>
+                  <Link key={link.to} to={link.to} className={`px-2 py-1.5 text-xs font-semibold whitespace-nowrap transition-colors border-b-2 ${active ? 'border-brand text-brand' : 'border-transparent text-clay hover:text-ink'}`}>
                     {link.label}
                   </Link>
                 )

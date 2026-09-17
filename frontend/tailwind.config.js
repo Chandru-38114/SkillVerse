@@ -36,10 +36,10 @@ export default {
         },
       },
       fontFamily: {
-        display:   ["'Fraunces'", "serif"],
+        display:   ["'Inter'", "sans-serif"],
         body:      ["'Inter'", "sans-serif"],
         mono:      ["'JetBrains Mono'", "monospace"],
-        cormorant: ["'Cormorant Garamond'", "serif"],
+        cormorant: ["'Inter'", "sans-serif"],
       },
       borderRadius: {
         sk: "10px",

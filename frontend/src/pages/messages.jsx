@@ -14,7 +14,11 @@ import DateTimePicker from '../components/DateTimePicker'
 const RECONNECT_DELAY_MS = 2000
 const MAX_RECONNECT_DELAY_MS = 10000
 import { REACTION_EMOJIS, getEmojiForKey } from '../utils/emojis'
-
+import MessageBubble from '../components/chat/MessageBubble'
+import ScheduleModal from '../components/chat/ScheduleModal'
+import SessionCard from '../components/chat/SessionCard'
+import PendingRequestCard from '../components/connect/PendingRequestCard'
+import ReviewForm from '../components/connect/ReviewForm'
 
 // Ã¢â€â‚¬Ã¢â€â‚¬ Utilities Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
@@ -35,34 +39,7 @@ function Toast({ message, onDone }) {
   )
 }
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ Message renderer Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
-
-function MessageRenderer({ content }) {
-  const imgMatch = content.match(/^!\[(.*?)\]\((.*?)\)$/)
-  if (imgMatch) {
-    return (
-      <div className="mt-2 mb-1 overflow-hidden rounded-xl border border-line/50 shadow-sm bg-black/5 dark:bg-white/5">
-        <a href={imgMatch[2]} target="_blank" rel="noreferrer" className="block cursor-zoom-in">
-          <img src={imgMatch[2]} alt={imgMatch[1]} className="max-w-full h-auto max-h-64 w-full object-cover hover:opacity-95 transition-opacity" />
-        </a>
-      </div>
-    )
-  }
-  const fileMatch = content.match(/^\[(.*?)\]\((.*?)\)$/)
-  if (fileMatch) {
-    return (
-      <a href={fileMatch[2]} target="_blank" rel="noreferrer" className="flex items-center gap-3 mt-2 mb-1 px-4 py-3 bg-surface border border-line/40 rounded-xl hover:bg-lift transition-colors group shadow-sm w-fit max-w-full">
-        <div className="p-2 bg-brand/10 text-brand rounded-lg group-hover:bg-brand/20 transition-colors">
-          <FileText className="w-5 h-5 shrink-0" />
-        </div>
-        <span className="text-sm font-semibold text-ink truncate flex-1">{fileMatch[1]}</span>
-      </a>
-    )
-  }
-  return <p className="whitespace-pre-wrap break-words leading-relaxed">{content}</p>
-}
-
-// Ã¢â€â‚¬Ã¢â€â‚¬ Connection state badge Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// ─── Connection state badge ─────────────────────────────────────────────────
 
 function ConnectionBadge({ state }) {
   const cfg = {
@@ -80,273 +57,7 @@ function ConnectionBadge({ state }) {
   )
 }
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ Reply preview bar Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
-
-function ReplyPreview({ msg, onCancel }) {
-  if (!msg) return null
-  return (
-    <div className="flex items-start gap-3 px-4 py-3 bg-surface border-t border-line">
-      <CornerUpLeft className="w-4 h-4 text-brand mt-0.5 shrink-0" />
-      <div className="flex-1 min-w-0 border-l-2 border-brand pl-3">
-        <p className="text-[10px] font-bold text-brand uppercase tracking-wider mb-0.5">Replying to</p>
-        <p className="text-sm text-ink truncate">{truncate(msg.content || 'Attachment', 80)}</p>
-      </div>
-      <button onClick={onCancel} className="p-1.5 text-clay hover:text-ink hover:bg-line/50 rounded-full transition-colors shrink-0">
-        <X className="w-4 h-4" />
-      </button>
-    </div>
-  )
-}
-
-// Reactions display
-
-function ReactionBubbles({ reactions, messageId, currentUserId, onToggle }) {
-  if (!reactions || Object.keys(reactions).length === 0) return null
-  return (
-    <div className="flex flex-wrap gap-1 mt-1">
-      {Object.entries(reactions).map(([reactionKey, users]) => {
-        const mine = users.includes(currentUserId)
-        return (
-          <button
-            key={reactionKey}
-            onClick={() => onToggle(messageId, reactionKey)}
-            className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-xs border transition-colors ${
-              mine
-                ? 'bg-brand/15 border-brand/30 text-brand font-semibold'
-                : 'bg-lift border-line text-clay hover:bg-brand/10 hover:border-brand/20 hover:text-brand'
-            }`}
-          >
-            <span>{getEmojiForKey(reactionKey)}</span>
-            <span className="font-semibold">{users.length}</span>
-          </button>
-        )
-      })}
-    </div>
-  )
-}
-
-function VoicePlayer({ meta, reqId }) {
-  const [signedUrl, setSignedUrl] = useState('')
-  const [error, setError] = useState(false)
-
-  useEffect(() => {
-    if (meta.audio_path) {
-      api.getChatFileUrl(reqId, 'chat_audio', meta.audio_path)
-        .then(res => setSignedUrl(res.url))
-        .catch(err => {
-          console.error('Failed to load audio', err)
-          setError(true)
-        })
-    }
-  }, [meta.audio_path, reqId])
-
-  return (
-    <div className="flex items-center gap-2 mt-1.5 px-3.5 py-2.5 bg-surface border border-line/40 rounded-full shadow-sm w-fit max-w-[280px]">
-      {error ? (
-        <div className="h-8 w-48 flex items-center justify-center text-[11px] text-red-500 font-bold tracking-wider uppercase bg-red-500/10 rounded-full border border-red-500/20">Unavailable</div>
-      ) : signedUrl ? (
-        <audio controls src={signedUrl} className="h-9 w-52 max-w-full" controlsList="nodownload noplaybackrate" />
-      ) : (
-        <div className="h-9 w-52 flex items-center justify-center gap-2">
-           <div className="w-6 h-6 rounded-full bg-line/60 animate-pulse"></div>
-           <div className="flex-1 h-2 rounded-full bg-line/60 animate-pulse"></div>
-        </div>
-      )}
-    </div>
-  )
-}
-
-function FileAttachment({ meta, reqId }) {
-  const [signedUrl, setSignedUrl] = useState('')
-  const [error, setError] = useState(false)
-
-  useEffect(() => {
-    if (meta.file_path) {
-      api.getChatFileUrl(reqId, 'chat_files', meta.file_path)
-        .then(res => setSignedUrl(res.url))
-        .catch(err => {
-          console.error('Failed to load attachment', err)
-          setError(true)
-        })
-    }
-  }, [meta.file_path, reqId])
-
-  return (
-    <a href={signedUrl || '#'} target={signedUrl ? "_blank" : "_self"} rel="noreferrer" className={`flex items-center gap-3 mt-1.5 px-3.5 py-2.5 ${error ? 'bg-red-500/10 border-red-500/20' : 'bg-surface border-line/40 hover:bg-lift shadow-sm'} border rounded-xl transition-colors w-full max-w-[260px] ${(!signedUrl && !error) ? 'opacity-50 pointer-events-none' : ''} ${error ? 'pointer-events-none' : 'group'}`}>
-      <div className={`p-2 rounded-lg transition-colors ${error ? 'bg-red-500/20 text-red-500' : 'bg-brand/10 text-brand group-hover:bg-brand/20'}`}>
-        <FileText className="w-5 h-5 shrink-0" />
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className={`text-sm font-semibold truncate ${error ? 'text-red-500' : 'text-ink'}`}>{error ? 'Unavailable' : (meta.file_name || 'Attachment')}</p>
-        {!error && meta.size_bytes && <p className="text-[10px] text-clay uppercase tracking-wider font-bold">{(meta.size_bytes / 1024).toFixed(1)} KB</p>}
-      </div>
-    </a>
-  )
-}
-
-// Ã¢â€â‚¬Ã¢â€â‚¬ Message bubble Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
-
-function MessageBubble({ m, reqId, isMe, isConsecutive, currentUserId, allMessages, onReply, onCopy, onEdit, onDeleteForEveryone, onDeleteForMe, onToggleReaction, onForward, onScrollToRef, msgRef }) {
-  const [menuOpen, setMenuOpen] = useState(false)
-  const [emojiBarOpen, setEmojiBarOpen] = useState(false)
-  const menuRef = useRef(null)
-  const meta = m.metadata || {}
-  const isDeleted = meta.deleted_for_everyone
-  const isEdited = !!meta.edited_at
-  const isForwarded = !!meta.forwarded
-  const replyToId = meta.reply_to_id
-  const replyPreview = meta.reply_preview
-  const reactions = meta.reactions || {}
-
-  useEffect(() => {
-    if (!menuOpen) return
-    function handler(e) {
-      if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpen(false)
-    }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [menuOpen])
-
-  function handleScrollToReply() {
-    if (replyToId && onScrollToRef) onScrollToRef(replyToId)
-  }
-
-  return (
-    <div ref={msgRef} className={`flex ${isMe ? 'justify-end' : 'justify-start'} ${isConsecutive ? 'mt-0.5' : 'mt-3'} group`}>
-      <div className={`max-w-[82%] sm:max-w-[70%] relative`}>
-        {/* Forwarded indicator */}
-        {isForwarded && (
-          <p className={`text-[10px] font-medium mb-0.5 flex items-center gap-1 ${isMe ? 'text-right justify-end text-brand/70' : 'text-clay'}`}>
-            <Forward className="w-3 h-3" /> Forwarded
-          </p>
-        )}
-
-        {/* Reply quote */}
-        {replyToId && replyPreview && (
-          <button
-            onClick={handleScrollToReply}
-            className="reply-quote"
-          >
-            <p className="text-[10px] text-brand font-semibold">Ã¢â€ Â© Replied to</p>
-            <p className="text-[11px] text-clay truncate">{truncate(replyPreview, 55)}</p>
-          </button>
-        )}
-
-        {/* Bubble */}
-        <div
-          className={`relative px-3 py-2 text-sm leading-relaxed ${
-            isMe
-              ? 'bubble-me'
-              : 'bubble-them'
-          }`}
-        >
-          {isDeleted ? (
-            <p className="text-xs italic opacity-50">
-              {isMe ? 'You deleted this message' : 'This message was deleted'}
-            </p>
-          ) : (
-            <>
-              {meta.type === 'voice' && <VoicePlayer meta={meta} reqId={reqId} />}
-              {meta.type === 'file' && <FileAttachment meta={meta} reqId={reqId} />}
-              {m.content && <MessageRenderer content={m.content} />}
-              <div className={`flex items-center justify-end gap-1 mt-0.5 ${isMe ? 'text-white/70' : 'text-clay'}`}>
-                {isEdited && <span className="text-[9px] italic">edited</span>}
-                {m.created_at && (
-                  <span className="text-[9px]">{formatTime(m.created_at)}</span>
-                )}
-                {isMe && (
-                  m.is_read
-                    ? <CheckCheck className="w-3 h-3" />
-                    : <Check className="w-3 h-3" />
-                )}
-              </div>
-            </>
-          )}
-        </div>
-
-        {/* Reactions */}
-        {!isDeleted && (
-          <ReactionBubbles
-            reactions={reactions}
-            messageId={m.id}
-            currentUserId={currentUserId}
-            onToggle={onToggleReaction}
-          />
-        )}
-
-          {/* Context menu button Ã¢â‚¬â€ appears on hover/focus */}
-          {!isDeleted && (
-            <div
-              ref={menuRef}
-              className={`absolute top-0 ${isMe ? 'right-full mr-1' : 'left-full ml-1'} opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity flex items-center gap-0.5 z-20`}
-            >
-              {/* Quick emoji react */}
-              <div className="relative">
-                <button
-                  onClick={() => setEmojiBarOpen(o => !o)}
-                  className="p-1 text-clay hover:text-brand hover:bg-brand/10 rounded-full min-w-[32px] min-h-[32px] flex items-center justify-center"
-                >
-                  <Smile className="w-4 h-4" />
-                </button>
-                {emojiBarOpen && (
-                  <div className={`absolute bottom-full mb-1 ${isMe ? 'right-0' : 'left-0'} emoji-popover`}>
-                    {REACTION_EMOJIS.map(em => (
-                      <button
-                        key={em.key}
-                        onClick={() => { onToggleReaction(m.id, em.key); setEmojiBarOpen(false) }}
-                        className="text-lg hover:scale-125 transition-transform p-0.5 min-w-[32px] min-h-[32px]"
-                      >
-                        {em.emoji}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-  
-              {/* More menu */}
-              <div className="relative">
-                <button
-                  onClick={() => setMenuOpen(o => !o)}
-                  className="p-1 text-clay hover:text-brand hover:bg-brand/10 rounded-full min-w-[32px] min-h-[32px] flex items-center justify-center"
-                >
-                  <MoreVertical className="w-4 h-4" />
-                </button>
-                {menuOpen && (
-                  <div className={`absolute top-0 ${isMe ? 'right-full mr-1' : 'left-full ml-1'} dropdown-menu`}>
-                    <MenuItem icon={<CornerUpLeft className="w-4 h-4" />} label="Reply" onClick={() => { onReply(m); setMenuOpen(false) }} />
-                    <MenuItem icon={<Copy className="w-4 h-4" />} label="Copy" onClick={() => { onCopy(m.content); setMenuOpen(false) }} />
-                    <MenuItem icon={<Forward className="w-4 h-4" />} label="Forward" onClick={() => { onForward(m); setMenuOpen(false) }} />
-                    <div className="border-t border-line/50 my-0.5" />
-                    <MenuItem icon={<Trash className="w-4 h-4" />} label="Delete for Me" onClick={() => { onDeleteForMe(m.id); setMenuOpen(false) }} />
-                    {isMe && !isDeleted && (
-                      <>
-                        <MenuItem icon={<Pencil className="w-4 h-4" />} label="Edit" onClick={() => { onEdit(m); setMenuOpen(false) }} />
-                        <MenuItem icon={<Trash2 className="w-4 h-4" />} label="Delete for Everyone" danger onClick={() => { onDeleteForEveryone(m.id); setMenuOpen(false) }} />
-                      </>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    )
-  }
-
-function MenuItem({ icon, label, onClick, danger }) {
-  return (
-    <button
-      onClick={onClick}
-      className={danger ? 'dropdown-item-danger' : 'dropdown-item'}
-    >
-      {icon}
-      {label}
-    </button>
-  )
-}
-
-// Ã¢â€â‚¬Ã¢â€â‚¬ Forward modal Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// ─── Forward modal ──────────────────────────────────────────────────────────
 
 function ForwardModal({ message, inbox, currentRequestId, onClose, onForward }) {
   const [selected, setSelected] = useState(null)
@@ -392,119 +103,6 @@ function ForwardModal({ message, inbox, currentRequestId, onClose, onForward }) 
   )
 }
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ Schedule modal Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
-
-function ScheduleModal({ requestId, onClose, onScheduled }) {
-  const [date, setDate] = useState('')
-  const [startTime, setStartTime] = useState('')
-  const [endTime, setEndTime] = useState('')
-  const [notes, setNotes] = useState('')
-  const [submitting, setSubmitting] = useState(false)
-  const [error, setError] = useState('')
-  const today = getTodayIstYMD()
-
-  async function handleSubmit(e) {
-    e.preventDefault()
-    if (!date || !startTime || !endTime) { setError('Date, start and end time are required.'); return }
-    const start = createIstToUtcDate(date, startTime)
-    const end = createIstToUtcDate(date, endTime)
-    if (!start || !end) { setError('Invalid date/time values.'); return }
-    setError('')
-    setSubmitting(true)
-    try {
-      const session = await api.createSession({
-        request_id: requestId,
-        session_date: date,
-        start_time: startTime,
-        end_time: endTime,
-        scheduled_start: start.toISOString(),
-        scheduled_end: end.toISOString(),
-        notes: notes || null,
-      })
-      onScheduled(session)
-    } catch (err) {
-      setError(err.message || 'Failed to schedule session')
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-ink/60 backdrop-blur-sm">
-      <div className="bg-surface border border-line rounded-t-2xl sm:rounded-3xl shadow-elev-3 w-full max-w-md max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between px-6 py-5 border-b border-line bg-lift/30">
-          <h3 className="font-display font-bold text-lg text-ink">Schedule Session</h3>
-          <button onClick={onClose} className="p-1.5 text-clay hover:bg-line/50 hover:text-ink rounded-full transition-colors"><X className="w-5 h-5" /></button>
-        </div>
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
-          <DateTimePicker 
-            date={date}
-            startTime={startTime}
-            endTime={endTime}
-            onDateChange={setDate}
-            onStartTimeChange={setStartTime}
-            onEndTimeChange={setEndTime}
-            minDate={today}
-          />
-
-          <div>
-            <label className="text-sm font-semibold text-ink flex items-center gap-2 mb-2">
-              <FileText className="w-4 h-4 text-clay" />
-              Notes (Optional)
-            </label>
-            <input type="text" className="w-full bg-lift border border-line text-ink text-sm rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-brand/50 placeholder:text-clay/50" placeholder="Agenda or topics to discuss" value={notes} onChange={e => setNotes(e.target.value)} />
-          </div>
-
-          {error && <div className="text-sm text-red-500 bg-red-500/10 p-3 rounded-xl border border-red-500/20">{error}</div>}
-
-          {date && startTime && endTime && !error && (
-            <div className="p-4 bg-brand/5 border border-brand/20 rounded-xl mt-4">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-brand mb-1">Session Summary</p>
-              <p className="text-sm text-ink font-medium">
-                {new Date(date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} â€¢ {startTime} to {endTime} <span className="text-clay font-normal ml-1">IST</span>
-              </p>
-            </div>
-          )}
-
-          <div className="flex gap-3 pt-4 border-t border-line">
-            <button type="button" onClick={onClose} className="flex-1 py-3 px-4 bg-lift hover:bg-line/50 text-ink rounded-xl font-semibold transition-colors">Cancel</button>
-            <button type="submit" disabled={submitting || !date || !startTime || !endTime} className="flex-1 py-3 px-4 bg-brand hover:bg-brandLight text-white rounded-xl font-semibold shadow-elev-1 shadow-brand/20 disabled:opacity-50 disabled:shadow-none transition-all">{submitting ? 'Scheduling...' : 'Schedule'}</button>
-          </div>
-        </form>
-      </div>
-    </div>
-  )
-}
-
-// Ã¢â€â‚¬Ã¢â€â‚¬ Session card (inside chat) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
-
-function SessionCard({ conv, onCancel, navigate }) {
-  if (!conv?.session_id) return null
-  const dateStr = conv.scheduled_start
-    ? formatDateTime(conv.scheduled_start)
-    : `${conv.session_date || ''} ${conv.session_time || ''}`.trim()
-
-  return (
-    <div className="mx-4 my-3 flex flex-col sm:flex-row items-start sm:items-center gap-3 px-4 py-3 bg-gradient-to-r from-brand/5 to-transparent border border-brand/20 rounded-xl">
-      <div className="w-10 h-10 rounded-full bg-brand/10 text-brand flex items-center justify-center shrink-0">
-        <Calendar className="w-5 h-5" />
-      </div>
-            <div className="flex-1 min-w-0">
-        <p className="font-display font-bold text-ink text-sm">Session Scheduled</p>
-        <p className="text-clay text-xs mt-0.5 truncate uppercase tracking-wide font-bold">{dateStr}</p>
-      </div>
-      <div className="flex items-center gap-2 w-full sm:w-auto mt-2 sm:mt-0">
-        <button onClick={() => navigate(`/session/${conv.session_id}`)} className="flex-1 sm:flex-none btn-primary text-xs px-4 py-2 h-auto shadow-sm">
-          Join
-        </button>
-        <button onClick={() => onCancel(conv.session_id)} className="p-2 text-clay hover:text-red-500 hover:bg-red-500/10 transition-colors rounded-lg flex items-center justify-center border border-transparent hover:border-red-500/20">
-          <Trash2 className="w-4 h-4" />
-        </button>
-      </div>
-    </div>
-  )
-}
-
 // =========================================================================
 // Main Connect page
 // =========================================================================
@@ -528,6 +126,7 @@ function SessionCard({ conv, onCancel, navigate }) {
   
     // Inbox
     const [inbox, setInbox] = useState([])
+    const [pendingRequests, setPendingRequests] = useState([])
     const [loadingInbox, setLoadingInbox] = useState(true)
     const [inboxSearch, setInboxSearch] = useState('')
     const [globalError, setGlobalError] = useState('')
@@ -538,6 +137,7 @@ function SessionCard({ conv, onCancel, navigate }) {
     const [loadingMessages, setLoadingMessages] = useState(false)
     const [connectionState, setConnectionState] = useState('offline')
     const [wsError, setWsError] = useState('')
+    const [reviewedStatus, setReviewedStatus] = useState({})
 
   // Compose
   const [draft, setDraft] = useState('')
@@ -586,13 +186,39 @@ function SessionCard({ conv, onCancel, navigate }) {
   const loadInbox = async (showLoading = true) => {
     if (showLoading) setLoadingInbox(true)
     try {
-      const data = await api.getChatInbox()
-      if (mountedRef.current) setInbox(data)
+      const [inboxData, incomingData] = await Promise.all([
+        api.getChatInbox(),
+        api.incomingRequests().catch(() => [])
+      ])
+      if (mountedRef.current) {
+        setInbox(inboxData)
+        setPendingRequests(incomingData.filter(r => r.status === 'pending'))
+      }
     } catch (err) {
       console.error(err)
       if (mountedRef.current) setGlobalError('Failed to load conversations')
     } finally {
       if (mountedRef.current && showLoading) setLoadingInbox(false)
+    }
+  }
+
+  const handleAcceptRequest = async (requestId) => {
+    try {
+      await api.respondToRequest(requestId, true)
+      showToast('Request accepted')
+      loadInbox(true)
+    } catch (err) {
+      showToast(err.message || 'Failed to accept request')
+    }
+  }
+
+  const handleDeclineRequest = async (requestId) => {
+    try {
+      await api.respondToRequest(requestId, false)
+      showToast('Request declined')
+      loadInbox(true)
+    } catch (err) {
+      showToast(err.message || 'Failed to decline request')
     }
   }
 
@@ -937,6 +563,16 @@ function SessionCard({ conv, onCancel, navigate }) {
 
   const activeConversation = inbox.find(c => c.request_id === selectedRequestId)
 
+  useEffect(() => {
+    if (activeConversation?.request_status === 'completed' && reviewedStatus[selectedRequestId] === undefined) {
+      api.getMyReviewForRequest(selectedRequestId).then(res => {
+         setReviewedStatus(prev => ({ ...prev, [selectedRequestId]: !!res }))
+      }).catch(err => {
+         setReviewedStatus(prev => ({ ...prev, [selectedRequestId]: false }))
+      })
+    }
+  }, [activeConversation?.request_status, selectedRequestId, reviewedStatus])
+
   const filteredMessages = chatSearch
     ? messages.filter(m => m.content?.toLowerCase().includes(chatSearch.toLowerCase()))
     : messages
@@ -994,6 +630,14 @@ function SessionCard({ conv, onCancel, navigate }) {
               </div>
             ) : (
               <div className="divide-y divide-line/40">
+                {!inboxSearch && pendingRequests.map(req => (
+                  <PendingRequestCard 
+                    key={`req-${req.id}`} 
+                    req={req} 
+                    onAccept={handleAcceptRequest} 
+                    onDecline={handleDeclineRequest} 
+                  />
+                ))}
                 {filteredInbox.map(conv => (
                   <button
                     key={conv.request_id}
@@ -1207,6 +851,26 @@ function SessionCard({ conv, onCancel, navigate }) {
                       )
                     })}
                     <div ref={bottomRef} />
+                    {activeConversation?.request_status === 'completed' && (
+                      <div className="mt-6 mb-4">
+                        {reviewedStatus[selectedRequestId] ? (
+                          <div className="bg-moss/10 border border-moss/20 rounded-xl p-4 text-center">
+                            <p className="text-moss font-semibold mb-2">✓ Review submitted</p>
+                            <Link to="/dashboard" className="btn-primary inline-flex mt-2">
+                              Continue your Skill Journey →
+                            </Link>
+                          </div>
+                        ) : (
+                          <div className="bg-surface border border-line rounded-xl p-5 shadow-sm max-w-lg mx-auto">
+                            <ReviewForm 
+                              requestId={selectedRequestId} 
+                              otherName={activeConversation.other_user_name} 
+                              onSubmitted={() => setReviewedStatus(prev => ({ ...prev, [selectedRequestId]: true }))} 
+                            />
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </>
                 )}
               </div>

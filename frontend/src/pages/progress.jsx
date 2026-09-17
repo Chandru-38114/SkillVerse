@@ -48,6 +48,11 @@ export default function Progress() {
 
   return (
     <div className="page">
+      <div className="mb-6">
+        <Link to="/dashboard" className="text-sm font-semibold text-brand hover:underline flex items-center gap-1">
+          ← Back to Skill Journey
+        </Link>
+      </div>
       <div className="flex justify-between items-center mb-8">
         <h1 className="font-display text-4xl">My Learning Progress</h1>
 

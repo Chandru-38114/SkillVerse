@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { api, getSessionUser, getAvatarUrl } from '../api'
 import { Trophy, Medal, Star, ClipboardCheck, Award, Users, Flame } from 'lucide-react'
 
@@ -34,6 +35,12 @@ export default function Gamification() {
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
+      <div className="mb-6">
+        <Link to="/dashboard" className="text-sm font-semibold text-brand hover:underline flex items-center gap-1">
+          ← Back to Skill Journey
+        </Link>
+      </div>
+
       <div className="mb-10 text-center">
         <h1 className="font-display text-4xl mb-2 flex items-center justify-center gap-2">
           <Trophy className="w-8 h-8 text-gold" /> Skill Journey & Leaderboard
