@@ -245,7 +245,7 @@ def get_inbox(
             models.ConnectionRequest.from_user_id == current_user.id,
             models.ConnectionRequest.to_user_id == current_user.id
         ),
-        models.ConnectionRequest.status == 'accepted'
+        models.ConnectionRequest.status.in_(['accepted', 'completed'])
     ).all()
 
     if not reqs:

@@ -600,8 +600,8 @@ function ForwardModal({ message, inbox, currentRequestId, onClose, onForward }) 
       {/* Main panel */}
       <div className="flex-1 flex md:mx-6 md:mb-6 md:rounded-2xl border border-line bg-surface shadow-elev-2 overflow-hidden min-h-0">
 
-        {/* Ã¢â€â‚¬Ã¢â€â‚¬ Inbox sidebar Ã¢â€â‚¬Ã¢â€â‚¬ */}
-        <div className={`${selectedRequestId ? 'hidden md:flex' : 'flex'} flex-col w-full md:w-72 lg:w-80 border-r border-line bg-paper shrink-0`}>
+        {/* Sidebar: Conversation List */}
+        <div className={`${selectedRequestId ? 'hidden md:flex' : 'flex'} flex-col w-full md:w-72 lg:w-80 border-r border-line/40 bg-surface shrink-0`}>
           {/* Sidebar header */}
           <div className="p-3 border-b border-line bg-surface flex items-center gap-2 shrink-0">
             <BackButton className="md:hidden shrink-0" />
@@ -642,11 +642,7 @@ function ForwardModal({ message, inbox, currentRequestId, onClose, onForward }) 
                   <button
                     key={conv.request_id}
                     onClick={() => handleSelectConversation(conv.request_id)}
-                    className={`w-full text-left p-4 hover:bg-brand/5 transition-colors flex gap-3.5 relative ${
-                      selectedRequestId === conv.request_id 
-                        ? 'bg-brand/10 border-r-[3px] border-brand shadow-[inset_2px_0_0_0_rgba(var(--color-brand),0.05)]' 
-                        : ''
-                    }`}
+                    className={`conv-item ${selectedRequestId === conv.request_id ? 'conv-item-active' : ''}`}
                   >
                     <div className="relative shrink-0">
                       <img

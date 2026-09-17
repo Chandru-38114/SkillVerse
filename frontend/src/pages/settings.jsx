@@ -124,7 +124,7 @@ export default function Settings() {
             <h2 className="text-sm font-bold uppercase tracking-wider text-ink/50">Account</h2>
           </div>
           
-          <div className="card divide-y divide-line overflow-hidden">
+          <div className="card divide-y divide-line/40 overflow-hidden">
             <div className="p-4 flex items-center justify-between">
               <div>
                 <p className="text-sm font-semibold text-ink">Email Address</p>
@@ -190,7 +190,7 @@ export default function Settings() {
           <div className="card p-4">
             <p className="text-sm font-semibold text-ink">About SkillVerse</p>
             <p className="text-xs text-clay mt-1">Version: 1.0.0 (Phase 2)</p>
-            <p className="text-xs text-ink/70 mt-3 pt-3 border-t border-line">A peer-to-peer skill learning and collaboration platform.</p>
+            <p className="text-xs text-ink/70 mt-3 pt-3 border-t border-line/40">A peer-to-peer skill learning and collaboration platform.</p>
           </div>
         </section>
 

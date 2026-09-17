@@ -41,8 +41,8 @@ export default function ScheduleModal({ requestId, onClose, onScheduled }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-ink/60 backdrop-blur-sm">
-      <div className="bg-surface border border-line rounded-t-2xl sm:rounded-3xl shadow-elev-3 w-full max-w-md max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between px-6 py-5 border-b border-line bg-lift/30">
+      <div className="bg-surface rounded-t-2xl sm:rounded-2xl shadow-elev-3 w-full max-w-md max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between px-6 py-5 border-b border-line/40 bg-surface">
           <h3 className="font-display font-bold text-lg text-ink">Schedule Session</h3>
           <button onClick={onClose} className="p-1.5 text-clay hover:bg-line/50 hover:text-ink rounded-full transition-colors"><X className="w-5 h-5" /></button>
         </div>
@@ -62,7 +62,7 @@ export default function ScheduleModal({ requestId, onClose, onScheduled }) {
               <FileText className="w-4 h-4 text-clay" />
               Notes (Optional)
             </label>
-            <input type="text" className="w-full bg-lift border border-line text-ink text-sm rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-brand/50 placeholder:text-clay/50" placeholder="Agenda or topics to discuss" value={notes} onChange={e => setNotes(e.target.value)} />
+            <input type="text" className="input" placeholder="Agenda or topics to discuss" value={notes} onChange={e => setNotes(e.target.value)} />
           </div>
 
           {error && <div className="text-sm text-red-500 bg-red-500/10 p-3 rounded-xl border border-red-500/20">{error}</div>}
@@ -76,9 +76,9 @@ export default function ScheduleModal({ requestId, onClose, onScheduled }) {
             </div>
           )}
 
-          <div className="flex gap-3 pt-4 border-t border-line">
-            <button type="button" onClick={onClose} className="flex-1 py-3 px-4 bg-lift hover:bg-line/50 text-ink rounded-xl font-semibold transition-colors">Cancel</button>
-            <button type="submit" disabled={submitting || !date || !startTime || !endTime} className="flex-1 py-3 px-4 bg-brand hover:bg-brandLight text-white rounded-xl font-semibold shadow-elev-1 shadow-brand/20 disabled:opacity-50 disabled:shadow-none transition-all">{submitting ? 'Scheduling...' : 'Schedule'}</button>
+          <div className="flex gap-3 pt-4 border-t border-line/40">
+            <button type="button" onClick={onClose} className="btn-secondary flex-1">Cancel</button>
+            <button type="submit" disabled={submitting || !date || !startTime || !endTime} className="btn-primary flex-1">{submitting ? 'Scheduling...' : 'Schedule'}</button>
           </div>
         </form>
       </div>

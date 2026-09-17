@@ -9,7 +9,7 @@ export default function SessionCard({ conv, onCancel, navigate }) {
     : `${conv.session_date || ''} ${conv.session_time || ''}`.trim()
 
   return (
-    <div className="mx-4 my-3 flex flex-col sm:flex-row items-start sm:items-center gap-3 px-4 py-3 bg-gradient-to-r from-brand/5 to-transparent border border-brand/20 rounded-xl">
+    <div className="mx-4 my-3 flex flex-col sm:flex-row items-start sm:items-center gap-4 p-4 bg-brandLight/30 rounded-2xl shadow-elev-1">
       <div className="w-10 h-10 rounded-full bg-brand/10 text-brand flex items-center justify-center shrink-0">
         <Calendar className="w-5 h-5" />
       </div>

@@ -16,7 +16,7 @@ export default function PendingRequestCard({ req, onAccept, onDecline }) {
   }
 
   return (
-    <div className="p-4 border-b border-line/40 bg-brand/5 relative overflow-hidden">
+    <div className="p-4 bg-brandLight/20 rounded-2xl shadow-elev-1 relative overflow-hidden mb-3 mx-2 sm:mx-0">
       {/* Decorative indicator */}
       <div className="absolute left-0 top-0 bottom-0 w-1 bg-brand"></div>
       
@@ -34,7 +34,7 @@ export default function PendingRequestCard({ req, onAccept, onDecline }) {
           </p>
           
           {req.message && (
-            <div className="mt-2 text-xs text-ink/70 italic line-clamp-2 bg-lift p-2 rounded-lg border border-line/50">
+            <div className="mt-2 text-xs text-ink/80 italic bg-lift/50 p-2.5 rounded-xl border border-line/40">
               "{req.message}"
             </div>
           )}
@@ -43,14 +43,14 @@ export default function PendingRequestCard({ req, onAccept, onDecline }) {
             <button 
               onClick={handleAccept} 
               disabled={submitting}
-              className="flex-1 py-1.5 px-3 bg-brand text-white text-xs font-semibold rounded-lg hover:bg-brandLight transition-all shadow-sm disabled:opacity-50"
+              className="btn-primary flex-1 py-2 text-xs min-h-[36px]"
             >
               Accept
             </button>
             <button 
               onClick={handleDecline}
               disabled={submitting} 
-              className="flex-1 py-1.5 px-3 bg-lift text-ink text-xs font-semibold rounded-lg hover:bg-line/50 border border-line transition-colors disabled:opacity-50"
+              className="btn-ghost flex-1 py-2 text-xs min-h-[36px] bg-lift/50 hover:bg-line/50"
             >
               Decline
             </button>

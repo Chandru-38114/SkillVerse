@@ -176,7 +176,7 @@ export default function MessageBubble({ m, reqId, isMe, isConsecutive, currentUs
 
   return (
     <div ref={msgRef} className={`flex ${isMe ? 'justify-end' : 'justify-start'} ${isConsecutive ? 'mt-0.5' : 'mt-3'} group`}>
-      <div className={`max-w-[82%] sm:max-w-[70%] relative`}>
+      <div className={`max-w-[85%] md:max-w-[75%] relative`}>
         {/* Forwarded indicator */}
         {isForwarded && (
           <p className={`text-[10px] font-medium mb-0.5 flex items-center gap-1 ${isMe ? 'text-right justify-end text-brand/70' : 'text-clay'}`}>

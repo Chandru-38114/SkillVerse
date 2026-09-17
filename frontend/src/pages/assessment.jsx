@@ -123,7 +123,7 @@ export default function Assessment() {
               <p className="text-xs text-ink/40 font-mono mb-1">{answeredCount}/{totalCount} answered</p>
               <div className="w-24 h-1.5 bg-ink/10 rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-moss rounded-full transition-all duration-300"
+                  className="h-full bg-brand rounded-full transition-all duration-300"
                   style={{ width: `${progress}%` }}
                 />
               </div>
@@ -142,7 +142,7 @@ export default function Assessment() {
                   </span>
                   <span className="text-xs text-ink/40">{q.topic}</span>
                   {answers[q.id] && (
-                    <span className="ml-auto text-xs text-moss">✓ answered</span>
+                    <span className="ml-auto text-xs text-brand">✓ answered</span>
                   )}
                 </div>
                 <p className="font-medium text-sm mb-4 whitespace-pre-wrap leading-relaxed">{q.question}</p>
@@ -152,14 +152,14 @@ export default function Assessment() {
                       key={opt}
                       className={`flex items-center gap-3 text-sm cursor-pointer px-3 py-2.5 rounded-lg border transition-all duration-100
                         ${answers[q.id] === opt
-                          ? 'border-moss bg-moss/5 text-moss'
+                          ? 'border-brand bg-brand/5 text-brand'
                           : 'border-transparent hover:border-line hover:bg-paper'
                         }`}
                     >
                       <input
                         type="radio"
                         name={q.id}
-                        className="accent-moss"
+                        className="accent-brand"
                         checked={answers[q.id] === opt}
                         onChange={() => setAnswers((a) => ({ ...a, [q.id]: opt }))}
                       />
@@ -200,7 +200,7 @@ export default function Assessment() {
               <span className="text-sm text-ink/50">{result.level}</span>
             </div>
             {result.badge && (
-              <p className="text-sm text-moss mt-3 font-medium">+50 points awarded 🎉</p>
+              <p className="text-sm text-brand mt-3 font-medium">+50 points awarded 🎉</p>
             )}
           </div>
 
@@ -222,7 +222,7 @@ export default function Assessment() {
             <ul className="space-y-2">
               {result.study_plan.map((line, i) => (
                 <li key={i} className="flex items-start gap-2 text-sm text-ink/70">
-                  <span className="text-moss mt-0.5">→</span>
+                  <span className="text-brand mt-0.5">→</span>
                   {line}
                 </li>
               ))}
@@ -252,13 +252,13 @@ function RoleOption({ label, sub, value, role, setRole, icon }) {
       onClick={() => setRole(value)}
       className={`text-left px-4 py-3 rounded-xl border-2 transition-all duration-150
         ${active
-          ? 'border-moss bg-moss/5'
+          ? 'border-brand bg-brand/5'
           : 'border-line bg-white hover:border-ink/20'
         }`}
     >
       <div className="flex items-center gap-2 mb-1">
         <span>{icon}</span>
-        <span className={`text-sm font-medium ${active ? 'text-moss' : 'text-ink'}`}>{label}</span>
+        <span className={`text-sm font-medium ${active ? 'text-brand' : 'text-ink'}`}>{label}</span>
       </div>
       <p className="text-xs text-ink/40">{sub}</p>
     </button>

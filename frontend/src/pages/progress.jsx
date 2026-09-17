@@ -53,8 +53,11 @@ export default function Progress() {
           ← Back to Skill Journey
         </Link>
       </div>
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="font-display text-4xl">My Learning Progress</h1>
+      <div className="flex justify-between items-center mb-10">
+        <div>
+          <h1 className="font-display text-4xl mb-2">My Learning Progress</h1>
+          <p className="text-ink/60">This page shows how your skills are developing.</p>
+        </div>
 
       </div>
 
@@ -82,7 +85,7 @@ export default function Progress() {
                   </div>
                   <div className="w-full bg-line rounded-full h-2.5">
                     <div 
-                      className="bg-moss h-2.5 rounded-full" 
+                      className="bg-brand h-2.5 rounded-full" 
                       style={{ width: `${Math.min(100, skill.progress_percentage)}%` }}
                     ></div>
                   </div>
@@ -133,9 +136,9 @@ export default function Progress() {
 
       <h2 className="font-display text-2xl mb-6">Learning History</h2>
       
-      <div className="space-y-4">
+      <div className="space-y-0 bg-surface rounded-2xl shadow-elev-1 px-6 py-2">
         {historyData.map((hist) => (
-          <div key={hist.id} className="card p-4 flex flex-col md:flex-row justify-between">
+          <div key={hist.id} className="py-5 border-b border-line/40 flex flex-col md:flex-row justify-between last:border-b-0">
             <div>
               <div className="flex items-center gap-2 mb-1">
                 <span className="font-bold text-lg">{hist.session?.skill || "Unknown Skill"}</span>
@@ -145,7 +148,7 @@ export default function Progress() {
               <p className="text-sm text-ink/70">Notes: {hist.learning_notes || "No notes"}</p>
             </div>
             <div className="mt-4 md:mt-0 text-right">
-              <p className="text-sm font-bold text-moss">+{hist.progress_percentage_after - hist.progress_percentage_before}% Progress</p>
+              <p className="text-sm font-bold text-brand">+{hist.progress_percentage_after - hist.progress_percentage_before}% Progress</p>
               <p className="text-xs text-clay">{hist.duration_minutes} minutes</p>
             </div>
           </div>
