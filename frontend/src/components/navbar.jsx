@@ -3,51 +3,20 @@ import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { Home, Compass, MessageCircle, Calendar, Inbox, Bell, TrendingUp, Trophy, User, Settings, LogOut, Menu, X } from 'lucide-react'
 import { getSessionUser, clearSession, api, getAvatarUrl } from '../api'
 
-const NAV_LINKS = [
-  { to: '/dashboard', label: 'Dashboard' },
-  { to: '/marketplace', label: 'Discover' },
-  { to: '/messages', label: 'Connect' },
-  { to: '/sessions', label: 'Sessions' },
-  { to: '/requests', label: 'Requests' },
-  { to: '/progress', label: 'Progress' },
-  { to: '/gamification', label: 'Skill Journey' },
-  { to: '/profile', label: 'Profile' },
-  { to: '/settings', label: 'Settings' },
-]
-
-const MOBILE_NAV_LINKS = [
-  { to: '/dashboard', label: 'Dashboard', icon: <Home className="w-5 h-5" /> },
+const PRIMARY_NAV = [
+  { to: '/dashboard', label: 'Home', icon: <Home className="w-5 h-5" /> },
   { to: '/marketplace', label: 'Discover', icon: <Compass className="w-5 h-5" /> },
   { to: '/messages', label: 'Connect', icon: <MessageCircle className="w-5 h-5" /> },
-  { to: '/sessions', label: 'Sessions', icon: <Calendar className="w-5 h-5" /> },
-  { to: '/requests', label: 'Requests', icon: <Inbox className="w-5 h-5" /> },
-  { to: '/notifications', label: 'Notifications', icon: <Bell className="w-5 h-5" /> },
-  { to: '/progress', label: 'Progress', icon: <TrendingUp className="w-5 h-5" /> },
-  { to: '/gamification', label: 'Skill Journey', icon: <Trophy className="w-5 h-5" /> },
-  { to: '/profile', label: 'Profile', icon: <User className="w-5 h-5" /> },
-  { to: '/settings', label: 'Settings', icon: <Settings className="w-5 h-5" /> },
+  { to: '/gamification', label: 'Journey', icon: <Trophy className="w-5 h-5" /> },
 ]
+
+const CONNECT_ROUTES = ['/messages', '/requests', '/sessions', '/chat']
+const JOURNEY_ROUTES = ['/gamification', '/progress', '/assessment']
 
 function BellIcon() {
   return (
     <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-    </svg>
-  )
-}
-
-function MenuIcon() {
-  return (
-    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
-    </svg>
-  )
-}
-
-function XIcon() {
-  return (
-    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
     </svg>
   )
 }
@@ -58,10 +27,12 @@ export default function Navbar() {
   const [user, setUser] = useState(getSessionUser())
   const [unreadCount, setUnreadCount] = useState(0)
   const [notifOpen, setNotifOpen] = useState(false)
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false)
   const [notifications, setNotifications] = useState([])
   const [notifLoading, setNotifLoading] = useState(false)
-  const panelRef = useRef(null)
+  
+  const notifRef = useRef(null)
+  const profileRef = useRef(null)
   const pollRef = useRef(null)
 
   useEffect(() => {
@@ -89,8 +60,11 @@ export default function Navbar() {
 
   useEffect(() => {
     function handleClick(e) {
-      if (panelRef.current && !panelRef.current.contains(e.target)) {
+      if (notifRef.current && !notifRef.current.contains(e.target)) {
         setNotifOpen(false)
+      }
+      if (profileRef.current && !profileRef.current.contains(e.target)) {
+        setProfileMenuOpen(false)
       }
     }
     document.addEventListener('mousedown', handleClick)
@@ -99,20 +73,23 @@ export default function Navbar() {
 
   useEffect(() => {
     function handleKeyDown(e) {
-      if (e.key === 'Escape' && mobileMenuOpen) {
-        setMobileMenuOpen(false)
+      if (e.key === 'Escape') {
+        setProfileMenuOpen(false)
+        setNotifOpen(false)
       }
     }
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [mobileMenuOpen])
+  }, [])
 
   useEffect(() => {
-    setMobileMenuOpen(false)
+    setProfileMenuOpen(false)
+    setNotifOpen(false)
   }, [location.pathname])
 
   async function openNotifPanel() {
     setNotifOpen(o => !o)
+    setProfileMenuOpen(false)
     if (!notifOpen) {
       setNotifLoading(true)
       try {
@@ -155,199 +132,220 @@ export default function Navbar() {
 
   function handleLogout() {
     clearSession()
-    setMobileMenuOpen(false)
     navigate('/login')
   }
 
-  return (
-    <header className="bg-surface border-b border-line sticky top-0 z-40 shadow-elev-1">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-0 flex items-center justify-between h-16">
-        {/* Logo */}
-        <Link to="/" className="font-display text-xl tracking-tight shrink-0 text-ink font-bold flex items-center gap-2">
-          <div className="w-8 h-8 rounded-full bg-brand/15 flex items-center justify-center shrink-0">
-            <svg className="w-5 h-5 text-brand" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-            </svg>
-          </div>
-          <div className="text-ink">
-            Skill<span className="text-brand">Verse</span>
-          </div>
-        </Link>
+  const isConnectActive = CONNECT_ROUTES.some(r => location.pathname.startsWith(r))
+  const isJourneyActive = JOURNEY_ROUTES.some(r => location.pathname.startsWith(r))
 
-        {user ? (
-          <>
-            {/* Desktop Navigation */}
-            <nav className="items-center gap-1 hidden xl:flex">
-              {NAV_LINKS.map(({ to, label }) => {
-                const active = location.pathname === to || location.pathname.startsWith(to + '/')
-                return (
-                  <Link
-                    key={to}
-                    to={to}
-                    className={`px-3 py-2 rounded-lg text-[13px] font-semibold transition-all duration-150 whitespace-nowrap ${
-                      active
-                        ? 'bg-brand/15 text-brand'
-                        : 'text-clay hover:text-ink hover:bg-lift'
-                    }`}
+  return (
+    <>
+      <header className="bg-surface border-b border-line sticky top-0 z-40 shadow-elev-1">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-0 flex items-center justify-between h-16">
+          {/* Logo */}
+          <Link to="/" className="font-display text-xl tracking-tight shrink-0 text-ink font-bold flex items-center gap-2">
+            <div className="w-8 h-8 rounded-full bg-brand/15 flex items-center justify-center shrink-0">
+              <svg className="w-5 h-5 text-brand" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+              </svg>
+            </div>
+            <div className="text-ink">
+              Skill<span className="text-brand">Verse</span>
+            </div>
+          </Link>
+
+          {user ? (
+            <>
+              {/* Desktop Navigation */}
+              <nav className="items-center gap-1 hidden xl:flex">
+                {PRIMARY_NAV.map(({ to, label }) => {
+                  const active = (label === 'Connect' && isConnectActive) ||
+                                 (label === 'Journey' && isJourneyActive) ||
+                                 location.pathname === to || location.pathname.startsWith(to + '/');
+                  return (
+                    <Link
+                      key={to}
+                      to={to}
+                      className={`px-3 py-2 rounded-lg text-[13px] font-semibold transition-all duration-150 whitespace-nowrap ${
+                        active
+                          ? 'bg-brand/15 text-brand'
+                          : 'text-clay hover:text-ink hover:bg-lift'
+                      }`}
+                    >
+                      {label}
+                    </Link>
+                  )
+                })}
+              </nav>
+
+              {/* Right side controls */}
+              <div className="flex items-center gap-3 ml-auto lg:ml-0 shrink-0">
+                {/* Desktop Points */}
+                <div className="items-center hidden xl:flex">
+                  <span className="text-gold font-mono text-[11px] font-bold bg-gold/15 border border-gold/25 px-2.5 py-1 rounded-full shadow-sm mx-2">
+                    {user.points ?? 0} pts
+                  </span>
+                  <div className="w-px h-5 bg-line mx-2"></div>
+                </div>
+
+                {/* Notification Bell */}
+                <div className="relative" ref={notifRef}>
+                  <button
+                    onClick={openNotifPanel}
+                    className={`relative p-2 rounded-lg transition-all ${notifOpen ? 'bg-brand/15 text-brand' : 'text-clay hover:text-brand hover:bg-brand/10'}`}
+                    aria-label="Notifications"
                   >
-                    {label}
+                    <BellIcon />
+                    {unreadCount > 0 && (
+                      <span className="absolute top-1 right-1 min-w-[16px] h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1 leading-none shadow-sm">
+                        {unreadCount > 99 ? '99+' : unreadCount}
+                      </span>
+                    )}
+                  </button>
+
+                  {notifOpen && (
+                    <div className="absolute right-0 top-12 w-[calc(100vw-2rem)] sm:w-80 bg-lift border border-line rounded-xl shadow-elev-3 overflow-hidden z-50">
+                      <div className="flex items-center justify-between px-4 py-3 border-b border-line bg-surface">
+                        <span className="text-sm font-semibold text-ink">Notifications</span>
+                        <div className="flex gap-3">
+                          <button onClick={handleMarkAll} className="text-xs font-medium text-brand hover:underline">Mark all read</button>
+                          <Link to="/notifications" onClick={() => setNotifOpen(false)} className="text-xs font-medium text-clay hover:text-ink">View all</Link>
+                        </div>
+                      </div>
+                      <div className="max-h-80 overflow-y-auto">
+                        {notifLoading ? (
+                          <div className="p-4 text-center text-sm text-clay">Loading...</div>
+                        ) : notifications.length === 0 ? (
+                          <div className="p-8 text-center text-sm text-clay">No notifications yet</div>
+                        ) : (
+                          notifications.map(n => (
+                            <div
+                              key={n.id}
+                              onClick={() => notifNav(n)}
+                              className={`flex gap-3 px-4 py-3 cursor-pointer border-b border-line last:border-0 transition-colors ${!n.is_read ? 'bg-brand/10 hover:bg-brand/15' : 'hover:bg-lift'}`}
+                            >
+                              {!n.is_read && <div className="mt-1.5 w-2 h-2 bg-brand rounded-full flex-shrink-0 shadow-sm" />}
+                              <div className="flex-1 min-w-0">
+                                <p className={`text-sm truncate ${!n.is_read ? 'text-ink font-semibold' : 'text-ink/80 font-medium'}`}>{n.title}</p>
+                                <p className="text-xs text-clay mt-0.5 truncate">{n.message}</p>
+                                <p className="text-[10px] font-medium text-clay/60 mt-1 uppercase tracking-wider">{new Date(n.created_at).toLocaleString()}</p>
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Profile Dropdown */}
+                <div className="relative" ref={profileRef}>
+                  <button 
+                    onClick={() => {
+                      setProfileMenuOpen(p => !p)
+                      setNotifOpen(false)
+                    }}
+                    className="w-9 h-9 rounded-full bg-ink/10 flex items-center justify-center overflow-hidden hover:opacity-80 transition-opacity border border-line"
+                  >
+                    {user.profile_picture_url ? (
+                      <img src={getAvatarUrl(user.profile_picture_url)} alt="Profile" className="w-full h-full object-cover" />
+                    ) : (
+                      <User className="w-5 h-5 text-clay" />
+                    )}
+                  </button>
+
+                  {profileMenuOpen && (
+                    <div className="absolute right-0 top-12 w-48 bg-surface border border-line rounded-xl shadow-elev-3 overflow-hidden z-50 py-1">
+                      <div className="xl:hidden px-4 py-3 border-b border-line mb-1 flex items-center justify-between">
+                         <span className="text-sm font-semibold text-ink">Points</span>
+                         <span className="text-gold font-mono text-[11px] font-bold bg-gold/15 border border-gold/25 px-2.5 py-1 rounded-full shadow-sm">
+                           {user.points ?? 0} pts
+                         </span>
+                      </div>
+                      <Link to="/profile" className="flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-ink hover:bg-lift transition-colors"><User className="w-4 h-4 text-clay"/> Profile</Link>
+                      <Link to="/settings" className="flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-ink hover:bg-lift transition-colors"><Settings className="w-4 h-4 text-clay"/> Settings</Link>
+                      <div className="h-px bg-line my-1"></div>
+                      <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-red-500 hover:bg-red-500/10 transition-colors">
+                        <LogOut className="w-4 h-4"/> Log out
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </>
+          ) : (
+            <nav className="flex items-center gap-3">
+              <Link to="/login" className="btn-ghost font-semibold">Log in</Link>
+              <Link to="/signup" className="btn-brand text-sm">Sign up</Link>
+            </nav>
+          )}
+        </div>
+        
+        {/* Sub-Nav Bars */}
+        {user && isConnectActive && (
+          <div className="bg-lift border-t border-line overflow-x-auto no-scrollbar">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 flex gap-2 py-2">
+              {[
+                { to: '/messages', label: 'Inbox' },
+                { to: '/requests', label: 'Requests' },
+                { to: '/sessions', label: 'Sessions' }
+              ].map(link => {
+                const active = location.pathname.startsWith(link.to);
+                return (
+                  <Link key={link.to} to={link.to} className={`px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors ${active ? 'bg-ink text-paper' : 'text-clay hover:bg-surface hover:text-ink border border-transparent hover:border-line'}`}>
+                    {link.label}
                   </Link>
                 )
               })}
-            </nav>
-
-            {/* Right side controls */}
-            <div className="flex items-center gap-2 ml-auto lg:ml-0 shrink-0">
-              {/* Notification Bell (Desktop Only) */}
-              <div className="relative hidden xl:block" ref={panelRef}>
-                <button
-                  onClick={openNotifPanel}
-                  className={`relative p-2 rounded-lg transition-all ${notifOpen ? 'bg-brand/15 text-brand' : 'text-clay hover:text-brand hover:bg-brand/10'}`}
-                  aria-label="Notifications"
-                >
-                  <BellIcon />
-                  {unreadCount > 0 && (
-                    <span className="absolute top-1 right-1 min-w-[16px] h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1 leading-none shadow-sm">
-                      {unreadCount > 99 ? '99+' : unreadCount}
-                    </span>
-                  )}
-                </button>
-
-                {notifOpen && (
-                  <div className="absolute right-0 top-12 w-full sm:w-80 bg-lift border border-line rounded-xl shadow-elev-3 overflow-hidden z-50">
-                    <div className="flex items-center justify-between px-4 py-3 border-b border-line bg-surface">
-                      <span className="text-sm font-semibold text-ink">Notifications</span>
-                      <div className="flex gap-3">
-                        <button onClick={handleMarkAll} className="text-xs font-medium text-brand hover:underline">Mark all read</button>
-                        <Link to="/notifications" onClick={() => setNotifOpen(false)} className="text-xs font-medium text-clay hover:text-ink">View all</Link>
-                      </div>
-                    </div>
-                    <div className="max-h-80 overflow-y-auto">
-                      {notifLoading ? (
-                        <div className="p-4 text-center text-sm text-clay">Loading...</div>
-                      ) : notifications.length === 0 ? (
-                        <div className="p-8 text-center text-sm text-clay">No notifications yet</div>
-                      ) : (
-                        notifications.map(n => (
-                          <div
-                            key={n.id}
-                            onClick={() => notifNav(n)}
-                            className={`flex gap-3 px-4 py-3 cursor-pointer border-b border-line last:border-0 transition-colors ${!n.is_read ? 'bg-brand/10 hover:bg-brand/15' : 'hover:bg-lift'}`}
-                          >
-                            {!n.is_read && <div className="mt-1.5 w-2 h-2 bg-brand rounded-full flex-shrink-0 shadow-sm" />}
-                            <div className="flex-1 min-w-0">
-                              <p className={`text-sm truncate ${!n.is_read ? 'text-ink font-semibold' : 'text-ink/80 font-medium'}`}>{n.title}</p>
-                              <p className="text-xs text-clay mt-0.5 truncate">{n.message}</p>
-                              <p className="text-[10px] font-medium text-clay/60 mt-1 uppercase tracking-wider">{new Date(n.created_at).toLocaleString()}</p>
-                            </div>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Desktop Points, Avatar & Logout */}
-              <div className="items-center hidden xl:flex">
-                <span className="text-gold font-mono text-[11px] font-bold bg-gold/15 border border-gold/25 px-2.5 py-1 rounded-full shadow-sm mx-2">
-                  {user.points ?? 0} pts
-                </span>
-                
-                {/* Desktop Avatar */}
-                <Link to="/profile" className="w-8 h-8 rounded-full bg-ink/10 flex items-center justify-center mx-2 overflow-hidden hover:opacity-80 transition-opacity border border-line">
-                  {user.profile_picture_url ? (
-                    <img src={getAvatarUrl(user.profile_picture_url)} alt="Profile" className="w-full h-full object-cover" />
-                  ) : (
-                    <User className="w-4 h-4 text-clay" />
-                  )}
-                </Link>
-
-                <div className="w-px h-5 bg-line mx-2"></div>
-                <button onClick={handleLogout} className="btn-ghost text-sm py-1.5 font-semibold text-clay">
-                  Log out
-                </button>
-              </div>
-
-              {/* Mobile Menu Toggle Button */}
-              <button
-                onClick={() => setMobileMenuOpen(prev => !prev)}
-                className={`xl:hidden p-2.5 ml-1 rounded-lg transition-colors border flex items-center justify-center shrink-0 min-w-[44px] min-h-[44px] ${
-                  mobileMenuOpen
-                    ? 'bg-brand/15 border-brand/30 text-brand'
-                    : 'bg-lift border-line text-clay hover:text-ink hover:bg-surface'
-                }`}
-                aria-label={mobileMenuOpen ? "Close Menu" : "Open Menu"}
-                aria-expanded={mobileMenuOpen}
-              >
-                {mobileMenuOpen ? <XIcon /> : <MenuIcon />}
-                <span className="ml-2 text-sm font-bold tracking-wide hidden sm:inline">Menu</span>
-                {unreadCount > 0 && !mobileMenuOpen && (
-                  <span className="absolute top-2 right-2 min-w-[12px] h-3 bg-red-500 rounded-full border border-surface"></span>
-                )}
-              </button>
             </div>
-          </>
-        ) : (
-          <nav className="flex items-center gap-3">
-            <Link to="/login" className="btn-ghost font-semibold">Log in</Link>
-            <Link to="/signup" className="btn-brand text-sm">Sign up</Link>
-          </nav>
+          </div>
         )}
-      </div>
+        {user && isJourneyActive && (
+          <div className="bg-lift border-t border-line overflow-x-auto no-scrollbar">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 flex gap-2 py-2">
+              {[
+                { to: '/gamification', label: 'Skill Journey' },
+                { to: '/progress', label: 'Progress' },
+                { to: '/assessment', label: 'Assessments' }
+              ].map(link => {
+                const active = location.pathname.startsWith(link.to);
+                return (
+                  <Link key={link.to} to={link.to} className={`px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors ${active ? 'bg-ink text-paper' : 'text-clay hover:bg-surface hover:text-ink border border-transparent hover:border-line'}`}>
+                    {link.label}
+                  </Link>
+                )
+              })}
+            </div>
+          </div>
+        )}
+      </header>
 
-      {/* Mobile/Tablet Dropdown Menu — dark-aware */}
-      {user && mobileMenuOpen && (
-        <div className="xl:hidden absolute top-16 left-0 w-full bg-surface border-b border-line shadow-elev-3 max-h-[calc(100vh-4rem)] overflow-y-auto">
-          <div className="flex flex-col px-4 py-4 space-y-1">
-            {MOBILE_NAV_LINKS.map(({ to, label, icon }) => {
-              const active = location.pathname === to || location.pathname.startsWith(to + '/')
+      {/* Mobile Bottom Navigation */}
+      {user && (
+        <div className="xl:hidden fixed bottom-0 left-0 right-0 bg-surface border-t border-line shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-40" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
+          <div className="flex justify-around items-center h-[68px] px-2">
+            {PRIMARY_NAV.map(({ to, label, icon }) => {
+              const active = (label === 'Connect' && isConnectActive) ||
+                             (label === 'Journey' && isJourneyActive) ||
+                             location.pathname === to || location.pathname.startsWith(to + '/');
               return (
                 <Link
-                  key={`${to}-${label}`}
+                  key={to}
                   to={to}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-xl text-[15px] font-semibold transition-all ${
-                    active
-                      ? 'bg-brand/15 text-brand border border-brand/20'
-                      : 'text-ink hover:bg-lift hover:text-brand'
+                  className={`flex flex-col items-center justify-center w-full h-full gap-1 transition-colors ${
+                    active ? 'text-brand' : 'text-clay hover:text-ink'
                   }`}
                 >
-                  <span className={`w-6 flex items-center justify-center ${active ? 'text-brand' : 'text-clay'}`}>
-                    {label === 'Profile' && user.profile_picture_url ? (
-                      <div className="w-5 h-5 rounded-full overflow-hidden border border-line flex-shrink-0">
-                        <img src={getAvatarUrl(user.profile_picture_url)} alt="Profile" className="w-full h-full object-cover" />
-                      </div>
-                    ) : (
-                      icon
-                    )}
-                  </span>
-                  {label}
-                  {label === 'Notifications' && unreadCount > 0 && (
-                    <span className="ml-auto bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm">
-                      {unreadCount}
-                    </span>
-                  )}
+                  <div className={`p-1.5 rounded-full transition-colors ${active ? 'bg-brand/15 text-brand' : ''}`}>
+                    {icon}
+                  </div>
+                  <span className={`text-[10px] ${active ? 'font-bold' : 'font-semibold'}`}>{label}</span>
                 </Link>
               )
             })}
-
-            <hr className="border-line/60 my-4 mx-2" />
-
-            <div className="px-4 pb-2 flex items-center justify-between">
-              <span className="text-gold font-mono text-[13px] font-bold bg-gold/15 border border-gold/25 px-3 py-1.5 rounded-full shadow-sm flex items-center gap-1.5">
-                <Trophy className="w-4 h-4 text-gold" /> {user.points ?? 0} pts
-              </span>
-
-              <button
-                onClick={handleLogout}
-                className="flex items-center gap-2 px-4 py-2 text-[15px] font-semibold text-red-400 hover:bg-red-500/10 rounded-xl transition-colors"
-              >
-                <LogOut className="w-5 h-5" /> Logout
-              </button>
-            </div>
           </div>
         </div>
       )}
-    </header>
+    </>
   )
 }

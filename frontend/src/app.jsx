@@ -70,7 +70,7 @@ export default function App() {
 
   return (
     <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
-      <div className="min-h-screen bg-paper text-ink font-body">
+      <div className="min-h-screen bg-paper text-ink font-body pb-20 xl:pb-0">
         {!isAuthRoute && <Navbar />}
         <Routes>
           <Route path="/" element={<RootRedirect />} /><Route path="/landing" element={<Landing />} />
