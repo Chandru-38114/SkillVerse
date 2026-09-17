@@ -6,50 +6,115 @@ export function getToken() {
   return localStorage.getItem("skillverse_token");
 }
 
-async function request(path, { method = "GET", body, auth = true } = {}) {
+const cache = new Map();
+const inFlight = new Map();
+
+function isRealtime(path) {
+  return path.includes("/unread-count") ||
+         path.includes("/notifications") ||
+         path.match(/\/requests\/status/) ||
+         path.includes("/sessions/upcoming") ||
+         path.includes("/chat/inbox") ||
+         path.match(/\/chat\/.*\/messages/);
+}
+
+function getTTL(path) {
+  if (isRealtime(path)) return 0;
+  if (path.match(/\/chat\/.*\/file\//)) return 120000; // 2 minutes for signed chat files
+  return 30000; // 30 seconds default for GETs (skills, gamification, etc.)
+}
+
+export function clearCachePrefix(prefix) {
+  for (const key of cache.keys()) {
+    if (key.startsWith("GET:" + prefix) || key.includes(prefix)) {
+      cache.delete(key);
+    }
+  }
+}
+
+async function request(path, { method = "GET", body, auth = true, bypassCache = false } = {}) {
   const headers = { "Content-Type": "application/json" };
   if (auth) {
     const token = getToken();
     if (token) headers["Authorization"] = `Bearer ${token}`;
   }
   
-  let res;
-  try {
-    console.log(`[API] Request started: ${method} ${BASE_URL}${path}`);
-    res = await fetch(`${BASE_URL}${path}`, {
-      method,
-      headers,
-      body: body ? JSON.stringify(body) : undefined,
-    });
-    console.log(`[API] Request completed: ${method} ${path} - Status: ${res.status}`);
-  } catch (error) {
-    console.error(`[API] Request failed/aborted: ${method} ${path}`, error.name, error.message);
-    // Network error (CORS, DNS, connection refused)
-    if (error.name === 'TypeError' && error.message === 'Failed to fetch') {
-      throw new Error("Network connection failed. Please check your internet or try again later.");
-    }
-    throw error;
-  }
+  const cacheKey = `GET:${path}`;
+  const ttl = getTTL(path);
 
-  if (!res.ok) {
-    let errorMessage = `Request failed (${res.status})`;
-    try {
-      const errData = await res.json();
-      if (res.status === 422 && errData.detail && Array.isArray(errData.detail)) {
-        errorMessage = errData.detail.map(e => e.msg).join(", ");
-      } else {
-        errorMessage = errData.detail || errData.message || res.statusText;
+  if (method === "GET" && !bypassCache && ttl > 0) {
+    if (cache.has(cacheKey)) {
+      const entry = cache.get(cacheKey);
+      if (Date.now() - entry.timestamp < ttl) {
+        return entry.data;
       }
-    } catch (parseError) {
-      errorMessage = res.statusText || `Server returned ${res.status}`;
+      cache.delete(cacheKey);
     }
     
-    if (res.status === 500) {
-      throw new Error(`Server error: ${errorMessage}`);
+    if (inFlight.has(cacheKey)) {
+      return inFlight.get(cacheKey);
     }
-    throw new Error(errorMessage);
   }
-  return res.status === 204 ? null : res.json();
+
+  const fetchPromise = (async () => {
+    let res;
+    try {
+      console.log(`[API] Request started: ${method} ${BASE_URL}${path}`);
+      res = await fetch(`${BASE_URL}${path}`, {
+        method,
+        headers,
+        body: body ? JSON.stringify(body) : undefined,
+      });
+      console.log(`[API] Request completed: ${method} ${path} - Status: ${res.status}`);
+    } catch (error) {
+      console.error(`[API] Request failed/aborted: ${method} ${path}`, error.name, error.message);
+      if (error.name === 'TypeError' && error.message === 'Failed to fetch') {
+        throw new Error("Network connection failed. Please check your internet or try again later.");
+      }
+      throw error;
+    }
+
+    if (!res.ok) {
+      let errorMessage = `Request failed (${res.status})`;
+      try {
+        const errData = await res.json();
+        if (res.status === 422 && errData.detail && Array.isArray(errData.detail)) {
+          errorMessage = errData.detail.map(e => e.msg).join(", ");
+        } else {
+          errorMessage = errData.detail || errData.message || res.statusText;
+        }
+      } catch (parseError) {
+        errorMessage = res.statusText || `Server returned ${res.status}`;
+      }
+      
+      if (res.status === 500) {
+        throw new Error(`Server error: ${errorMessage}`);
+      }
+      throw new Error(errorMessage);
+    }
+    
+    const data = res.status === 204 ? null : await res.json();
+    
+    if (method === "GET" && ttl > 0) {
+      cache.set(cacheKey, { data, timestamp: Date.now() });
+    }
+    
+    if (method !== "GET") {
+      if (path.startsWith("/users/me")) clearCachePrefix("/users/me");
+      if (path.startsWith("/sessions")) clearCachePrefix("/sessions");
+      if (path.startsWith("/requests")) clearCachePrefix("/requests");
+      if (path.startsWith("/assessments")) clearCachePrefix("/users/me/skills");
+    }
+    
+    return data;
+  })();
+
+  if (method === "GET" && ttl > 0) {
+    inFlight.set(cacheKey, fetchPromise);
+    fetchPromise.finally(() => inFlight.delete(cacheKey));
+  }
+
+  return fetchPromise;
 }
 
 export const api = {

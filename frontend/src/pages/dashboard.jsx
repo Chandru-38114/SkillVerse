@@ -17,6 +17,7 @@ export default function Dashboard() {
   const user = getSessionUser()
   
   const [loading, setLoading] = useState(true)
+  const [showLoading, setShowLoading] = useState(false)
   const [skills, setSkills] = useState([])
   const [upcoming, setUpcoming] = useState([])
   const [gamification, setGamification] = useState(null)
@@ -29,6 +30,11 @@ export default function Dashboard() {
       return
     }
     
+    let isMounted = true
+    const loadingTimer = setTimeout(() => {
+      if (isMounted) setShowLoading(true)
+    }, 150) // Only show skeleton if fetch takes more than 150ms
+
     async function fetchDashboardData() {
       try {
         const [
@@ -45,6 +51,8 @@ export default function Dashboard() {
           api.searchTeachers().catch(() => [])
         ])
         
+        if (!isMounted) return;
+
         setSkills(skillsData || [])
         setUpcoming(upcomingData || [])
         setCompletedSessions(sessionsData?.filter(s => s.status === 'completed')?.length || 0)
@@ -56,11 +64,20 @@ export default function Dashboard() {
       } catch (err) {
         console.error("Dashboard fetch error:", err)
       } finally {
-        setLoading(false)
+        if (isMounted) {
+          clearTimeout(loadingTimer)
+          setLoading(false)
+          setShowLoading(false)
+        }
       }
     }
     
     fetchDashboardData()
+
+    return () => {
+      isMounted = false
+      clearTimeout(loadingTimer)
+    }
   }, [user, navigate])
 
   if (!user) return null
@@ -91,7 +108,7 @@ export default function Dashboard() {
       </section>
 
       {/* 2. LEARNING OVERVIEW */}
-      {loading ? (
+      {showLoading ? (
         <OverviewSkeleton />
       ) : (
         <section className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 md:gap-4">
@@ -110,7 +127,7 @@ export default function Dashboard() {
           {/* 3. UPCOMING SESSION */}
           <section>
             <SectionHeader title="Upcoming Session" />
-            {loading ? (
+            {showLoading ? (
               <div className="skeleton h-24 w-full" />
             ) : nextSession ? (
               <div className="card p-5 sm:p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-brand/20 bg-brand/10">
@@ -144,7 +161,7 @@ export default function Dashboard() {
           {/* 4. MY LEARNING SKILLS */}
           <section>
             <SectionHeader title="My Learning Skills" count={learningSkills.length} />
-            {loading ? (
+            {showLoading ? (
               <ListSkeleton />
             ) : learningSkills.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
@@ -174,7 +191,7 @@ export default function Dashboard() {
           {/* 5. TEACHING SKILLS */}
           <section>
             <SectionHeader title="Skills I Teach" count={teachingSkills.length} />
-            {loading ? (
+            {showLoading ? (
               <ListSkeleton />
             ) : teachingSkills.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
@@ -211,7 +228,7 @@ export default function Dashboard() {
               <Link to="/gamification" className="text-xs font-bold text-brand hover:underline">View All</Link>
             </div>
             <div className="card p-5">
-              {loading ? (
+              {showLoading ? (
                 <div className="space-y-3">
                   <div className="skeleton h-12 w-full" />
                   <div className="skeleton h-12 w-full" />
@@ -258,7 +275,7 @@ export default function Dashboard() {
               <Link to="/marketplace" className="text-xs font-bold text-brand hover:underline">Explore</Link>
             </div>
             <div className="card overflow-hidden">
-              {loading ? (
+              {showLoading ? (
                 <div className="p-5 space-y-4">
                   <div className="skeleton h-10 w-full" />
                   <div className="skeleton h-10 w-full" />
