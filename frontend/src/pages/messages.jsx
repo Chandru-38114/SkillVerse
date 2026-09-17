@@ -494,7 +494,7 @@ function SessionCard({ conv, onCancel, navigate }) {
         <p className="text-clay text-xs mt-0.5 truncate uppercase tracking-wide font-bold">{dateStr}</p>
       </div>
       <div className="flex items-center gap-2 w-full sm:w-auto mt-2 sm:mt-0">
-        <button onClick={() => navigate('/sessions')} className="flex-1 sm:flex-none btn-primary text-xs px-4 py-2 h-auto shadow-sm">
+        <button onClick={() => navigate(`/session/${conv.session_id}`)} className="flex-1 sm:flex-none btn-primary text-xs px-4 py-2 h-auto shadow-sm">
           Join
         </button>
         <button onClick={() => onCancel(conv.session_id)} className="p-2 text-clay hover:text-red-500 hover:bg-red-500/10 transition-colors rounded-lg flex items-center justify-center border border-transparent hover:border-red-500/20">

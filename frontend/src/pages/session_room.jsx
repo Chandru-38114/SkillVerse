@@ -81,14 +81,34 @@ function SessionRoomComponent() {
     return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
   }
 
+  const handleLeave = () => {
+    if (session?.request_id) {
+      navigate(`/messages?request_id=${session.request_id}`)
+    } else if (req?.id) {
+      navigate(`/messages?request_id=${req.id}`)
+    } else {
+      navigate('/sessions')
+    }
+  }
+
+  const handleComplete = () => {
+    if (session?.request_id) {
+      navigate(`/messages?request_id=${session.request_id}`)
+    } else if (req?.id) {
+      navigate(`/messages?request_id=${req.id}`)
+    } else {
+      navigate('/dashboard')
+    }
+  }
+
   return (
     <div className="flex flex-col bg-paper h-[100dvh] w-full overflow-hidden">
       {/* 🚀 Header 🚀 */}
       <header className="flex-none bg-surface border-b border-line px-4 sm:px-6 py-3 flex items-center justify-between shrink-0 z-20">
         <div className="flex items-center gap-4">
-          <Link to="/sessions" className="w-8 h-8 flex items-center justify-center text-clay hover:text-ink hover:bg-line/50 rounded-lg transition-colors shrink-0">
+          <button onClick={handleLeave} className="w-8 h-8 flex items-center justify-center text-clay hover:text-ink hover:bg-line/50 rounded-lg transition-colors shrink-0">
             <span className="text-xl leading-none">&times;</span>
-          </Link>
+          </button>
           <div>
             <h1 className="font-display font-bold text-ink text-sm sm:text-base leading-tight">
               {session.skill_name || session.skill}
@@ -161,7 +181,7 @@ function SessionRoomComponent() {
 
       {/* 🚀 Main Body 🚀 */}
       <div className="flex-1 flex overflow-hidden min-h-0 relative">
-        <VideoChat sessionId={session.id} onLeave={() => navigate('/sessions')}>
+        <VideoChat sessionId={session.id} onLeave={handleLeave}>
           {/* 🚀 Workspace: tabs + panels 🚀 */}
           <div className="flex-1 flex flex-col overflow-hidden min-h-0 min-w-0">
             {/* Tab bar — ONLY ON MOBILE */}
@@ -206,7 +226,7 @@ function SessionRoomComponent() {
             {/* Full-screen overlays for Notes & Materials */}
             {activeTab === 'Notes' && (
               <div className="absolute inset-0 z-50 flex flex-col bg-surface overflow-y-auto">
-                <Notes session={session} onBack={() => setActiveTab(prevTab)} onCompleteSuccess={() => navigate('/dashboard')} />
+                <Notes session={session} onBack={() => setActiveTab(prevTab)} onCompleteSuccess={handleComplete} />
               </div>
             )}
             
