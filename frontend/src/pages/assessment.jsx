@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import BackButton from "../components/BackButton";
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { api } from '../api'
 import SkillBadge from '../components/skillbadge'
 import { Compass, Swords, Target, Route, ArrowRight, ShieldCheck, Play } from 'lucide-react'
@@ -8,6 +8,7 @@ import { Compass, Swords, Target, Route, ArrowRight, ShieldCheck, Play } from 'l
 const STEPS = { PICK: 'pick', QUIZ: 'quiz', RESULT: 'result' }
 
 export default function Assessment() {
+  const [searchParams] = useSearchParams()
   const [step, setStep] = useState(STEPS.PICK)
   const [skillName, setSkillName] = useState('')
   const [role, setRole] = useState('teaching')
@@ -17,13 +18,12 @@ export default function Assessment() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
-  async function startQuiz(e) {
-    e.preventDefault()
-    if (!skillName.trim()) return
+  async function executeStartQuiz(skillToStart) {
+    if (!skillToStart.trim()) return
     setLoading(true)
     setError('')
     try {
-      const qs = await api.assessmentQuestions(skillName.trim())
+      const qs = await api.assessmentQuestions(skillToStart.trim())
       setQuestions(qs)
       setAnswers({})
       setStep(STEPS.QUIZ)
@@ -33,6 +33,24 @@ export default function Assessment() {
       setLoading(false)
     }
   }
+
+  async function startQuiz(e) {
+    e?.preventDefault()
+    executeStartQuiz(skillName)
+  }
+
+  useEffect(() => {
+    const s = searchParams.get('skill')
+    const r = searchParams.get('role')
+    const auto = searchParams.get('autoStart') === 'true'
+    
+    if (s) setSkillName(s)
+    if (r) setRole(r)
+    
+    if (s && auto) {
+       executeStartQuiz(s)
+    }
+  }, [searchParams])
 
   async function submitQuiz() {
     setLoading(true)

@@ -120,7 +120,7 @@ export default function Dashboard() {
         title: "Take the Skill Challenge",
         description: `Assess your ${activeLearningSkill.skill_name} to establish your baseline and earn initial XP.`,
         actionText: "Start Challenge →",
-        actionUrl: "/assessment",
+        actionUrl: `/assessment?skill=${encodeURIComponent(activeLearningSkill.skill_name)}&role=learning&autoStart=true`,
         icon: <ClipboardCheck className="w-24 h-24 text-brand opacity-20" />
       }
     } else if (activeLearningSkill.progress_percentage > 0 && activeLearningSkill.progress_percentage < 100) {
@@ -136,7 +136,7 @@ export default function Dashboard() {
         title: "The Final Challenge Awaits",
         description: `You've completed the learning path for ${activeLearningSkill.skill_name}. Take the final challenge to earn your verified badge.`,
         actionText: "Take Final Challenge →",
-        actionUrl: "/assessment",
+        actionUrl: `/assessment?skill=${encodeURIComponent(activeLearningSkill.skill_name)}&role=learning&autoStart=true`,
         icon: <CheckCircle className="w-24 h-24 text-brand opacity-20" />
       }
     } else if (activeLearningSkill.progress_percentage === 100 && activeLearningSkill.badge) {
