@@ -995,11 +995,25 @@ function ForwardModal({ message, inbox, currentRequestId, onClose, onForward }) 
               <div className="w-6 h-6 border-2 border-moss border-t-transparent rounded-full animate-spin" />
             </div>
           ) : (
-            <div className="hidden md:flex flex-1 flex-col items-center justify-center text-clay/50 bg-paper space-y-4">
-              <MessageCircle className="w-16 h-16 opacity-15" />
-              <div className="text-center">
-                <p className="font-semibold text-lg text-clay">Connect</p>
-                <p className="text-sm text-clay/70">Select a conversation to start collaborating</p>
+            <div className="hidden md:flex flex-1 flex-col items-center justify-center bg-paper p-8">
+              <div className="max-w-md w-full bg-surface border border-line rounded-2xl p-8 text-center shadow-sm">
+                <div className="w-16 h-16 bg-brand/10 text-brand rounded-full flex items-center justify-center mx-auto mb-5">
+                  <MessageCircle className="w-8 h-8" />
+                </div>
+                <h2 className="text-xl font-bold text-ink mb-3">Welcome to Connect</h2>
+                <p className="text-sm text-clay font-medium mb-6">
+                  Select a conversation from the sidebar to start collaborating, schedule sessions, and jump right into the interactive learning room.
+                </p>
+                <div className="grid grid-cols-2 gap-4 text-left">
+                  <div className="p-4 bg-lift rounded-xl border border-line/50">
+                    <p className="text-xs font-bold text-ink uppercase tracking-wider mb-1">Chat & Plan</p>
+                    <p className="text-xs text-clay">Message your partners to align on learning goals.</p>
+                  </div>
+                  <div className="p-4 bg-lift rounded-xl border border-line/50">
+                    <p className="text-xs font-bold text-ink uppercase tracking-wider mb-1">Live Sessions</p>
+                    <p className="text-xs text-clay">Schedule and join interactive video rooms.</p>
+                  </div>
+                </div>
               </div>
             </div>
           )}

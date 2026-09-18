@@ -219,7 +219,7 @@ export default function Marketplace() {
         </div>
       </section>
 
-      <section className="px-4 sm:px-6 max-w-6xl mx-auto">
+      <section className="px-4 sm:px-6 max-w-[1200px] mx-auto">
         {error && <div className="alert-error mb-8 max-w-2xl mx-auto">{error}</div>}
 
         {loading ? (
@@ -227,7 +227,7 @@ export default function Marketplace() {
         ) : filteredResults.length === 0 ? (
           <EmptyTeachers query={query} filter={activeFilter} proficiency={proficiency} />
         ) : (
-          <div className="grid lg:grid-cols-2 gap-6 max-w-5xl mx-auto">
+          <div className="grid lg:grid-cols-2 xl:grid-cols-3 gap-6">
             {filteredResults.map(teacher => {
               const ratings = ratingsMap[teacher.user_id]
               const displaySkills = activeFilter === 'I Can Teach' ? teacher.learning_skills : teacher.teaching_skills
