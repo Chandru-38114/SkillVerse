@@ -6,7 +6,8 @@ import Compiler from '../components/Compiler'
 import Whiteboard from '../components/Whiteboard'
 import Materials from '../components/Materials'
 import Notes from '../components/Notes'
-import { Code2, PenLine, FileText, FolderOpen, ChevronDown, ChevronUp, Info, Hand, CheckCircle2, Play, BookOpen } from 'lucide-react'
+import Chat from './chat'
+import { Code2, PenLine, FileText, FolderOpen, ChevronDown, ChevronUp, Info, Hand, CheckCircle2, Play, BookOpen, User, Calendar } from 'lucide-react'
 
 const TABS = [
   { id: 'Code',       label: 'Code',   Icon: Code2 },
@@ -135,141 +136,151 @@ function SessionRoomComponent() {
   }
 
   return (
-    <div className="flex flex-col bg-paper h-[100dvh] w-full overflow-hidden">
+    <div className="flex flex-col bg-[#F8F9FA] h-[100dvh] w-full overflow-hidden text-ink">
       {/* 🚀 Header 🚀 */}
-      <header className="flex-none bg-surface border-b border-line px-4 sm:px-6 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0 z-20">
-        <div className="flex items-center gap-4 min-w-0">
-          <div className="min-w-0">
-            <h1 className="font-display font-bold text-ink text-sm sm:text-base leading-tight truncate">
-              Learning {session.skill_name || session.skill} with {peerName}
-            </h1>
-            <div className="flex items-center gap-2 mt-0.5 text-xs font-semibold text-clay">
-              <span className={`w-2 h-2 rounded-full shrink-0 ${isCompleted ? 'bg-clay' : 'bg-green-500 animate-pulse'}`}></span>
-              <span className="capitalize">{isCompleted ? 'Ended' : 'Live'}</span>
-              <span className="text-line">•</span>
-              <span className="capitalize">{isTutor ? 'Tutor' : 'Learner'}</span>
-              
-              {session.notes && (
-                <>
-                  <span className="text-line hidden sm:inline">•</span>
-                  <span className="hidden sm:flex items-center gap-1 text-ink/70 truncate" title={session.notes}>
-                    <BookOpen className="w-3.5 h-3.5 shrink-0" />
-                    Today's focus: <span className="italic font-normal truncate">{session.notes}</span>
-                  </span>
-                </>
-              )}
-            </div>
+      <header className="flex-none bg-surface border-b border-line px-4 sm:px-6 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0 z-20 shadow-sm">
+        <div className="flex items-center gap-4">
+          <div className="font-display font-bold text-ink">Learning Arena</div>
+          <div className="h-6 w-px bg-line" />
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-brand/5 rounded-lg border border-brand/10">
+            <span className="text-brand font-semibold text-sm">{session.skill_name || session.skill}</span>
+            <span className="text-clay text-xs">with {peerName}</span>
           </div>
         </div>
 
-        <div className="flex items-center gap-3 shrink-0">
-          {timeLeft && !isCompleted && (
-            <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-clay/10 text-clay font-medium text-xs">
-              <span>Ends in</span>
-              <span className="font-mono tracking-wider">{timeLeft}</span>
+        {/* Center: Time */}
+        <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+               <Calendar className="w-4 h-4 text-clay" />
+               <span className="text-sm font-medium text-ink">Today • {session.start_time || 'Now'}</span>
             </div>
-          )}
-          
-          <div className="flex items-center gap-2">
-            <button onClick={handleLeave} className="btn-secondary text-xs px-4 py-2 hover:bg-line/50 transition-colors">
-              Leave
-            </button>
-            {!isCompleted && (
-              <button onClick={handleComplete} disabled={completing} className="btn-primary text-xs px-4 py-2 flex items-center gap-1.5 shadow-sm">
-                <CheckCircle2 className="w-4 h-4" />
-                {completing ? 'Completing...' : 'Complete Session'}
-              </button>
+            {timeLeft && !isCompleted && (
+               <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-clay/10 text-clay font-medium text-xs">
+                 <span>Ends in</span>
+                 <span className="font-mono tracking-wider">{timeLeft}</span>
+               </div>
             )}
-            
-            <button
-              onClick={() => setInfoOpen(v => !v)}
-              className="sm:hidden flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-ink/60 bg-ink/5 hover:bg-ink/10 transition-colors shrink-0"
-            >
-              <Info className="w-3.5 h-3.5" />
-            </button>
-          </div>
+        </div>
+
+        {/* Right controls */}
+        <div className="flex items-center gap-2">
+           <button onClick={handleLeave} className="btn-secondary text-xs px-4 py-2 hover:bg-line/50 transition-colors">
+             Leave Session
+           </button>
+           {!isCompleted && (
+             <button onClick={handleComplete} disabled={completing} className="btn-primary text-xs px-4 py-2 flex items-center gap-1.5 shadow-sm">
+               <CheckCircle2 className="w-4 h-4" />
+               Complete Session
+             </button>
+           )}
         </div>
       </header>
 
-      {/* 🚀 Collapsible info banner (mobile) 🚀 */}
-      {infoOpen && (
-        <div className="sm:hidden bg-surface border-b border-line px-4 py-3 shrink-0 z-10">
-          <div className="flex gap-5 text-sm flex-wrap mb-2">
-            <div>
-              <span className="text-[10px] uppercase tracking-wider text-ink/40 font-bold block mb-0.5">Date</span>
-              <span className="font-semibold text-ink">{formatDate(session.scheduled_start || session.session_date)}</span>
-            </div>
-            <div>
-              <span className="text-[10px] uppercase tracking-wider text-ink/40 font-bold block mb-0.5">Time</span>
-              <span className="font-semibold text-ink">{session.start_time} — {session.end_time}</span>
-            </div>
-            {timeLeft && !isCompleted && (
-              <div>
-                <span className="text-[10px] uppercase tracking-wider text-ink/40 font-bold block mb-0.5">Ends in</span>
-                <span className="font-semibold text-ink">{timeLeft}</span>
-              </div>
-            )}
-          </div>
-          {session.notes && (
-            <div className="text-xs text-ink/70 border-t border-line pt-2 flex items-start gap-1.5">
-              <BookOpen className="w-4 h-4 text-brand shrink-0 mt-0.5" />
-              <span className="italic leading-relaxed">{session.notes}</span>
-            </div>
-          )}
-        </div>
-      )}
-
       {/* 🚀 Main Body 🚀 */}
       <div className="flex-1 flex overflow-hidden min-h-0 relative">
-        <VideoChat sessionId={session.id} onLeave={handleLeave}>
-          {/* 🚀 Workspace: unified tabs 🚀 */}
-          <div className="flex-1 flex flex-col overflow-hidden min-h-0 min-w-0 bg-surface">
-            {/* Tab bar */}
-            <div className="flex shrink-0 border-b border-line bg-lift/30 overflow-x-auto overflow-y-hidden scrollbar-hide px-2">
-              {TABS.map(({ id, label, Icon }) => (
-                <button
-                  key={id}
-                  onClick={() => setActiveTab(id)}
-                  className={`flex items-center gap-1.5 px-4 py-3 text-sm font-semibold border-b-2 whitespace-nowrap transition-colors flex-shrink-0 ${
-                    activeTab === id
-                      ? 'border-brand text-brand bg-brand/5'
-                      : 'border-transparent text-clay hover:text-ink hover:bg-ink/5'
-                  }`}
-                >
-                  <Icon className="w-4 h-4" />
-                  {label}
-                </button>
-              ))}
-            </div>
+        
+        {/* Left Navigation */}
+        <div className="w-20 shrink-0 bg-surface border-r border-line flex flex-col items-center py-4 gap-4 z-10 hidden sm:flex shadow-[2px_0_10px_-4px_rgba(0,0,0,0.05)]">
+           {TABS.map(({ id, label, Icon }) => (
+              <a 
+                href={`#section-${id}`} 
+                key={id}
+                onClick={(e) => {
+                  e.preventDefault()
+                  setActiveTab(id)
+                  document.getElementById(`section-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                }}
+                className={`flex flex-col items-center gap-1.5 p-2 w-14 rounded-xl transition-all ${
+                  activeTab === id ? 'bg-brand/10 text-brand' : 'text-clay hover:text-ink hover:bg-ink/5'
+                }`}
+              >
+                 <Icon className="w-5 h-5" />
+                 <span className="text-[10px] font-semibold tracking-wide">{label}</span>
+              </a>
+           ))}
+        </div>
 
-            {/* Content Area - Unified Tabs */}
-            <div className="flex-1 relative overflow-hidden min-h-0">
-              {/* Whiteboard */}
-              <div className={`absolute inset-0 z-10 flex flex-col bg-surface ${activeTab === 'Whiteboard' ? 'block' : 'hidden'}`}>
-                <Whiteboard sessionId={session.id} />
+        <VideoChat 
+           sessionId={session.id} 
+           onLeave={handleLeave} 
+           chatComponent={<Chat requestId={session.request_id || req?.id} embedded={true} />}
+        >
+          {/* 🚀 Workspace 🚀 */}
+          <div className="flex-1 flex flex-col overflow-y-auto bg-paper p-4 lg:p-6 gap-6 scroll-smooth">
+            
+            {/* Today's Quest Area */}
+            {session.notes && (
+              <div className="bg-surface rounded-xl p-4 lg:p-5 border border-line shadow-sm flex items-start gap-4 shrink-0 mx-auto max-w-5xl w-full">
+                 <div className="p-2 bg-brand/10 rounded-lg shrink-0 mt-0.5">
+                   <BookOpen className="w-5 h-5 text-brand" />
+                 </div>
+                 <div>
+                   <p className="text-xs font-bold text-clay uppercase tracking-wider mb-1">Today's Quest</p>
+                   <p className="text-sm font-medium text-ink leading-relaxed">{session.notes}</p>
+                 </div>
               </div>
+            )}
 
-              {/* Compiler */}
-              <div className={`absolute inset-0 z-10 flex flex-col bg-surface ${activeTab === 'Code' ? 'block' : 'hidden'}`}>
-                <Compiler sessionId={session.id} />
-              </div>
-            
-              {/* Notes */}
-              <div className={`absolute inset-0 z-10 flex flex-col bg-surface overflow-y-auto ${activeTab === 'Notes' ? 'block' : 'hidden'}`}>
-                {notesLoaded && (
-                  <Notes 
-                    session={session} 
-                    data={notesData} 
-                    onChange={setNotesData} 
-                    isCompleted={isCompleted} 
-                  />
-                )}
-              </div>
-            
-              {/* Materials */}
-              <div className={`absolute inset-0 z-10 flex flex-col bg-surface overflow-y-auto ${activeTab === 'Materials' ? 'block' : 'hidden'}`}>
-                <Materials session={session} />
-              </div>
+            <div className="mx-auto max-w-5xl w-full flex flex-col gap-6">
+               
+               {/* Whiteboard + Compiler row */}
+               <div id="section-Code" className="flex flex-col xl:flex-row gap-6 h-[800px] xl:h-[600px] shrink-0">
+                  {/* Whiteboard */}
+                  <div id="section-Whiteboard" className="flex-1 bg-surface border border-line rounded-2xl shadow-sm overflow-hidden flex flex-col relative group h-full">
+                     <div className="absolute top-4 left-4 z-20 bg-white/90 backdrop-blur-sm px-3 py-1.5 rounded-lg border border-line shadow-sm flex items-center gap-2 pointer-events-none transition-opacity group-hover:opacity-30">
+                        <PenLine className="w-4 h-4 text-brand" />
+                        <span className="text-xs font-bold text-ink tracking-wide">Whiteboard</span>
+                     </div>
+                     <div className="absolute inset-0 z-10">
+                         <Whiteboard sessionId={session.id} />
+                     </div>
+                  </div>
+
+                  {/* Compiler */}
+                  <div className="flex-1 bg-surface border border-line rounded-2xl shadow-sm overflow-hidden flex flex-col relative group h-full">
+                     <div className="absolute top-4 left-4 z-20 bg-white/90 backdrop-blur-sm px-3 py-1.5 rounded-lg border border-line shadow-sm flex items-center gap-2 pointer-events-none transition-opacity group-hover:opacity-30">
+                        <Code2 className="w-4 h-4 text-brand" />
+                        <span className="text-xs font-bold text-ink tracking-wide">Compiler</span>
+                     </div>
+                     <div className="absolute inset-0 z-10 pt-16 xl:pt-14 bg-surface">
+                        <Compiler sessionId={session.id} />
+                     </div>
+                  </div>
+               </div>
+
+               {/* Notes + Materials row */}
+               <div id="section-Notes" className="flex flex-col xl:flex-row gap-6 h-[500px] shrink-0">
+                  
+                  {/* Notes */}
+                  <div className="flex-1 bg-surface border border-line rounded-2xl shadow-sm overflow-hidden flex flex-col h-full">
+                     <div className="px-5 py-4 border-b border-line flex items-center gap-3 bg-lift/30 shrink-0">
+                        <div className="p-1.5 bg-brand/10 rounded-md">
+                           <FileText className="w-4 h-4 text-brand" />
+                        </div>
+                        <span className="text-sm font-bold text-ink">Session Notes</span>
+                     </div>
+                     <div className="flex-1 overflow-y-auto relative p-2 bg-surface">
+                        {notesLoaded && <Notes session={session} data={notesData} onChange={setNotesData} isCompleted={isCompleted} />}
+                     </div>
+                  </div>
+
+                  {/* Materials */}
+                  <div id="section-Materials" className="flex-1 bg-surface border border-line rounded-2xl shadow-sm overflow-hidden flex flex-col h-full">
+                     <div className="px-5 py-4 border-b border-line flex items-center gap-3 bg-lift/30 shrink-0">
+                        <div className="p-1.5 bg-brand/10 rounded-md">
+                           <FolderOpen className="w-4 h-4 text-brand" />
+                        </div>
+                        <span className="text-sm font-bold text-ink">Materials</span>
+                     </div>
+                     <div className="flex-1 overflow-y-auto relative p-2 bg-surface">
+                        <Materials session={session} />
+                     </div>
+                  </div>
+               </div>
+
+               {/* Bottom Spacer */}
+               <div className="h-12 shrink-0"></div>
+
             </div>
           </div>
         </VideoChat>

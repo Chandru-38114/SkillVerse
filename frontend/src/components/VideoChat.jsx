@@ -7,7 +7,7 @@ import { Mic, MicOff, Video, VideoOff, Hand, Smile , User } from 'lucide-react'
 
 export const SessionWebSocketContext = createContext(null)
 
-export default function VideoChat({ sessionId, children, onLeave }) {
+export default function VideoChat({ sessionId, children, onLeave, chatComponent }) {
   const navigate = useNavigate()
   const [stream, setStream] = useState(null)
   const [remoteStream, setRemoteStream] = useState(null)
@@ -514,149 +514,129 @@ export default function VideoChat({ sessionId, children, onLeave }) {
   )
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden min-h-0 min-w-0 w-full h-full">
-      <div className="flex-1 flex flex-col md:flex-row overflow-hidden min-h-0 min-w-0 w-full h-full">
-
-        {/* Video panel - mobile-optimized compact height */}
-        <div className="h-28 sm:h-36 md:h-auto md:w-[240px] lg:w-[260px] xl:w-[280px] shrink-0 bg-[#111] flex flex-col relative border-b md:border-b-0 md:border-r border-ink/20 z-20">
-
-          {(status === 'waiting' || status === 'connecting') && (
-            <div className="absolute top-2 left-1/2 -translate-x-1/2 z-10 bg-black/60 text-white/90 px-2 py-1 rounded text-[10px] font-medium whitespace-nowrap">
-              {status === 'waiting' ? 'Waiting...' : 'Connecting...'}
-            </div>
-          )}
-          {peerHandRaised && (
-            <div className="absolute top-12 left-1/2 -translate-x-1/2 md:top-2 md:left-auto md:right-2 z-30 bg-brand text-white px-3 py-1.5 rounded-lg text-sm font-bold animate-bounce shadow-lg shadow-brand/20 flex items-center gap-2">
-              <Hand size={18} /> Hand Raised
-            </div>
-          )}
-          {activeEmojis.map(e => (
-            <div 
-              key={e.id} 
-              className={`absolute z-40 text-4xl animate-float-up pointer-events-none ${e.isLocal ? 'right-4 bottom-4' : 'left-1/2 bottom-0 -translate-x-1/2'}`}
-            >
-              {getEmojiForKey(e.emoji)}
-            </div>
-          ))}
-          {status === 'ended' && (
-            <div className="absolute top-2 left-1/2 -translate-x-1/2 z-10 bg-indigo-600/90 text-white px-2 py-1 rounded text-[10px] font-medium whitespace-nowrap">
-              Session ended
-            </div>
-          )}
-          {status === 'disconnected' && (
-            <div className="absolute top-2 left-1/2 -translate-x-1/2 z-10 bg-red-600/90 text-white px-2 py-1 rounded text-[10px] font-medium whitespace-nowrap">
-              Peer left
-            </div>
-          )}
-
-          {/* Remote video */}
-          <div className="flex-1 relative w-full h-full">
-            {remoteStream ? (
-              <video
-                ref={remoteVideoRef}
-                autoPlay
-                playsInline
-                onLoadedMetadata={(e) => e.target.play().catch(console.error)}
-                className="w-full h-full object-contain bg-black"
-              />
-            ) : (
-              <div className="w-full h-full flex flex-col items-center justify-center">
-                <span className="text-white/20 text-2xl mb-1"><User size={32} /></span>
-                <p className="font-medium text-white/30 text-[10px]">
-                  {status === 'waiting' ? 'Waiting' : 'Connecting'}
-                </p>
-              </div>
-            )}
-          </div>
-
-          {/* Local video PiP */}
-          <div className="absolute top-2 right-2 w-16 sm:w-20 aspect-[3/4] md:aspect-video md:bottom-16 md:top-auto bg-black rounded overflow-hidden shadow-lg z-20 border border-white/10">
-            <video
-              ref={localVideoRef}
-              autoPlay
-              playsInline
-              muted
-              className={`w-full h-full object-cover transition-opacity duration-200 ${isVideoOff ? 'opacity-0' : 'opacity-100'}`}
-            />
-            {isVideoOff && (
-              <div className="absolute inset-0 flex items-center justify-center bg-black">
-                <span className="text-white/40 text-[10px]">Off</span>
-              </div>
-            )}
-          </div>
-
-          {/* Mobile overlaid controls (hidden on desktop) */}
-          <div className="md:hidden absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/80 to-transparent flex items-center z-30">
-            {controlsContent}
-          </div>
-        </div>
-
-        {/* Workspace + sidebar */}
-        <div className="flex-1 flex flex-col md:flex-row overflow-hidden min-h-0 min-w-0 w-full h-full">
-          <SessionWebSocketContext.Provider value={sharedWs}>
-            {children}
-          </SessionWebSocketContext.Provider>
-        </div>
+    <div className="flex-1 flex flex-col md:flex-row overflow-hidden min-h-0 min-w-0 w-full h-full bg-paper">
+      
+      {/* Workspace (Left/Main) */}
+      <div className="flex-1 flex flex-col overflow-hidden min-h-0 min-w-0 w-full h-full">
+        <SessionWebSocketContext.Provider value={sharedWs}>
+          {children}
+        </SessionWebSocketContext.Provider>
       </div>
 
-      {/* Desktop Bottom control bar */}
-      <div className="hidden md:flex h-14 shrink-0 bg-surface border-t border-line shadow-elev-1 items-center justify-between px-3 sm:px-5 z-30 gap-3">
-        <div className="flex-1 text-xs text-ink/50 font-medium min-w-0 truncate">
-          {status === 'connected' && (
-            <span className="flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-moss" />
-              Connected securely
-            </span>
-          )}
-        </div>
+      {/* Right Sidebar (Video + Chat) */}
+      <div className="md:w-[320px] lg:w-[360px] xl:w-[400px] shrink-0 flex flex-col bg-surface border-l border-line z-20 overflow-hidden relative">
         
-        {/* Desktop Media Controls */}
-        <div className="flex items-center gap-2">
-          <button
-            onClick={toggleMute}
-            className={`w-10 h-10 rounded-full flex items-center justify-center transition-all text-base ${isMuted ? 'bg-red-100 text-red-600 hover:bg-red-200' : 'bg-ink/5 text-ink hover:bg-ink/10'}`}
-            title={isMuted ? 'Unmute' : 'Mute'}
-          >
-            {isMuted ? <MicOff size={18} /> : <Mic size={18} />}
-          </button>
-          <button
-            onClick={toggleVideo}
-            className={`w-10 h-10 rounded-full flex items-center justify-center transition-all text-base ${isVideoOff ? 'bg-red-100 text-red-600 hover:bg-red-200' : 'bg-ink/5 text-ink hover:bg-ink/10'}`}
-            title={isVideoOff ? 'Turn Camera On' : 'Turn Camera Off'}
-          >
-            {isVideoOff ? <VideoOff size={18} /> : <Video size={18} />}
-          </button>
-          <div className="w-px h-8 bg-line mx-2"></div>
+        {/* Video Card Area */}
+        <div className="p-4 border-b border-line shrink-0 flex flex-col items-center">
           
-          <button
-            onClick={toggleHand}
-            className={`w-10 h-10 rounded-full flex items-center justify-center transition-all text-base ${handRaised ? 'bg-brand text-white shadow-lg shadow-brand/20' : 'bg-ink/5 text-ink hover:bg-ink/10'}`}
-            title="Raise Hand"
-          >
-            <Hand size={18} />
-          </button>
-          
-          <div className="relative group">
-            <button className="w-10 h-10 rounded-full flex items-center justify-center transition-all text-base bg-ink/5 text-ink hover:bg-ink/10" title="React">
-              <Smile size={18} />
+          {/* Main Video Bubble */}
+          <div className="w-full bg-[#111] rounded-2xl overflow-hidden shadow-sm relative flex flex-col border border-line aspect-[4/3]">
+            
+            {/* Top Bar inside Video */}
+            <div className="absolute top-0 left-0 right-0 p-3 flex items-center justify-between z-30 bg-gradient-to-b from-black/80 to-transparent pointer-events-none">
+              <div className="flex items-center gap-2">
+                <span className="text-white font-bold text-xs tracking-wide">Video Call</span>
+                {(status === 'connected') && <span className="px-1.5 py-0.5 rounded bg-red-500 text-white text-[9px] font-bold uppercase tracking-wider animate-pulse">Live</span>}
+                {(status === 'waiting' || status === 'connecting') && <span className="px-1.5 py-0.5 rounded bg-gold text-white text-[9px] font-bold uppercase tracking-wider">Connecting</span>}
+                {(status === 'ended') && <span className="px-1.5 py-0.5 rounded bg-indigo-600 text-white text-[9px] font-bold uppercase tracking-wider">Ended</span>}
+                {(status === 'disconnected') && <span className="px-1.5 py-0.5 rounded bg-red-600 text-white text-[9px] font-bold uppercase tracking-wider">Offline</span>}
+              </div>
+            </div>
+
+            {/* Remote Video */}
+            <div className="flex-1 relative w-full h-full">
+              {remoteStream ? (
+                <video
+                  ref={remoteVideoRef}
+                  autoPlay
+                  playsInline
+                  onLoadedMetadata={(e) => e.target.play().catch(console.error)}
+                  className="w-full h-full object-cover bg-black"
+                />
+              ) : (
+                <div className="w-full h-full flex flex-col items-center justify-center">
+                  <span className="text-white/20 text-2xl mb-1"><User size={32} /></span>
+                  <p className="font-medium text-white/30 text-[10px]">
+                    {status === 'waiting' ? 'Waiting' : 'Connecting'}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Local Video PiP */}
+            <div className="absolute bottom-3 right-3 w-20 sm:w-24 aspect-video bg-black rounded-lg overflow-hidden shadow-lg z-20 border border-white/20">
+              <video
+                ref={localVideoRef}
+                autoPlay
+                playsInline
+                muted
+                className={`w-full h-full object-cover transition-opacity duration-200 ${isVideoOff ? 'opacity-0' : 'opacity-100'}`}
+              />
+              {isVideoOff && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black">
+                  <span className="text-white/40 text-[10px]">Off</span>
+                </div>
+              )}
+            </div>
+
+            {/* Reactions */}
+            {peerHandRaised && (
+              <div className="absolute top-12 left-1/2 -translate-x-1/2 z-30 bg-brand text-white px-3 py-1.5 rounded-lg text-sm font-bold animate-bounce shadow-lg shadow-brand/20 flex items-center gap-2">
+                <Hand size={18} /> Hand Raised
+              </div>
+            )}
+            {activeEmojis.map(e => (
+              <div 
+                key={e.id} 
+                className={`absolute z-40 text-4xl animate-float-up pointer-events-none ${e.isLocal ? 'right-4 bottom-4' : 'left-1/2 bottom-0 -translate-x-1/2'}`}
+              >
+                {getEmojiForKey(e.emoji)}
+              </div>
+            ))}
+          </div>
+
+          {/* Video Controls under video */}
+          <div className="flex items-center gap-3 mt-4">
+            <button
+              onClick={toggleMute}
+              className={`w-10 h-10 rounded-full flex items-center justify-center transition-all text-base ${isMuted ? 'bg-red-100 text-red-600 hover:bg-red-200 shadow-sm' : 'bg-ink/5 text-ink hover:bg-ink/10'}`}
+              title={isMuted ? 'Unmute' : 'Mute'}
+            >
+              {isMuted ? <MicOff size={18} /> : <Mic size={18} />}
             </button>
-            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:flex bg-surface border border-line rounded-full shadow-xl p-1 gap-1 flex-col">
-              {REACTION_EMOJIS.map(em => (
-                <button key={em.key} onClick={() => sendReaction(em.key)} className="w-8 h-8 rounded-full hover:bg-ink/5 flex items-center justify-center text-lg transition-transform hover:scale-125">
-                  {em.emoji}
-                </button>
-              ))}
+            <button
+              onClick={toggleVideo}
+              className={`w-10 h-10 rounded-full flex items-center justify-center transition-all text-base ${isVideoOff ? 'bg-red-100 text-red-600 hover:bg-red-200 shadow-sm' : 'bg-ink/5 text-ink hover:bg-ink/10'}`}
+              title={isVideoOff ? 'Turn Camera On' : 'Turn Camera Off'}
+            >
+              {isVideoOff ? <VideoOff size={18} /> : <Video size={18} />}
+            </button>
+            <div className="w-px h-6 bg-line mx-1"></div>
+            <button
+              onClick={toggleHand}
+              className={`w-10 h-10 rounded-full flex items-center justify-center transition-all text-base ${handRaised ? 'bg-brand text-white shadow-lg shadow-brand/20' : 'bg-ink/5 text-ink hover:bg-ink/10'}`}
+              title="Raise Hand"
+            >
+              <Hand size={18} />
+            </button>
+            <div className="relative group">
+              <button className="w-10 h-10 rounded-full flex items-center justify-center transition-all text-base bg-ink/5 text-ink hover:bg-ink/10" title="React">
+                <Smile size={18} />
+              </button>
+              <div className="absolute bottom-full right-0 mb-2 hidden group-hover:flex bg-surface border border-line rounded-full shadow-xl p-1 gap-1 flex-col z-50">
+                {REACTION_EMOJIS.map(em => (
+                  <button key={em.key} onClick={() => sendReaction(em.key)} className="w-8 h-8 rounded-full hover:bg-ink/5 flex items-center justify-center text-lg transition-transform hover:scale-125">
+                    {em.emoji}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         </div>
-        <div className="flex-1 flex justify-end">
-          <button
-            onClick={() => (onLeave ? onLeave() : navigate('/sessions'))}
-            className="px-5 py-2 rounded-lg font-semibold transition-all bg-red-600 text-white hover:bg-red-700 shadow-sm text-sm whitespace-nowrap"
-            title="Leave Session"
-          >
-            Leave
-          </button>
+
+        {/* Chat Component injected from session_room */}
+        <div className="flex-1 overflow-hidden relative">
+          {chatComponent}
         </div>
       </div>
     </div>
