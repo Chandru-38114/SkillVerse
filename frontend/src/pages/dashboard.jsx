@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { Trophy, CheckCircle, ClipboardCheck, Award, Users, Flame, Star, BookOpen, Compass, ArrowRight, Calendar } from 'lucide-react'
 import { api, getSessionUser } from '../api'
+import Avatar from '../components/ui/Avatar'
 
 function getProgressNarrative(progress, badge) {
   if (progress === 100 && badge) return "Skill milestone reached";
@@ -227,9 +228,7 @@ export default function Dashboard() {
             <h3 className="text-xs font-bold text-clay uppercase tracking-wider mb-4 px-1">Upcoming Commitment</h3>
             {nextSession ? (
               <div className="card p-5 border border-brand/20 bg-brand/5 shadow-sm flex flex-col sm:flex-row sm:items-center gap-4">
-                 <div className="w-12 h-12 rounded-full bg-brand/10 text-brand flex items-center justify-center shrink-0">
-                   <Calendar className="w-6 h-6" />
-                 </div>
+                 <Avatar name={nextSession.tutor_id === user.id ? nextSession.learner_name : nextSession.tutor_name} size="md" className="shrink-0" />
                  <div className="flex-1 min-w-0">
                    <p className="font-bold text-ink text-base capitalize">{nextSession.skill}</p>
                    <p className="text-sm text-clay mt-0.5">With <span className="font-medium text-ink">{nextSession.tutor_id === user.id ? nextSession.learner_name : nextSession.tutor_name}</span></p>

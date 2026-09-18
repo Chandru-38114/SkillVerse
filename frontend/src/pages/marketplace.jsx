@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo } from 'react'
 import BackButton from "../components/BackButton";
 import { Link } from 'react-router-dom'
 import { api, getSessionUser } from '../api'
+import Avatar from '../components/ui/Avatar'
 
 function defaultForm() {
   return {
@@ -242,13 +243,16 @@ export default function Marketplace() {
                   
                   <div className="p-6 flex-1 flex flex-col">
                     <div className="flex gap-4 mb-6">
-                      <div className="w-16 h-16 bg-brand/10 rounded-full flex items-center justify-center text-brand text-2xl font-bold shrink-0 border border-brand/20">
-                        {teacher.name.charAt(0)}
-                      </div>
+                      <Avatar url={teacher.profile_picture_url} name={teacher.name} size="lg" className="shrink-0" />
                       <div>
                         <h3 className="text-xl font-bold text-ink">{teacher.name}</h3>
                         {teacher.college && <p className="text-xs font-semibold text-clay uppercase tracking-wider mt-0.5">{teacher.college}</p>}
                         <RatingSummary data={ratings} />
+                        {teacher.bio && (
+                          <p className="mt-2 text-sm text-ink/80 line-clamp-2">
+                            {teacher.bio}
+                          </p>
+                        )}
                       </div>
                       
                       {teacher.match_context && (

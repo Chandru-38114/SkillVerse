@@ -1,35 +1,52 @@
 import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { Moon, Sun, Monitor, Bell, Shield, User, Info, ArrowLeft } from 'lucide-react'
+import { Moon, Sun, Monitor, Bell, User, Info, ArrowLeft, Camera } from 'lucide-react'
 import { getSessionUser, api } from '../api'
 import PasswordInput from "../components/PasswordInput"
+import Avatar from '../components/ui/Avatar'
 
 export default function Settings() {
   const [theme, setTheme] = useState(localStorage.getItem('theme') || 'system')
   const [user, setUser] = useState(null)
+  
   const [currentPassword, setCurrentPassword] = useState("")
   const [newPassword, setNewPassword] = useState("")
   const [savingPassword, setSavingPassword] = useState(false)
   const [passwordMsg, setPasswordMsg] = useState("")
 
-  const handleChangePassword = async (e) => {
-    e.preventDefault()
-    setSavingPassword(true)
-    setPasswordMsg("")
-    try {
-      await api.changePassword(currentPassword, newPassword)
-      setPasswordMsg("Password updated successfully.")
-      setCurrentPassword("")
-      setNewPassword("")
-    } catch (err) {
-      setPasswordMsg("Error: " + err.message)
-    } finally {
-      setSavingPassword(false)
-    }
-  }
+  // Profile update form
+  const [name, setName] = useState("");
+  const [bio, setBio] = useState("");
+  const [mobileNumber, setMobileNumber] = useState("");
+  const [college, setCollege] = useState("");
+  const [country, setCountry] = useState("");
+  const [dob, setDob] = useState("");
+  const [gender, setGender] = useState("");
+
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [profileMsg, setProfileMsg] = useState("");
+  
+  // Avatar upload
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [removingAvatar, setRemovingAvatar] = useState(false);
+  const [avatarMsg, setAvatarMsg] = useState("");
+
+  const resetForm = (u) => {
+    if (!u) return;
+    setName(u.name || "");
+    setBio(u.bio || "");
+    setMobileNumber(u.mobile_number || "");
+    setCollege(u.college || "");
+    setCountry(u.country || "");
+    setDob(u.dob || "");
+    setGender(u.gender || "");
+    setProfileMsg("");
+  };
 
   useEffect(() => {
-    setUser(getSessionUser())
+    const u = getSessionUser();
+    setUser(u);
+    resetForm(u);
   }, [])
 
   useEffect(() => {
@@ -69,6 +86,79 @@ export default function Settings() {
     mediaQuery.addEventListener('change', handleChange)
     return () => mediaQuery.removeEventListener('change', handleChange)
   }, [theme])
+
+  const handleUpdateProfile = async (e) => {
+    e.preventDefault();
+    setSavingProfile(true);
+    setProfileMsg("");
+    try {
+      const u = await api.updateMe({ 
+        name, 
+        bio, 
+        college, 
+        country, 
+        mobile_number: mobileNumber,
+        dob: dob || null,
+        gender: gender || null
+      });
+      setUser(u);
+      setProfileMsg("Profile updated successfully.");
+    } catch (err) {
+      setProfileMsg("Error: " + err.message);
+    } finally {
+      setSavingProfile(false);
+    }
+  };
+
+  const handleChangePassword = async (e) => {
+    e.preventDefault()
+    setSavingPassword(true)
+    setPasswordMsg("")
+    try {
+      await api.changePassword(currentPassword, newPassword)
+      setPasswordMsg("Password updated successfully.")
+      setCurrentPassword("")
+      setNewPassword("")
+    } catch (err) {
+      setPasswordMsg("Error: " + err.message)
+    } finally {
+      setSavingPassword(false)
+    }
+  }
+
+  const handleAvatarUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setUploadingAvatar(true);
+    setAvatarMsg("");
+    try {
+      const u = await api.uploadAvatar(file);
+      setUser(u);
+      setAvatarMsg("Avatar updated.");
+    } catch (err) {
+      setAvatarMsg("Error: " + err.message);
+    } finally {
+      setUploadingAvatar(false);
+      e.target.value = null;
+    }
+  };
+
+  const handleAvatarRemove = async () => {
+    if (!window.confirm("Remove your profile picture?")) return;
+    
+    setRemovingAvatar(true);
+    setAvatarMsg("");
+    try {
+      const u = await api.removeAvatar();
+      setUser(u);
+      setAvatarMsg("Avatar removed.");
+    } catch (err) {
+      setAvatarMsg("Error: " + err.message);
+    } finally {
+      setRemovingAvatar(false);
+    }
+  };
 
   return (
     <div className="page-narrow pb-20">
@@ -117,25 +207,119 @@ export default function Settings() {
           </div>
         </section>
 
-        {/* Account Section */}
+        {/* Profile Section */}
         <section>
           <div className="flex items-center gap-2 mb-4">
             <User className="w-4 h-4 text-ink/50" />
-            <h2 className="text-sm font-bold uppercase tracking-wider text-ink/50">Account</h2>
+            <h2 className="text-sm font-bold uppercase tracking-wider text-ink/50">Profile Information</h2>
           </div>
           
           <div className="card divide-y divide-line/40 overflow-hidden">
-            <div className="p-4 flex items-center justify-between">
-              <div>
-                <p className="text-sm font-semibold text-ink">Email Address</p>
-                <p className="text-xs text-clay mt-0.5">{user?.email || 'Loading...'}</p>
+            <div className="p-4 sm:p-6 flex flex-col sm:flex-row items-center gap-6">
+              <Avatar url={user?.profile_picture_url} name={user?.name} size="xl" />
+              
+              <div className="flex flex-col gap-2 w-full sm:w-auto">
+                <label className="btn-secondary cursor-pointer relative overflow-hidden text-center text-sm py-2 px-4">
+                  <span className="flex items-center justify-center gap-2">
+                    <Camera className="w-4 h-4" />
+                    {uploadingAvatar ? "Uploading..." : "Change Avatar"}
+                  </span>
+                  <input 
+                    type="file" 
+                    className="absolute inset-0 opacity-0 cursor-pointer"
+                    accept="image/*"
+                    onChange={handleAvatarUpload}
+                    disabled={uploadingAvatar || removingAvatar}
+                  />
+                </label>
+                
+                {user?.profile_picture_url && (
+                  <button 
+                    onClick={handleAvatarRemove}
+                    disabled={uploadingAvatar || removingAvatar}
+                    className="px-4 py-2 text-sm font-medium rounded-lg transition-colors border border-clay/30 text-clay hover:bg-clay/5 disabled:opacity-50"
+                  >
+                    {removingAvatar ? "Removing..." : "Remove Avatar"}
+                  </button>
+                )}
+                {avatarMsg && <p className="text-xs text-center mt-2 text-moss">{avatarMsg}</p>}
               </div>
-              {user?.provider === 'google' && (
-                <span className="text-[10px] font-bold bg-brand/10 dark:bg-brand/20 text-brand px-2 py-0.5 rounded-full">Google Auth</span>
-              )}
             </div>
-            
-            <div className="p-4">
+
+            <div className="p-4 sm:p-6">
+              <form onSubmit={handleUpdateProfile} className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="field-label">Full Name</label>
+                    <input type="text" className="input" value={name} onChange={e => setName(e.target.value)} required />
+                  </div>
+                  <div>
+                    <label className="field-label">Email <span className="text-xs font-normal text-ink/50">(Cannot be changed)</span></label>
+                    <input type="email" className="input bg-ink/5 dark:bg-ink/10 cursor-not-allowed" value={user?.email || ''} disabled />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="field-label">Date of Birth</label>
+                    <input type="date" className="input" value={dob} onChange={e => setDob(e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="field-label">Gender</label>
+                    <select className="input" value={gender} onChange={e => setGender(e.target.value)}>
+                      <option value="">Select Gender</option>
+                      <option value="Male">Male</option>
+                      <option value="Female">Female</option>
+                      <option value="Other">Other</option>
+                      <option value="Prefer not to say">Prefer not to say</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="field-label">Mobile Number</label>
+                    <input type="text" className="input" value={mobileNumber} onChange={e => setMobileNumber(e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="field-label">Organization / College</label>
+                    <input type="text" className="input" value={college} onChange={e => setCollege(e.target.value)} />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="field-label">Country</label>
+                  <input type="text" className="input" value={country} onChange={e => setCountry(e.target.value)} />
+                </div>
+
+                <div>
+                  <label className="field-label">Bio</label>
+                  <textarea className="input min-h-[100px]" value={bio} onChange={e => setBio(e.target.value)}></textarea>
+                </div>
+
+                {profileMsg && (
+                  <p className={`text-sm ${profileMsg.startsWith('Error') ? 'text-clay' : 'text-moss'}`}>{profileMsg}</p>
+                )}
+
+                <div className="flex justify-end pt-2">
+                  <button type="submit" disabled={savingProfile} className="btn-primary">
+                    {savingProfile ? "Saving..." : "Save Profile"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </section>
+
+        {/* Account Security Section */}
+        <section>
+          <div className="flex items-center gap-2 mb-4">
+            <User className="w-4 h-4 text-ink/50" />
+            <h2 className="text-sm font-bold uppercase tracking-wider text-ink/50">Security</h2>
+          </div>
+          
+          <div className="card overflow-hidden">
+            <div className="p-4 sm:p-6">
               <p className="text-sm font-semibold text-ink mb-3">Change Password</p>
               {user?.provider === 'google' ? (
                 <p className="text-xs text-clay">Password changes are managed by Google for this account.</p>
@@ -159,7 +343,7 @@ export default function Settings() {
           </div>
         </section>
 
-        {/* Notifications (Placeholder for actual future implementation) */}
+        {/* Notifications */}
         <section>
           <div className="flex items-center gap-2 mb-4">
             <Bell className="w-4 h-4 text-ink/50" />
@@ -172,7 +356,6 @@ export default function Settings() {
                 <p className="text-sm font-semibold text-ink">Email Notifications</p>
                 <p className="text-xs text-clay mt-0.5">Receive emails for requests and messages</p>
               </div>
-              {/* Dummy toggle since no API exists yet */}
               <div className="w-10 h-6 bg-brand rounded-full relative cursor-not-allowed opacity-50">
                 <div className="w-4 h-4 bg-surface rounded-full absolute right-1 top-1"></div>
               </div>

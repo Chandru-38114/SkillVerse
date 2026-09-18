@@ -19,6 +19,7 @@ import ScheduleModal from '../components/chat/ScheduleModal'
 import SessionCard from '../components/chat/SessionCard'
 import PendingRequestCard from '../components/connect/PendingRequestCard'
 import ReviewForm from '../components/connect/ReviewForm'
+import Avatar from '../components/ui/Avatar'
 
 // Ã¢â€â‚¬Ã¢â€â‚¬ Utilities Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
@@ -80,7 +81,7 @@ function ForwardModal({ message, inbox, currentRequestId, onClose, onForward }) 
               onClick={() => setSelected(c.request_id)}
               className={`flex items-center gap-3 w-full px-5 py-3 hover:bg-brand/5 transition-colors ${selected === c.request_id ? 'bg-brand/10 border-r-2 border-brand' : ''}`}
             >
-              <img src={getAvatarUrl(c.other_user_avatar)} alt="" className="w-9 h-9 rounded-full object-cover border border-line" onError={e => e.target.src = 'https://api.dicebear.com/7.x/avataaars/svg?seed=fallback'} />
+              <Avatar url={c.other_user_avatar} name={c.other_user_name} size="sm" className="shrink-0" />
               <div className="text-left min-w-0">
                 <p className="font-semibold text-sm truncate text-ink">{c.other_user_name}</p>
                 <p className="text-xs text-clay truncate">{c.skill_name}</p>
@@ -651,12 +652,7 @@ function ForwardModal({ message, inbox, currentRequestId, onClose, onForward }) 
                     className={`conv-item ${selectedRequestId === conv.request_id ? 'conv-item-active' : ''}`}
                   >
                     <div className="relative shrink-0">
-                      <img
-                        src={getAvatarUrl(conv.other_user_avatar)}
-                        alt=""
-                        className="w-12 h-12 rounded-full object-cover border border-line bg-surface shadow-sm"
-                        onError={e => e.target.src = 'https://api.dicebear.com/7.x/avataaars/svg?seed=fallback'}
-                      />
+                      <Avatar url={conv.other_user_avatar} name={conv.other_user_name} size="md" className="shrink-0 shadow-sm" />
                       {conv.unread_count > 0 && (
                         <span className="absolute -top-1 -right-1 bg-brand text-white text-[10px] font-bold min-w-[20px] h-[20px] rounded-full flex items-center justify-center border-2 border-surface px-1.5 shadow-sm">
                           {conv.unread_count > 99 ? '99+' : conv.unread_count}
@@ -700,12 +696,7 @@ function ForwardModal({ message, inbox, currentRequestId, onClose, onForward }) 
                     <ArrowLeft className="w-5 h-5" />
                   </button>
                   <div className="relative shrink-0">
-                    <img
-                      src={getAvatarUrl(activeConversation.other_user_avatar)}
-                      alt=""
-                      className="w-10 h-10 rounded-full object-cover border-2 border-surface shadow-sm"
-                      onError={e => e.target.src = 'https://api.dicebear.com/7.x/avataaars/svg?seed=fallback'}
-                    />
+                    <Avatar url={activeConversation.other_user_avatar} name={activeConversation.other_user_name} size="sm" className="shrink-0 shadow-sm border-2 border-surface" />
                     {otherPresence.status === 'online' && (
                       <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-surface rounded-full"></span>
                     )}

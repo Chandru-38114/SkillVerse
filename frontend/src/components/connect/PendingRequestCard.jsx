@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import Avatar from '../ui/Avatar'
 
 export default function PendingRequestCard({ req, onAccept, onDecline }) {
   const [submitting, setSubmitting] = useState(false)
@@ -29,9 +30,7 @@ export default function PendingRequestCard({ req, onAccept, onDecline }) {
       <div className="absolute left-0 top-0 bottom-0 w-1 bg-brand"></div>
       
       <div className="flex items-start gap-3">
-        <div className="w-10 h-10 rounded-full bg-brand/10 text-brand flex items-center justify-center font-display font-bold text-sm shrink-0 border border-brand/20">
-          {req.from_user_name?.charAt(0)?.toUpperCase() || '?'}
-        </div>
+        <Avatar url={req.from_user_avatar} name={req.from_user_name} size="md" className="shrink-0 shadow-sm" />
         
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold text-ink truncate">
