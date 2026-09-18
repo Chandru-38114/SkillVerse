@@ -10,6 +10,21 @@ from .users import get_or_create_skill
 router = APIRouter(prefix="/assessments", tags=["assessments"])
 
 
+@router.get("/latest", response_model=schemas.AssessmentAttemptOut)
+def get_latest_assessment(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user),
+):
+    """Returns the most recent assessment attempt for the current user."""
+    attempt = db.query(models.AssessmentAttempt)\
+        .filter(models.AssessmentAttempt.user_id == current_user.id)\
+        .order_by(models.AssessmentAttempt.created_at.desc())\
+        .first()
+    if not attempt:
+        raise HTTPException(status_code=404, detail="No assessment attempts found")
+    return attempt
+
+
 @router.get("/questions/{skill_name}")
 def get_assessment_questions(skill_name: str):
     """Returns questions WITHOUT the answer key."""

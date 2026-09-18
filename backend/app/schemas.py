@@ -145,6 +145,18 @@ class AssessmentResult(BaseModel):
     study_plan: List[str]
 
 
+class AssessmentAttemptOut(BaseModel):
+    id: int
+    user_id: int
+    skill_id: int
+    score: float
+    weak_topics: str
+    created_at: dt.datetime
+
+    class Config:
+        from_attributes = True
+
+
 class SkillBadgeInfo(BaseModel):
     skill_name: str
     level: str

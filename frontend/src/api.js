@@ -193,8 +193,10 @@ export const api = {
   },
   mySkills: () => request("/users/me/skills"),
 
+  getLatestAssessment: () => request("/assessments/latest"),
   assessmentQuestions: (skill) => request(`/assessments/questions/${encodeURIComponent(skill)}`),
   submitAssessment: (data) => request("/assessments/submit", { method: "POST", body: data }),
+
 
   searchTeachers: (skill, role) => {
     let url = `/marketplace/search?`;

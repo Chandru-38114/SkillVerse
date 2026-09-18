@@ -50,12 +50,14 @@ export default function Dashboard() {
           skillsData,
           upcomingData,
           gamiData,
-          outReqData
+          outReqData,
+          latestAssessmentData
         ] = await Promise.all([
-          api.mySkills().catch(() => []),
+          api.getMyProgress().catch(() => []),
           api.upcomingSessions().catch(() => []),
           api.getGamificationSummary().catch(() => null),
-          api.outgoingRequests().catch(() => [])
+          api.outgoingRequests().catch(() => []),
+          api.getLatestAssessment().catch(() => null)
         ])
         
         if (!isMounted) return;
@@ -64,6 +66,14 @@ export default function Dashboard() {
         setUpcoming(upcomingData || [])
         setGamification(gamiData)
         setOutRequests(outReqData || [])
+
+        // Fallback to persisted weak topic if no URL parameter
+        if (!topic && latestAssessmentData && latestAssessmentData.weak_topics) {
+           const topicsArray = latestAssessmentData.weak_topics.split(',').map(t => t.trim()).filter(Boolean);
+           if (topicsArray.length > 0) {
+             setWeakTopic(topicsArray[0]);
+           }
+        }
         
       } catch (err) {
         console.error("Dashboard fetch error:", err)
