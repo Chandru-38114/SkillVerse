@@ -155,13 +155,31 @@ export default function Dashboard() {
   return (
     <div className="page space-y-4 md:space-y-6 pb-8 animate-fade-in stagger-1">
       
-      <section className="mb-4">
-        <h1 className="text-2xl md:text-3xl font-bold text-ink mb-1">
-          My Skill Journey
-        </h1>
-        <p className="text-clay font-medium text-sm">
-          Welcome back, {user.name.split(' ')[0]}. Here is where you stand and what to do next.
-        </p>
+      {/* Player Stats Header */}
+      <section className="mb-4 bg-surface p-4 rounded-xl border border-line shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <Avatar name={user.name} size="lg" className="shrink-0" />
+          <div>
+            <h1 className="text-xl md:text-2xl font-bold text-ink mb-1">
+              {user.name.split(' ')[0]}'s Journey
+            </h1>
+            <p className="text-sm font-semibold text-brand flex items-center gap-1.5">
+              <Award className="w-4 h-4" /> Level: {gamification?.next_milestone_title || "Explorer"}
+            </p>
+          </div>
+        </div>
+        <div className="w-full md:w-64">
+           <div className="flex justify-between items-end mb-1">
+             <p className="text-[10px] font-bold text-clay uppercase tracking-wider">XP to next level</p>
+             <p className="text-xs text-ink/70 font-semibold">{gamification?.total_points || user.points || 0} / {gamification?.next_milestone_points || 500}</p>
+           </div>
+           <div className="w-full bg-line/40 h-2 rounded-full overflow-hidden">
+             <div 
+               className="bg-brand h-full rounded-full transition-all duration-700 ease-out animate-progress" 
+               style={{ width: `${Math.min(100, (((gamification?.total_points || user.points || 0) / (gamification?.next_milestone_points || 500)) * 100))}%` }} 
+             />
+           </div>
+        </div>
       </section>
 
       {loading ? (
@@ -169,142 +187,148 @@ export default function Dashboard() {
           <div className="skeleton h-48 w-full rounded-2xl mb-8" />
         ) : null
       ) : isEmptyState ? (
-        // A7: Dashboard Empty State
-        <div className="card p-6 sm:p-8 text-center bg-brand/5 border border-brand/20 shadow-sm mt-6 max-w-4xl mx-auto animate-slide-up stagger-2">
-          <div className="w-16 h-16 bg-brand/10 text-brand rounded-full flex items-center justify-center mx-auto mb-4">
-            <Compass className="w-8 h-8" />
+        // Start Journey Node
+        <div className="card p-8 sm:p-12 text-center bg-brand/5 border border-brand/20 shadow-sm mt-6 max-w-4xl mx-auto animate-slide-up stagger-2 relative overflow-hidden">
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-brand/5 rounded-full blur-3xl pointer-events-none" />
+          <div className="w-20 h-20 bg-surface border-4 border-brand/20 text-brand rounded-full flex items-center justify-center mx-auto mb-6 relative z-10 shadow-sm">
+            <Compass className="w-10 h-10" />
           </div>
-          <h2 className="text-xl font-bold text-ink mb-2">YOUR JOURNEY STARTS HERE</h2>
-          <p className="text-clay mb-5 max-w-md mx-auto text-sm">Choose a skill to assess and discover people who can help you grow.</p>
-          <Link to="/assessment" className="btn-primary inline-flex py-2.5 px-6 shadow-sm">
-            Assess a skill
+          <h2 className="text-2xl font-bold text-ink mb-3 relative z-10">YOUR FIRST QUEST AWAITS</h2>
+          <p className="text-clay mb-8 max-w-md mx-auto text-base relative z-10">Every journey begins with a single step. Choose a skill to assess and discover your path.</p>
+          <Link to="/assessment" className="btn-brand inline-flex py-3 px-8 text-base shadow-md hover:shadow-lg transition-all relative z-10">
+            Accept Quest: Assess a Skill
           </Link>
         </div>
       ) : (
-        <div className="max-w-6xl mx-auto lg:grid lg:grid-cols-3 lg:gap-8 lg:items-start space-y-6 lg:space-y-0">
+        <div className="max-w-5xl mx-auto lg:grid lg:grid-cols-3 lg:gap-10 lg:items-start space-y-8 lg:space-y-0">
           
-          <div className="lg:col-span-2 space-y-6">
-            {/* A1: HERO / NEXT ACTION */}
-            <section className="card bg-surface shadow-sm border border-line p-5 md:p-6 overflow-hidden relative animate-slide-up stagger-2">
-              <div className="relative z-10 max-w-xl">
-                <p className="text-[10px] font-bold text-brand uppercase tracking-wider mb-3">Your Skill Journey</p>
-                <h2 className="text-2xl md:text-3xl font-bold text-ink leading-tight mb-3">
-                  {heroState.title}
-                </h2>
-                <p className="text-clay font-medium mb-6 text-base">{heroState.description}</p>
-                <Link to={heroState.actionUrl} className="btn-brand inline-flex text-base py-3 px-8 shadow-sm hover:shadow transition-shadow">
-                  {heroState.actionText}
-                </Link>
-              </div>
-              <div className="absolute right-0 bottom-0 top-0 hidden sm:flex items-center justify-end pr-8 pointer-events-none">
-                {heroState.icon}
-              </div>
-            </section>
+          <div className="lg:col-span-2 space-y-8">
+            <section className="animate-slide-up stagger-2">
+              <h2 className="text-lg font-bold text-ink mb-6 flex items-center gap-2">
+                <Compass className="w-5 h-5 text-brand" /> Current Skill Path
+                {activeLearningSkill && <span className="text-sm font-semibold text-clay bg-line/30 px-2 py-0.5 rounded ml-2">{activeLearningSkill.skill_name}</span>}
+              </h2>
+              
+              <div className="relative pl-6 sm:pl-8 ml-2 border-l-2 border-brand/20 space-y-10 py-4">
+                
+                {/* Past/Completed Nodes */}
+                {activeLearningSkill && activeLearningSkill.progress_percentage > 0 && (
+                  <div className="relative">
+                    <div className="absolute -left-[31px] sm:-left-[39px] w-4 h-4 bg-surface border-2 border-brand rounded-full mt-1.5" />
+                    <h3 className="text-sm font-bold text-ink opacity-60">Fundamentals Completed</h3>
+                    <p className="text-xs text-clay">You've started your journey in {activeLearningSkill.skill_name}.</p>
+                  </div>
+                )}
 
-            {/* A2 & A3: CURRENT LEARNING */}
-            {learningSkills.length > 0 && (
-              <section>
-                <h3 className="text-[10px] font-bold text-clay uppercase tracking-wider mb-3 px-1">Current Learning</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {learningSkills.map(s => {
-                    const narrative = getProgressNarrative(s.progress_percentage, s.badge);
-                    return (
-                      <div key={s.id} className="card p-5 border border-line shadow-sm hover:shadow-md transition-shadow flex flex-col">
-                        <div className="flex justify-between items-start mb-4">
-                          <div>
-                            <h4 className="font-bold text-ink text-lg leading-tight mb-0.5">{s.skill_name}</h4>
-                            <p className="text-xs text-clay font-medium capitalize">{s.level} {s.badge && '• Verified'}</p>
-                          </div>
-                          <span className="text-sm font-bold text-brand bg-brand/10 px-2.5 py-1.5 rounded-md">
-                            {s.progress_percentage || 0}%
-                          </span>
-                        </div>
-                        
-                        <div className="w-full bg-line/50 rounded-full h-1.5 mb-3 overflow-hidden">
-                          <div className="bg-brand h-full rounded-full transition-all duration-700 ease-out" style={{ width: `${s.progress_percentage || 0}%` }} />
-                        </div>
-                        
-                        <p className="text-sm font-semibold text-ink/80 mb-5">{narrative}</p>
-                        
-                        <div className="flex items-center justify-between mt-auto pt-4 border-t border-line/40">
-                          <p className="text-xs text-clay font-medium">{s.sessions_completed || 0} sessions completed</p>
-                          <Link to="/marketplace" className="text-xs font-semibold text-brand hover:underline flex items-center gap-1">
-                            Continue learning <ArrowRight className="w-3 h-3" />
-                          </Link>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              </section>
-            )}
-          </div>
-
-          <div className="lg:col-span-1 space-y-6">
-            {/* A5: UPCOMING SESSION */}
-            <section>
-              <h3 className="text-[10px] font-bold text-clay uppercase tracking-wider mb-3 px-1">Upcoming Commitment</h3>
-              {nextSession ? (
-                <div className="card p-4 border border-brand/20 bg-brand/5 shadow-sm flex flex-col gap-3">
-                   <div className="flex items-center gap-3">
-                     <Avatar name={nextSession.tutor_id === user.id ? nextSession.learner_name : nextSession.tutor_name} size="md" className="shrink-0" />
-                     <div className="flex-1 min-w-0">
-                       <p className="font-bold text-ink text-base capitalize line-clamp-1">{nextSession.skill}</p>
-                       <p className="text-sm text-clay mt-0.5">With <span className="font-medium text-ink">{nextSession.tutor_id === user.id ? nextSession.learner_name : nextSession.tutor_name}</span></p>
+                {/* CURRENT QUEST NODE (Highlight) */}
+                <div className="relative">
+                   <div className="absolute -left-[37px] sm:-left-[45px] w-7 h-7 bg-brand/20 rounded-full animate-ping mt-0.5" />
+                   <div className="absolute -left-[33px] sm:-left-[41px] w-5 h-5 bg-brand border-2 border-surface rounded-full mt-1.5 shadow-sm" />
+                   
+                   <div className="card bg-brand/5 border border-brand/30 shadow-sm p-5 md:p-6 overflow-hidden relative rounded-xl transform transition-transform hover:-translate-y-1">
+                     <div className="relative z-10">
+                       <p className="text-[10px] font-bold text-brand uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                         <Star className="w-3.5 h-3.5 fill-brand text-brand" /> Current Quest
+                       </p>
+                       <h3 className="text-xl font-bold text-ink leading-tight mb-2">
+                         {heroState.title}
+                       </h3>
+                       <p className="text-clay font-medium mb-5 text-sm">{heroState.description}</p>
+                       <Link to={heroState.actionUrl} className="btn-brand inline-flex text-sm py-2.5 px-6 shadow-sm hover:shadow transition-shadow">
+                         {heroState.actionText}
+                       </Link>
+                     </div>
+                     <div className="absolute right-0 bottom-0 top-0 hidden sm:flex items-center justify-end pr-6 pointer-events-none opacity-50">
+                       {heroState.icon}
                      </div>
                    </div>
-                   <div className="pt-2 border-t border-brand/10">
-                     <p className="text-xs text-ink/70 font-semibold mb-3 flex items-center gap-1.5">
-                       <Calendar className="w-3.5 h-3.5 text-brand" />
-                       {new Date(nextSession.session_date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} • {nextSession.start_time}
-                     </p>
-                     <Link to={`/session/${nextSession.id}`} className="btn-primary w-full justify-center text-sm px-6 py-2">Join Session</Link>
-                   </div>
                 </div>
-              ) : (
-                <div className="card p-5 border border-line border-dashed text-center bg-surface">
-                  <p className="text-sm text-clay mb-3">No sessions scheduled.</p>
-                  <Link to="/marketplace" className="btn-secondary text-xs w-full justify-center">Find a partner</Link>
-                </div>
-              )}
-            </section>
 
-            {/* A4: GROWTH & MILESTONES */}
-            <section>
-              <h3 className="text-[10px] font-bold text-clay uppercase tracking-wider mb-3 px-1">Growth</h3>
-              <div className="card border border-line bg-surface shadow-sm p-5">
-                 <p className="text-[10px] font-bold text-gold uppercase tracking-wider mb-2">Next Milestone</p>
-                 <h4 className="font-bold text-ink text-lg mb-1">{gamification?.next_milestone_title || "Level Up"}</h4>
-                 <div className="flex justify-between items-end mb-2 mt-4">
-                   <p className="text-xs text-ink/50 font-semibold">{gamification?.total_points || user.points || 0} / {gamification?.next_milestone_points || 500} pts</p>
-                 </div>
-                 <div className="w-full bg-line/40 h-2 rounded-full overflow-hidden mb-4">
-                   <div 
-                     className="bg-gold h-full rounded-full transition-all duration-700 ease-out" 
-                     style={{ width: `${Math.min(100, (((gamification?.total_points || user.points || 0) / (gamification?.next_milestone_points || 500)) * 100))}%` }} 
-                   />
-                 </div>
-                 <div className="pt-4 border-t border-line/40 text-center">
-                   <p className="text-3xl text-ink font-bold mb-0.5">{gamification?.total_points || user.points || 0}</p>
-                   <p className="text-[10px] font-bold text-gold uppercase tracking-wider">Total Points</p>
-                 </div>
+                {/* Future Nodes */}
+                {(!activeLearningSkill || activeLearningSkill.progress_percentage < 100 || !activeLearningSkill.badge) && (
+                  <div className="relative opacity-40">
+                    <div className="absolute -left-[31px] sm:-left-[39px] w-4 h-4 bg-surface border-2 border-line rounded-full mt-1.5" />
+                    <h3 className="text-sm font-bold text-ink">Mastery & Verification</h3>
+                    <p className="text-xs text-clay">Earn your verified badge to teach others.</p>
+                  </div>
+                )}
+
               </div>
             </section>
-
-            {/* A6: TEACHING SKILLS */}
-            {teachingSkills.length > 0 && (
-              <section>
-                <h3 className="text-[10px] font-bold text-clay uppercase tracking-wider mb-3 px-1">Skills You Teach</h3>
-                <div className="flex flex-col gap-2">
-                  {teachingSkills.map(s => (
-                    <div key={s.id} className="bg-surface border border-line px-4 py-2.5 rounded-lg flex items-center justify-between shadow-sm">
-                      <span className="font-semibold text-sm text-ink">{s.skill_name}</span>
-                      {s.badge && <SkillBadge badge={s.badge} />}
+            
+            {/* OTHER ACTIVE SKILLS */}
+            {learningSkills.filter(s => s.id !== activeLearningSkill?.id).length > 0 && (
+              <section className="animate-slide-up stagger-3">
+                <h3 className="text-[10px] font-bold text-clay uppercase tracking-wider mb-4 px-1">Other Active Paths</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {learningSkills.filter(s => s.id !== activeLearningSkill?.id).map(s => (
+                    <div key={s.id} className="bg-surface border border-line px-4 py-3 rounded-xl flex flex-col gap-2">
+                       <div className="flex justify-between items-center">
+                         <span className="font-bold text-sm text-ink">{s.skill_name}</span>
+                         <span className="text-xs font-bold text-brand bg-brand/10 px-2 py-0.5 rounded">{s.progress_percentage || 0}%</span>
+                       </div>
+                       <div className="w-full bg-line/50 rounded-full h-1 overflow-hidden">
+                         <div className="bg-brand h-full rounded-full transition-all duration-700 ease-out animate-progress" style={{ width: `${s.progress_percentage || 0}%` }} />
+                       </div>
                     </div>
                   ))}
                 </div>
               </section>
             )}
+          </div>
+
+          <div className="lg:col-span-1 space-y-6 lg:pl-4 animate-slide-up stagger-3">
+            {/* INVENTORY / SKILLS TAUGHT */}
+            <section>
+              <h3 className="text-[10px] font-bold text-clay uppercase tracking-wider mb-3 px-1 flex items-center gap-1.5">
+                <CheckCircle className="w-3.5 h-3.5" /> Mastered Skills
+              </h3>
+              {teachingSkills.length > 0 ? (
+                <div className="flex flex-col gap-2">
+                  {teachingSkills.map(s => (
+                    <div key={s.id} className="bg-surface border border-gold/20 px-4 py-3 rounded-xl flex items-center justify-between shadow-sm relative overflow-hidden group hover:border-gold/40 transition-colors">
+                      <div className="absolute left-0 top-0 bottom-0 w-1 bg-gold/50 group-hover:bg-gold transition-colors" />
+                      <span className="font-semibold text-sm text-ink pl-1">{s.skill_name}</span>
+                      {s.badge && <SkillBadge badge={s.badge} />}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="bg-surface border border-line border-dashed rounded-xl px-4 py-6 text-center">
+                   <Award className="w-6 h-6 text-clay mx-auto mb-2 opacity-50" />
+                   <p className="text-xs text-clay">Master a skill to add it to your inventory and teach others.</p>
+                </div>
+              )}
+            </section>
+            
+            {/* UPCOMING EVENTS */}
+            <section>
+              <h3 className="text-[10px] font-bold text-clay uppercase tracking-wider mb-3 px-1 flex items-center gap-1.5">
+                <Calendar className="w-3.5 h-3.5" /> Scheduled Events
+              </h3>
+              {nextSession ? (
+                <div className="card p-4 border border-brand/20 bg-brand/5 shadow-sm flex flex-col gap-3">
+                   <div className="flex items-center gap-3">
+                     <Avatar name={nextSession.tutor_id === user.id ? nextSession.learner_name : nextSession.tutor_name} size="md" className="shrink-0" />
+                     <div className="flex-1 min-w-0">
+                       <p className="font-bold text-ink text-sm line-clamp-1">{nextSession.skill}</p>
+                       <p className="text-xs text-clay">With <span className="font-medium text-ink">{nextSession.tutor_id === user.id ? nextSession.learner_name : nextSession.tutor_name}</span></p>
+                     </div>
+                   </div>
+                   <div className="pt-3 border-t border-brand/10">
+                     <p className="text-xs text-ink/70 font-semibold mb-3">
+                       {new Date(nextSession.session_date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} • {nextSession.start_time}
+                     </p>
+                     <Link to={`/session/${nextSession.id}`} className="btn-primary w-full justify-center text-xs py-2">Enter Session</Link>
+                   </div>
+                </div>
+              ) : (
+                <div className="bg-surface border border-line border-dashed rounded-xl px-4 py-5 text-center">
+                  <p className="text-xs text-clay mb-3">No upcoming events.</p>
+                  <Link to="/marketplace" className="text-xs font-semibold text-brand hover:underline">Find a partner →</Link>
+                </div>
+              )}
+            </section>
           </div>
 
         </div>
