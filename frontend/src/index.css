@@ -308,6 +308,11 @@ textarea.input {
   100% { transform: translate(0, 0) scale(1) rotate(0deg); }
 }
 
+@keyframes slow-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(1.05); }
+}
+
 @keyframes fade-in {
   from { opacity: 0; }
   to { opacity: 1; }
@@ -345,6 +350,10 @@ textarea.input {
   }
   .animate-ambient-drift-3 {
     animation: ambient-drift-3 65s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  }
+  
+  .animate-slow-pulse {
+    animation: slow-pulse 4s ease-in-out infinite;
   }
   
   /* Stagger delays */

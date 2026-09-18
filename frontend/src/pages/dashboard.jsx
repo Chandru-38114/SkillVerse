@@ -209,23 +209,37 @@ export default function Dashboard() {
                 {activeLearningSkill && <span className="text-sm font-semibold text-clay bg-line/30 px-2 py-0.5 rounded ml-2">{activeLearningSkill.skill_name}</span>}
               </h2>
               
-              <div className="relative pl-6 sm:pl-8 ml-2 border-l-2 border-brand/20 space-y-10 py-4">
+              <div className="relative pl-2 sm:pl-4 ml-2 space-y-10 py-6">
+                
+                {/* The glowing path line */}
+                <div className="absolute left-6 top-8 bottom-8 w-1 bg-gradient-to-b from-brand/80 via-brand/30 to-transparent rounded-full shadow-[0_0_10px_rgba(var(--color-brand),0.3)] z-0" />
                 
                 {/* Past/Completed Nodes */}
                 {activeLearningSkill && activeLearningSkill.progress_percentage > 0 && (
-                  <div className="relative">
-                    <div className="absolute -left-[31px] sm:-left-[39px] w-4 h-4 bg-surface border-2 border-brand rounded-full mt-1.5" />
-                    <h3 className="text-sm font-bold text-ink opacity-60">Fundamentals Completed</h3>
-                    <p className="text-xs text-clay">You've started your journey in {activeLearningSkill.skill_name}.</p>
+                  <div className="relative flex items-start gap-4 sm:gap-6 z-10">
+                    <div className="w-9 h-9 sm:w-10 sm:h-10 flex-shrink-0 flex items-center justify-center">
+                      <div className="w-4 h-4 bg-brand rounded-full shadow-[0_0_12px_rgba(var(--color-brand),0.6)] border-2 border-surface" />
+                    </div>
+                    <div className="pt-1 sm:pt-2">
+                      <h3 className="text-sm font-bold text-ink opacity-60">Fundamentals Completed</h3>
+                      <p className="text-xs text-clay">You've started your journey in {activeLearningSkill.skill_name}.</p>
+                    </div>
                   </div>
                 )}
 
                 {/* CURRENT QUEST NODE (Highlight) */}
-                <div className="relative">
-                   <div className="absolute -left-[37px] sm:-left-[45px] w-7 h-7 bg-brand/20 rounded-full animate-ping mt-0.5" />
-                   <div className="absolute -left-[33px] sm:-left-[41px] w-5 h-5 bg-brand border-2 border-surface rounded-full mt-1.5 shadow-sm" />
+                <div className="relative flex items-start gap-4 sm:gap-6 group z-10">
+                   {/* Ambient Background Glow matching the active node */}
+                   <div className="absolute top-1/2 left-0 -translate-y-1/2 w-32 h-32 bg-brand/20 rounded-full blur-3xl pointer-events-none z-0" />
                    
-                   <div className="card bg-brand/5 border border-brand/30 shadow-sm p-5 md:p-6 overflow-hidden relative rounded-xl transform transition-transform hover:-translate-y-1">
+                   <div className="w-9 h-9 sm:w-10 sm:h-10 flex-shrink-0 flex items-center justify-center relative z-10 pt-1 sm:pt-2">
+                     {/* Outer pulsing ring */}
+                     <div className="absolute w-8 h-8 bg-brand/30 rounded-full animate-slow-pulse" />
+                     {/* Solid current dot */}
+                     <div className="w-5 h-5 bg-brand rounded-full border-[3px] border-surface shadow-[0_0_15px_rgba(var(--color-brand),0.8)] relative z-10" />
+                   </div>
+                   
+                   <div className="flex-1 card bg-brand/5 border border-brand/30 shadow-sm p-5 md:p-6 overflow-hidden relative rounded-xl transform transition-transform group-hover:-translate-y-1 z-10">
                      <div className="relative z-10">
                        <p className="text-[10px] font-bold text-brand uppercase tracking-wider mb-1 flex items-center gap-1.5">
                          <Star className="w-3.5 h-3.5 fill-brand text-brand" /> Current Quest
@@ -246,10 +260,14 @@ export default function Dashboard() {
 
                 {/* Future Nodes */}
                 {(!activeLearningSkill || activeLearningSkill.progress_percentage < 100 || !activeLearningSkill.badge) && (
-                  <div className="relative opacity-40">
-                    <div className="absolute -left-[31px] sm:-left-[39px] w-4 h-4 bg-surface border-2 border-line rounded-full mt-1.5" />
-                    <h3 className="text-sm font-bold text-ink">Mastery & Verification</h3>
-                    <p className="text-xs text-clay">Earn your verified badge to teach others.</p>
+                  <div className="relative flex items-start gap-4 sm:gap-6 opacity-40 z-10">
+                    <div className="w-9 h-9 sm:w-10 sm:h-10 flex-shrink-0 flex items-center justify-center pt-1 sm:pt-2">
+                      <div className="w-4 h-4 bg-transparent border-2 border-dashed border-line rounded-full" />
+                    </div>
+                    <div className="pt-1 sm:pt-2">
+                      <h3 className="text-sm font-bold text-ink">Mastery & Verification</h3>
+                      <p className="text-xs text-clay">Earn your verified badge to teach others.</p>
+                    </div>
                   </div>
                 )}
 
