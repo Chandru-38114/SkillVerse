@@ -3,6 +3,7 @@ import BackButton from "../components/BackButton";
 import { Link } from 'react-router-dom'
 import { api } from '../api'
 import SkillBadge from '../components/skillbadge'
+import { Compass, Swords, Target, Route, ArrowRight, ShieldCheck, Play } from 'lucide-react'
 
 const STEPS = { PICK: 'pick', QUIZ: 'quiz', RESULT: 'result' }
 
@@ -57,14 +58,19 @@ export default function Assessment() {
   const progress = totalCount > 0 ? Math.round((answeredCount / totalCount) * 100) : 0
 
   return (
-    <div className="max-w-2xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
+    <div className="max-w-2xl mx-auto px-4 sm:px-6 py-8 sm:py-12 animate-fade-in">
       {/* ✨ Step: Pick skill ✨ */}
       {step === STEPS.PICK && (
-        <>
-          <p className="label-eyebrow mb-2">Skill assessment</p>
-          <h1 className="font-display text-4xl mb-2">What skill are you assessing?</h1>
-          <p className="text-ink/50 text-sm mb-8">
-            Python and JavaScript have a full question bank. Other skills use placeholder questions.
+        <div className="animate-slide-up">
+          <div className="flex items-center gap-2 mb-3">
+             <div className="w-8 h-8 rounded-full bg-brand/10 text-brand flex items-center justify-center shrink-0 border border-brand/20">
+                <Compass className="w-4 h-4" />
+             </div>
+             <p className="text-[10px] font-bold text-brand uppercase tracking-wider">Skill Journey • Start Node</p>
+          </div>
+          <h1 className="font-display text-4xl mb-2 text-ink">Start your Skill Challenge</h1>
+          <p className="text-clay text-sm mb-8">
+            Discover where you stand. Python and JavaScript have full challenges. Other skills use placeholders.
           </p>
 
           <form onSubmit={startQuiz} className="space-y-6">
@@ -104,26 +110,30 @@ export default function Assessment() {
 
             {error && <p className="alert-error">{error}</p>}
 
-            <button disabled={loading || !skillName.trim()} className="btn-primary w-full py-3">
-              {loading ? 'Loading questions…' : 'Start assessment →'}
+            <button disabled={loading || !skillName.trim()} className="btn-primary w-full py-3 flex justify-center items-center gap-2 text-sm">
+              {loading ? 'Initializing challenge…' : (
+                 <>Enter Challenge <ArrowRight className="w-4 h-4" /></>
+              )}
             </button>
           </form>
-        </>
+        </div>
       )}
 
       {/* ── Step: Quiz ── */}
       {step === STEPS.QUIZ && (
-        <>
-          <div className="flex items-center justify-between mb-2">
+        <div className="animate-slide-up">
+          <div className="flex items-center justify-between mb-4">
             <div>
-              <p className="label-eyebrow">{skillName}</p>
-              <h1 className="font-display text-3xl">Answer as best you can</h1>
+              <p className="text-[10px] font-bold text-brand uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                <Swords className="w-3.5 h-3.5" /> Current Challenge
+              </p>
+              <h1 className="font-display text-3xl text-ink">{skillName}</h1>
             </div>
             <div className="text-right">
-              <p className="text-xs text-ink/40 font-mono mb-1">{answeredCount}/{totalCount} answered</p>
-              <div className="w-24 h-1.5 bg-ink/10 rounded-full overflow-hidden">
+              <p className="text-xs text-clay font-bold tracking-wide mb-1.5">{answeredCount}/{totalCount} ANSWERED</p>
+              <div className="w-32 h-1.5 bg-line/50 rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-brand rounded-full transition-all duration-300"
+                  className="h-full bg-brand rounded-full transition-all duration-500 ease-out animate-progress"
                   style={{ width: `${progress}%` }}
                 />
               </div>
@@ -176,69 +186,93 @@ export default function Assessment() {
           <button
             onClick={submitQuiz}
             disabled={loading || answeredCount < totalCount}
-            className="btn-primary w-full mt-6 py-3"
+            className="btn-primary w-full mt-8 py-3.5 justify-center font-semibold text-sm shadow-sm"
           >
             {loading
-              ? 'Scoring your answers…'
+              ? 'Analyzing performance…'
               : answeredCount < totalCount
-              ? `Answer all ${totalCount} questions to submit`
-              : 'Submit assessment →'}
+              ? `Answer all ${totalCount} challenges to submit`
+              : 'Complete Challenge'}
           </button>
-        </>
+        </div>
       )}
 
       {/* ── Step: Result ── */}
       {step === STEPS.RESULT && result && (
-        <>
-          <p className="label-eyebrow mb-3">Assessment complete</p>
+        <div className="animate-slide-up max-w-lg mx-auto">
+          <div className="flex justify-center mb-4">
+             <div className="w-12 h-12 bg-gold/10 text-gold rounded-full flex items-center justify-center border border-gold/20 shadow-sm relative">
+                <div className="absolute inset-0 border border-gold/30 rounded-full animate-ping opacity-20" />
+                <ShieldCheck className="w-6 h-6" />
+             </div>
+          </div>
+          
+          <div className="text-center mb-8">
+             <p className="text-[10px] font-bold text-gold uppercase tracking-wider mb-2">Discovery Complete</p>
+             <h1 className="font-display text-4xl text-ink mb-1">{skillName}</h1>
+             <p className="text-clay text-sm">Your initial assessment is verified.</p>
+          </div>
 
           {/* Score hero */}
-          <div className="card p-8 mb-6 text-center bg-gradient-to-b from-white to-paper/60">
-            <p className="font-display text-7xl mb-3">{result.score}%</p>
-            <div className="flex items-center justify-center gap-3">
-              <SkillBadge badge={result.badge} />
-              <span className="text-sm text-ink/50">{result.level}</span>
-            </div>
-            {result.badge && (
-              <p className="text-sm text-brand mt-3 font-medium">+50 points awarded 🎉</p>
-            )}
+          <div className="bg-surface border border-line rounded-2xl p-6 mb-6 text-center shadow-sm relative overflow-hidden">
+             <div className="absolute left-0 top-0 bottom-0 w-1 bg-gold/50" />
+             <p className="font-display text-6xl text-ink mb-3">{result.score}<span className="text-2xl text-clay">%</span></p>
+             <div className="flex items-center justify-center gap-3 mb-1">
+               <SkillBadge badge={result.badge} />
+               <span className="font-semibold text-sm text-ink">{result.level}</span>
+             </div>
+             {result.badge && (
+               <p className="text-xs font-bold text-brand bg-brand/10 inline-block px-3 py-1 rounded-full mt-3">+50 XP Earned</p>
+             )}
           </div>
 
-          {result.weak_topics.length > 0 && (
-            <div className="card p-5 mb-4">
-              <p className="label-eyebrow mb-3">Topics to strengthen</p>
-              <div className="flex flex-wrap gap-2">
-                {result.weak_topics.map((t) => (
-                  <span key={t} className="text-xs bg-clay/10 text-clay border border-clay/20 px-3 py-1 rounded-full">
-                    {t}
-                  </span>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+            {/* Next Move (Weak Topics) */}
+            <div className="bg-surface border border-line rounded-xl p-5 shadow-sm">
+              <p className="text-[10px] font-bold text-clay uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                <Target className="w-3.5 h-3.5" /> Next Move
+              </p>
+              {result.weak_topics.length > 0 ? (
+                <div>
+                   <p className="text-sm font-semibold text-ink mb-2">Focus on {result.weak_topics[0]}</p>
+                   <p className="text-xs text-clay">Master this to level up your overall {skillName} skill.</p>
+                </div>
+              ) : (
+                <div>
+                   <p className="text-sm font-semibold text-ink mb-2">Help Others</p>
+                   <p className="text-xs text-clay">You have high mastery. Find someone to tutor.</p>
+                </div>
+              )}
+            </div>
+
+            {/* Study Plan */}
+            <div className="bg-surface border border-line rounded-xl p-5 shadow-sm">
+              <p className="text-[10px] font-bold text-clay uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                <Route className="w-3.5 h-3.5" /> Path Ahead
+              </p>
+              <ul className="space-y-1.5">
+                {result.study_plan.slice(0, 3).map((line, i) => (
+                  <li key={i} className="flex items-start gap-2 text-xs text-ink/70">
+                    <span className="text-brand/50 font-bold mt-0.5">•</span>
+                    <span className="line-clamp-2">{line}</span>
+                  </li>
                 ))}
-              </div>
+              </ul>
             </div>
-          )}
-
-          <div className="card p-5 mb-8">
-            <p className="label-eyebrow mb-3">Your study plan</p>
-            <ul className="space-y-2">
-              {result.study_plan.map((line, i) => (
-                <li key={i} className="flex items-start gap-2 text-sm text-ink/70">
-                  <span className="text-brand mt-0.5">→</span>
-                  {line}
-                </li>
-              ))}
-            </ul>
           </div>
 
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-col gap-3">
             <Link 
               to={result.weak_topics.length > 0 ? `/dashboard?weakTopic=${encodeURIComponent(result.weak_topics[0])}` : `/dashboard`} 
-              className="btn-primary"
+              className="btn-primary w-full justify-center py-3.5 font-semibold text-sm gap-2"
             >
-              Back to Skill Journey
+              Continue your Skill Journey <Play className="w-4 h-4 fill-current" />
             </Link>
-            <Link to="/marketplace" className="btn-secondary">Find teachers →</Link>
+            <Link to="/marketplace" className="text-center text-xs font-semibold text-brand hover:underline py-2">
+              or find a partner in the Marketplace
+            </Link>
           </div>
-        </>
+        </div>
       )}
     </div>
   )
