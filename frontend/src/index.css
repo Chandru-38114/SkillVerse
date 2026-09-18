@@ -16,44 +16,42 @@
 @layer base {
   :root {
     /* ── Light palette ── */
-    --color-paper:      248 250 255;   /* #F8FAFF — airy sky-blue tint      */
-    --color-surface:    255 255 255;   /* #FFFFFF — cards, panels           */
-    --color-lift:       240 253 244;   /* #F0FDF4 — green-50 subtle tint    */
-    --color-ink:        23  32  51;    /* #172033 — deep blue-charcoal      */
-    --color-clay:       102 112 133;   /* #667085 — soft secondary text     */
-    --color-line:       226 232 240;   /* #E2E8F0 — slate 200 border        */
-    /* Brand */
-    --color-brand:      22  138 98;    /* #168A62 muted emerald/jade          */
-    --color-brand2:     18  114 81;    /* #127251 darker emerald              */
-    --color-brandLight: 228 242 234;   /* #E4F2EA pale mint                   */
-    /* Gold */
-    --color-gold:       199 157 85;    /* #C79D55 warm champagne/sand         */
-    --color-goldLight:  247 241 230;   /* #F7F1E6 sand tint                   */
+    --color-paper:      250 250 252;   /* #FAFAFC — airy, clean off-white */
+    --color-surface:    255 255 255;   /* #FFFFFF — clean surface         */
+    --color-lift:       243 244 246;   /* #F3F4F6 — gentle lift           */
+    --color-ink:        15  23  42;    /* #0F172A — deep slate            */
+    --color-clay:       100 116 139;   /* #64748B — slate-500 secondary   */
+    --color-line:       226 232 240;   /* #E2E8F0 — slate-200 border      */
+    /* Brand - Vibrant Emerald */
+    --color-brand:      16  185 129;   /* #10B981 - primary brand         */
+    --color-brand2:     5   150 105;   /* #059669 - brand hover           */
+    --color-brandLight: 236 253 245;   /* #ECFDF5 - pale emerald tint     */
+    /* Gold/Accent */
+    --color-gold:       245 158 11;    /* #F59E0B - amber/gold            */
+    --color-goldLight:  254 243 199;   /* #FEF3C7 - pale amber            */
     /* Chat bubbles */
-    --color-bubbleMe:   22  138 98;    /* sent = brand                        */
-    --color-bubbleThem: 255 255 255;   /* received = white card               */
+    --color-bubbleMe:   16  185 129;
+    --color-bubbleThem: 255 255 255;
   }
 
-  /* ── Dark palette ──
-     Strategy: elegant graphite, comfortable contrast, cohesive.
-  */
+  /* ── Dark palette ── */
   .dark {
-    --color-paper:      8   12  22;    /* #080C16 deep space navy            */
-    --color-surface:    15  23  42;    /* #0F172A deeper slate-900           */
-    --color-lift:       30  41  59;    /* #1E293B slate-800 elevated         */
-    --color-ink:        241 245 249;   /* #F1F5F9 warm/light gray text       */
-    --color-clay:       148 163 184;   /* #94A3B8 muted gray-blue text       */
-    --color-line:       255 255 255;   /* Used with opacity for glass borders*/
-    /* Brand stays vivid but soft on dark */
-    --color-brand:      44  167 123;   /* #2CA77B softened emerald            */
-    --color-brand2:     35  137 101;   /* #238965 darker emerald              */
-    --color-brandLight: 25  58  48;    /* #193A30 emerald-900 tint            */
-    /* Gold */
-    --color-gold:       212 171 106;   /* #D4AB6A warm sand                   */
-    --color-goldLight:  77  59  34;    /* #4D3B22 amber-900 tint              */
-    /* Chat bubbles — dark mode */
-    --color-bubbleMe:   35  137 101;   /* sent = brand2                       */
-    --color-bubbleThem: 40  49  65;    /* received = lift surface             */
+    --color-paper:      8   12  23;    /* #080C17 deep futuristic navy    */
+    --color-surface:    15  21  38;    /* #0F1526 slightly elevated navy  */
+    --color-lift:       25  34  54;    /* #192236 elevated surface        */
+    --color-ink:        248 250 252;   /* #F8FAFC crisp white text        */
+    --color-clay:       148 163 184;   /* #94A3B8 slate-400               */
+    --color-line:       255 255 255;   /* opacity used for borders        */
+    /* Brand - Adjusted for dark mode luminance */
+    --color-brand:      52  211 153;   /* #34D399 - glowing emerald       */
+    --color-brand2:     16  185 129;   /* #10B981 - darker emerald        */
+    --color-brandLight: 6   78  59;    /* #064E3B - deep emerald bg       */
+    /* Gold/Accent */
+    --color-gold:       251 191 36;    /* #FBBF24 - bright amber          */
+    --color-goldLight:  120 53  15;    /* #78350F - deep amber bg         */
+    /* Chat bubbles */
+    --color-bubbleMe:   16  185 129;
+    --color-bubbleThem: 25  34  54;
   }
 }
 
@@ -76,20 +74,20 @@ input, textarea, select {
 
 /* Cards */
 .card {
-  @apply bg-surface/80 backdrop-blur-xl rounded-2xl shadow-sm border border-ink/5 dark:border-line/10 p-5 md:p-6 transition-colors duration-300;
+  @apply bg-surface/90 backdrop-blur-2xl rounded-2xl shadow-[0_4px_24px_-12px_rgba(0,0,0,0.1)] dark:shadow-[0_4px_24px_-12px_rgba(0,0,0,0.5)] border border-ink/10 dark:border-line/10 p-5 md:p-6 transition-all duration-300;
 }
 
 .card-hover {
-  @apply card transition-all duration-200 hover:shadow hover:-translate-y-0.5 hover:border-line;
+  @apply card hover:shadow-[0_8px_32px_-12px_rgba(16,185,129,0.15)] dark:hover:shadow-[0_8px_32px_-12px_rgba(52,211,153,0.1)] hover:-translate-y-1 hover:border-brand/30 dark:hover:border-brand/40;
 }
 
 /* Buttons */
 .btn-primary {
-  @apply bg-brand text-white px-6 py-2.5 rounded-xl font-medium text-sm
+  @apply bg-brand text-white px-6 py-2.5 rounded-xl font-semibold text-sm tracking-wide
          min-h-[44px] md:min-h-0
-         hover:bg-brand2 transition-all duration-150
+         hover:bg-brand2 hover:shadow-[0_4px_16px_-4px_rgba(16,185,129,0.4)] transition-all duration-200
          disabled:opacity-40 disabled:cursor-not-allowed
-         inline-flex items-center justify-center gap-2 shadow-sm;
+         inline-flex items-center justify-center gap-2;
 }
 
 .btn-brand {
@@ -97,25 +95,25 @@ input, textarea, select {
 }
 
 .btn-secondary {
-  @apply bg-surface text-ink px-6 py-2.5 rounded-xl font-medium text-sm border border-line
+  @apply bg-surface text-ink px-6 py-2.5 rounded-xl font-semibold text-sm border border-line
          min-h-[44px] md:min-h-0
-         hover:bg-lift transition-all duration-150 shadow-sm
+         hover:bg-lift hover:border-ink/20 dark:hover:border-line/30 transition-all duration-200 shadow-sm
          inline-flex items-center justify-center gap-2;
 }
 
 .btn-ghost {
-  @apply text-clay px-4 py-2 rounded-xl text-sm font-medium
+  @apply text-clay px-4 py-2.5 rounded-xl text-sm font-semibold
          min-h-[44px] md:min-h-0
-         hover:text-ink hover:bg-line/50 transition-all duration-150;
+         hover:text-ink hover:bg-ink/5 dark:hover:bg-white/10 transition-all duration-200;
 }
 
 /* Inputs */
 .input {
-  @apply w-full border border-line rounded-lg px-3.5 py-2.5 bg-surface text-ink text-base md:text-sm
-         min-h-[44px] md:min-h-[38px]
+  @apply w-full border border-line rounded-xl px-4 py-3 bg-surface/50 text-ink text-base md:text-sm
+         min-h-[48px] md:min-h-[44px]
          placeholder:text-clay/60
-         focus:outline-none focus:ring-2 focus:ring-brand/25 focus:border-brand
-         transition-all duration-150;
+         focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand
+         transition-all duration-200 shadow-inner;
 }
 
 textarea.input {

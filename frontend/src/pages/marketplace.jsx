@@ -240,7 +240,7 @@ export default function Marketplace() {
               const staggerClass = `stagger-${(idx % 5) + 1}`;
 
               return (
-                <div key={teacher.user_id} className={`card overflow-hidden flex flex-col shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-1 animate-slide-up ${staggerClass}`}>
+                <div key={teacher.user_id} className={`card-hover overflow-hidden flex flex-col shadow-sm animate-slide-up ${staggerClass}`}>
                   
                   <div className="p-5 flex-1 flex flex-col">
                     <div className="flex gap-4 mb-5">

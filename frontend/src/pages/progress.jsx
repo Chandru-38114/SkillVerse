@@ -142,7 +142,7 @@ export default function Progress() {
                 const staggerClass = `stagger-${Math.min(idx + 3, 5)}`;
                 
                 return (
-                  <div key={skill.id} className={`card p-5 flex flex-col justify-between shadow-sm border border-line hover:shadow-md transition-shadow animate-slide-up ${staggerClass}`}>
+                  <div key={skill.id} className={`card-hover p-5 flex flex-col justify-between shadow-sm animate-slide-up ${staggerClass}`}>
                     <div>
                       <div className="flex justify-between items-start mb-3">
                         <div>

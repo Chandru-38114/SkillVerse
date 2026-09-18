@@ -97,8 +97,7 @@ export default function QuestReview() {
 
         <div className="grid md:grid-cols-2 gap-6 items-start">
           
-          {/* Progress Impact Card */}
-          <div className="card p-6 border border-line shadow-sm bg-surface animate-slide-up stagger-3 h-full">
+          <div className="card-hover p-6 border border-line shadow-sm bg-surface animate-slide-up stagger-3 h-full">
             <h2 className="text-lg font-bold text-ink flex items-center gap-2 mb-4">
               <TrendingUp className="w-5 h-5 text-brand" />
               Skill Progress

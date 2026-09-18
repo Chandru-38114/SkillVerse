@@ -286,18 +286,19 @@ export default function Dashboard() {
                      <div className="w-5 h-5 bg-brand rounded-full border-[3px] border-surface shadow-[0_0_15px_rgba(var(--color-brand),0.8)] relative z-10" />
                    </div>
                    
-                   <div className="flex-1 card bg-brand/5 border border-brand/30 shadow-sm p-5 md:p-6 overflow-hidden relative rounded-xl transform transition-transform group-hover:-translate-y-1 z-10">
+                   <div className="flex-1 card-hover bg-surface/60 border border-brand/40 shadow-[0_0_20px_rgba(16,185,129,0.15)] p-6 md:p-8 overflow-hidden relative rounded-2xl z-10 group/card">
+                     <div className="absolute inset-0 bg-gradient-to-br from-brand/5 to-transparent pointer-events-none" />
                      <div className="relative z-10">
-                       <p className="text-[10px] font-bold text-brand uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                       <p className="text-[10px] font-bold text-brand uppercase tracking-wider mb-2 flex items-center gap-1.5">
                          <Star className="w-3.5 h-3.5 fill-brand text-brand" /> Current Quest
                        </p>
-                       <h3 className="text-xl font-bold text-ink leading-tight mb-2">
+                       <h3 className="text-2xl font-display font-bold text-ink leading-tight mb-2">
                          {heroState.title}
                        </h3>
-                       <p className="text-clay font-medium mb-5 text-sm">{heroState.description}</p>
+                       <p className="text-clay font-medium mb-6 text-sm max-w-lg">{heroState.description}</p>
                        
                        {heroState.metadata && (
-                         <div className="grid grid-cols-2 gap-y-3 gap-x-4 mb-6 max-w-sm">
+                         <div className="grid grid-cols-2 gap-y-3 gap-x-4 mb-8 max-w-sm">
                            {heroState.metadata.map(m => (
                              <div key={m.label} className="text-xs">
                                <span className="text-clay uppercase tracking-wider text-[10px] font-bold block mb-0.5">{m.label}</span>
@@ -307,11 +308,11 @@ export default function Dashboard() {
                          </div>
                        )}
 
-                       <Link to={heroState.actionUrl} className="btn-brand inline-flex text-sm py-2.5 px-6 shadow-sm hover:shadow transition-shadow">
+                       <Link to={heroState.actionUrl} className="btn-brand">
                          {heroState.actionText}
                        </Link>
                      </div>
-                     <div className="absolute right-0 bottom-0 top-0 hidden sm:flex items-center justify-end pr-6 pointer-events-none opacity-50">
+                     <div className="absolute right-[-5%] bottom-[-5%] hidden sm:flex items-center justify-end pr-6 pointer-events-none opacity-[0.07] group-hover/card:opacity-[0.12] transition-opacity duration-500 scale-125">
                        {heroState.icon}
                      </div>
                    </div>

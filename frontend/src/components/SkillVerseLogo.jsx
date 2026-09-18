@@ -1,44 +1,44 @@
-export default function SkillVerseLogo({ className = "" }) {
+export default function SkillVerseLogo({ className = "", compact = false }) {
   return (
-    <div className={`flex flex-col items-center justify-center space-y-3 mb-8 ${className}`}>
-      {/* Logo Graphic */}
-      <div className="relative w-16 h-16 flex items-center justify-center bg-brand/15 rounded-full">
-        {/* Open Book Concept */}
-        <svg className="w-10 h-10 text-brand" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+    <div className={`flex flex-col items-center justify-center space-y-3 ${compact ? 'mb-0' : 'mb-8'} ${className}`}>
+      {/* Geometric 'S' Logo Graphic */}
+      <div className="relative flex items-center justify-center">
+        <svg
+          className={`${compact ? 'w-8 h-8' : 'w-14 h-14'}`}
+          viewBox="0 0 48 48"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          {/* Glowing Background Ring */}
+          <circle cx="24" cy="24" r="20" className="stroke-brand/20 dark:stroke-brand/10" strokeWidth="4" />
+          
+          {/* Geometric S Path */}
+          <path
+            d="M 32 16 C 32 16 29 12 24 12 C 18 12 16 16 16 20 C 16 25 32 23 32 28 C 32 32 30 36 24 36 C 19 36 16 32 16 32"
+            className="stroke-brand"
+            strokeWidth="4"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          
+          {/* Skill Nodes */}
+          <circle cx="32" cy="16" r="3" className="fill-brand2 dark:fill-brandLight" />
+          <circle cx="16" cy="32" r="3" className="fill-brand2 dark:fill-brandLight" />
+          <circle cx="24" cy="24" r="2.5" className="fill-ink dark:fill-white opacity-80" />
         </svg>
-        {/* Two Learners / Graduation Element Overlay */}
-        <div className="absolute inset-0 flex items-center justify-center translate-y-[-4px]">
-          {/* Learner 1 */}
-          <div className="absolute left-3 top-3 text-brand2">
-            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
-            </svg>
-          </div>
-          {/* Learner 2 */}
-          <div className="absolute right-3 top-3 text-ink">
-            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
-            </svg>
-          </div>
-          {/* Graduation Cap */}
-          <div className="absolute top-0 text-brand2">
-            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3zm6.82 6L12 12.72 5.18 9 12 5.28 18.82 9zM17 15.99l-5 2.73-5-2.73v-3.72l5 2.73 5-2.73v3.72z"/>
-            </svg>
-          </div>
-        </div>
       </div>
       
       {/* Wordmark and Tagline */}
-      <div className="text-center">
-        <h1 className="font-display text-3xl font-bold tracking-tight text-ink">
-          Skill<span className="text-brand">Verse</span>
-        </h1>
-        <p className="text-clay font-medium tracking-wide text-xs mt-1 uppercase">
-          Peer to Peer Learning
-        </p>
-      </div>
+      {!compact && (
+        <div className="text-center">
+          <h1 className="font-display text-2xl md:text-3xl font-bold tracking-tight text-ink">
+            Skill<span className="text-brand">Verse</span>
+          </h1>
+          <p className="text-clay/80 font-semibold tracking-[0.2em] text-[10px] mt-1.5 uppercase">
+            Learning is the Gameplay
+          </p>
+        </div>
+      )}
     </div>
   );
 }
