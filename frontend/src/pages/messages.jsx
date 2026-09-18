@@ -995,9 +995,12 @@ function ForwardModal({ message, inbox, currentRequestId, onClose, onForward }) 
               <div className="w-6 h-6 border-2 border-moss border-t-transparent rounded-full animate-spin" />
             </div>
           ) : (
-            <div className="hidden md:flex flex-1 flex-col items-center justify-center bg-paper p-8">
-              <div className="max-w-md w-full bg-surface border border-line rounded-2xl p-8 text-center shadow-sm">
-                <div className="w-16 h-16 bg-brand/10 text-brand rounded-full flex items-center justify-center mx-auto mb-5">
+            <div className="hidden md:flex flex-1 flex-col items-center justify-center bg-paper p-8 animate-fade-in stagger-2">
+              <div className="max-w-md w-full bg-surface border border-line rounded-2xl p-8 text-center shadow-sm relative overflow-hidden">
+                <div className="absolute -top-10 -right-10 text-brand/5 rotate-12 pointer-events-none">
+                  <MessageCircle className="w-48 h-48" />
+                </div>
+                <div className="w-16 h-16 bg-brand/10 text-brand rounded-full flex items-center justify-center mx-auto mb-5 relative z-10">
                   <MessageCircle className="w-8 h-8" />
                 </div>
                 <h2 className="text-xl font-bold text-ink mb-3">Welcome to Connect</h2>

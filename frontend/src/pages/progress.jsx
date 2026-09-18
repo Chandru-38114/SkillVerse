@@ -87,7 +87,7 @@ export default function Progress() {
   const isEmptyState = progressData.length === 0;
 
   return (
-    <div className="page pb-12">
+    <div className="page pb-12 animate-fade-in stagger-1">
       <div className="mb-6">
         <Link to="/dashboard" className="text-sm font-semibold text-brand hover:underline flex items-center gap-1">
           ← Back to Skill Journey
@@ -96,7 +96,10 @@ export default function Progress() {
       
       {isEmptyState ? (
         /* B7: Empty State */
-        <div className="card p-8 sm:p-12 text-center bg-brand/5 border border-brand/20 shadow-sm max-w-4xl mx-auto">
+        <div className="card p-8 sm:p-12 text-center bg-brand/5 border border-brand/20 shadow-sm max-w-4xl mx-auto animate-slide-up stagger-2">
+          <div className="w-16 h-16 bg-brand/10 text-brand rounded-full flex items-center justify-center mx-auto mb-4">
+            <Compass className="w-8 h-8" />
+          </div>
           <h2 className="text-2xl font-bold text-ink mb-3">YOUR SKILL JOURNEY IS WAITING</h2>
           <p className="text-clay mb-6 max-w-md mx-auto">Assess a skill, connect with another learner, and start building progress.</p>
           <Link to="/assessment" className="btn-primary inline-flex text-base py-3 px-8 shadow-sm">
@@ -108,7 +111,7 @@ export default function Progress() {
           
           <div className="lg:col-span-2 space-y-8">
             {/* B1: Page Header */}
-            <div>
+            <div className="animate-slide-up stagger-2">
               <h1 className="text-3xl md:text-4xl font-bold text-ink mb-2">My Progress</h1>
               <p className="text-clay font-medium text-lg mb-5">Track how your skills are growing.</p>
               
@@ -132,13 +135,14 @@ export default function Progress() {
 
             {/* B2: Skill Progress */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              {progressData.map((skill) => {
+              {progressData.map((skill, idx) => {
                 const certForSkill = certificates.find(c => c.skill_name === skill.skill_name && c.badge === skill.badge);
                 const isEligible = skill.progress_percentage >= 100 && skill.badge && skill.level !== "Unassessed";
                 const narrative = getSkillNarrative(skill);
+                const staggerClass = `stagger-${Math.min(idx + 3, 5)}`;
                 
                 return (
-                  <div key={skill.id} className="card p-5 flex flex-col justify-between shadow-sm border border-line hover:shadow-md transition-shadow">
+                  <div key={skill.id} className={`card p-5 flex flex-col justify-between shadow-sm border border-line hover:shadow-md transition-shadow animate-slide-up ${staggerClass}`}>
                     <div>
                       <div className="flex justify-between items-start mb-3">
                         <div>
@@ -159,11 +163,16 @@ export default function Progress() {
                         )}
                       </div>
                       
-                      <div className="w-full bg-line/50 rounded-full h-2 mb-4 overflow-hidden">
+                      <div className="w-full bg-line/50 rounded-full h-2 mb-4 overflow-hidden relative">
                         <div 
-                          className="bg-brand h-full rounded-full transition-all duration-700 ease-out" 
+                          className="bg-brand h-full rounded-full transition-all duration-700 ease-out animate-progress" 
                           style={{ width: `${Math.min(100, skill.progress_percentage)}%` }}
                         ></div>
+                        {skill.progress_percentage === 100 && (
+                          <div className="absolute right-0 top-1/2 -translate-y-1/2 w-4 h-4 bg-white rounded-full border-2 border-brand flex items-center justify-center">
+                            <Star className="w-2 h-2 text-brand" />
+                          </div>
+                        )}
                       </div>
 
                       {/* B3: Narrative Progress */}

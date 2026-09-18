@@ -219,7 +219,7 @@ export default function Marketplace() {
         </div>
       </section>
 
-      <section className="px-4 sm:px-6 max-w-[1200px] mx-auto">
+      <section className="px-4 sm:px-6 max-w-[1200px] mx-auto animate-fade-in stagger-2">
         {error && <div className="alert-error mb-8 max-w-2xl mx-auto">{error}</div>}
 
         {loading ? (
@@ -228,7 +228,7 @@ export default function Marketplace() {
           <EmptyTeachers query={query} filter={activeFilter} proficiency={proficiency} />
         ) : (
           <div className="grid lg:grid-cols-2 xl:grid-cols-3 gap-6">
-            {filteredResults.map(teacher => {
+            {filteredResults.map((teacher, idx) => {
               const ratings = ratingsMap[teacher.user_id]
               const displaySkills = activeFilter === 'I Can Teach' ? teacher.learning_skills : teacher.teaching_skills
               const targetSkillObj = displaySkills.length > 0 ? displaySkills[0] : null
@@ -237,9 +237,10 @@ export default function Marketplace() {
               const key = `${teacher.user_id}-${targetSkill}`
               const rel = statusMap[key] || { status: null }
               const form = formMap[key] || defaultForm()
+              const staggerClass = `stagger-${(idx % 5) + 1}`;
 
               return (
-                <div key={teacher.user_id} className="card overflow-hidden flex flex-col shadow-sm hover:shadow-md transition-shadow">
+                <div key={teacher.user_id} className={`card overflow-hidden flex flex-col shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-1 animate-slide-up ${staggerClass}`}>
                   
                   <div className="p-5 flex-1 flex flex-col">
                     <div className="flex gap-4 mb-5">

@@ -92,7 +92,8 @@ export default function Dashboard() {
     title: "Choose a skill to start your journey.",
     description: "Assess a skill to discover people who can help you grow.",
     actionText: "Assess a skill",
-    actionUrl: "/assessment"
+    actionUrl: "/assessment",
+    icon: <Compass className="w-24 h-24 text-brand opacity-20" />
   }
 
   if (nextSession) {
@@ -102,14 +103,16 @@ export default function Dashboard() {
       title: "Your next learning session is coming up.",
       description: `You are learning ${nextSession.skill} with ${peerName} on ${dateStr} at ${nextSession.start_time}.`,
       actionText: "Join Session →",
-      actionUrl: `/session/${nextSession.id}`
+      actionUrl: `/session/${nextSession.id}`,
+      icon: <Calendar className="w-24 h-24 text-brand opacity-20" />
     }
   } else if (weakTopic) {
     heroState = {
       title: "You identified a topic to improve.",
       description: `Based on your recent assessment, focus on improving: ${weakTopic}.`,
       actionText: `Find a partner for ${weakTopic} →`,
-      actionUrl: `/marketplace?q=${encodeURIComponent(weakTopic)}`
+      actionUrl: `/marketplace?q=${encodeURIComponent(weakTopic)}`,
+      icon: <Users className="w-24 h-24 text-brand opacity-20" />
     }
   } else if (activeLearningSkill) {
     if (activeLearningSkill.progress_percentage === 0) {
@@ -117,28 +120,32 @@ export default function Dashboard() {
         title: "Choose a skill to start your journey.",
         description: `Assess your ${activeLearningSkill.skill_name} to see where you stand and earn initial points.`,
         actionText: "Take Assessment →",
-        actionUrl: "/assessment"
+        actionUrl: "/assessment",
+        icon: <ClipboardCheck className="w-24 h-24 text-brand opacity-20" />
       }
     } else if (activeLearningSkill.progress_percentage > 0 && activeLearningSkill.progress_percentage < 100) {
       heroState = {
         title: "Continue building this skill.",
         description: `You are making progress in ${activeLearningSkill.skill_name}. Schedule a session to keep growing.`,
         actionText: "Continue learning →",
-        actionUrl: "/marketplace"
+        actionUrl: "/marketplace",
+        icon: <BookOpen className="w-24 h-24 text-brand opacity-20" />
       }
     } else if (activeLearningSkill.progress_percentage === 100 && !activeLearningSkill.badge) {
       heroState = {
         title: "You're ready for the next milestone.",
         description: `You've completed the learning path for ${activeLearningSkill.skill_name}. Take the final assessment to earn your verified badge.`,
         actionText: "Take final assessment →",
-        actionUrl: "/assessment"
+        actionUrl: "/assessment",
+        icon: <CheckCircle className="w-24 h-24 text-brand opacity-20" />
       }
     } else if (activeLearningSkill.progress_percentage === 100 && activeLearningSkill.badge) {
       heroState = {
         title: `Skill milestone reached in ${activeLearningSkill.skill_name}.`,
         description: "You hold a verified badge. You can now teach this skill or start learning a new one.",
         actionText: "Discover new skills →",
-        actionUrl: "/marketplace"
+        actionUrl: "/marketplace",
+        icon: <Award className="w-24 h-24 text-brand opacity-20" />
       }
     }
   }
@@ -146,7 +153,7 @@ export default function Dashboard() {
   const isEmptyState = skills.length === 0 && upcoming.length === 0;
 
   return (
-    <div className="page space-y-4 md:space-y-6 pb-8">
+    <div className="page space-y-4 md:space-y-6 pb-8 animate-fade-in stagger-1">
       
       <section className="mb-4">
         <h1 className="text-2xl md:text-3xl font-bold text-ink mb-1">
@@ -163,7 +170,10 @@ export default function Dashboard() {
         ) : null
       ) : isEmptyState ? (
         // A7: Dashboard Empty State
-        <div className="card p-6 sm:p-8 text-center bg-brand/5 border border-brand/20 shadow-sm mt-6 max-w-4xl mx-auto">
+        <div className="card p-6 sm:p-8 text-center bg-brand/5 border border-brand/20 shadow-sm mt-6 max-w-4xl mx-auto animate-slide-up stagger-2">
+          <div className="w-16 h-16 bg-brand/10 text-brand rounded-full flex items-center justify-center mx-auto mb-4">
+            <Compass className="w-8 h-8" />
+          </div>
           <h2 className="text-xl font-bold text-ink mb-2">YOUR JOURNEY STARTS HERE</h2>
           <p className="text-clay mb-5 max-w-md mx-auto text-sm">Choose a skill to assess and discover people who can help you grow.</p>
           <Link to="/assessment" className="btn-primary inline-flex py-2.5 px-6 shadow-sm">
@@ -175,15 +185,20 @@ export default function Dashboard() {
           
           <div className="lg:col-span-2 space-y-6">
             {/* A1: HERO / NEXT ACTION */}
-            <section className="card bg-surface shadow-sm border border-line p-5 md:p-6">
-              <p className="text-[10px] font-bold text-brand uppercase tracking-wider mb-3">Your Skill Journey</p>
-              <h2 className="text-2xl md:text-3xl font-bold text-ink leading-tight mb-3">
-                {heroState.title}
-              </h2>
-              <p className="text-clay font-medium mb-6 max-w-2xl text-base">{heroState.description}</p>
-              <Link to={heroState.actionUrl} className="btn-brand inline-flex text-base py-3 px-8 shadow-sm hover:shadow transition-shadow">
-                {heroState.actionText}
-              </Link>
+            <section className="card bg-surface shadow-sm border border-line p-5 md:p-6 overflow-hidden relative animate-slide-up stagger-2">
+              <div className="relative z-10 max-w-xl">
+                <p className="text-[10px] font-bold text-brand uppercase tracking-wider mb-3">Your Skill Journey</p>
+                <h2 className="text-2xl md:text-3xl font-bold text-ink leading-tight mb-3">
+                  {heroState.title}
+                </h2>
+                <p className="text-clay font-medium mb-6 text-base">{heroState.description}</p>
+                <Link to={heroState.actionUrl} className="btn-brand inline-flex text-base py-3 px-8 shadow-sm hover:shadow transition-shadow">
+                  {heroState.actionText}
+                </Link>
+              </div>
+              <div className="absolute right-0 bottom-0 top-0 hidden sm:flex items-center justify-end pr-8 pointer-events-none">
+                {heroState.icon}
+              </div>
             </section>
 
             {/* A2 & A3: CURRENT LEARNING */}
