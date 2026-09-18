@@ -2,6 +2,7 @@ import { Navigate, Routes, Route, useLocation, useNavigate } from 'react-router-
 import { useState, useEffect } from 'react'
 import { GoogleOAuthProvider } from '@react-oauth/google'
 import Navbar from './components/navbar'
+import SkillVerseBackground from './components/SkillVerseBackground'
 import ProtectedRoute from './components/protectedroute'
 import Landing from './pages/landing'
 import Signup from './pages/signup'
@@ -72,7 +73,8 @@ export default function App() {
 
   return (
     <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
-      <div className="min-h-screen bg-paper text-ink font-body pb-20 xl:pb-0">
+      <SkillVerseBackground />
+      <div className="min-h-screen bg-transparent text-ink font-body pb-20 xl:pb-0 relative z-0">
         {!isAuthRoute && <Navbar />}
         <Routes>
           <Route path="/" element={<RootRedirect />} /><Route path="/landing" element={<Landing />} />

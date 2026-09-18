@@ -16,12 +16,12 @@
 @layer base {
   :root {
     /* ── Light palette ── */
-    --color-paper:      247 247 244;   /* #F7F7F4 — warm off-white page bg   */
-    --color-surface:    255 255 255;   /* #FFFFFF — cards, panels             */
-    --color-lift:       240 253 244;   /* #F0FDF4 — green-50 subtle tint      */
-    --color-ink:        23  32  51;    /* #172033 — deep blue-charcoal        */
-    --color-clay:       102 112 133;   /* #667085 — soft secondary text       */
-    --color-line:       228 231 226;   /* #E4E7E2 — subtle warm gray borders  */
+    --color-paper:      244 246 248;   /* #F4F6F8 — cool/ethereal off-white */
+    --color-surface:    255 255 255;   /* #FFFFFF — cards, panels           */
+    --color-lift:       240 253 244;   /* #F0FDF4 — green-50 subtle tint    */
+    --color-ink:        23  32  51;    /* #172033 — deep blue-charcoal      */
+    --color-clay:       102 112 133;   /* #667085 — soft secondary text     */
+    --color-line:       226 232 240;   /* #E2E8F0 — slate 200 border        */
     /* Brand */
     --color-brand:      22  138 98;    /* #168A62 muted emerald/jade          */
     --color-brand2:     18  114 81;    /* #127251 darker emerald              */
@@ -38,12 +38,12 @@
      Strategy: elegant graphite, comfortable contrast, cohesive.
   */
   .dark {
-    --color-paper:      19  25  36;    /* #131924 graphite/deep blue-charcoal */
-    --color-surface:    30  37  50;    /* #1E2532 slightly lighter charcoal   */
-    --color-lift:       40  49  65;    /* #283141 elevated surface            */
-    --color-ink:        241 245 249;   /* #F1F5F9 warm/light gray text        */
-    --color-clay:       148 163 184;   /* #94A3B8 muted gray-blue text        */
-    --color-line:       45  55  72;    /* #2D3748 translucent dark line       */
+    --color-paper:      11  17  32;    /* #0B1120 deep oceanic navy          */
+    --color-surface:    30  41  59;    /* #1E293B slate-800                  */
+    --color-lift:       40  49  65;    /* #283141 elevated surface           */
+    --color-ink:        241 245 249;   /* #F1F5F9 warm/light gray text       */
+    --color-clay:       148 163 184;   /* #94A3B8 muted gray-blue text       */
+    --color-line:       30  41  59;    /* slate-800 translucent line         */
     /* Brand stays vivid but soft on dark */
     --color-brand:      44  167 123;   /* #2CA77B softened emerald            */
     --color-brand2:     35  137 101;   /* #238965 darker emerald              */
@@ -76,7 +76,7 @@ input, textarea, select {
 
 /* Cards */
 .card {
-  @apply bg-surface rounded-2xl shadow-sm border border-line/40 p-5 md:p-6;
+  @apply bg-surface/95 backdrop-blur-md rounded-2xl shadow-sm border border-line/50 p-5 md:p-6;
 }
 
 .card-hover {
@@ -210,7 +210,7 @@ textarea.input {
    CONTEXT MENU / DROPDOWNS
 ──────────────────────────────────────────────────── */
 .dropdown-menu {
-  @apply bg-lift border border-line rounded-xl shadow-elev-3 overflow-hidden min-w-[150px] z-50;
+  @apply bg-lift/95 backdrop-blur-md border border-line rounded-xl shadow-elev-3 overflow-hidden min-w-[150px] z-50;
 }
 
 .dropdown-item {
@@ -288,6 +288,26 @@ textarea.input {
 /* ─────────────────────────────────────────────────
    ANIMATIONS & STORYTELLING
 ──────────────────────────────────────────────────── */
+@keyframes ambient-drift-1 {
+  0% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(3%, 4%) scale(1.05); }
+  66% { transform: translate(-2%, 2%) scale(0.95); }
+  100% { transform: translate(0, 0) scale(1); }
+}
+
+@keyframes ambient-drift-2 {
+  0% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(-4%, -3%) scale(0.95); }
+  66% { transform: translate(2%, -5%) scale(1.05); }
+  100% { transform: translate(0, 0) scale(1); }
+}
+
+@keyframes ambient-drift-3 {
+  0% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(2%, -2%) scale(1.02); }
+  100% { transform: translate(0, 0) scale(1); }
+}
+
 @keyframes fade-in {
   from { opacity: 0; }
   to { opacity: 1; }
@@ -315,6 +335,16 @@ textarea.input {
   }
   .animate-progress {
     animation: progress-fill 1s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  }
+  
+  .animate-ambient-drift-1 {
+    animation: ambient-drift-1 25s ease-in-out infinite;
+  }
+  .animate-ambient-drift-2 {
+    animation: ambient-drift-2 30s ease-in-out infinite;
+  }
+  .animate-ambient-drift-3 {
+    animation: ambient-drift-3 35s ease-in-out infinite;
   }
   
   /* Stagger delays */
