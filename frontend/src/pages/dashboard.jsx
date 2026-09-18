@@ -25,6 +25,7 @@ export default function Dashboard() {
   const [upcoming, setUpcoming] = useState([])
   const [gamification, setGamification] = useState(null)
   const [weakTopic, setWeakTopic] = useState(null)
+  const [outRequests, setOutRequests] = useState([])
 
   useEffect(() => {
     if (!user) {
@@ -48,11 +49,13 @@ export default function Dashboard() {
         const [
           skillsData,
           upcomingData,
-          gamiData
+          gamiData,
+          outReqData
         ] = await Promise.all([
           api.mySkills().catch(() => []),
           api.upcomingSessions().catch(() => []),
-          api.getGamificationSummary().catch(() => null)
+          api.getGamificationSummary().catch(() => null),
+          api.outgoingRequests().catch(() => [])
         ])
         
         if (!isMounted) return;
@@ -60,6 +63,7 @@ export default function Dashboard() {
         setSkills(skillsData || [])
         setUpcoming(upcomingData || [])
         setGamification(gamiData)
+        setOutRequests(outReqData || [])
         
       } catch (err) {
         console.error("Dashboard fetch error:", err)
@@ -124,12 +128,33 @@ export default function Dashboard() {
         icon: <ClipboardCheck className="w-24 h-24 text-brand opacity-20" />
       }
     } else if (activeLearningSkill.progress_percentage > 0 && activeLearningSkill.progress_percentage < 100) {
-      heroState = {
-        title: "Train with a Partner",
-        description: `Mastery requires practice. Schedule a session in ${activeLearningSkill.skill_name} to keep growing.`,
-        actionText: "Find a learning partner →",
-        actionUrl: "/marketplace",
-        icon: <BookOpen className="w-24 h-24 text-brand opacity-20" />
+      const relevantRequest = outRequests.find(r => r.skill_name === activeLearningSkill.skill_name && (r.status === 'pending' || r.status === 'accepted'))
+      if (relevantRequest) {
+        if (relevantRequest.status === 'pending') {
+          heroState = {
+            title: "Connection Pending",
+            description: `Your request to learn ${activeLearningSkill.skill_name} is awaiting response. Check your requests.`,
+            actionText: "View Requests →",
+            actionUrl: "/requests",
+            icon: <Users className="w-24 h-24 text-brand opacity-20" />
+          }
+        } else if (relevantRequest.status === 'accepted') {
+          heroState = {
+            title: "Prepare for Learning",
+            description: `Your partner accepted your request for ${activeLearningSkill.skill_name}. Coordinate and schedule a session!`,
+            actionText: "Message Partner →",
+            actionUrl: `/messages?request_id=${relevantRequest.id}`,
+            icon: <BookOpen className="w-24 h-24 text-brand opacity-20" />
+          }
+        }
+      } else {
+        heroState = {
+          title: "Train with a Partner",
+          description: `Mastery requires practice. Schedule a session in ${activeLearningSkill.skill_name} to keep growing.`,
+          actionText: "Find a learning partner →",
+          actionUrl: "/marketplace",
+          icon: <BookOpen className="w-24 h-24 text-brand opacity-20" />
+        }
       }
     } else if (activeLearningSkill.progress_percentage === 100 && !activeLearningSkill.badge) {
       heroState = {
