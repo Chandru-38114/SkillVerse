@@ -123,9 +123,9 @@ function SessionRoomComponent() {
       const res = await api.completeSessionProgress(sessionId)
       setIsCompleted(true)
       if (session?.request_id) {
-        navigate(`/messages?request_id=${session.request_id}`)
+        navigate(`/quest-review/${sessionId}`)
       } else if (req?.id) {
-        navigate(`/messages?request_id=${req.id}`)
+        navigate(`/quest-review/${sessionId}`)
       } else {
         navigate('/dashboard')
       }

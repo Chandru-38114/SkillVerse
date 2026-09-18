@@ -26,6 +26,7 @@ import Settings from './pages/settings'
 import Messages from './pages/messages'
 import Notifications from './pages/notifications'
 import Gamification from './pages/gamification'
+import QuestReview from './pages/quest_review'
 import { api, saveSession, clearSession } from './api'
 import { getSessionUser, getToken } from './api'
 
@@ -138,6 +139,10 @@ export default function App() {
         <Route
           path="/notifications"
           element={<ProtectedRoute><Notifications /></ProtectedRoute>}
+        />
+        <Route
+          path="/quest-review/:sessionId"
+          element={<ProtectedRoute><QuestReview /></ProtectedRoute>}
         />
         <Route path="/gamification" element={<ProtectedRoute><Gamification /></ProtectedRoute>} />
       </Routes>
