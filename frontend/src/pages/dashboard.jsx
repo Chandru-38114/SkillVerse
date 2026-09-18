@@ -89,9 +89,9 @@ export default function Dashboard() {
 
   // Journey Decision Logic (A1)
   let heroState = {
-    title: "Choose a skill to start your journey.",
-    description: "Assess a skill to discover people who can help you grow.",
-    actionText: "Assess a skill",
+    title: "Begin Your Journey",
+    description: "Take your first Skill Challenge to establish your baseline and unlock your path.",
+    actionText: "Start a Skill Challenge",
     actionUrl: "/assessment",
     icon: <Compass className="w-24 h-24 text-brand opacity-20" />
   }
@@ -100,16 +100,16 @@ export default function Dashboard() {
     const peerName = nextSession.tutor_id === user.id ? nextSession.learner_name : nextSession.tutor_name;
     const dateStr = new Date(nextSession.session_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     heroState = {
-      title: "Your next learning session is coming up.",
-      description: `You are learning ${nextSession.skill} with ${peerName} on ${dateStr} at ${nextSession.start_time}.`,
-      actionText: "Join Session →",
+      title: "Enter the Learning Arena",
+      description: `Your training in ${nextSession.skill} with ${peerName} begins on ${dateStr} at ${nextSession.start_time}.`,
+      actionText: "Join Arena →",
       actionUrl: `/session/${nextSession.id}`,
       icon: <Calendar className="w-24 h-24 text-brand opacity-20" />
     }
   } else if (weakTopic) {
     heroState = {
-      title: "You identified a topic to improve.",
-      description: `Based on your recent assessment, focus on improving: ${weakTopic}.`,
+      title: "Conquer Your Weak Topics",
+      description: `Your recent Skill Challenge revealed an area for growth. Focus your training on: ${weakTopic}.`,
       actionText: `Find a partner for ${weakTopic} →`,
       actionUrl: `/marketplace?q=${encodeURIComponent(weakTopic)}`,
       icon: <Users className="w-24 h-24 text-brand opacity-20" />
@@ -117,33 +117,33 @@ export default function Dashboard() {
   } else if (activeLearningSkill) {
     if (activeLearningSkill.progress_percentage === 0) {
       heroState = {
-        title: "Choose a skill to start your journey.",
-        description: `Assess your ${activeLearningSkill.skill_name} to see where you stand and earn initial points.`,
-        actionText: "Take Assessment →",
+        title: "Take the Skill Challenge",
+        description: `Assess your ${activeLearningSkill.skill_name} to establish your baseline and earn initial XP.`,
+        actionText: "Start Challenge →",
         actionUrl: "/assessment",
         icon: <ClipboardCheck className="w-24 h-24 text-brand opacity-20" />
       }
     } else if (activeLearningSkill.progress_percentage > 0 && activeLearningSkill.progress_percentage < 100) {
       heroState = {
-        title: "Continue building this skill.",
-        description: `You are making progress in ${activeLearningSkill.skill_name}. Schedule a session to keep growing.`,
-        actionText: "Continue learning →",
+        title: "Train with a Partner",
+        description: `Mastery requires practice. Schedule a session in ${activeLearningSkill.skill_name} to keep growing.`,
+        actionText: "Find a learning partner →",
         actionUrl: "/marketplace",
         icon: <BookOpen className="w-24 h-24 text-brand opacity-20" />
       }
     } else if (activeLearningSkill.progress_percentage === 100 && !activeLearningSkill.badge) {
       heroState = {
-        title: "You're ready for the next milestone.",
-        description: `You've completed the learning path for ${activeLearningSkill.skill_name}. Take the final assessment to earn your verified badge.`,
-        actionText: "Take final assessment →",
+        title: "The Final Challenge Awaits",
+        description: `You've completed the learning path for ${activeLearningSkill.skill_name}. Take the final challenge to earn your verified badge.`,
+        actionText: "Take Final Challenge →",
         actionUrl: "/assessment",
         icon: <CheckCircle className="w-24 h-24 text-brand opacity-20" />
       }
     } else if (activeLearningSkill.progress_percentage === 100 && activeLearningSkill.badge) {
       heroState = {
-        title: `Skill milestone reached in ${activeLearningSkill.skill_name}.`,
-        description: "You hold a verified badge. You can now teach this skill or start learning a new one.",
-        actionText: "Discover new skills →",
+        title: "Mastery Achieved",
+        description: `You hold a verified badge in ${activeLearningSkill.skill_name}. You can now guide others or begin a new quest.`,
+        actionText: "Start New Quest →",
         actionUrl: "/marketplace",
         icon: <Award className="w-24 h-24 text-brand opacity-20" />
       }
@@ -221,7 +221,7 @@ export default function Dashboard() {
                       <div className="w-4 h-4 bg-brand rounded-full shadow-[0_0_12px_rgba(var(--color-brand),0.6)] border-2 border-surface" />
                     </div>
                     <div className="pt-1 sm:pt-2">
-                      <h3 className="text-sm font-bold text-ink opacity-60">Fundamentals Completed</h3>
+                      <h3 className="text-sm font-bold text-ink opacity-60">Training Commenced</h3>
                       <p className="text-xs text-clay">You've started your journey in {activeLearningSkill.skill_name}.</p>
                     </div>
                   </div>
@@ -265,7 +265,7 @@ export default function Dashboard() {
                       <div className="w-4 h-4 bg-transparent border-2 border-dashed border-line rounded-full" />
                     </div>
                     <div className="pt-1 sm:pt-2">
-                      <h3 className="text-sm font-bold text-ink">Mastery & Verification</h3>
+                      <h3 className="text-sm font-bold text-ink">Mastery Verification</h3>
                       <p className="text-xs text-clay">Earn your verified badge to teach others.</p>
                     </div>
                   </div>
