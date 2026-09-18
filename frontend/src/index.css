@@ -16,7 +16,7 @@
 @layer base {
   :root {
     /* ── Light palette ── */
-    --color-paper:      244 246 248;   /* #F4F6F8 — cool/ethereal off-white */
+    --color-paper:      248 250 255;   /* #F8FAFF — airy sky-blue tint      */
     --color-surface:    255 255 255;   /* #FFFFFF — cards, panels           */
     --color-lift:       240 253 244;   /* #F0FDF4 — green-50 subtle tint    */
     --color-ink:        23  32  51;    /* #172033 — deep blue-charcoal      */
@@ -38,12 +38,12 @@
      Strategy: elegant graphite, comfortable contrast, cohesive.
   */
   .dark {
-    --color-paper:      11  17  32;    /* #0B1120 deep oceanic navy          */
-    --color-surface:    30  41  59;    /* #1E293B slate-800                  */
-    --color-lift:       40  49  65;    /* #283141 elevated surface           */
+    --color-paper:      8   12  22;    /* #080C16 deep space navy            */
+    --color-surface:    15  23  42;    /* #0F172A deeper slate-900           */
+    --color-lift:       30  41  59;    /* #1E293B slate-800 elevated         */
     --color-ink:        241 245 249;   /* #F1F5F9 warm/light gray text       */
     --color-clay:       148 163 184;   /* #94A3B8 muted gray-blue text       */
-    --color-line:       30  41  59;    /* slate-800 translucent line         */
+    --color-line:       255 255 255;   /* Used with opacity for glass borders*/
     /* Brand stays vivid but soft on dark */
     --color-brand:      44  167 123;   /* #2CA77B softened emerald            */
     --color-brand2:     35  137 101;   /* #238965 darker emerald              */
@@ -76,7 +76,7 @@ input, textarea, select {
 
 /* Cards */
 .card {
-  @apply bg-surface/95 backdrop-blur-md rounded-2xl shadow-sm border border-line/50 p-5 md:p-6;
+  @apply bg-surface/80 backdrop-blur-xl rounded-2xl shadow-sm border border-ink/5 dark:border-line/10 p-5 md:p-6 transition-colors duration-300;
 }
 
 .card-hover {
@@ -210,7 +210,7 @@ textarea.input {
    CONTEXT MENU / DROPDOWNS
 ──────────────────────────────────────────────────── */
 .dropdown-menu {
-  @apply bg-lift/95 backdrop-blur-md border border-line rounded-xl shadow-elev-3 overflow-hidden min-w-[150px] z-50;
+  @apply bg-lift/80 backdrop-blur-xl border border-ink/5 dark:border-line/10 rounded-xl shadow-elev-3 overflow-hidden min-w-[150px] z-50;
 }
 
 .dropdown-item {
@@ -289,23 +289,23 @@ textarea.input {
    ANIMATIONS & STORYTELLING
 ──────────────────────────────────────────────────── */
 @keyframes ambient-drift-1 {
-  0% { transform: translate(0, 0) scale(1); }
-  33% { transform: translate(3%, 4%) scale(1.05); }
-  66% { transform: translate(-2%, 2%) scale(0.95); }
-  100% { transform: translate(0, 0) scale(1); }
+  0% { transform: translate(0, 0) scale(1) rotate(0deg); }
+  33% { transform: translate(4%, 6%) scale(1.1) rotate(5deg); }
+  66% { transform: translate(-3%, 3%) scale(0.9) rotate(-5deg); }
+  100% { transform: translate(0, 0) scale(1) rotate(0deg); }
 }
 
 @keyframes ambient-drift-2 {
-  0% { transform: translate(0, 0) scale(1); }
-  33% { transform: translate(-4%, -3%) scale(0.95); }
-  66% { transform: translate(2%, -5%) scale(1.05); }
-  100% { transform: translate(0, 0) scale(1); }
+  0% { transform: translate(0, 0) scale(1) rotate(0deg); }
+  33% { transform: translate(-5%, -4%) scale(0.9) rotate(-5deg); }
+  66% { transform: translate(3%, -6%) scale(1.1) rotate(5deg); }
+  100% { transform: translate(0, 0) scale(1) rotate(0deg); }
 }
 
 @keyframes ambient-drift-3 {
-  0% { transform: translate(0, 0) scale(1); }
-  50% { transform: translate(2%, -2%) scale(1.02); }
-  100% { transform: translate(0, 0) scale(1); }
+  0% { transform: translate(0, 0) scale(1) rotate(0deg); }
+  50% { transform: translate(3%, -3%) scale(1.15) rotate(10deg); }
+  100% { transform: translate(0, 0) scale(1) rotate(0deg); }
 }
 
 @keyframes fade-in {
@@ -338,13 +338,13 @@ textarea.input {
   }
   
   .animate-ambient-drift-1 {
-    animation: ambient-drift-1 25s ease-in-out infinite;
+    animation: ambient-drift-1 45s cubic-bezier(0.4, 0, 0.2, 1) infinite;
   }
   .animate-ambient-drift-2 {
-    animation: ambient-drift-2 30s ease-in-out infinite;
+    animation: ambient-drift-2 55s cubic-bezier(0.4, 0, 0.2, 1) infinite;
   }
   .animate-ambient-drift-3 {
-    animation: ambient-drift-3 35s ease-in-out infinite;
+    animation: ambient-drift-3 65s cubic-bezier(0.4, 0, 0.2, 1) infinite;
   }
   
   /* Stagger delays */
