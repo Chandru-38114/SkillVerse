@@ -3,12 +3,16 @@ import { formatDate, formatTime , getTodayIstYMD} from '../utils/dateTime'
 import BackButton from "../components/BackButton";
 import { Link } from 'react-router-dom'
 import { api } from '../api'
-import { Calendar, Clock, CheckCircle2, XCircle, ArrowRight } from 'lucide-react'
+import { Calendar, Clock, CheckCircle2, XCircle, ArrowRight, Play, BookOpen } from 'lucide-react'
+import Avatar from '../components/ui/Avatar'
+import { getSessionUser } from '../api'
 
 export default function Sessions() {
   const [sessions, setSessions] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [activeTab, setActiveTab] = useState('upcoming')
+  const user = getSessionUser()
 
   async function load() {
     setLoading(true)
@@ -43,7 +47,16 @@ export default function Sessions() {
     }
     return s.session_date >= getTodayIstYMD();
   })
-  const past = sessions.filter((s) => !upcoming.includes(s))
+  
+  const completed = sessions.filter(s => s.status === 'completed')
+  
+  const cancelled = sessions.filter(s => {
+    if (s.status === 'cancelled') return true;
+    if (s.status === 'scheduled' && s.scheduled_end) {
+      return new Date(s.scheduled_end) < new Date() && !upcoming.includes(s) && !completed.includes(s);
+    }
+    return false;
+  })
 
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
@@ -54,106 +67,145 @@ export default function Sessions() {
 
       {loading ? (
         <SessionsSkeleton />
-      ) : sessions.length === 0 ? (
-        <EmptySessions />
       ) : (
-        <div className="space-y-8">
-          {upcoming.length > 0 && (
-            <section>
-              <h2 className="text-sm font-semibold text-ink/50 uppercase tracking-wide mb-3">
-                Upcoming
-              </h2>
-              <div className="space-y-3">
-                {upcoming.map((s) => (
-                  <SessionCard key={s.id} s={s} onCancel={() => handleCancel(s.id)} />
-                ))}
-              </div>
-            </section>
-          )}
+        <div className="space-y-6">
+          <div className="flex border-b border-line overflow-x-auto scrollbar-hide">
+            {['upcoming', 'completed', 'cancelled'].map(tab => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`px-4 py-3 text-sm font-semibold capitalize whitespace-nowrap transition-colors border-b-2 ${
+                  activeTab === tab ? 'border-brand text-brand' : 'border-transparent text-clay hover:text-ink'
+                }`}
+              >
+                {tab} 
+                <span className="ml-2 text-xs bg-line/50 text-ink/50 px-2 py-0.5 rounded-full">
+                  {tab === 'upcoming' ? upcoming.length : tab === 'completed' ? completed.length : cancelled.length}
+                </span>
+              </button>
+            ))}
+          </div>
 
-          {past.length > 0 && (
-            <section>
-              <h2 className="text-sm font-semibold text-ink/50 uppercase tracking-wide mb-3">
-                Past / Cancelled
-              </h2>
-              <div className="space-y-3">
-                {past.map((s) => (
-                  <SessionCard key={s.id} s={s} />
-                ))}
-              </div>
-            </section>
-          )}
+          <div className="pt-2">
+            {activeTab === 'upcoming' && (
+              upcoming.length > 0 ? (
+                <div className="space-y-3">
+                  {upcoming.map((s) => (
+                    <SessionCard key={s.id} s={s} onCancel={() => handleCancel(s.id)} user={user} type="upcoming" />
+                  ))}
+                </div>
+              ) : (
+                <EmptyState icon={<Calendar className="w-8 h-8 text-brand" />} title="No upcoming sessions" desc="Connect with a peer to start your next learning session." />
+              )
+            )}
+            
+            {activeTab === 'completed' && (
+              completed.length > 0 ? (
+                <div className="space-y-3">
+                  {completed.map((s) => (
+                    <SessionCard key={s.id} s={s} user={user} type="completed" />
+                  ))}
+                </div>
+              ) : (
+                <EmptyState icon={<CheckCircle2 className="w-8 h-8 text-moss" />} title="No completed sessions yet" desc="Your completed learning sessions will appear here." />
+              )
+            )}
+
+            {activeTab === 'cancelled' && (
+              cancelled.length > 0 ? (
+                <div className="space-y-3">
+                  {cancelled.map((s) => (
+                    <SessionCard key={s.id} s={s} user={user} type="cancelled" />
+                  ))}
+                </div>
+              ) : (
+                <EmptyState icon={<XCircle className="w-8 h-8 text-clay" />} title="No cancelled sessions" desc="You don't have any cancelled or expired sessions." />
+              )
+            )}
+          </div>
         </div>
       )}
     </div>
   )
 }
 
+function EmptyState({ icon, title, desc }) {
+  return (
+    <div className="card p-12 flex flex-col items-center justify-center text-center bg-surface/50 border-dashed">
+      <div className="w-16 h-16 bg-brand/5 rounded-full flex items-center justify-center mb-4">
+        {icon}
+      </div>
+      <h2 className="font-display font-bold text-lg mb-1">{title}</h2>
+      <p className="text-sm text-clay max-w-xs">{desc}</p>
+    </div>
+  )
+}
+
 // ── Session card ─────────────────────────────────────────────────────────────
 
-function SessionCard({ s, onCancel }) {
+function SessionCard({ s, onCancel, user, type }) {
   const dateLabel = formatDate(s.session_date)
   const timeLabel = `${s.start_time} – ${s.end_time}`
 
   const isExpired = s.status === 'scheduled' && s.scheduled_end && new Date(s.scheduled_end) < new Date();
+  const isTutor = user?.id === s.tutor_id;
+  const partnerName = isTutor ? s.learner_name : s.tutor_name;
 
   return (
-    <div className="card overflow-hidden">
-      <div className={`h-0.5 ${
-        s.status === 'scheduled' && !isExpired ? 'bg-moss' :
-        s.status === 'completed'  ? 'bg-ink/20' :
-        s.status === 'cancelled'  ? 'bg-transparent' :
-        'bg-transparent'
-      }`} />
+    <div className={`card overflow-hidden transition-all hover:shadow-elev-1 ${type === 'cancelled' ? 'opacity-70' : ''}`}>
+      <div className={`h-1 w-full ${type === 'upcoming' ? 'bg-brand' : type === 'completed' ? 'bg-moss' : 'bg-line'}`} />
 
-      <div className="p-5">
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex-1 min-w-0">
-            {/* Skill + status */}
-            <div className="flex items-center gap-2 flex-wrap mb-1">
-              <span className="font-semibold text-base capitalize">{s.skill}</span>
-              <SessionStatusPill status={isExpired ? 'expired' : s.status} />
-            </div>
-
-            {/* Participants */}
-            <p className="text-sm text-ink/55 mb-3">
-              <span className="text-ink/40">Tutor:</span>{' '}
-              <span className="font-medium">{s.tutor_name}</span>
-              <span className="mx-2 text-ink/25">·</span>
-              <span className="text-ink/40">Learner:</span>{' '}
-              <span className="font-medium">{s.learner_name}</span>
-            </p>
-
-            {/* Date & time */}
-            <div className="flex items-center gap-4 text-sm text-ink/60">
-              <span>📅 {dateLabel}</span>
-              <span>⏰ {timeLabel}</span>
-            </div>
-
-            {s.notes && (
-              <p className="text-sm text-ink/50 mt-2 italic">"{s.notes}"</p>
-            )}
+      <div className="p-4 sm:p-5 flex flex-col sm:flex-row gap-4 sm:items-center">
+        <Avatar name={partnerName} size="md" className="hidden sm:flex shrink-0" />
+        
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="font-display font-bold text-lg text-ink truncate capitalize">{s.skill}</span>
+            <SessionStatusPill status={isExpired ? 'expired' : s.status} />
           </div>
 
-          {/* Actions */}
-          <div className="shrink-0 flex items-center gap-2">
-            {s.status === 'scheduled' && !isExpired && (
+          <div className="flex items-center gap-2 text-sm text-ink/70 mb-2 flex-wrap">
+            <span className="font-medium text-ink">With {partnerName}</span>
+            <span className="text-line">•</span>
+            <span className="capitalize">{isTutor ? 'Teaching' : 'Learning'}</span>
+            <span className="text-line">•</span>
+            <span className="flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5" /> {dateLabel}</span>
+            <span className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" /> {timeLabel}</span>
+          </div>
+
+          {s.notes && type !== 'cancelled' && (
+            <div className="bg-lift/50 rounded-lg p-2.5 mt-2 flex items-start gap-2 border border-line/50">
+              <BookOpen className="w-4 h-4 text-brand shrink-0 mt-0.5" />
+              <div className="text-xs text-ink/70 italic leading-relaxed line-clamp-2">"{s.notes}"</div>
+            </div>
+          )}
+        </div>
+
+        {/* Actions */}
+        <div className="shrink-0 flex items-center gap-2 mt-2 sm:mt-0">
+          {type === 'upcoming' && !isExpired && (
+            <>
+              {onCancel && (
+                <button
+                  onClick={onCancel}
+                  className="btn-secondary text-xs py-2 px-3 text-red-600 hover:bg-red-50"
+                >
+                  Cancel
+                </button>
+              )}
               <Link
                 to={`/session/${s.id}`}
-                className="btn-primary text-xs py-1.5 px-4"
+                className="btn-primary text-sm py-2 px-5 flex items-center gap-1.5"
               >
-                Join Session
+                <Play className="w-4 h-4" /> Join
               </Link>
-            )}
-            {s.status === 'scheduled' && !isExpired && onCancel && (
-              <button
-                onClick={onCancel}
-                className="btn-secondary text-xs py-1.5 px-3 text-red-600 border-red-200 hover:border-red-400"
-              >
-                Cancel
-              </button>
-            )}
-          </div>
+            </>
+          )}
+          {type === 'completed' && (
+            <div className="text-xs font-semibold text-moss bg-moss/10 px-3 py-1.5 rounded-full flex items-center gap-1.5">
+              <CheckCircle2 className="w-4 h-4" /> Completed
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -197,18 +249,6 @@ function SessionsSkeleton() {
           <div className="skeleton h-3 w-48 rounded" />
         </div>
       ))}
-    </div>
-  )
-}
-
-function EmptySessions() {
-  return (
-    <div className="card p-12 text-center">
-      <p className="text-4xl mb-4">📅</p>
-      <h2 className="font-display text-xl mb-2">No sessions yet</h2>
-      <p className="text-sm text-ink/50 max-w-xs mx-auto">
-        Accept a connection request and schedule your first learning session.
-      </p>
     </div>
   )
 }
