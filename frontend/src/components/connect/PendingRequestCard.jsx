@@ -4,15 +4,23 @@ export default function PendingRequestCard({ req, onAccept, onDecline }) {
   const [submitting, setSubmitting] = useState(false)
 
   const handleAccept = async () => {
+    if (submitting) return;
     setSubmitting(true)
-    await onAccept(req.id)
-    setSubmitting(false)
+    try {
+      await onAccept(req.id)
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   const handleDecline = async () => {
+    if (submitting) return;
     setSubmitting(true)
-    await onDecline(req.id)
-    setSubmitting(false)
+    try {
+      await onDecline(req.id)
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (

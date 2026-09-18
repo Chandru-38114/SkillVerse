@@ -1,7 +1,7 @@
 from typing import List, Optional
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
-from sqlalchemy import or_
+from sqlalchemy import or_, and_, desc, func
 
 from .. import models, schemas, auth
 from ..database import get_db
@@ -107,6 +107,47 @@ def search_partners(
             data["match_context"] = f"You can teach {skill_display} to {data['name'].split()[0]}"
         else:
             data["match_score"] = len(data["teaching_skills"]) + len(data["learning_skills"]) # baseline activity
+
+    # 5. Bulk query reviews for all matched users
+    reviews_agg = (
+        db.query(
+            models.Review.reviewee_id,
+            func.count(models.Review.id).label("count"),
+            func.avg(models.Review.rating).label("avg")
+        )
+        .filter(models.Review.reviewee_id.in_(matching_user_ids))
+        .group_by(models.Review.reviewee_id)
+        .all()
+    )
+    for r in reviews_agg:
+        users_map[r.reviewee_id]["review_count"] = r.count
+        users_map[r.reviewee_id]["average_rating"] = round(r.avg, 1) if r.avg else None
+
+    # 6. Bulk query connection requests between current_user and all matched users
+    reqs = (
+        db.query(models.ConnectionRequest, models.Skill)
+        .join(models.Skill, models.ConnectionRequest.skill_id == models.Skill.id)
+        .filter(
+            or_(
+                and_(models.ConnectionRequest.from_user_id == current_user.id, models.ConnectionRequest.to_user_id.in_(matching_user_ids)),
+                and_(models.ConnectionRequest.from_user_id.in_(matching_user_ids), models.ConnectionRequest.to_user_id == current_user.id)
+            )
+        )
+        .order_by(desc(models.ConnectionRequest.created_at))
+        .all()
+    )
+    
+    for req, skill in reqs:
+        other_id = req.to_user_id if req.from_user_id == current_user.id else req.from_user_id
+        if other_id in users_map:
+            if "connection_statuses" not in users_map[other_id]:
+                users_map[other_id]["connection_statuses"] = {}
+            # Because of ORDER BY desc, we only take the most recent request per skill
+            if skill.name not in users_map[other_id]["connection_statuses"]:
+                users_map[other_id]["connection_statuses"][skill.name] = {
+                    "status": req.status,
+                    "request_id": req.id
+                }
 
     # Convert to list and sort by match_score DESC
     results = [schemas.MarketplaceUser(**data) for data in users_map.values()]

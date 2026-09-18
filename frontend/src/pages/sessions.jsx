@@ -95,10 +95,12 @@ function SessionCard({ s, onCancel }) {
   const dateLabel = formatDate(s.session_date)
   const timeLabel = `${s.start_time} – ${s.end_time}`
 
+  const isExpired = s.status === 'scheduled' && s.scheduled_end && new Date(s.scheduled_end) < new Date();
+
   return (
     <div className="card overflow-hidden">
       <div className={`h-0.5 ${
-        s.status === 'scheduled'  ? 'bg-moss' :
+        s.status === 'scheduled' && !isExpired ? 'bg-moss' :
         s.status === 'completed'  ? 'bg-ink/20' :
         s.status === 'cancelled'  ? 'bg-transparent' :
         'bg-transparent'
@@ -110,7 +112,7 @@ function SessionCard({ s, onCancel }) {
             {/* Skill + status */}
             <div className="flex items-center gap-2 flex-wrap mb-1">
               <span className="font-semibold text-base capitalize">{s.skill}</span>
-              <SessionStatusPill status={s.status} />
+              <SessionStatusPill status={isExpired ? 'expired' : s.status} />
             </div>
 
             {/* Participants */}
@@ -135,7 +137,7 @@ function SessionCard({ s, onCancel }) {
 
           {/* Actions */}
           <div className="shrink-0 flex items-center gap-2">
-            {s.status === 'scheduled' && (
+            {s.status === 'scheduled' && !isExpired && (
               <Link
                 to={`/session/${s.id}`}
                 className="btn-primary text-xs py-1.5 px-4"
@@ -143,7 +145,7 @@ function SessionCard({ s, onCancel }) {
                 Join Session
               </Link>
             )}
-            {s.status === 'scheduled' && onCancel && (
+            {s.status === 'scheduled' && !isExpired && onCancel && (
               <button
                 onClick={onCancel}
                 className="btn-secondary text-xs py-1.5 px-3 text-red-600 border-red-200 hover:border-red-400"

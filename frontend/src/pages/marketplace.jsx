@@ -43,31 +43,23 @@ export default function Marketplace() {
       const data = await api.searchTeachers(skillQuery, roleFilter)
       setResults(data)
 
-      const statusPromises = []
-      const ratingPromises = []
+      const newStatusMap = {}
+      const newRatingsMap = {}
       
       data.forEach(t => {
-        ratingPromises.push(api.getUserReviews(t.user_id).then(res => ({ id: t.user_id, res })).catch(() => null))
+        newRatingsMap[t.user_id] = {
+          average_rating: t.average_rating,
+          review_count: t.review_count
+        }
+        
         t.teaching_skills.forEach(s => {
-          statusPromises.push(
-            api.getConnectionStatus(t.user_id, s.skill_name)
-               .then(res => ({ key: `${t.user_id}-${s.skill_name}`, res }))
-               .catch(() => null)
-          )
+          const statusObj = t.connection_statuses[s.skill_name]
+          if (statusObj) {
+            newStatusMap[`${t.user_id}-${s.skill_name}`] = statusObj
+          }
         })
       })
-
-      const [statuses, ratings] = await Promise.all([
-        Promise.all(statusPromises),
-        Promise.all(ratingPromises)
-      ])
-
-      const newStatusMap = {}
-      statuses.forEach(s => { if (s) newStatusMap[s.key] = s.res })
       setStatusMap(newStatusMap)
-
-      const newRatingsMap = {}
-      ratings.forEach(r => { if (r) newRatingsMap[r.id] = r.res })
       setRatingsMap(newRatingsMap)
 
       const newFormMap = {}
@@ -102,10 +94,14 @@ export default function Marketplace() {
     }))
   }
 
+  const [submitting, setSubmitting] = useState(false)
+
   async function sendRequest(teacher, skillName) {
+    if (submitting) return;
     const key = `${teacher.user_id}-${skillName}`
     const form = formMap[key] || defaultForm()
     
+    setSubmitting(true)
     try {
       await api.sendRequest({
         to_user_id: teacher.user_id,
@@ -113,11 +109,13 @@ export default function Marketplace() {
         message: form.message
       })
       
-      const newStatus = await api.getConnectionStatus(teacher.user_id, skillName)
-      setStatusMap(prev => ({ ...prev, [key]: newStatus }))
+      // Force status update without reload
+      setStatusMap(prev => ({ ...prev, [key]: { status: 'pending' } }))
       alert(`Connection request sent to ${teacher.name}!`)
     } catch (err) {
       alert(err.message)
+    } finally {
+      setSubmitting(false)
     }
   }
 
@@ -311,6 +309,7 @@ export default function Marketplace() {
                       teacher={teacher}
                       targetSkill={targetSkill}
                       form={form}
+                      submitting={submitting}
                       onFormChange={(field, value) => updateForm(key, field, value)}
                       onSend={() => sendRequest(teacher, targetSkill)}
                       activeFilter={activeFilter}
@@ -326,7 +325,7 @@ export default function Marketplace() {
   )
 }
 
-function RequestControl({ rel, teacher, targetSkill, form, onFormChange, onSend, activeFilter }) {
+function RequestControl({ rel, teacher, targetSkill, form, onFormChange, onSend, activeFilter, submitting }) {
   if (rel.status === 'accepted') {
     return (
       <div className="flex items-center justify-between">
@@ -395,7 +394,7 @@ function RequestControl({ rel, teacher, targetSkill, form, onFormChange, onSend,
         />
       </div>
 
-      <button onClick={onSend} disabled={!targetSkill} className="btn-primary w-full mt-2 justify-center">
+      <button onClick={onSend} disabled={!targetSkill || submitting} className="btn-primary w-full mt-2 justify-center">
         {(rel.status === 'declined' || rel.status === 'completed')
           ? 'Send Request Again'
           : 'Send Connection Request'}

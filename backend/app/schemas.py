@@ -159,6 +159,9 @@ class MarketplaceUser(BaseModel):
     learning_skills: List[SkillBadgeInfo]
     match_context: Optional[str] = None
     match_score: int = 0
+    average_rating: Optional[float] = None
+    review_count: int = 0
+    connection_statuses: Dict[str, dict] = {}
 
 class ConnectionRequestCreate(BaseModel):
     to_user_id: int

@@ -13,7 +13,9 @@ function isRealtime(path) {
   return path.includes("/unread-count") ||
          path.includes("/notifications") ||
          path.match(/\/requests\/status/) ||
+         path.includes("/requests/incoming") ||
          path.includes("/sessions/upcoming") ||
+         path.includes("/sessions/my") ||
          path.includes("/chat/inbox") ||
          path.match(/\/chat\/.*\/messages/);
 }

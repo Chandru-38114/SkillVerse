@@ -545,8 +545,14 @@ function ForwardModal({ message, inbox, currentRequestId, onClose, onForward }) 
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
   }
 
-  const handleScheduled = () => {
+  const handleScheduled = (session) => {
     setScheduleOpen(false)
+    if (activeConversation) {
+      setActiveConversation(prev => ({
+        ...prev,
+        session_id: session.id
+      }))
+    }
     loadInbox(false)
     showToast('Session scheduled!')
   }
@@ -736,7 +742,7 @@ function ForwardModal({ message, inbox, currentRequestId, onClose, onForward }) 
 
                   {/* Schedule / Join */}
                   {activeConversation.session_id ? (
-                    <button onClick={() => navigate('/sessions')} className="btn-primary text-xs px-2.5 py-1.5 h-auto">Join</button>
+                    <button onClick={() => navigate(`/session/${activeConversation.session_id}`)} className="btn-primary text-xs px-2.5 py-1.5 h-auto">Join</button>
                   ) : (
                     <button
                       onClick={() => setScheduleOpen(true)}
