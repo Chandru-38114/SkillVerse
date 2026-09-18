@@ -73,7 +73,7 @@ export default function Requests() {
       <h1 className="font-display text-4xl mb-8">Requests</h1>
 
       {/* Tabs */}
-      <div className="flex gap-2 mb-6 border-b border-line pb-0">
+      <div className="flex gap-2 mb-6 border-b border-line/20 pb-0">
         <TabButton
           label="Incoming"
           badge={incomingPending}
@@ -184,14 +184,14 @@ function RequestCard({ r, tab, onAccept, onDecline, onComplete, reviewed, onRevi
 
         {/* For accepted: direct user to Connect to schedule */}
         {r.status === 'accepted' && (
-          <div className="mt-4 pt-4 border-t border-line flex items-center gap-3">
+          <div className="mt-4 pt-4 border-t border-line/10 flex items-center gap-3">
             <p className="text-xs text-ink/50 flex-1">💬 Use <strong>Connect</strong> to chat and schedule a session with this person.</p>
           </div>
         )}
 
         {/* Review panel */}
         {r.status === 'completed' && (
-          <div className="mt-4 pt-4 border-t border-line">
+          <div className="mt-4 pt-4 border-t border-line/10">
             {reviewed ? (
               <p className="alert-success inline-flex items-center gap-1.5">
                 <span>✓</span> Review submitted — thanks for the feedback!
@@ -220,7 +220,7 @@ function LearningContext({ r, tab }) {
   if (!hasLearnInfo && !hasTeachInfo) return null
 
   return (
-    <div className="mt-4 pt-4 border-t border-line grid sm:grid-cols-2 gap-4">
+    <div className="mt-4 pt-4 border-t border-line/10 grid sm:grid-cols-2 gap-4">
       {/* What the learner wants to learn */}
       {hasLearnInfo && (
         <div>
@@ -322,7 +322,7 @@ function SchedulePanel({ requestId, skill }) {
   if (loading) return null
 
   return (
-    <div className="mt-4 pt-4 border-t border-line">
+    <div className="mt-4 pt-4 border-t border-line/10">
       {error && <p className="alert-error mb-3 text-xs">{error}</p>}
 
       {session ? (

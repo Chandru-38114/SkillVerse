@@ -89,7 +89,7 @@ export default function Onboarding() {
   if (!user && !onboardingToken) return null
 
   return (
-    <div className="min-h-[calc(100vh-73px)] flex items-center justify-center px-4 sm:px-6 py-10 sm:py-16 bg-surface">
+    <div className="min-h-[calc(100vh-73px)] flex items-center justify-center px-4 sm:px-6 py-10 sm:py-16 bg-transparent">
       <div className="w-full max-w-md">
         <div className="mb-6 text-center">
           <h1 className="text-2xl font-bold text-ink">
@@ -98,7 +98,7 @@ export default function Onboarding() {
           <p className="text-ink/60 text-sm mt-2">Let's finish setting up your profile.</p>
         </div>
 
-        <div className="card p-4 sm:p-6 sm:p-8 bg-white rounded-xl shadow-sm border border-line">
+        <div className="card p-4 sm:p-6 sm:p-8 bg-surface/40 backdrop-blur-md rounded-xl shadow-[0_0_30px_rgba(34,211,238,0.1)] border border-line/10">
           {error && <div className="text-red-500 text-sm mb-4 bg-red-50 p-3 rounded">{error}</div>}
           
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -131,7 +131,7 @@ export default function Onboarding() {
                 <Field id="password" label="Create Password" type="password" value={form.password} onChange={(v) => update('password', v)} required />
                 
                 {form.password && (
-                  <div className="bg-paper/80 border border-line p-3 rounded-lg text-sm space-y-1">
+                  <div className="bg-surface/60 backdrop-blur-md border border-brand/20 p-3 rounded-lg text-sm space-y-1">
                     {passwordRules.map((rule, idx) => (
                       <div key={idx} className={`flex items-center space-x-2 ${rule.regex.test(form.password) ? 'text-moss' : 'text-ink/40'}`}>
                         <span>{rule.regex.test(form.password) ? '✓' : '○'}</span>

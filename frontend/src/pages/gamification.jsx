@@ -70,7 +70,7 @@ export default function Gamification() {
         {/* Left Column: Summary & Achievements */}
         <div className="md:col-span-1 space-y-6">
           
-          <div className="bg-brandLight/20 rounded-2xl shadow-elev-1 p-6 text-center">
+          <div className="bg-surface/40 backdrop-blur-md rounded-2xl shadow-[0_0_30px_rgba(34,211,238,0.1)] border border-line/10 p-6 text-center">
             <h2 className="text-sm font-bold text-clay uppercase tracking-wider mb-2">Your Standing</h2>
             <div className="font-display text-5xl text-gold mb-1">{summary?.total_points || 0}</div>
             <div className="text-sm text-ink/60 mb-4">Total Points</div>
@@ -120,12 +120,12 @@ export default function Gamification() {
         {/* Right Column: Leaderboard */}
         <div className="md:col-span-2">
           <div className="card overflow-hidden">
-            <div className="p-6 border-b border-line/40 bg-surface flex justify-between items-center">
+            <div className="p-6 border-b border-line/10 bg-surface/60 backdrop-blur-md flex justify-between items-center">
               <h2 className="font-display text-xl">Top Learners & Tutors</h2>
               <span className="text-xs font-bold text-clay bg-lift px-2 py-1 rounded shadow-sm">{leaderboard.length} users</span>
             </div>
             
-            <div className="divide-y divide-line/40 max-h-[600px] overflow-y-auto">
+            <div className="divide-y divide-line/10 max-h-[600px] overflow-y-auto bg-transparent">
               {leaderboard.map((user, idx) => {
                 const isCurrentUser = user.user_id === currentUser?.id;
                 
@@ -138,7 +138,7 @@ export default function Gamification() {
                 return (
                   <div 
                     key={user.user_id} 
-                    className={`flex items-center justify-between p-4 hover:bg-lift transition-colors ${isCurrentUser ? 'bg-brand/5 border-l-[3px] border-brand' : ''}`}
+                    className={`flex items-center justify-between p-4 hover:bg-surface/60 transition-colors ${isCurrentUser ? 'bg-brand/10 border-l-[3px] border-brand/50' : ''}`}
                   >
                     <div className="flex items-center gap-4">
                       {rankBadge}

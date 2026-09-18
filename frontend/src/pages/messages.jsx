@@ -594,30 +594,30 @@ function ForwardModal({ message, inbox, currentRequestId, onClose, onForward }) 
   // Ã¢â€â‚¬Ã¢â€â‚¬ Render Ã¢â€â‚¬Ã¢â€â‚¬
 
   return (
-    <div className="max-w-6xl mx-auto flex flex-col bg-paper" style={{ height: 'calc(100dvh - 64px)' }}>
+    <div className="max-w-6xl mx-auto flex flex-col bg-transparent relative z-10" style={{ height: 'calc(100dvh - 64px)' }}>
       {toast && <Toast message={toast} onDone={() => setToast(null)} />}
 
       {/* Desktop heading */}
       <div className="hidden md:flex items-center gap-4 px-6 py-4 shrink-0">
         <BackButton />
-        <h1 className="text-2xl font-display font-bold text-ink">Connect</h1>
+        <h1 className="text-2xl font-display font-bold text-ink drop-shadow-md">Connect</h1>
         {globalError && <p className="text-xs text-red-500 ml-auto">{globalError}</p>}
       </div>
 
       {/* Main panel */}
-      <div className="flex-1 flex md:mx-6 md:mb-6 md:rounded-2xl border border-line bg-surface shadow-elev-2 overflow-hidden min-h-0">
+      <div className="flex-1 flex md:mx-6 md:mb-6 md:rounded-2xl border border-line/10 bg-surface/50 backdrop-blur-xl shadow-[0_0_30px_rgba(0,0,0,0.5)] overflow-hidden min-h-0">
 
         {/* Sidebar: Conversation List */}
-        <div className={`${selectedRequestId ? 'hidden md:flex' : 'flex'} flex-col w-full md:w-72 lg:w-80 border-r border-line/40 bg-surface shrink-0`}>
+        <div className={`${selectedRequestId ? 'hidden md:flex' : 'flex'} flex-col w-full md:w-72 lg:w-80 border-r border-line/10 bg-surface/40 backdrop-blur-md shrink-0`}>
           {/* Sidebar header */}
-          <div className="p-3 border-b border-line bg-surface flex items-center gap-2 shrink-0">
+          <div className="p-3 border-b border-line/10 bg-transparent flex items-center gap-2 shrink-0">
             <BackButton className="md:hidden shrink-0" />
             <input
               type="text"
               placeholder="Search conversations..."
               value={inboxSearch}
               onChange={e => setInboxSearch(e.target.value)}
-              className="input flex-1 text-sm bg-ink/5 border-transparent focus:bg-lift focus:border-brand transition-colors"
+              className="input flex-1 text-sm bg-surface/60 border-line/10 focus:bg-surface focus:border-brand/50 text-ink/90 transition-colors"
             />
           </div>
 
@@ -687,7 +687,7 @@ function ForwardModal({ message, inbox, currentRequestId, onClose, onForward }) 
           {selectedRequestId && activeConversation ? (
             <>
               {/* Chat header */}
-              <div className="h-16 px-4 border-b border-line bg-surface flex items-center justify-between shrink-0 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] z-10">
+              <div className="h-16 px-4 border-b border-line/10 bg-surface/60 backdrop-blur-md flex items-center justify-between shrink-0 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.2)] z-10">
                 <div className="flex items-center gap-3 overflow-hidden min-w-0">
                   <button
                     onClick={handleBackToList}
@@ -748,7 +748,7 @@ function ForwardModal({ message, inbox, currentRequestId, onClose, onForward }) 
 
               {/* Chat search bar */}
               {chatSearchOpen && (
-                <div className="flex items-center gap-2 px-3 py-2 border-b border-line bg-lift shrink-0">
+                <div className="flex items-center gap-2 px-3 py-2 border-b border-line/10 bg-surface/40 shrink-0">
                   <Search className="w-4 h-4 text-clay shrink-0" />
                   <input
                     autoFocus
@@ -804,7 +804,7 @@ function ForwardModal({ message, inbox, currentRequestId, onClose, onForward }) 
               )}
 
               {/* Messages list */}
-              <div className="flex-1 overflow-y-auto px-3 py-4 bg-paper min-h-0">
+              <div className="flex-1 overflow-y-auto px-3 py-4 bg-transparent min-h-0">
                 {loadingMessages ? (
                   <div className="flex items-center justify-center h-full">
                     <div className="w-6 h-6 border-2 border-brand border-t-transparent rounded-full animate-spin" />
@@ -869,7 +869,7 @@ function ForwardModal({ message, inbox, currentRequestId, onClose, onForward }) 
               </div>
 
               {/* Composer */}
-              <div className="bg-surface border-t border-line/60 shrink-0">
+              <div className="bg-surface/60 backdrop-blur-md border-t border-line/10 shrink-0">
                 {/* Emoji picker */}
                 {showEmojiPicker && (
                   <div className="absolute bottom-full left-2 mb-2 bg-lift border border-line shadow-elev-3 rounded-xl p-3 w-64 z-30">
@@ -910,7 +910,7 @@ function ForwardModal({ message, inbox, currentRequestId, onClose, onForward }) 
                 )}
 
                 {isRecording || voiceBlob ? (
-                  <div className="p-4 bg-surface flex items-center justify-between gap-3 shrink-0 shadow-[0_-2px_10px_-4px_rgba(0,0,0,0.05)]">
+                  <div className="p-4 bg-transparent flex items-center justify-between gap-3 shrink-0 shadow-[0_-2px_10px_-4px_rgba(0,0,0,0.2)]">
                     <button
                       type="button"
                       onClick={cancelRecording}
@@ -935,7 +935,7 @@ function ForwardModal({ message, inbox, currentRequestId, onClose, onForward }) 
                     </button>
                   </div>
                 ) : (
-                  <form onSubmit={handleSend} className="p-3 sm:p-4 bg-surface flex items-end gap-2 sm:gap-3 shrink-0 shadow-[0_-2px_10px_-4px_rgba(0,0,0,0.05)]">
+                  <form onSubmit={handleSend} className="p-3 sm:p-4 bg-transparent flex items-end gap-2 sm:gap-3 shrink-0 shadow-[0_-2px_10px_-4px_rgba(0,0,0,0.2)]">
                     <div className="flex items-center gap-1 mb-1 sm:mb-0">
                       <label className="p-2 sm:p-2.5 text-clay hover:text-brand hover:bg-brand/10 rounded-full transition-colors cursor-pointer shrink-0" title="Attach file">
                         <input type="file" className="hidden" onChange={handleFileUpload} accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg,.webp" />
@@ -943,7 +943,7 @@ function ForwardModal({ message, inbox, currentRequestId, onClose, onForward }) 
                       </label>
                     </div>
 
-                    <div className="flex-1 relative bg-lift border border-line focus-within:border-brand/50 focus-within:ring-2 focus-within:ring-brand/20 rounded-3xl transition-all shadow-sm flex items-end min-w-0">
+                    <div className="flex-1 relative bg-surface/50 backdrop-blur-md border border-line/20 focus-within:border-brand/50 focus-within:ring-2 focus-within:ring-brand/20 rounded-3xl transition-all shadow-sm flex items-end min-w-0">
                       <button
                         type="button"
                         className="p-2.5 sm:p-3 text-clay hover:text-brand transition-colors shrink-0"
@@ -995,24 +995,24 @@ function ForwardModal({ message, inbox, currentRequestId, onClose, onForward }) 
               <div className="w-6 h-6 border-2 border-moss border-t-transparent rounded-full animate-spin" />
             </div>
           ) : (
-            <div className="hidden md:flex flex-1 flex-col items-center justify-center bg-paper p-8 animate-fade-in stagger-2">
-              <div className="max-w-md w-full bg-surface border border-line rounded-2xl p-8 text-center shadow-sm relative overflow-hidden">
+            <div className="hidden md:flex flex-1 flex-col items-center justify-center bg-transparent p-8 animate-fade-in stagger-2">
+              <div className="max-w-md w-full bg-surface/40 backdrop-blur-md border border-line/10 rounded-2xl p-8 text-center shadow-[0_0_30px_rgba(34,211,238,0.1)] relative overflow-hidden">
                 <div className="absolute -top-10 -right-10 text-brand/5 rotate-12 pointer-events-none">
                   <MessageCircle className="w-48 h-48" />
                 </div>
-                <div className="w-16 h-16 bg-brand/10 text-brand rounded-full flex items-center justify-center mx-auto mb-5 relative z-10">
+                <div className="w-16 h-16 bg-brand/10 text-brand rounded-full flex items-center justify-center mx-auto mb-5 relative z-10 shadow-[0_0_15px_rgba(34,211,238,0.2)]">
                   <MessageCircle className="w-8 h-8" />
                 </div>
-                <h2 className="text-xl font-bold text-ink mb-3">Welcome to Connect</h2>
+                <h2 className="text-xl font-bold text-ink mb-3 drop-shadow-sm">Welcome to Connect</h2>
                 <p className="text-sm text-clay font-medium mb-6">
                   Select a conversation from the sidebar to start collaborating, schedule sessions, and jump right into the interactive learning room.
                 </p>
-                <div className="grid grid-cols-2 gap-4 text-left">
-                  <div className="p-4 bg-lift rounded-xl border border-line/50">
+                <div className="grid grid-cols-2 gap-4 text-left relative z-10">
+                  <div className="p-4 bg-surface/60 border border-brand/20 rounded-xl shadow-[0_0_10px_rgba(34,211,238,0.05)]">
                     <p className="text-xs font-bold text-ink uppercase tracking-wider mb-1">Chat & Plan</p>
                     <p className="text-xs text-clay">Message your partners to align on learning goals.</p>
                   </div>
-                  <div className="p-4 bg-lift rounded-xl border border-line/50">
+                  <div className="p-4 bg-surface/60 border border-brand/20 rounded-xl shadow-[0_0_10px_rgba(34,211,238,0.05)]">
                     <p className="text-xs font-bold text-ink uppercase tracking-wider mb-1">Live Sessions</p>
                     <p className="text-xs text-clay">Schedule and join interactive video rooms.</p>
                   </div>

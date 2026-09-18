@@ -69,7 +69,7 @@ export default function Sessions() {
         <SessionsSkeleton />
       ) : (
         <div className="space-y-6">
-          <div className="flex border-b border-line overflow-x-auto scrollbar-hide">
+          <div className="flex border-b border-line/20 overflow-x-auto scrollbar-hide">
             {['upcoming', 'completed', 'cancelled'].map(tab => (
               <button
                 key={tab}
@@ -131,8 +131,8 @@ export default function Sessions() {
 
 function EmptyState({ icon, title, desc }) {
   return (
-    <div className="card p-12 flex flex-col items-center justify-center text-center bg-surface/50 border-dashed">
-      <div className="w-16 h-16 bg-brand/5 rounded-full flex items-center justify-center mb-4">
+    <div className="card p-12 flex flex-col items-center justify-center text-center bg-surface/50 border-dashed border-line/20">
+      <div className="w-16 h-16 bg-brand/10 rounded-full flex items-center justify-center mb-4 shadow-[0_0_15px_rgba(34,211,238,0.2)]">
         {icon}
       </div>
       <h2 className="font-display font-bold text-lg mb-1">{title}</h2>
@@ -152,8 +152,8 @@ function SessionCard({ s, onCancel, user, type }) {
   const partnerName = isTutor ? s.learner_name : s.tutor_name;
 
   return (
-    <div className={`card overflow-hidden transition-all hover:shadow-elev-1 ${type === 'cancelled' ? 'opacity-70' : ''}`}>
-      <div className={`h-1 w-full ${type === 'upcoming' ? 'bg-brand' : type === 'completed' ? 'bg-moss' : 'bg-line'}`} />
+    <div className={`card overflow-hidden transition-all hover:shadow-[0_0_20px_rgba(34,211,238,0.1)] ${type === 'cancelled' ? 'opacity-70' : ''}`}>
+      <div className={`h-1 w-full ${type === 'upcoming' ? 'bg-brand' : type === 'completed' ? 'bg-moss' : 'bg-line/20'}`} />
 
       <div className="p-4 sm:p-5 flex flex-col sm:flex-row gap-4 sm:items-center">
         <Avatar name={partnerName} size="md" className="hidden sm:flex shrink-0" />
@@ -174,7 +174,7 @@ function SessionCard({ s, onCancel, user, type }) {
           </div>
 
           {s.notes && type !== 'cancelled' && (
-            <div className="bg-lift/50 rounded-lg p-2.5 mt-2 flex items-start gap-2 border border-line/50">
+            <div className="bg-surface/60 rounded-lg p-2.5 mt-2 flex items-start gap-2 border border-brand/20">
               <BookOpen className="w-4 h-4 text-brand shrink-0 mt-0.5" />
               <div className="text-xs text-ink/70 italic leading-relaxed line-clamp-2">"{s.notes}"</div>
             </div>

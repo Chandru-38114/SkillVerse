@@ -15,43 +15,45 @@
 ──────────────────────────────────────────────────── */
 @layer base {
   :root {
-    /* ── Light palette ── */
-    --color-paper:      250 250 252;   /* #FAFAFC — airy, clean off-white */
-    --color-surface:    255 255 255;   /* #FFFFFF — clean surface         */
-    --color-lift:       243 244 246;   /* #F3F4F6 — gentle lift           */
-    --color-ink:        15  23  42;    /* #0F172A — deep slate            */
-    --color-clay:       100 116 139;   /* #64748B — slate-500 secondary   */
-    --color-line:       226 232 240;   /* #E2E8F0 — slate-200 border      */
-    /* Brand - Vibrant Emerald */
-    --color-brand:      16  185 129;   /* #10B981 - primary brand         */
-    --color-brand2:     5   150 105;   /* #059669 - brand hover           */
-    --color-brandLight: 236 253 245;   /* #ECFDF5 - pale emerald tint     */
+    /* SkillVerse 2.0 - Light-First - Royal Indigo */
+    --color-paper:      248 250 252;   /* Slate 50 */
+    --color-surface:    255 255 255;   /* White */
+    --color-lift:       241 245 249;   /* Slate 100 */
+    --color-ink:        15  23  42;    /* Slate 900 */
+    --color-clay:       71  85  105;   /* Slate 600 */
+    --color-line:       226 232 240;   /* Slate 200 */
+    
+    /* Brand - Indigo / Violet / Cyan */
+    --color-brand:      67  56  202;   /* Indigo 700 */
+    --color-brand2:     124 58  237;   /* Violet 600 */
+    --color-brandLight: 224 231 255;   /* Indigo 100 */
+    --color-accent:     6   182 212;   /* Cyan 500 */
+    
     /* Gold/Accent */
-    --color-gold:       245 158 11;    /* #F59E0B - amber/gold            */
-    --color-goldLight:  254 243 199;   /* #FEF3C7 - pale amber            */
+    --color-gold:       245 158 11;    /* Amber 500 */
+    --color-goldLight:  254 243 199;   /* Amber 100 */
+    
     /* Chat bubbles */
-    --color-bubbleMe:   16  185 129;
-    --color-bubbleThem: 255 255 255;
+    --color-bubbleMe:   67  56  202;
+    --color-bubbleThem: 241 245 249;
   }
 
-  /* ── Dark palette ── */
+  /* Force light theme variables on .dark since we are ignoring forced dark mode */
   .dark {
-    --color-paper:      8   12  23;    /* #080C17 deep futuristic navy    */
-    --color-surface:    15  21  38;    /* #0F1526 slightly elevated navy  */
-    --color-lift:       25  34  54;    /* #192236 elevated surface        */
-    --color-ink:        248 250 252;   /* #F8FAFC crisp white text        */
-    --color-clay:       148 163 184;   /* #94A3B8 slate-400               */
-    --color-line:       255 255 255;   /* opacity used for borders        */
-    /* Brand - Adjusted for dark mode luminance */
-    --color-brand:      52  211 153;   /* #34D399 - glowing emerald       */
-    --color-brand2:     16  185 129;   /* #10B981 - darker emerald        */
-    --color-brandLight: 6   78  59;    /* #064E3B - deep emerald bg       */
-    /* Gold/Accent */
-    --color-gold:       251 191 36;    /* #FBBF24 - bright amber          */
-    --color-goldLight:  120 53  15;    /* #78350F - deep amber bg         */
-    /* Chat bubbles */
-    --color-bubbleMe:   16  185 129;
-    --color-bubbleThem: 25  34  54;
+    --color-paper:      248 250 252;
+    --color-surface:    255 255 255;
+    --color-lift:       241 245 249;
+    --color-ink:        15  23  42;
+    --color-clay:       71  85  105;
+    --color-line:       226 232 240;
+    --color-brand:      67  56  202;
+    --color-brand2:     124 58  237;
+    --color-brandLight: 224 231 255;
+    --color-accent:     6   182 212;
+    --color-gold:       245 158 11;
+    --color-goldLight:  254 243 199;
+    --color-bubbleMe:   67  56  202;
+    --color-bubbleThem: 241 245 249;
   }
 }
 
@@ -74,18 +76,18 @@ input, textarea, select {
 
 /* Cards */
 .card {
-  @apply bg-surface/90 backdrop-blur-2xl rounded-2xl shadow-[0_4px_24px_-12px_rgba(0,0,0,0.1)] dark:shadow-[0_4px_24px_-12px_rgba(0,0,0,0.5)] border border-ink/10 dark:border-line/10 p-5 md:p-6 transition-all duration-300;
+  @apply bg-surface/90 backdrop-blur-2xl rounded-[1.5rem] shadow-sm border border-brand/5 p-6 md:p-8 transition-all duration-300;
 }
 
 .card-hover {
-  @apply card hover:shadow-[0_8px_32px_-12px_rgba(16,185,129,0.15)] dark:hover:shadow-[0_8px_32px_-12px_rgba(52,211,153,0.1)] hover:-translate-y-1 hover:border-brand/30 dark:hover:border-brand/40;
+  @apply card hover:shadow-[0_12px_40px_-16px_rgba(67,56,202,0.15)] hover:-translate-y-1 hover:border-brand/20 hover:bg-surface;
 }
 
 /* Buttons */
 .btn-primary {
-  @apply bg-brand text-white px-6 py-2.5 rounded-xl font-semibold text-sm tracking-wide
-         min-h-[44px] md:min-h-0
-         hover:bg-brand2 hover:shadow-[0_4px_16px_-4px_rgba(16,185,129,0.4)] transition-all duration-200
+  @apply bg-brand text-white px-7 py-3 rounded-2xl font-bold text-sm tracking-wide
+         min-h-[48px] md:min-h-[44px]
+         hover:bg-brand2 hover:shadow-[0_8px_24px_-8px_rgba(124,58,237,0.4)] hover:-translate-y-0.5 transition-all duration-300
          disabled:opacity-40 disabled:cursor-not-allowed
          inline-flex items-center justify-center gap-2;
 }
@@ -95,24 +97,24 @@ input, textarea, select {
 }
 
 .btn-secondary {
-  @apply bg-surface text-ink px-6 py-2.5 rounded-xl font-semibold text-sm border border-line
-         min-h-[44px] md:min-h-0
-         hover:bg-lift hover:border-ink/20 dark:hover:border-line/30 transition-all duration-200 shadow-sm
+  @apply bg-lift/80 text-ink px-7 py-3 rounded-2xl font-bold text-sm border border-transparent
+         min-h-[48px] md:min-h-[44px]
+         hover:bg-surface hover:border-line hover:shadow-sm hover:-translate-y-0.5 transition-all duration-300
          inline-flex items-center justify-center gap-2;
 }
 
 .btn-ghost {
   @apply text-clay px-4 py-2.5 rounded-xl text-sm font-semibold
          min-h-[44px] md:min-h-0
-         hover:text-ink hover:bg-ink/5 dark:hover:bg-white/10 transition-all duration-200;
+         hover:text-brand hover:bg-brand/10 transition-all duration-200;
 }
 
 /* Inputs */
 .input {
-  @apply w-full border border-line rounded-xl px-4 py-3 bg-surface/50 text-ink text-base md:text-sm
+  @apply w-full border border-line/20 rounded-xl px-4 py-3 bg-paper/50 text-ink text-base md:text-sm
          min-h-[48px] md:min-h-[44px]
          placeholder:text-clay/60
-         focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand
+         focus:outline-none focus:ring-2 focus:ring-brand/50 focus:border-brand
          transition-all duration-200 shadow-inner;
 }
 
@@ -208,7 +210,7 @@ textarea.input {
    CONTEXT MENU / DROPDOWNS
 ──────────────────────────────────────────────────── */
 .dropdown-menu {
-  @apply bg-lift/80 backdrop-blur-xl border border-ink/5 dark:border-line/10 rounded-xl shadow-elev-3 overflow-hidden min-w-[150px] z-50;
+  @apply bg-surface/90 backdrop-blur-xl border border-line/10 rounded-xl shadow-[0_10px_30px_-5px_rgba(0,0,0,0.5)] overflow-hidden min-w-[150px] z-50;
 }
 
 .dropdown-item {

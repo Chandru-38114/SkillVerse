@@ -23,6 +23,7 @@ export default {
         line:       "rgb(var(--color-line)       / <alpha-value>)",
         gold:       "rgb(var(--color-gold)       / <alpha-value>)",
         goldLight:  "rgb(var(--color-goldLight)  / <alpha-value>)",
+        accent:     "rgb(var(--color-accent)     / <alpha-value>)",
         // Chat bubble tokens — sent / received
         bubbleMe:   "rgb(var(--color-bubbleMe)   / <alpha-value>)",
         bubbleThem: "rgb(var(--color-bubbleThem) / <alpha-value>)",

@@ -143,14 +143,22 @@ export default function Navbar() {
       <header className="bg-surface border-b border-line sticky top-0 z-40 shadow-elev-1">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-0 flex items-center justify-between h-16">
           {/* Logo */}
-          <Link to="/" className="font-display text-xl tracking-tight shrink-0 text-ink font-bold flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-brand/15 flex items-center justify-center shrink-0">
-              <svg className="w-5 h-5 text-brand" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+          <Link to="/" className="font-display text-xl tracking-tight shrink-0 text-ink font-bold flex items-center gap-2 group">
+            <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 relative transition-transform group-hover:scale-105 duration-300">
+              <div className="absolute inset-0 bg-brand/10 blur-md rounded-full scale-125 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+              <svg className="w-6 h-6 relative z-10" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="24" cy="24" r="22" className="stroke-line" strokeWidth="1" strokeDasharray="2 6" />
+                <path d="M 12 14 L 24 36 L 36 14" className="stroke-brandLight" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M 34 14 C 34 14 28 8 24 16 C 20 24 34 26 24 36 C 18 42 12 36 12 36" className="stroke-brand" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+                <circle cx="12" cy="14" r="3.5" className="fill-brand drop-shadow-sm" />
+                <circle cx="34" cy="14" r="3.5" className="fill-brand2 drop-shadow-sm" />
+                <circle cx="24" cy="25" r="3" className="fill-white stroke-accent stroke-2" />
+                <circle cx="24" cy="36" r="3.5" className="fill-brand drop-shadow-sm" />
+                <circle cx="12" cy="36" r="3" className="fill-gold drop-shadow-sm" />
               </svg>
             </div>
-            <div className="text-ink">
-              Skill<span className="text-brand">Verse</span>
+            <div className="text-ink drop-shadow-sm">
+              Skill<span className="text-transparent bg-clip-text bg-gradient-to-r from-brand to-brand2">Verse</span>
             </div>
           </Link>
 

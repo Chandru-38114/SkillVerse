@@ -150,16 +150,16 @@ export default function Marketplace() {
   const CATEGORIES = ['Java', 'Python', 'React', 'Data Science', 'Machine Learning', 'Figma', 'JavaScript']
 
   return (
-    <div className="min-h-screen bg-paper font-body text-ink pb-16">
-      <section className="pt-10 pb-8 px-4 sm:px-6 max-w-5xl mx-auto border-b border-line/40 mb-6">
+    <div className="min-h-screen bg-transparent font-body text-ink pb-16 relative z-10">
+      <section className="pt-10 pb-8 px-4 sm:px-6 max-w-5xl mx-auto border-b border-line/10 mb-6 relative">
         <div className="max-w-3xl mx-auto text-center mb-8">
-          <h1 className="text-3xl md:text-4xl font-bold mb-4 text-ink tracking-tight">Find Your Learning Partner</h1>
-          <p className="text-lg text-ink/70">Connect with peers to teach what you know, and learn what you don't.</p>
+          <h1 className="text-3xl md:text-4xl font-bold mb-4 text-ink tracking-tight drop-shadow-md">Find Your Learning Partner</h1>
+          <p className="text-lg text-ink/70 drop-shadow-sm">Connect with peers to teach what you know, and learn what you don't.</p>
         </div>
 
         <div className="max-w-2xl mx-auto">
-          <form onSubmit={handleSearchSubmit} className="relative shadow-sm mb-6 flex rounded-2xl bg-surface border border-line focus-within:border-brand focus-within:ring-2 focus-within:ring-brand/20 transition-all overflow-hidden">
-            <div className="pl-4 pr-2 py-3.5 flex items-center justify-center text-ink/40">
+          <form onSubmit={handleSearchSubmit} className="relative shadow-sm mb-6 flex rounded-[2rem] bg-surface/80 backdrop-blur-3xl border border-white focus-within:border-brand/40 focus-within:shadow-[0_4px_24px_-12px_rgba(67,56,202,0.2)] transition-all overflow-hidden p-1.5">
+            <div className="pl-5 pr-2 py-3 flex items-center justify-center text-ink/40">
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
             </div>
             <input
@@ -169,7 +169,7 @@ export default function Marketplace() {
               value={query}
               onChange={e => setQuery(e.target.value)}
             />
-            <button type="submit" className="bg-brand hover:bg-brand2 transition-colors text-white px-6 font-bold text-sm tracking-wide">
+            <button type="submit" className="bg-brand hover:bg-brand2 transition-colors text-white px-8 py-3 rounded-2xl font-bold text-sm tracking-wide shadow-sm">
               Search
             </button>
           </form>
@@ -180,19 +180,19 @@ export default function Marketplace() {
               <button 
                 key={c}
                 onClick={() => handleCategoryClick(c)}
-                className="px-3 py-1 text-xs font-semibold rounded-full bg-paper border border-line text-ink/70 hover:border-brand hover:text-brand transition-colors"              >
+                className="px-4 py-1.5 text-xs font-semibold rounded-full bg-white/60 backdrop-blur-md border border-white text-ink/70 hover:border-brand/30 hover:text-brand hover:bg-white transition-all shadow-sm"              >
                 {c}
               </button>
             ))}
           </div>
 
-          <div className="flex flex-wrap items-center justify-between gap-4 border-t border-line/40 pt-6">
-            <div className="flex bg-paper p-1 rounded-lg border border-line inline-flex">
+          <div className="flex flex-wrap items-center justify-between gap-4 border-t border-line/10 pt-6">
+            <div className="flex bg-surface/40 backdrop-blur-md p-1 rounded-lg border border-line/20 inline-flex">
               {['All', 'I Want to Learn', 'I Can Teach'].map(f => (
                 <button
                   key={f}
                   onClick={() => handleFilterChange(f)}
-                  className={`px-4 py-1.5 text-sm font-semibold rounded-md transition-all ${activeFilter === f ? 'bg-lift text-ink shadow-elev-1 border border-brand/20' : 'text-clay hover:text-ink hover:bg-lift/60'}`}
+                  className={`px-4 py-2 text-sm font-semibold rounded-xl transition-all ${activeFilter === f ? 'bg-brand text-white shadow-sm' : 'text-clay hover:text-ink hover:bg-white/80'}`}
                 >
                   {f}
                 </button>
@@ -202,12 +202,12 @@ export default function Marketplace() {
             <div className="flex items-center gap-2">
               <span className="text-xs font-bold uppercase tracking-wider text-ink/50">Min Proficiency:</span>
               <select 
-                className="input text-sm py-1.5 bg-lift w-auto font-medium"
+                className="input text-sm py-1.5 bg-surface/60 backdrop-blur-md w-auto font-medium border-line/20 text-ink/90"
                 value={proficiency}
                 onChange={e => setProficiency(e.target.value)}
               >
                 {['All', 'Intermediate', 'Advanced', 'Expert'].map(l => (
-                  <option key={l} value={l}>{l}</option>
+                  <option key={l} value={l} className="bg-surface text-ink">{l}</option>
                 ))}
               </select>
             </div>
@@ -240,10 +240,11 @@ export default function Marketplace() {
               const staggerClass = `stagger-${(idx % 5) + 1}`;
 
               return (
-                <div key={teacher.user_id} className={`card-hover overflow-hidden flex flex-col shadow-sm animate-slide-up ${staggerClass}`}>
+                <div key={teacher.user_id} className={`card-hover overflow-hidden flex flex-col bg-surface/80 backdrop-blur-3xl border border-white shadow-sm rounded-[2rem] animate-slide-up ${staggerClass}`}>
                   
-                  <div className="p-5 flex-1 flex flex-col">
-                    <div className="flex gap-4 mb-5">
+                  <div className="p-5 flex-1 flex flex-col relative">
+                    <div className="absolute inset-0 bg-gradient-to-br from-brand/5 to-transparent pointer-events-none" />
+                    <div className="flex gap-4 mb-5 relative z-10">
                       <Avatar url={teacher.profile_picture_url} name={teacher.name} size="lg" className="shrink-0" />
                       <div>
                         <h3 className="text-xl font-bold text-ink">{teacher.name}</h3>
@@ -283,8 +284,8 @@ export default function Marketplace() {
                         </h4>
                         <div className="flex flex-wrap gap-2">
                           {teacher.teaching_skills.length === 0 ? <span className="text-xs text-ink/40 italic">None</span> : teacher.teaching_skills.map(s => (
-                            <div key={s.skill_name} className="flex flex-col bg-paper px-3 py-1.5 rounded-md border border-line/40">
-                              <span className="text-sm font-semibold text-ink">{s.skill_name}</span> 
+                            <div key={s.skill_name} className="flex flex-col bg-white/60 border border-white px-4 py-2 rounded-xl shadow-sm">
+                              <span className="text-sm font-bold text-ink">{s.skill_name}</span> 
                               <span className="text-[10px] text-brand uppercase tracking-wide font-bold">{s.level}</span>
                             </div>
                           ))}
@@ -298,8 +299,8 @@ export default function Marketplace() {
                         </h4>
                         <div className="flex flex-wrap gap-2">
                           {teacher.learning_skills.length === 0 ? <span className="text-xs text-ink/40 italic">None</span> : teacher.learning_skills.map(s => (
-                            <div key={s.skill_name} className="flex flex-col bg-paper px-3 py-1.5 rounded-md border border-line/40">
-                              <span className="text-sm font-semibold text-ink">{s.skill_name}</span> 
+                            <div key={s.skill_name} className="flex flex-col bg-white/60 border border-white px-4 py-2 rounded-xl shadow-sm">
+                              <span className="text-sm font-bold text-ink">{s.skill_name}</span> 
                               <span className="text-[10px] text-brand2 uppercase tracking-wide font-bold">{s.level === 'Unassessed' ? 'Beginner' : s.level}</span>
                             </div>
                           ))}
@@ -308,7 +309,7 @@ export default function Marketplace() {
                     </div>
                   </div>
 
-                  <div className="p-4 border-t border-line/40 bg-lift">
+                  <div className="p-5 md:p-6 border-t border-line/5 bg-white/40 relative z-10">
                     <RequestControl
                       rel={rel}
                       teacher={teacher}
@@ -367,23 +368,23 @@ function RequestControl({ rel, teacher, targetSkill, form, onFormChange, onSend,
         <p className="text-[11px] font-bold text-clay uppercase tracking-wider">Connect Request</p>
         {displaySkills.length > 1 ? (
           <select
-            className="input text-sm py-2 bg-lift font-medium"
+            className="input text-sm py-2 bg-surface/60 backdrop-blur-md font-medium border-line/20 text-ink/90"
             value={targetSkill}
             onChange={(e) => onFormChange('target_skill', e.target.value)}
           >
-            <option value="" disabled>Select a skill...</option>
+            <option value="" disabled className="bg-surface text-ink">Select a skill...</option>
             {displaySkills.map(s => (
-              <option key={s.skill_name} value={s.skill_name}>
+              <option key={s.skill_name} value={s.skill_name} className="bg-surface text-ink">
                 {isTeachingThem ? `I want to teach them ${s.skill_name}` : `I want to learn ${s.skill_name}`}
               </option>
             ))}
           </select>
         ) : displaySkills.length === 1 ? (
-          <p className="text-sm font-medium text-ink bg-surface border border-line px-3.5 py-2 rounded-lg">
-            {isTeachingThem ? 'I want to teach them ' : 'I want to learn '}<span className="font-bold text-brand">{targetSkill}</span>
+          <p className="text-sm font-medium text-ink bg-surface/60 border border-brand/20 shadow-[0_0_15px_rgba(34,211,238,0.1)] px-3.5 py-2 rounded-lg">
+            {isTeachingThem ? 'I want to teach them ' : 'I want to learn '}<span className="font-bold text-brand drop-shadow-sm">{targetSkill}</span>
           </p>
         ) : (
-          <p className="text-sm font-medium text-clay bg-lift border border-line px-3.5 py-2 rounded-lg italic">
+          <p className="text-sm font-medium text-clay bg-surface/40 border border-line/10 px-3.5 py-2 rounded-lg italic">
             No specific skills available for this role.
           </p>
         )}
@@ -392,7 +393,7 @@ function RequestControl({ rel, teacher, targetSkill, form, onFormChange, onSend,
       <div>
         <label className="text-xs text-ink/60 font-semibold mb-1 block">Personal Message</label>
         <input
-          className="input text-sm py-2 bg-lift"
+          className="input text-sm py-2 bg-surface/60 backdrop-blur-md border-line/20 text-ink/90 placeholder:text-ink/40"
           placeholder={`Hi ${teacher.name}, let's connect!`}
           value={form.message}
           onChange={(e) => onFormChange('message', e.target.value)}

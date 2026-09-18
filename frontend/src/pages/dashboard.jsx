@@ -203,11 +203,11 @@ export default function Dashboard() {
     <div className="page space-y-4 md:space-y-6 pb-8 animate-fade-in stagger-1">
       
       {/* Player Stats Header */}
-      <section className="mb-4 bg-surface p-4 rounded-xl border border-line shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <Avatar name={user.name} size="lg" className="shrink-0" />
+      <section className="mb-4 bg-surface/40 backdrop-blur-3xl p-6 rounded-[2rem] border border-white/50 shadow-sm flex flex-col md:flex-row items-center justify-between gap-6">
+        <div className="flex items-center gap-5">
+          <Avatar name={user.name} size="lg" className="shrink-0 drop-shadow-sm ring-4 ring-white" />
           <div>
-            <h1 className="text-xl md:text-2xl font-bold text-ink mb-1">
+            <h1 className="text-2xl md:text-3xl font-display font-bold text-ink mb-1">
               {user.name.split(' ')[0]}'s Journey
             </h1>
             <p className="text-sm font-semibold text-brand flex items-center gap-1.5">
@@ -215,12 +215,12 @@ export default function Dashboard() {
             </p>
           </div>
         </div>
-        <div className="w-full md:w-64">
-           <div className="flex justify-between items-end mb-1">
+        <div className="w-full md:w-72 bg-white/50 rounded-2xl p-4 border border-white/60 shadow-sm">
+           <div className="flex justify-between items-end mb-2">
              <p className="text-[10px] font-bold text-clay uppercase tracking-wider">XP to next level</p>
-             <p className="text-xs text-ink/70 font-semibold">{gamification?.total_points || user.points || 0} / {gamification?.next_milestone_points || 500}</p>
+             <p className="text-xs text-ink font-bold">{gamification?.total_points || user.points || 0} / {gamification?.next_milestone_points || 500}</p>
            </div>
-           <div className="w-full bg-line/40 h-2 rounded-full overflow-hidden">
+           <div className="w-full bg-lift/80 h-2 rounded-full overflow-hidden shadow-inner">
              <div 
                className="bg-brand h-full rounded-full transition-all duration-700 ease-out animate-progress" 
                style={{ width: `${Math.min(100, (((gamification?.total_points || user.points || 0) / (gamification?.next_milestone_points || 500)) * 100))}%` }} 
@@ -235,14 +235,14 @@ export default function Dashboard() {
         ) : null
       ) : isEmptyState ? (
         // Start Journey Node
-        <div className="card p-8 sm:p-12 text-center bg-brand/5 border border-brand/20 shadow-sm mt-6 max-w-4xl mx-auto animate-slide-up stagger-2 relative overflow-hidden">
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-brand/5 rounded-full blur-3xl pointer-events-none" />
-          <div className="w-20 h-20 bg-surface border-4 border-brand/20 text-brand rounded-full flex items-center justify-center mx-auto mb-6 relative z-10 shadow-sm">
+        <div className="card p-8 sm:p-12 text-center bg-surface/60 border border-brand/30 shadow-[0_0_40px_rgba(34,211,238,0.1)] mt-6 max-w-4xl mx-auto animate-slide-up stagger-2 relative overflow-hidden">
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-brand/10 rounded-full blur-3xl pointer-events-none" />
+          <div className="w-20 h-20 bg-surface border-4 border-brand/20 text-brand rounded-full flex items-center justify-center mx-auto mb-6 relative z-10 shadow-[0_0_20px_rgba(34,211,238,0.3)]">
             <Compass className="w-10 h-10" />
           </div>
-          <h2 className="text-2xl font-bold text-ink mb-3 relative z-10">YOUR FIRST QUEST AWAITS</h2>
+          <h2 className="text-2xl font-bold text-ink mb-3 relative z-10 drop-shadow-md">YOUR FIRST QUEST AWAITS</h2>
           <p className="text-clay mb-8 max-w-md mx-auto text-base relative z-10">Every journey begins with a single step. Choose a skill to assess and discover your path.</p>
-          <Link to="/assessment" className="btn-brand inline-flex py-3 px-8 text-base shadow-md hover:shadow-lg transition-all relative z-10">
+          <Link to="/assessment" className="btn-brand inline-flex py-3 px-8 text-base shadow-md hover:shadow-[0_0_25px_rgba(34,211,238,0.6)] transition-all relative z-10">
             Accept Quest: Assess a Skill
           </Link>
         </div>
@@ -259,13 +259,13 @@ export default function Dashboard() {
               <div className="relative pl-2 sm:pl-4 ml-2 space-y-10 py-6">
                 
                 {/* The glowing path line */}
-                <div className="absolute left-6 top-8 bottom-8 w-1 bg-gradient-to-b from-brand/80 via-brand/30 to-transparent rounded-full shadow-[0_0_10px_rgba(var(--color-brand),0.3)] z-0" />
+                <div className="absolute left-6 top-8 bottom-8 w-1 bg-gradient-to-b from-brand2 via-brand/40 to-transparent rounded-full shadow-[0_0_15px_rgba(34,211,238,0.5)] z-0" />
                 
                 {/* Past/Completed Nodes */}
                 {activeLearningSkill && activeLearningSkill.progress_percentage > 0 && (
                   <div className="relative flex items-start gap-4 sm:gap-6 z-10">
                     <div className="w-9 h-9 sm:w-10 sm:h-10 flex-shrink-0 flex items-center justify-center">
-                      <div className="w-4 h-4 bg-brand rounded-full shadow-[0_0_12px_rgba(var(--color-brand),0.6)] border-2 border-surface" />
+                      <div className="w-4 h-4 bg-brand2 rounded-full shadow-[0_0_15px_rgba(129,140,248,0.6)] border-2 border-surface" />
                     </div>
                     <div className="pt-1 sm:pt-2">
                       <h3 className="text-sm font-bold text-ink opacity-60">Training Commenced</h3>
@@ -277,42 +277,44 @@ export default function Dashboard() {
                 {/* CURRENT QUEST NODE (Highlight) */}
                 <div className="relative flex items-start gap-4 sm:gap-6 group z-10">
                    {/* Ambient Background Glow matching the active node */}
-                   <div className="absolute top-1/2 left-0 -translate-y-1/2 w-32 h-32 bg-brand/20 rounded-full blur-3xl pointer-events-none z-0" />
+                   <div className="absolute top-1/2 left-0 -translate-y-1/2 w-48 h-48 bg-brand/10 rounded-full blur-3xl pointer-events-none z-0" />
                    
                    <div className="w-9 h-9 sm:w-10 sm:h-10 flex-shrink-0 flex items-center justify-center relative z-10 pt-1 sm:pt-2">
                      {/* Outer pulsing ring */}
-                     <div className="absolute w-8 h-8 bg-brand/30 rounded-full animate-slow-pulse" />
+                     <div className="absolute w-10 h-10 bg-brand/15 rounded-full animate-slow-pulse" />
                      {/* Solid current dot */}
-                     <div className="w-5 h-5 bg-brand rounded-full border-[3px] border-surface shadow-[0_0_15px_rgba(var(--color-brand),0.8)] relative z-10" />
+                     <div className="w-6 h-6 bg-surface rounded-full border-4 border-brand shadow-sm relative z-10 flex items-center justify-center">
+                       <div className="w-2 h-2 bg-brand rounded-full" />
+                     </div>
                    </div>
                    
-                   <div className="flex-1 card-hover bg-surface/60 border border-brand/40 shadow-[0_0_20px_rgba(16,185,129,0.15)] p-6 md:p-8 overflow-hidden relative rounded-2xl z-10 group/card">
+                   <div className="flex-1 card-hover bg-surface/80 backdrop-blur-3xl border border-white p-8 md:p-10 overflow-hidden relative rounded-[2rem] z-10 group/card shadow-[0_4px_24px_-12px_rgba(67,56,202,0.15)]">
                      <div className="absolute inset-0 bg-gradient-to-br from-brand/5 to-transparent pointer-events-none" />
                      <div className="relative z-10">
-                       <p className="text-[10px] font-bold text-brand uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                         <Star className="w-3.5 h-3.5 fill-brand text-brand" /> Current Quest
+                       <p className="text-[10px] font-bold text-brand uppercase tracking-widest mb-3 flex items-center gap-1.5">
+                         <Star className="w-4 h-4 fill-brand text-brand" /> Current Quest
                        </p>
-                       <h3 className="text-2xl font-display font-bold text-ink leading-tight mb-2">
+                       <h3 className="text-3xl md:text-4xl font-display font-bold text-ink leading-tight mb-3">
                          {heroState.title}
                        </h3>
-                       <p className="text-clay font-medium mb-6 text-sm max-w-lg">{heroState.description}</p>
+                       <p className="text-clay font-medium mb-8 text-base md:text-lg max-w-lg leading-relaxed">{heroState.description}</p>
                        
                        {heroState.metadata && (
-                         <div className="grid grid-cols-2 gap-y-3 gap-x-4 mb-8 max-w-sm">
+                         <div className="grid grid-cols-2 gap-y-4 gap-x-6 mb-10 max-w-md bg-white/60 rounded-2xl p-4 border border-white/80 shadow-sm">
                            {heroState.metadata.map(m => (
-                             <div key={m.label} className="text-xs">
-                               <span className="text-clay uppercase tracking-wider text-[10px] font-bold block mb-0.5">{m.label}</span>
-                               <span className="text-ink font-semibold">{m.value}</span>
+                             <div key={m.label} className="text-sm">
+                               <span className="text-clay uppercase tracking-wider text-[10px] font-bold block mb-1">{m.label}</span>
+                               <span className="text-ink font-bold">{m.value}</span>
                              </div>
                            ))}
                          </div>
                        )}
 
-                       <Link to={heroState.actionUrl} className="btn-brand">
+                       <Link to={heroState.actionUrl} className="btn-brand text-base px-8 py-4 rounded-full">
                          {heroState.actionText}
                        </Link>
                      </div>
-                     <div className="absolute right-[-5%] bottom-[-5%] hidden sm:flex items-center justify-end pr-6 pointer-events-none opacity-[0.07] group-hover/card:opacity-[0.12] transition-opacity duration-500 scale-125">
+                     <div className="absolute right-[-10%] bottom-[-10%] hidden sm:flex items-center justify-end pr-6 pointer-events-none opacity-[0.04] group-hover/card:opacity-[0.08] group-hover/card:scale-110 transition-all duration-700 scale-125">
                        {heroState.icon}
                      </div>
                    </div>
@@ -340,13 +342,13 @@ export default function Dashboard() {
                 <h3 className="text-[10px] font-bold text-clay uppercase tracking-wider mb-4 px-1">Other Active Paths</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {learningSkills.filter(s => s.id !== activeLearningSkill?.id).map(s => (
-                    <div key={s.id} className="bg-surface border border-line px-4 py-3 rounded-xl flex flex-col gap-2">
+                    <div key={s.id} className="bg-surface/50 backdrop-blur-lg border border-line/20 px-4 py-3 rounded-xl flex flex-col gap-2 hover:border-brand/30 transition-colors shadow-elev-1">
                        <div className="flex justify-between items-center">
                          <span className="font-bold text-sm text-ink">{s.skill_name}</span>
-                         <span className="text-xs font-bold text-brand bg-brand/10 px-2 py-0.5 rounded">{s.progress_percentage || 0}%</span>
+                         <span className="text-xs font-bold text-brand bg-brand/10 px-2 py-0.5 rounded shadow-sm">{s.progress_percentage || 0}%</span>
                        </div>
-                       <div className="w-full bg-line/50 rounded-full h-1 overflow-hidden">
-                         <div className="bg-brand h-full rounded-full transition-all duration-700 ease-out animate-progress" style={{ width: `${s.progress_percentage || 0}%` }} />
+                       <div className="w-full bg-line/20 rounded-full h-1 overflow-hidden shadow-inner">
+                         <div className="bg-gradient-to-r from-brand2 to-brand h-full rounded-full transition-all duration-700 ease-out animate-progress" style={{ width: `${s.progress_percentage || 0}%` }} />
                        </div>
                     </div>
                   ))}
@@ -364,15 +366,15 @@ export default function Dashboard() {
               {teachingSkills.length > 0 ? (
                 <div className="flex flex-col gap-2">
                   {teachingSkills.map(s => (
-                    <div key={s.id} className="bg-surface border border-gold/20 px-4 py-3 rounded-xl flex items-center justify-between shadow-sm relative overflow-hidden group hover:border-gold/40 transition-colors">
-                      <div className="absolute left-0 top-0 bottom-0 w-1 bg-gold/50 group-hover:bg-gold transition-colors" />
+                    <div key={s.id} className="bg-surface/50 backdrop-blur-lg border border-gold/20 px-4 py-3 rounded-xl flex items-center justify-between shadow-elev-1 relative overflow-hidden group hover:border-gold/40 transition-colors">
+                      <div className="absolute left-0 top-0 bottom-0 w-1 bg-gold/50 group-hover:bg-gold transition-colors drop-shadow-[0_0_5px_rgba(251,191,36,0.5)]" />
                       <span className="font-semibold text-sm text-ink pl-1">{s.skill_name}</span>
                       {s.badge && <SkillBadge badge={s.badge} />}
                     </div>
                   ))}
                 </div>
               ) : (
-                <div className="bg-surface border border-line border-dashed rounded-xl px-4 py-6 text-center">
+                <div className="bg-surface/30 backdrop-blur-md border border-line/20 border-dashed rounded-xl px-4 py-6 text-center">
                    <Award className="w-6 h-6 text-clay mx-auto mb-2 opacity-50" />
                    <p className="text-xs text-clay">Master a skill to add it to your inventory and teach others.</p>
                 </div>
@@ -385,7 +387,7 @@ export default function Dashboard() {
                 <Calendar className="w-3.5 h-3.5" /> Scheduled Events
               </h3>
               {nextSession ? (
-                <div className="card p-4 border border-brand/20 bg-brand/5 shadow-sm flex flex-col gap-3">
+                <div className="card p-4 border border-brand/20 bg-surface/50 backdrop-blur-xl shadow-elev-2 flex flex-col gap-3 group hover:border-brand/40 transition-colors">
                    <div className="flex items-center gap-3">
                      <Avatar name={nextSession.tutor_id === user.id ? nextSession.learner_name : nextSession.tutor_name} size="md" className="shrink-0" />
                      <div className="flex-1 min-w-0">
@@ -393,7 +395,7 @@ export default function Dashboard() {
                        <p className="text-xs text-clay">With <span className="font-medium text-ink">{nextSession.tutor_id === user.id ? nextSession.learner_name : nextSession.tutor_name}</span></p>
                      </div>
                    </div>
-                   <div className="pt-3 border-t border-brand/10">
+                   <div className="pt-3 border-t border-line/10">
                      <p className="text-xs text-ink/70 font-semibold mb-3">
                        {new Date(nextSession.session_date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} • {nextSession.start_time}
                      </p>
@@ -401,7 +403,7 @@ export default function Dashboard() {
                    </div>
                 </div>
               ) : (
-                <div className="bg-surface border border-line border-dashed rounded-xl px-4 py-5 text-center">
+                <div className="bg-surface/30 backdrop-blur-md border border-line/20 border-dashed rounded-xl px-4 py-5 text-center">
                   <p className="text-xs text-clay mb-3">No upcoming events.</p>
                   <Link to="/marketplace" className="text-xs font-semibold text-brand hover:underline">Find a partner →</Link>
                 </div>
