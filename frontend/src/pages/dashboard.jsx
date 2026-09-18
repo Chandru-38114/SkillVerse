@@ -105,10 +105,16 @@ export default function Dashboard() {
     const dateStr = new Date(nextSession.session_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     heroState = {
       title: "Enter the Learning Arena",
-      description: `Your training in ${nextSession.skill} with ${peerName} begins on ${dateStr} at ${nextSession.start_time}.`,
+      description: `Your upcoming session is confirmed. Prepare to learn and practice.`,
       actionText: "Join Arena →",
       actionUrl: `/session/${nextSession.id}`,
-      icon: <Calendar className="w-24 h-24 text-brand opacity-20" />
+      icon: <Calendar className="w-24 h-24 text-brand opacity-20" />,
+      metadata: [
+        { label: "Partner", value: peerName },
+        { label: "Focus Skill", value: nextSession.skill },
+        { label: "Date", value: dateStr },
+        { label: "Time", value: nextSession.start_time }
+      ]
     }
   } else if (weakTopic) {
     heroState = {
@@ -141,10 +147,16 @@ export default function Dashboard() {
         } else if (relevantRequest.status === 'accepted') {
           heroState = {
             title: "Prepare for Learning",
-            description: `Your partner accepted your request for ${activeLearningSkill.skill_name}. Coordinate and schedule a session!`,
+            description: `Coordinate and schedule a session with your partner to continue your journey.`,
             actionText: "Message Partner →",
             actionUrl: `/messages?request_id=${relevantRequest.id}`,
-            icon: <BookOpen className="w-24 h-24 text-brand opacity-20" />
+            icon: <BookOpen className="w-24 h-24 text-brand opacity-20" />,
+            metadata: [
+              { label: "Partner", value: relevantRequest.to_user_name },
+              { label: "Focus Skill", value: activeLearningSkill.skill_name },
+              { label: "Recommended Topic", value: weakTopic || "General Practice" },
+              { label: "Status", value: "Waiting to schedule" }
+            ]
           }
         }
       } else {
@@ -273,6 +285,18 @@ export default function Dashboard() {
                          {heroState.title}
                        </h3>
                        <p className="text-clay font-medium mb-5 text-sm">{heroState.description}</p>
+                       
+                       {heroState.metadata && (
+                         <div className="grid grid-cols-2 gap-y-3 gap-x-4 mb-6 max-w-sm">
+                           {heroState.metadata.map(m => (
+                             <div key={m.label} className="text-xs">
+                               <span className="text-clay uppercase tracking-wider text-[10px] font-bold block mb-0.5">{m.label}</span>
+                               <span className="text-ink font-semibold">{m.value}</span>
+                             </div>
+                           ))}
+                         </div>
+                       )}
+
                        <Link to={heroState.actionUrl} className="btn-brand inline-flex text-sm py-2.5 px-6 shadow-sm hover:shadow transition-shadow">
                          {heroState.actionText}
                        </Link>
