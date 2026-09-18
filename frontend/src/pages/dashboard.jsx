@@ -146,7 +146,7 @@ export default function Dashboard() {
   const isEmptyState = skills.length === 0 && upcoming.length === 0;
 
   return (
-    <div className="page space-y-6 md:space-y-8 pb-12">
+    <div className="page space-y-4 md:space-y-6 pb-8">
       
       <section className="mb-4">
         <h1 className="text-2xl md:text-3xl font-bold text-ink mb-1">
@@ -163,18 +163,18 @@ export default function Dashboard() {
         ) : null
       ) : isEmptyState ? (
         // A7: Dashboard Empty State
-        <div className="card p-8 sm:p-12 text-center bg-brand/5 border border-brand/20 shadow-sm mt-8 max-w-4xl mx-auto">
-          <h2 className="text-2xl font-bold text-ink mb-3">YOUR JOURNEY STARTS HERE</h2>
-          <p className="text-clay mb-6 max-w-md mx-auto">Choose a skill to assess and discover people who can help you grow.</p>
-          <Link to="/assessment" className="btn-primary inline-flex text-base py-3 px-8 shadow-sm">
+        <div className="card p-6 sm:p-8 text-center bg-brand/5 border border-brand/20 shadow-sm mt-6 max-w-4xl mx-auto">
+          <h2 className="text-xl font-bold text-ink mb-2">YOUR JOURNEY STARTS HERE</h2>
+          <p className="text-clay mb-5 max-w-md mx-auto text-sm">Choose a skill to assess and discover people who can help you grow.</p>
+          <Link to="/assessment" className="btn-primary inline-flex py-2.5 px-6 shadow-sm">
             Assess a skill
           </Link>
         </div>
       ) : (
-        <div className="max-w-3xl space-y-10">
+        <div className="max-w-4xl space-y-6">
           
           {/* A1: HERO / NEXT ACTION */}
-          <section className="card bg-surface shadow-sm border border-line p-6 md:p-8">
+          <section className="card bg-surface shadow-sm border border-line p-5 md:p-6">
             <p className="text-[10px] font-bold text-brand uppercase tracking-wider mb-3">Your Skill Journey</p>
             <h2 className="text-2xl md:text-3xl font-bold text-ink leading-tight mb-3">
               {heroState.title}
@@ -188,12 +188,12 @@ export default function Dashboard() {
           {/* A2 & A3: CURRENT LEARNING */}
           {learningSkills.length > 0 && (
             <section>
-              <h3 className="text-xs font-bold text-clay uppercase tracking-wider mb-4 px-1">Current Learning</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <h3 className="text-[10px] font-bold text-clay uppercase tracking-wider mb-3 px-1">Current Learning</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {learningSkills.map(s => {
                   const narrative = getProgressNarrative(s.progress_percentage, s.badge);
                   return (
-                    <div key={s.id} className="card p-6 border border-line shadow-sm hover:shadow-md transition-shadow flex flex-col">
+                    <div key={s.id} className="card p-5 border border-line shadow-sm hover:shadow-md transition-shadow flex flex-col">
                       <div className="flex justify-between items-start mb-4">
                         <div>
                           <h4 className="font-bold text-ink text-lg leading-tight mb-0.5">{s.skill_name}</h4>
@@ -225,9 +225,9 @@ export default function Dashboard() {
 
           {/* A5: UPCOMING SESSION */}
           <section>
-            <h3 className="text-xs font-bold text-clay uppercase tracking-wider mb-4 px-1">Upcoming Commitment</h3>
+            <h3 className="text-[10px] font-bold text-clay uppercase tracking-wider mb-3 px-1">Upcoming Commitment</h3>
             {nextSession ? (
-              <div className="card p-5 border border-brand/20 bg-brand/5 shadow-sm flex flex-col sm:flex-row sm:items-center gap-4">
+              <div className="card p-4 border border-brand/20 bg-brand/5 shadow-sm flex flex-col sm:flex-row sm:items-center gap-4">
                  <Avatar name={nextSession.tutor_id === user.id ? nextSession.learner_name : nextSession.tutor_name} size="md" className="shrink-0" />
                  <div className="flex-1 min-w-0">
                    <p className="font-bold text-ink text-base capitalize">{nextSession.skill}</p>
@@ -250,8 +250,8 @@ export default function Dashboard() {
 
           {/* A4: GROWTH & MILESTONES */}
           <section>
-            <h3 className="text-xs font-bold text-clay uppercase tracking-wider mb-4 px-1">Growth</h3>
-            <div className="card p-6 md:p-8 border border-line bg-surface shadow-sm">
+            <h3 className="text-[10px] font-bold text-clay uppercase tracking-wider mb-3 px-1">Growth</h3>
+            <div className="card border border-line bg-surface shadow-sm">
                <div className="flex flex-col md:flex-row md:items-center gap-6">
                  <div className="flex-1">
                    <p className="text-[10px] font-bold text-gold uppercase tracking-wider mb-2">Next Milestone</p>
@@ -277,10 +277,10 @@ export default function Dashboard() {
           {/* A6: TEACHING SKILLS */}
           {teachingSkills.length > 0 && (
             <section>
-              <h3 className="text-xs font-bold text-clay uppercase tracking-wider mb-4 px-1">Skills You Teach</h3>
-              <div className="flex flex-wrap gap-3">
+              <h3 className="text-[10px] font-bold text-clay uppercase tracking-wider mb-3 px-1">Skills You Teach</h3>
+              <div className="flex flex-wrap gap-2">
                 {teachingSkills.map(s => (
-                  <div key={s.id} className="bg-surface border border-line px-5 py-3 rounded-xl flex items-center gap-3 shadow-sm">
+                  <div key={s.id} className="bg-surface border border-line px-4 py-2.5 rounded-lg flex items-center gap-2 shadow-sm">
                     <span className="font-semibold text-sm text-ink">{s.skill_name}</span>
                     {s.badge && <SkillBadge badge={s.badge} />}
                   </div>

@@ -75,7 +75,7 @@ export default function Login() {
         <SkillVerseLogo />
         <div className="mb-6 text-center"><p className="text-ink/50 text-sm">Welcome back</p></div>
 
-        <div className="card p-4 sm:p-6 sm:p-5 sm:p-8">
+        <div className="card">
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
               <label className="field-label" htmlFor="identifier">Email or Mobile Number</label>

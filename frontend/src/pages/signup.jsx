@@ -81,7 +81,7 @@ export default function Signup() {
           </p>
         </div>
 
-        <div className="card p-5 sm:p-8">
+        <div className="card">
           {step === 1 && (
             <form onSubmit={handleFormSubmit} className="space-y-4">
               <Field id="name" label="Full name" placeholder="Alex Johnson" value={form.name} onChange={(v) => update('name', v)} required />

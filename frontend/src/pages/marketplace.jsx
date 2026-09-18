@@ -150,9 +150,9 @@ export default function Marketplace() {
   const CATEGORIES = ['Java', 'Python', 'React', 'Data Science', 'Machine Learning', 'Figma', 'JavaScript']
 
   return (
-    <div className="min-h-screen bg-paper font-body text-ink pb-24">
-      <section className="pt-16 pb-12 px-4 sm:px-6 max-w-6xl mx-auto border-b border-line/40 mb-8">
-        <div className="max-w-3xl mx-auto text-center mb-10">
+    <div className="min-h-screen bg-paper font-body text-ink pb-16">
+      <section className="pt-10 pb-8 px-4 sm:px-6 max-w-5xl mx-auto border-b border-line/40 mb-6">
+        <div className="max-w-3xl mx-auto text-center mb-8">
           <h1 className="text-3xl md:text-4xl font-bold mb-4 text-ink tracking-tight">Find Your Learning Partner</h1>
           <p className="text-lg text-ink/70">Connect with peers to teach what you know, and learn what you don't.</p>
         </div>
@@ -227,7 +227,7 @@ export default function Marketplace() {
         ) : filteredResults.length === 0 ? (
           <EmptyTeachers query={query} filter={activeFilter} proficiency={proficiency} />
         ) : (
-          <div className="grid lg:grid-cols-2 gap-8">
+          <div className="grid lg:grid-cols-2 gap-6 max-w-5xl mx-auto">
             {filteredResults.map(teacher => {
               const ratings = ratingsMap[teacher.user_id]
               const displaySkills = activeFilter === 'I Can Teach' ? teacher.learning_skills : teacher.teaching_skills
@@ -241,8 +241,8 @@ export default function Marketplace() {
               return (
                 <div key={teacher.user_id} className="card overflow-hidden flex flex-col shadow-sm hover:shadow-md transition-shadow">
                   
-                  <div className="p-6 flex-1 flex flex-col">
-                    <div className="flex gap-4 mb-6">
+                  <div className="p-5 flex-1 flex flex-col">
+                    <div className="flex gap-4 mb-5">
                       <Avatar url={teacher.profile_picture_url} name={teacher.name} size="lg" className="shrink-0" />
                       <div>
                         <h3 className="text-xl font-bold text-ink">{teacher.name}</h3>
@@ -307,7 +307,7 @@ export default function Marketplace() {
                     </div>
                   </div>
 
-                  <div className="p-5 border-t border-line/40 bg-lift">
+                  <div className="p-4 border-t border-line/40 bg-lift">
                     <RequestControl
                       rel={rel}
                       teacher={teacher}
@@ -430,7 +430,7 @@ function RatingSummary({ data }) {
 
 function TeacherSkeleton() {
   return (
-    <div className="grid lg:grid-cols-2 gap-8">
+    <div className="grid lg:grid-cols-2 gap-6 max-w-5xl mx-auto">
       {[...Array(4)].map((_, i) => (
         <div key={i} className="card overflow-hidden flex flex-col">
           <div className="p-6 flex-1 border-b border-line/40">
@@ -465,7 +465,7 @@ function EmptyTeachers({ query, filter, proficiency }) {
   if (filter === 'I Can Teach') message = 'No matching partners found who want to learn those skills.'
 
   return (
-    <div className="card p-16 text-center flex flex-col items-center justify-center border-dashed border-2 bg-transparent shadow-none border-line">
+    <div className="card p-10 text-center flex flex-col items-center justify-center border-dashed border-2 bg-transparent shadow-none border-line max-w-5xl mx-auto">
       <div className="w-16 h-16 bg-line/30 rounded-full flex items-center justify-center mb-5">
         <svg className="w-8 h-8 text-clay" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />

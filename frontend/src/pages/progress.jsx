@@ -95,12 +95,12 @@ export default function Progress() {
       </div>
       
       {/* B1: Page Header */}
-      <div className="mb-10 max-w-4xl">
+      <div className="mb-8 max-w-4xl">
         <h1 className="text-3xl md:text-4xl font-bold text-ink mb-2">My Progress</h1>
-        <p className="text-clay font-medium text-lg mb-6">Track how your skills are growing.</p>
+        <p className="text-clay font-medium text-lg mb-5">Track how your skills are growing.</p>
         
         {!isEmptyState && (
-          <div className="flex flex-wrap gap-6 bg-brand/5 border border-brand/10 p-5 rounded-2xl shadow-sm">
+          <div className="flex flex-wrap gap-5 bg-brand/5 border border-brand/10 p-4 rounded-2xl shadow-sm">
             <div>
               <p className="text-xs font-bold text-brand uppercase tracking-wider mb-1">Active Skills</p>
               <p className="text-2xl font-bold text-ink">{progressData.length}</p>
@@ -129,22 +129,22 @@ export default function Progress() {
           </Link>
         </div>
       ) : (
-        <div className="max-w-4xl space-y-12">
+        <div className="max-w-4xl space-y-8">
           
           {/* B2: Skill Progress */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             {progressData.map((skill) => {
               const certForSkill = certificates.find(c => c.skill_name === skill.skill_name && c.badge === skill.badge);
               const isEligible = skill.progress_percentage >= 100 && skill.badge && skill.level !== "Unassessed";
               const narrative = getSkillNarrative(skill);
               
               return (
-                <div key={skill.id} className="card p-6 flex flex-col justify-between shadow-sm border border-line">
+                <div key={skill.id} className="card p-5 flex flex-col justify-between shadow-sm border border-line hover:shadow-md transition-shadow">
                   <div>
-                    <div className="flex justify-between items-start mb-4">
+                    <div className="flex justify-between items-start mb-3">
                       <div>
-                        <p className="text-[10px] font-bold text-brand uppercase tracking-wider mb-1">{skill.role === "learning" ? "Learning" : "Teaching"}</p>
-                        <h2 className="text-2xl font-bold text-ink leading-tight">{skill.skill_name}</h2>
+                        <p className="text-[10px] font-bold text-brand uppercase tracking-wider mb-0.5">{skill.role === "learning" ? "Learning" : "Teaching"}</p>
+                        <h2 className="text-xl font-bold text-ink leading-tight">{skill.skill_name}</h2>
                       </div>
                       <span className="text-sm font-bold text-brand bg-brand/10 px-2.5 py-1.5 rounded-md">
                         {skill.progress_percentage}%
@@ -220,7 +220,7 @@ export default function Progress() {
             
             <div className="bg-surface rounded-2xl shadow-sm border border-line overflow-hidden">
               {historyData.map((hist, index) => (
-                <div key={hist.id} className={`p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 ${index !== historyData.length - 1 ? 'border-b border-line' : ''}`}>
+                <div key={hist.id} className={`p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 ${index !== historyData.length - 1 ? 'border-b border-line' : ''}`}>
                   <div className="flex-1">
                     <div className="flex flex-wrap items-center gap-2 mb-1.5">
                       <span className="font-bold text-ink text-base">{hist.session?.skill || "Skill"}</span>
