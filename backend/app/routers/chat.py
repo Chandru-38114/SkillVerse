@@ -239,30 +239,51 @@ def get_inbox(
     current_user: models.User = Depends(auth.get_current_user),
     db: Session = Depends(get_db),
 ):
-    # Fetch requests where user is either from or to
+    # Fetch requests where user is either from or to, oldest first
     reqs = db.query(models.ConnectionRequest).filter(
         or_(
             models.ConnectionRequest.from_user_id == current_user.id,
             models.ConnectionRequest.to_user_id == current_user.id
         ),
         models.ConnectionRequest.status.in_(['accepted', 'completed'])
-    ).all()
+    ).order_by(models.ConnectionRequest.created_at.asc()).all()
 
     if not reqs:
         return []
 
     req_ids = [r.id for r in reqs]
-    other_user_ids = {r.to_user_id if r.from_user_id == current_user.id else r.from_user_id for r in reqs}
-    skill_ids = {r.skill_id for r in reqs}
+    
+    # Deduplicate by user pair to enforce ONE conversation per user pair
+    canonical_reqs = {}
+    pair_req_ids = {}
+    req_to_other_user = {}
+    
+    for req in reqs:
+        other_user_id = req.to_user_id if req.from_user_id == current_user.id else req.from_user_id
+        if other_user_id not in canonical_reqs:
+            canonical_reqs[other_user_id] = req
+            pair_req_ids[other_user_id] = []
+        pair_req_ids[other_user_id].append(req.id)
+        req_to_other_user[req.id] = other_user_id
 
+    other_user_ids = list(canonical_reqs.keys())
     users_map = {u.id: u for u in db.query(models.User).filter(models.User.id.in_(other_user_ids)).all()}
-    skills_map = {s.id: s for s in db.query(models.Skill).filter(models.Skill.id.in_(skill_ids)).all()}
+    
+    # We map skill_ids just for the canonical request
+    canonical_skill_ids = {req.skill_id for req in canonical_reqs.values()}
+    skills_map = {s.id: s for s in db.query(models.Skill).filter(models.Skill.id.in_(canonical_skill_ids)).all()}
     
     # Only map sessions that are currently 'scheduled'. Exclude completed or cancelled ones.
-    sessions_map = {s.request_id: s for s in db.query(models.Session).filter(
+    # Sessions can belong to any request ID between the pair.
+    sessions_map_pair = {}
+    sessions = db.query(models.Session).filter(
         models.Session.request_id.in_(req_ids),
         models.Session.status == "scheduled"
-    ).all()}
+    ).all()
+    for s in sessions:
+        other_u_id = req_to_other_user[s.request_id]
+        if other_u_id not in sessions_map_pair:
+            sessions_map_pair[other_u_id] = s # just take the first scheduled session
 
     # Hidden messages subquery
     hidden_subq = db.query(models.MessageUserState.message_id).filter(
@@ -278,7 +299,11 @@ def get_inbox(
         models.Message.is_read == False,
         ~models.Message.id.in_(hidden_subq)
     ).group_by(models.Message.request_id).all()
-    unread_map = {row[0]: row[1] for row in unread_counts}
+    
+    unread_map_pair = {}
+    for req_id, count in unread_counts:
+        other_u_id = req_to_other_user[req_id]
+        unread_map_pair[other_u_id] = unread_map_pair.get(other_u_id, 0) + count
 
     # Latest messages map
     subq = db.query(
@@ -294,17 +319,24 @@ def get_inbox(
         (models.Message.request_id == subq.c.request_id) &
         (models.Message.created_at == subq.c.max_dt)
     ).all()
-    latest_msg_map = {m.request_id: m for m in latest_msgs}
+    
+    latest_msg_map_pair = {}
+    for msg in latest_msgs:
+        other_u_id = req_to_other_user[msg.request_id]
+        if other_u_id not in latest_msg_map_pair:
+            latest_msg_map_pair[other_u_id] = msg
+        else:
+            if msg.created_at > latest_msg_map_pair[other_u_id].created_at:
+                latest_msg_map_pair[other_u_id] = msg
 
     inbox = []
-    for req in reqs:
-        other_user_id = req.to_user_id if req.from_user_id == current_user.id else req.from_user_id
+    for other_user_id, req in canonical_reqs.items():
         other_user = users_map.get(other_user_id)
         skill = skills_map.get(req.skill_id)
 
-        latest_msg = latest_msg_map.get(req.id)
-        unread_count = unread_map.get(req.id, 0)
-        session = sessions_map.get(req.id)
+        latest_msg = latest_msg_map_pair.get(other_user_id)
+        unread_count = unread_map_pair.get(other_user_id, 0)
+        session = sessions_map_pair.get(other_user_id)
 
         inbox.append(schemas.InboxConversationOut(
             request_id=req.id,
@@ -335,11 +367,19 @@ def mark_conversation_read(
     db: Session = Depends(get_db),
 ):
     req = _authorize(db, request_id, current_user.id)
-    # Mark messages from the OTHER user as read
     other_user_id = req.to_user_id if req.from_user_id == current_user.id else req.from_user_id
 
+    # Find all requests between this user pair to merge reads
+    pair_reqs = db.query(models.ConnectionRequest.id).filter(
+        or_(
+            and_(models.ConnectionRequest.from_user_id == current_user.id, models.ConnectionRequest.to_user_id == other_user_id),
+            and_(models.ConnectionRequest.from_user_id == other_user_id, models.ConnectionRequest.to_user_id == current_user.id),
+        )
+    ).all()
+    pair_req_ids = [r[0] for r in pair_reqs]
+
     unread_messages = db.query(models.Message).filter(
-        models.Message.request_id == request_id,
+        models.Message.request_id.in_(pair_req_ids),
         models.Message.sender_id == other_user_id,
         models.Message.is_read == False
     ).all()
@@ -374,12 +414,22 @@ def list_messages(
     current_user: models.User = Depends(auth.get_current_user),
     db: Session = Depends(get_db),
 ):
-    _authorize(db, request_id, current_user.id)
+    req = _authorize(db, request_id, current_user.id)
+    other_user_id = req.to_user_id if req.from_user_id == current_user.id else req.from_user_id
+
+    pair_reqs = db.query(models.ConnectionRequest.id).filter(
+        or_(
+            and_(models.ConnectionRequest.from_user_id == current_user.id, models.ConnectionRequest.to_user_id == other_user_id),
+            and_(models.ConnectionRequest.from_user_id == other_user_id, models.ConnectionRequest.to_user_id == current_user.id),
+        )
+    ).all()
+    pair_req_ids = [r[0] for r in pair_reqs]
+
     hidden_subq = db.query(models.MessageUserState.message_id).filter(
         models.MessageUserState.user_id == current_user.id
     ).subquery()
     rows = db.query(models.Message).filter(
-        models.Message.request_id == request_id,
+        models.Message.request_id.in_(pair_req_ids),
         ~models.Message.id.in_(hidden_subq)
     ).order_by(models.Message.created_at).all()
     return rows
@@ -435,12 +485,23 @@ def _ws_auth_and_authz(token: str, request_id: int):
 def _fetch_history(request_id: int, user_id: int):
     db_hist = SessionLocal()
     try:
+        req = db_hist.query(models.ConnectionRequest).filter(models.ConnectionRequest.id == request_id).first()
+        other_user_id = req.to_user_id if req.from_user_id == user_id else req.from_user_id
+
+        pair_reqs = db_hist.query(models.ConnectionRequest.id).filter(
+            or_(
+                and_(models.ConnectionRequest.from_user_id == user_id, models.ConnectionRequest.to_user_id == other_user_id),
+                and_(models.ConnectionRequest.from_user_id == other_user_id, models.ConnectionRequest.to_user_id == user_id),
+            )
+        ).all()
+        pair_req_ids = [r[0] for r in pair_reqs]
+
         hidden_subq = db_hist.query(models.MessageUserState.message_id).filter(
             models.MessageUserState.user_id == user_id
         ).subquery()
         
         messages = db_hist.query(models.Message).filter(
-            models.Message.request_id == request_id,
+            models.Message.request_id.in_(pair_req_ids),
             ~models.Message.id.in_(hidden_subq)
         ).order_by(models.Message.created_at).all()
         return [_serialize_message(m) for m in messages]
