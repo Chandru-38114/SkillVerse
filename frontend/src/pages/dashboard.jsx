@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import { api, getSessionUser } from '../api'
 import Avatar from '../components/ui/Avatar'
+import SkillBadge from '../components/skillbadge'
 
 /* ─── Journey path SVG (curved, state-aware) ─── */
 function JourneyPathSVG({ nodeCount, activeIndex }) {
@@ -389,9 +390,6 @@ export default function Dashboard() {
                     className="relative z-10 ring-4 ring-white/70 shadow-lg" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-[10px] font-bold text-brand/60 uppercase tracking-[0.18em] mb-1 select-none">
-                    {timeGreeting}
-                  </p>
                   <h1 className="text-3xl md:text-4xl font-display font-bold text-ink leading-none mb-2 truncate">
                     {user.name.split(' ')[0]}
                   </h1>
@@ -400,14 +398,11 @@ export default function Dashboard() {
                       <Award className="w-3 h-3" />
                       {gamification?.next_milestone_title || 'Explorer'}
                     </span>
-                    <span className="text-xs text-clay font-mono select-none">
-                      {totalPts} <span className="opacity-50">pts</span>
-                    </span>
                   </div>
                 </div>
               </div>
 
-              {/* Right — Context + XP */}
+              {/* Right — Context */}
               <div className="flex flex-col gap-4 w-full sm:w-auto sm:min-w-[210px] sm:items-end">
                 {activeLearningSkill && (
                   <div className="flex flex-col gap-1 sm:text-right">
@@ -424,20 +419,6 @@ export default function Dashboard() {
                     </p>
                   </div>
                 )}
-                <div className="w-full sm:w-48">
-                  <div className="flex justify-between items-center mb-1.5">
-                    <p className="text-[9px] font-bold text-clay/70 uppercase tracking-[0.12em]">XP to next level</p>
-                    <p className="text-[10px] font-bold text-ink font-mono">{totalPts}/{nextPts}</p>
-                  </div>
-                  <div className="w-full bg-line/30 h-[5px] rounded-full overflow-hidden shadow-inner">
-                    <div
-                      className="bg-gradient-to-r from-brand to-brand2 h-full rounded-full animate-progress relative"
-                      style={{ width: `${xpPct}%` }}
-                    >
-                      <div className="absolute top-0 bottom-0 right-0 w-3 bg-white/30 blur-[2px] -skew-x-12" />
-                    </div>
-                  </div>
-                </div>
               </div>
 
             </div>
@@ -509,16 +490,16 @@ export default function Dashboard() {
 
       ) : (
         <div className="max-w-6xl mx-auto px-4 sm:px-6 mt-6
-          lg:grid lg:grid-cols-[1fr_280px] lg:gap-12 lg:items-start
-          space-y-10 lg:space-y-0">
+          flex flex-col gap-10 lg:grid lg:grid-cols-[1fr_280px] lg:gap-12 lg:items-start">
 
           {/* ══════════════════════════════════════════════════════
               LEFT — SKILL JOURNEY (visual center of the world)
               ══════════════════════════════════════════════════════ */}
-          <section className="animate-slide-up stagger-2">
+          <section className="animate-slide-up stagger-2 contents lg:block">
 
-            {/* ─── JOURNEY CONTAINER ─── */}
-            <div className="relative">
+            <div className="order-1 lg:order-none">
+              {/* ─── JOURNEY CONTAINER ─── */}
+              <div className="relative">
 
               {/* ─── CURVED PATH SVG (behind everything) ─── */}
               {journeyNodes.length >= 2 && (
@@ -607,7 +588,7 @@ export default function Dashboard() {
                 - clear eyebrow label tying it to the active node
                 - offset left margin to feel like it extends from the path
             ───────────────────────────────────────────────────────────────────── */}
-            <div className="mt-2 ml-9 animate-slide-up stagger-2">
+            <div className="order-2 lg:order-none mt-2 ml-9 animate-slide-up stagger-2">
 
               {/* Connector from last active node into quest region */}
               <div className="ml-[-22px] flex items-center gap-2 mb-3" aria-hidden="true">
@@ -687,10 +668,11 @@ export default function Dashboard() {
                 </div>
               </div>
             </div>
+            </div>
 
             {/* ─── OTHER ACTIVE LEARNING PATHS ─── */}
             {learningSkills.filter(s => s.id !== activeLearningSkill?.id).length > 0 && (
-              <div className="mt-8 animate-slide-up stagger-3">
+              <div className="order-4 lg:order-none lg:mt-8 animate-slide-up stagger-3">
                 <p className="text-[10px] font-bold text-clay uppercase tracking-widest mb-3">Other Active Paths</p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {learningSkills.filter(s => s.id !== activeLearningSkill?.id).map(s => (
@@ -720,43 +702,10 @@ export default function Dashboard() {
           {/* ══════════════════════════════════════════════════════
               RIGHT — STATE PANEL
               ══════════════════════════════════════════════════════ */}
-          <aside className="space-y-7 animate-slide-up stagger-3">
-
-            {/* ─── MASTERED SKILLS ─── */}
-            <div>
-              <p className="text-[10px] font-bold text-clay uppercase tracking-widest mb-3.5 flex items-center gap-1.5">
-                <CheckCircle className="w-3.5 h-3.5 text-gold" />
-                Mastered
-              </p>
-              {teachingSkills.length > 0 ? (
-                <div className="space-y-1.5">
-                  {teachingSkills.map(s => (
-                    <div
-                      key={s.id}
-                      className="flex items-center justify-between px-4 py-3 rounded-xl
-                        bg-surface/50 backdrop-blur-sm border-l-2 border-gold/45
-                        hover:bg-surface/80 transition-colors group"
-                    >
-                      <span className="font-semibold text-sm text-ink group-hover:text-ink/90">{s.skill_name}</span>
-                      {s.badge && <SkillBadge badge={s.badge} />}
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="rounded-xl border border-dashed border-line/35 px-4 py-5 text-center">
-                  <Award className="w-5 h-5 text-clay/35 mx-auto mb-1.5" />
-                  <p className="text-xs text-clay leading-relaxed">
-                    Complete a skill path to add it to your inventory.
-                  </p>
-                </div>
-              )}
-            </div>
-
-            {/* ─── DIVIDER ─── */}
-            <div className="h-px bg-gradient-to-r from-transparent via-line/40 to-transparent" />
+          <aside className="animate-slide-up stagger-3 contents lg:block lg:space-y-7">
 
             {/* ─── COMING UP ─── */}
-            <div>
+            <div className="order-3 lg:order-none">
               <p className="text-[10px] font-bold text-clay uppercase tracking-widest mb-3.5 flex items-center gap-1.5">
                 <Calendar className="w-3.5 h-3.5" />
                 Coming Up
@@ -809,11 +758,41 @@ export default function Dashboard() {
 
             {/* ─── DIVIDER ─── */}
             {(teachingSkills.length > 0 || nextSession) && (
-              <div className="h-px bg-gradient-to-r from-transparent via-line/40 to-transparent" />
+              <div className="h-px bg-gradient-to-r from-transparent via-line/40 to-transparent hidden lg:block" />
             )}
 
+            {/* ─── MASTERED SKILLS ─── */}
+            <div className="order-5 lg:order-none">
+              <p className="text-[10px] font-bold text-clay uppercase tracking-widest mb-3.5 flex items-center gap-1.5">
+                <CheckCircle className="w-3.5 h-3.5 text-gold" />
+                Mastered
+              </p>
+              {teachingSkills.length > 0 ? (
+                <div className="space-y-1.5">
+                  {teachingSkills.map(s => (
+                    <div
+                      key={s.id}
+                      className="flex items-center justify-between px-4 py-3 rounded-xl
+                        bg-surface/50 backdrop-blur-sm border-l-2 border-gold/45
+                        hover:bg-surface/80 transition-colors group"
+                    >
+                      <span className="font-semibold text-sm text-ink group-hover:text-ink/90">{s.skill_name}</span>
+                      {s.badge && <SkillBadge badge={s.badge} />}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-xl border border-dashed border-line/35 px-4 py-5 text-center">
+                  <Award className="w-5 h-5 text-clay/35 mx-auto mb-1.5" />
+                  <p className="text-xs text-clay leading-relaxed">
+                    Complete a skill path to add it to your inventory.
+                  </p>
+                </div>
+              )}
+            </div>
+
             {/* ─── QUICK ACTIONS ─── */}
-            <div className="space-y-1">
+            <div className="space-y-1 order-6 lg:order-none">
               <p className="text-[10px] font-bold text-clay uppercase tracking-widest mb-3 flex items-center gap-1.5">
                 <Zap className="w-3.5 h-3.5" />
                 Quick Actions
@@ -841,14 +820,5 @@ export default function Dashboard() {
         </div>
       )}
     </div>
-  )
-}
-
-function SkillBadge({ badge }) {
-  if (!badge) return null
-  return (
-    <span className="inline-flex items-center gap-1.5 bg-goldLight text-gold px-2 py-1 rounded-md text-[10px] font-bold border border-gold/20 shadow-sm">
-      <CheckCircle className="w-3.5 h-3.5 text-brand" /> Verified
-    </span>
   )
 }
