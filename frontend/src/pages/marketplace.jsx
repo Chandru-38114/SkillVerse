@@ -46,6 +46,7 @@ export default function Marketplace() {
 
       const newStatusMap = {}
       const newRatingsMap = {}
+      const newFormMap = {}
       
       data.forEach(t => {
         newRatingsMap[t.user_id] = {
@@ -55,21 +56,34 @@ export default function Marketplace() {
         
         t.teaching_skills.forEach(s => {
           const statusObj = t.connection_statuses[s.skill_name]
-          if (statusObj) {
-            newStatusMap[`${t.user_id}-${s.skill_name}`] = statusObj
-          }
+          if (statusObj) newStatusMap[`${t.user_id}-${s.skill_name}`] = statusObj
         })
+        t.learning_skills.forEach(s => {
+          const statusObj = t.connection_statuses[s.skill_name]
+          if (statusObj) newStatusMap[`${t.user_id}-${s.skill_name}`] = statusObj
+        })
+        
+        let displaySkills = [];
+        if (roleFilter === 'I Can Teach') {
+          displaySkills = t.learning_skills;
+        } else if (roleFilter === 'I Want to Learn') {
+          displaySkills = t.teaching_skills;
+        } else {
+          const combined = new Map();
+          t.teaching_skills.forEach(s => combined.set(s.skill_name, { ...s, intent: 'learn' }));
+          t.learning_skills.forEach(s => {
+            if (!combined.has(s.skill_name)) {
+              combined.set(s.skill_name, { ...s, intent: 'teach' });
+            }
+          });
+          displaySkills = Array.from(combined.values());
+        }
+        
+        const initialSkill = displaySkills.length > 0 ? displaySkills[0].skill_name : '';
+        newFormMap[t.user_id] = { ...defaultForm(), target_skill: initialSkill };
       })
       setStatusMap(newStatusMap)
       setRatingsMap(newRatingsMap)
-
-      const newFormMap = {}
-      data.forEach(t => {
-        t.teaching_skills.forEach(s => {
-          const key = `${t.user_id}-${s.skill_name}`
-          newFormMap[key] = { ...defaultForm(), target_skill: s.skill_name }
-        })
-      })
       setFormMap(newFormMap)
     } catch (err) {
       setError(err.message)
@@ -99,8 +113,7 @@ export default function Marketplace() {
 
   async function sendRequest(teacher, skillName) {
     if (submitting) return;
-    const key = `${teacher.user_id}-${skillName}`
-    const form = formMap[key] || defaultForm()
+    const form = formMap[teacher.user_id] || defaultForm()
     
     setSubmitting(true)
     try {
@@ -111,7 +124,7 @@ export default function Marketplace() {
       })
       
       // Force status update without reload
-      setStatusMap(prev => ({ ...prev, [key]: { status: 'pending' } }))
+      setStatusMap(prev => ({ ...prev, [`${teacher.user_id}-${skillName}`]: { status: 'pending' } }))
       alert(`Connection request sent to ${teacher.name}!`)
     } catch (err) {
       alert(err.message)
@@ -235,13 +248,31 @@ export default function Marketplace() {
           <div className="grid lg:grid-cols-2 xl:grid-cols-3 gap-6">
             {filteredResults.map((teacher, idx) => {
               const ratings = ratingsMap[teacher.user_id]
-              const displaySkills = activeFilter === 'I Can Teach' ? teacher.learning_skills : teacher.teaching_skills
-              const targetSkillObj = displaySkills.length > 0 ? displaySkills[0] : null
-              const targetSkill = targetSkillObj ? targetSkillObj.skill_name : ''
               
-              const key = `${teacher.user_id}-${targetSkill}`
-              const rel = statusMap[key] || { status: null }
-              const form = formMap[key] || defaultForm()
+              const form = formMap[teacher.user_id] || defaultForm()
+              
+              let displaySkills = [];
+              if (activeFilter === 'I Can Teach') {
+                displaySkills = teacher.learning_skills.map(s => ({ ...s, intent: 'teach' }));
+              } else if (activeFilter === 'I Want to Learn') {
+                displaySkills = teacher.teaching_skills.map(s => ({ ...s, intent: 'learn' }));
+              } else {
+                const combined = new Map();
+                teacher.teaching_skills.forEach(s => combined.set(s.skill_name, { ...s, intent: 'learn' }));
+                teacher.learning_skills.forEach(s => {
+                  if (!combined.has(s.skill_name)) {
+                    combined.set(s.skill_name, { ...s, intent: 'teach' });
+                  }
+                });
+                displaySkills = Array.from(combined.values());
+              }
+
+              let targetSkill = form.target_skill;
+              if (!targetSkill && displaySkills.length > 0) {
+                targetSkill = displaySkills[0].skill_name;
+              }
+              
+              const rel = statusMap[`${teacher.user_id}-${targetSkill}`] || { status: null }
               const staggerClass = `stagger-${(idx % 5) + 1}`;
 
               return (
@@ -320,10 +351,10 @@ export default function Marketplace() {
                       teacher={teacher}
                       targetSkill={targetSkill}
                       form={form}
+                      displaySkills={displaySkills}
                       submitting={submitting}
-                      onFormChange={(field, value) => updateForm(key, field, value)}
+                      onFormChange={(field, value) => updateForm(teacher.user_id, field, value)}
                       onSend={() => sendRequest(teacher, targetSkill)}
-                      activeFilter={activeFilter}
                     />
                   </div>
                 </div>
@@ -336,36 +367,9 @@ export default function Marketplace() {
   )
 }
 
-function RequestControl({ rel, teacher, targetSkill, form, onFormChange, onSend, activeFilter, submitting }) {
-  if (rel.status === 'accepted') {
-    return (
-      <div className="flex items-center justify-between">
-        <span className="inline-flex items-center gap-1.5 text-sm font-bold text-moss2 bg-mossLight/50 px-3 py-1.5 rounded-full border border-moss/20">
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
-          Connected
-        </span>
-        {rel.request_id && (
-          <Link to={`/chat/${rel.request_id}`} className="btn-secondary text-sm font-bold">
-            Open Chat
-          </Link>
-        )}
-      </div>
-    )
-  }
-
-  if (rel.status === 'pending') {
-    return (
-      <div className="text-center py-1">
-        <span className="inline-flex items-center gap-1.5 text-sm font-bold text-gold bg-goldLight/50 px-4 py-2 rounded-full border border-gold/20">
-          <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-          Request Pending
-        </span>
-      </div>
-    )
-  }
-
-  const isTeachingThem = activeFilter === 'I Can Teach';
-  const displaySkills = isTeachingThem ? teacher.learning_skills : teacher.teaching_skills;
+function RequestControl({ rel, teacher, targetSkill, form, displaySkills, onFormChange, onSend, submitting }) {
+  const selectedSkillIntent = displaySkills.find(s => s.skill_name === targetSkill)?.intent;
+  const isTeachingThem = selectedSkillIntent === 'teach';
 
   return (
     <div className="space-y-4">
@@ -380,7 +384,7 @@ function RequestControl({ rel, teacher, targetSkill, form, onFormChange, onSend,
             <option value="" disabled className="bg-surface text-ink">Select a skill...</option>
             {displaySkills.map(s => (
               <option key={s.skill_name} value={s.skill_name} className="bg-surface text-ink">
-                {isTeachingThem ? `I want to teach them ${s.skill_name}` : `I want to learn ${s.skill_name}`}
+                {s.intent === 'teach' ? `I want to teach them ${s.skill_name}` : `I want to learn ${s.skill_name}`}
               </option>
             ))}
           </select>
@@ -395,21 +399,45 @@ function RequestControl({ rel, teacher, targetSkill, form, onFormChange, onSend,
         )}
       </div>
 
-      <div>
-        <label className="text-xs text-ink/60 font-semibold mb-1 block">Personal Message</label>
-        <input
-          className="input text-sm py-2 bg-surface/60 backdrop-blur-md border-line/20 text-ink/90 placeholder:text-ink/40"
-          placeholder={`Hi ${teacher.name}, let's connect!`}
-          value={form.message}
-          onChange={(e) => onFormChange('message', e.target.value)}
-        />
-      </div>
+      {rel.status === 'accepted' ? (
+        <div className="flex items-center justify-between pt-2">
+          <span className="inline-flex items-center gap-1.5 text-sm font-bold text-moss2 bg-mossLight/50 px-3 py-1.5 rounded-full border border-moss/20">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
+            Already Connected
+          </span>
+          {rel.request_id && (
+            <Link to={`/chat/${rel.request_id}`} className="btn-secondary text-sm font-bold">
+              Open Chat
+            </Link>
+          )}
+        </div>
+      ) : rel.status === 'pending' ? (
+        <div className="text-center pt-2">
+          <span className="inline-flex items-center gap-1.5 text-sm font-bold text-gold bg-goldLight/50 px-4 py-2 rounded-full border border-gold/20 w-full justify-center">
+            <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+            Request Pending
+          </span>
+        </div>
+      ) : (
+        <>
+          <div>
+            <label className="text-xs text-ink/60 font-semibold mb-1 block">Personal Message</label>
+            <input
+              className="input text-sm py-2 bg-surface/60 backdrop-blur-md border-line/20 text-ink/90 placeholder:text-ink/40"
+              placeholder={`Hi ${teacher.name}, let's connect!`}
+              value={form.message}
+              onChange={(e) => onFormChange('message', e.target.value)}
+              disabled={displaySkills.length === 0}
+            />
+          </div>
 
-      <button onClick={onSend} disabled={!targetSkill || submitting} className="btn-primary w-full mt-2 justify-center">
-        {(rel.status === 'declined' || rel.status === 'completed')
-          ? 'Send Request Again'
-          : 'Send Connection Request'}
-      </button>
+          <button onClick={onSend} disabled={!targetSkill || submitting || displaySkills.length === 0} className="btn-primary w-full mt-2 justify-center">
+            {(rel.status === 'declined' || rel.status === 'completed')
+              ? 'Send Request Again'
+              : 'Send Connection Request'}
+          </button>
+        </>
+      )}
     </div>
   )
 }
