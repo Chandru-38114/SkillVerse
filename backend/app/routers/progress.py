@@ -9,16 +9,16 @@ from ..database import get_db
 
 router = APIRouter(prefix="/progress", tags=["progress"])
 
-def compute_skill_stage(assessments_count: int, sessions_completed: int, badge: Optional[str]):
+def compute_skill_stage(assessments_count: int, sessions_completed: int, badge: Optional[str], level: str, total_learning_minutes: int):
     if badge:
-        return "Mastery", "Guide others or explore new skills"
+        return "Mastery", f"You successfully passed the final challenge and earned your verified {badge} badge.", "Guide others or explore new skills"
     if sessions_completed >= 5:
-        return "Developing", "Take the final challenge to earn a badge"
+        return "Developing", f"You have completed {sessions_completed} sessions. You are now eligible for the final verification challenge.", "Take the final challenge to earn a badge"
     if sessions_completed > 0:
-        return "Practicing", f"Complete {5 - sessions_completed} more sessions to reach Developing"
+        return "Practicing", f"You have completed {sessions_completed} learning sessions, accumulating {total_learning_minutes} minutes of practice.", f"Complete {5 - sessions_completed} more sessions to reach Developing"
     if assessments_count > 0:
-        return "Baseline Established", "Complete your first learning session"
-    return "Discovered", "Take a skill challenge to establish your baseline"
+        return "Baseline Established", f"You completed your first assessment, establishing your baseline level as {level}.", "Complete your first learning session"
+    return "Discovered", "You have added this skill to your journey.", "Take a skill challenge to establish your baseline"
 
 @router.get("/my", response_model=List[schemas.UserSkillProgressOut])
 def get_my_progress(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
@@ -56,7 +56,7 @@ def get_my_progress(db: Session = Depends(get_db), current_user: models.User = D
                 updated_at=h.updated_at
             ))
         
-        stage, next_milestone = compute_skill_stage(assessments, us.sessions_completed, us.badge)
+        stage, what_happened, next_milestone = compute_skill_stage(assessments, us.sessions_completed, us.badge, us.level, us.total_learning_minutes)
         
         us_out = schemas.UserSkillProgressOut(
             id=us.id,
@@ -71,6 +71,7 @@ def get_my_progress(db: Session = Depends(get_db), current_user: models.User = D
             total_learning_minutes=us.total_learning_minutes,
             assessment_count=assessments,
             stage=stage,
+            what_happened=what_happened,
             next_milestone=next_milestone,
             history=history_items
         )
@@ -103,7 +104,7 @@ def get_skill_progress(skill_name: str, db: Session = Depends(get_db), current_u
         models.SessionProgress.duration_minutes > 0
     ).order_by(models.SessionProgress.created_at.desc()).all()
     
-    stage, next_milestone = compute_skill_stage(assessments, user_skill.sessions_completed, user_skill.badge)
+    stage, what_happened, next_milestone = compute_skill_stage(assessments, user_skill.sessions_completed, user_skill.badge, user_skill.level, user_skill.total_learning_minutes)
     
     return schemas.UserSkillProgressOut(
         id=user_skill.id,
@@ -118,6 +119,7 @@ def get_skill_progress(skill_name: str, db: Session = Depends(get_db), current_u
         total_learning_minutes=user_skill.total_learning_minutes,
         assessment_count=assessments,
         stage=stage,
+        what_happened=what_happened,
         next_milestone=next_milestone,
         history=[schemas.SessionProgressOut(
             id=h.id, session_id=h.session_id, user_id=h.user_id, skill_id=h.skill_id,

@@ -8,17 +8,6 @@ import {
 import { api, getSessionUser } from '../api'
 import Avatar from '../components/ui/Avatar'
 
-/* ─── Progress narrative helper (unchanged) ─── */
-function getProgressNarrative(progress, badge) {
-  if (progress === 100 && badge) return "Skill milestone reached";
-  if (progress === 100) return "Ready for final assessment";
-  if (progress >= 81) return "Close to the next milestone";
-  if (progress >= 61) return "Developing confidence";
-  if (progress >= 41) return "Making steady progress";
-  if (progress >= 21) return "Building fundamentals";
-  return "Getting started";
-}
-
 /* ─── Journey path SVG (curved, state-aware) ─── */
 function JourneyPathSVG({ nodeCount, activeIndex }) {
   // Generates a gentle S-curve path between N nodes
@@ -431,7 +420,7 @@ export default function Dashboard() {
                       </>
                     )}
                     <p className="text-[10px] text-clay mt-0.5 italic">
-                      {getProgressNarrative(activeLearningSkill.progress_percentage, activeLearningSkill.badge)}
+                      {activeLearningSkill.what_happened}
                     </p>
                   </div>
                 )}

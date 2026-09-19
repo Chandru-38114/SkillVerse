@@ -124,7 +124,8 @@ export default function Progress() {
               {progressData.map((skill, idx) => {
                 const certForSkill = certificates.find(c => c.skill_name === skill.skill_name && c.badge === skill.badge);
                 const isEligible = skill.stage === "Mastery" || skill.stage === "Developing";
-                const narrative = skill.next_milestone || "Keep learning and practicing to grow this skill.";
+                const whatHappened = skill.what_happened || "";
+                const nextMilestone = skill.next_milestone || "Keep learning and practicing to grow this skill.";
                 const staggerClass = `stagger-${Math.min(idx + 3, 5)}`;
                 
                 return (
@@ -152,7 +153,10 @@ export default function Progress() {
 
 
                       {/* B3: Narrative Progress */}
-                      <p className="text-sm font-medium text-ink/80 mb-5 min-h-[40px]">{narrative}</p>
+                      <div className="mb-5 min-h-[60px]">
+                        <p className="text-sm font-medium text-ink/90 mb-1">{whatHappened}</p>
+                        <p className="text-xs font-semibold text-brand2/90">{nextMilestone}</p>
+                      </div>
 
                       <div className="flex justify-between text-xs text-clay font-medium mb-6 pt-4 border-t border-line/40">
                         <div className="flex items-center gap-1.5">

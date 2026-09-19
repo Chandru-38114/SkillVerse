@@ -387,6 +387,7 @@ class UserSkillProgressOut(UserSkillOut):
     total_learning_minutes: int
     assessment_count: int = 0
     stage: str = "Discovered"
+    what_happened: str = ""
     next_milestone: str = ""
     # Add history for the detail view
     history: List[SessionProgressOut] = []
