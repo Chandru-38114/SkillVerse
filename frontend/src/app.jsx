@@ -20,6 +20,7 @@ import SessionRoom from './pages/session_room'
 import Progress from './pages/progress'
 import CertificateView from './pages/CertificateView'
 import VerifyCertificate from './pages/VerifyCertificate'
+import AboutSkillVerse from './pages/AboutSkillVerse'
 
 import Profile from './pages/profile'
 import Settings from './pages/settings'
@@ -61,7 +62,7 @@ export default function App() {
     }
   }, [navigate]);
 
-  const authRoutes = ['/login', '/signup', '/verify-email', '/forgot-password', '/reset-password', '/verify-certificate/'];
+  const authRoutes = ['/login', '/signup', '/verify-email', '/forgot-password', '/reset-password', '/verify-certificate/', '/about-skillverse'];
   const isAuthRoute = authRoutes.some(path => location.pathname.startsWith(path)) || location.pathname === '/' || location.pathname === '/landing';
 
   if (!authChecked) {
@@ -135,6 +136,10 @@ export default function App() {
         <Route
           path="/verify-certificate/:certId"
           element={<VerifyCertificate />}
+        />
+        <Route
+          path="/about-skillverse"
+          element={<AboutSkillVerse />}
         />
         <Route
           path="/notifications"
