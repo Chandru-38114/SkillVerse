@@ -370,59 +370,101 @@ textarea.input {
 }
 
 /* ─────────────────────────────────────────────────
-   EXPERIMENT 15 — DASHBOARD UNIVERSE ADDITIONS
-   Journey node pulse, hero atmosphere, glass quest
+   EXPERIMENT 16 — SKILL JOURNEY VISUAL WORLD
+   Node states, path geometry, circuit accents,
+   hero-to-journey bridge, quest destination
 ──────────────────────────────────────────────────── */
 
-/* Journey active-node breathing glow */
+/* ── Journey node: active state breathing glow ── */
 @keyframes node-breathe {
   0%, 100% {
     box-shadow: 0 0 0 0 rgba(67, 56, 202, 0);
     transform: scale(1);
   }
   50% {
-    box-shadow: 0 0 0 8px rgba(67, 56, 202, 0.12);
-    transform: scale(1.04);
+    box-shadow: 0 0 0 10px rgba(67, 56, 202, 0.10);
+    transform: scale(1.03);
   }
+}
+
+/* ── Journey path trace — draws in on mount ── */
+@keyframes path-trace {
+  from { stroke-dashoffset: 1000; }
+  to   { stroke-dashoffset: 0; }
+}
+
+/* ── Circuit glow pulse — for background tech symbols ── */
+@keyframes circuit-glow {
+  0%, 100% { opacity: 0.05; }
+  50%       { opacity: 0.10; }
+}
+
+/* ── Hero→Journey bridge fade in ── */
+@keyframes bridge-fade {
+  from { opacity: 0; transform: scaleY(0); transform-origin: top; }
+  to   { opacity: 1; transform: scaleY(1); transform-origin: top; }
+}
+
+/* ── Quest region inner shimmer (once on mount) ── */
+@keyframes quest-shimmer {
+  0%   { background-position: -300% center; }
+  100% { background-position: 300% center; }
 }
 
 @media (prefers-reduced-motion: no-preference) {
+
+  /* Node breathing — active journey node */
   .journey-node-breathe {
     animation: node-breathe 3s ease-in-out infinite;
   }
+
+  /* Path trace on mount */
+  .journey-path-trace {
+    stroke-dasharray: 1000;
+    stroke-dashoffset: 1000;
+    animation: path-trace 1.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    animation-delay: 0.3s;
+  }
+
+  /* Circuit accent glow */
+  .animate-circuit-glow {
+    animation: circuit-glow 6s ease-in-out infinite;
+  }
+
+  /* Hero bridge fade in */
+  .animate-bridge-fade {
+    animation: bridge-fade 0.6s ease-out forwards;
+    animation-delay: 0.4s;
+    opacity: 0;
+  }
 }
 
-/* Hero atmospheric shimmer — very subtle, runs once on load */
-@keyframes hero-shimmer {
-  0%   { background-position: -200% center; }
-  100% { background-position: 200% center; }
-}
-
-/* Glass region hover depth — applied via Tailwind directly in JSX,
-   but defined here for any future reuse */
+/* ── Glass quest surface — used inline but defined for reuse ── */
 .glass-quest {
   background: linear-gradient(
     135deg,
-    rgba(236, 238, 255, 0.75) 0%,
-    rgba(255, 255, 255, 0.55) 50%,
-    rgba(244, 244, 250, 0.65) 100%
+    rgba(236, 238, 255, 0.78) 0%,
+    rgba(255, 255, 255, 0.58) 50%,
+    rgba(244, 244, 250, 0.68) 100%
   );
-  backdrop-filter: blur(28px);
-  -webkit-backdrop-filter: blur(28px);
-  border: 1px solid rgba(67, 56, 202, 0.13);
+  backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
+  border: 1px solid rgba(67, 56, 202, 0.14);
   border-radius: 2rem;
 }
 
-/* Journey path glow line */
-.journey-path-line {
-  width: 2px;
+/* ── Journey path line — completed segment ── */
+.journey-path-completed {
   background: linear-gradient(
     to bottom,
     rgb(124, 58, 237) 0%,
-    rgba(67, 56, 202, 0.5) 40%,
-    rgba(6, 182, 212, 0.2) 80%,
-    rgba(245, 158, 11, 0.15) 100%
+    rgb(67, 56, 202) 100%
   );
-  box-shadow: 0 0 10px rgba(67, 56, 202, 0.25);
+  box-shadow: 0 0 12px rgba(67, 56, 202, 0.40);
   border-radius: 9999px;
+}
+
+/* ── Journey path line — pending segment ── */
+.journey-path-pending {
+  border-left: 2px dashed rgba(67, 56, 202, 0.20);
 }

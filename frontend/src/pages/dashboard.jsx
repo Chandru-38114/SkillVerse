@@ -1,9 +1,14 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
-import { Trophy, CheckCircle, ClipboardCheck, Award, Users, Star, BookOpen, Compass, Calendar, MapPin, Zap } from 'lucide-react'
+import {
+  Trophy, CheckCircle, ClipboardCheck, Award,
+  Users, Star, BookOpen, Compass, Calendar,
+  MapPin, Zap, ArrowDown
+} from 'lucide-react'
 import { api, getSessionUser } from '../api'
 import Avatar from '../components/ui/Avatar'
 
+/* ─── Progress narrative helper (unchanged) ─── */
 function getProgressNarrative(progress, badge) {
   if (progress === 100 && badge) return "Skill milestone reached";
   if (progress === 100) return "Ready for final assessment";
@@ -12,6 +17,129 @@ function getProgressNarrative(progress, badge) {
   if (progress >= 41) return "Making steady progress";
   if (progress >= 21) return "Building fundamentals";
   return "Getting started";
+}
+
+/* ─── Journey path SVG (curved, state-aware) ─── */
+function JourneyPathSVG({ nodeCount, activeIndex }) {
+  // Generates a gentle S-curve path between N nodes
+  // The path is rendered as a background SVG behind the nodes
+  // nodeCount: total visible nodes
+  // activeIndex: which node index is currently active (0-based)
+  const height = 100; // percentage-based viewBox
+  const pathPoints = [];
+  for (let i = 0; i < nodeCount; i++) {
+    // Alternate slight left/right offset for S-curve feel
+    const xOffset = i % 2 === 0 ? 50 : 54;
+    pathPoints.push({ x: xOffset, y: (i / Math.max(nodeCount - 1, 1)) * 100 });
+  }
+
+  const d = pathPoints.reduce((acc, pt, i) => {
+    if (i === 0) return `M ${pt.x} ${pt.y}`;
+    const prev = pathPoints[i - 1];
+    const cpx = (prev.x + pt.x) / 2;
+    return acc + ` C ${cpx} ${prev.y} ${cpx} ${pt.y} ${pt.x} ${pt.y}`;
+  }, '');
+
+  return (
+    <svg
+      className="absolute left-0 top-0 w-full h-full pointer-events-none"
+      viewBox="0 0 100 100"
+      preserveAspectRatio="none"
+      aria-hidden="true"
+    >
+      <defs>
+        <linearGradient id="jpCompleted" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%"   stopColor="rgb(124,58,237)" stopOpacity="0.55" />
+          <stop offset="100%" stopColor="rgb(67,56,202)"  stopOpacity="0.35" />
+        </linearGradient>
+        <linearGradient id="jpPending" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%"   stopColor="rgb(67,56,202)"  stopOpacity="0.18" />
+          <stop offset="100%" stopColor="rgb(245,158,11)" stopOpacity="0.06" />
+        </linearGradient>
+        <filter id="jpGlow">
+          <feGaussianBlur stdDeviation="0.8" result="blur" />
+          <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+      </defs>
+
+      {/* Full path — pending/future portion */}
+      <path d={d} fill="none" stroke="url(#jpPending)" strokeWidth="0.8"
+        strokeDasharray="2 3" strokeLinecap="round" />
+
+      {/* Completed portion — solid, glowing */}
+      {activeIndex > 0 && (() => {
+        const completedPts = pathPoints.slice(0, activeIndex + 1);
+        const cd = completedPts.reduce((acc, pt, i) => {
+          if (i === 0) return `M ${pt.x} ${pt.y}`;
+          const prev = completedPts[i - 1];
+          const cpx = (prev.x + pt.x) / 2;
+          return acc + ` C ${cpx} ${prev.y} ${cpx} ${pt.y} ${pt.x} ${pt.y}`;
+        }, '');
+        return (
+          <path d={cd} fill="none" stroke="url(#jpCompleted)" strokeWidth="1.2"
+            strokeLinecap="round" filter="url(#jpGlow)" />
+        );
+      })()}
+    </svg>
+  );
+}
+
+/* ─── Individual Journey Node ─── */
+function JourneyNode({ state, label, sublabel, isLast }) {
+  // state: 'completed' | 'active' | 'next' | 'future'
+  const nodeStyles = {
+    completed: {
+      outer: 'w-4 h-4 rounded-full flex items-center justify-center',
+      outerStyle: { background: 'rgb(124,58,237)', boxShadow: '0 0 8px rgba(124,58,237,0.35)' },
+      inner: null,
+      textOpacity: 'opacity-50',
+    },
+    active: {
+      outer: 'w-6 h-6 rounded-full flex items-center justify-center relative',
+      outerStyle: { background: 'white', border: '2.5px solid rgb(67,56,202)', boxShadow: '0 0 20px rgba(67,56,202,0.40)' },
+      inner: 'w-2.5 h-2.5 bg-brand rounded-full',
+      textOpacity: 'opacity-100',
+    },
+    next: {
+      outer: 'w-4 h-4 rounded-full flex items-center justify-center',
+      outerStyle: { background: 'transparent', border: '2px dashed rgba(67,56,202,0.50)' },
+      inner: null,
+      textOpacity: 'opacity-55',
+    },
+    future: {
+      outer: 'w-3.5 h-3.5 rounded-full',
+      outerStyle: { background: 'transparent', border: '1.5px dashed rgba(245,158,11,0.35)' },
+      inner: null,
+      textOpacity: 'opacity-25',
+    },
+  };
+  const s = nodeStyles[state] || nodeStyles.future;
+
+  return (
+    <div className={`flex items-center gap-3 ${s.textOpacity} transition-all duration-300`}>
+      {/* Node indicator */}
+      <div className="relative flex items-center justify-center flex-shrink-0" style={{ width: 32, height: 32 }}>
+        {state === 'active' && (
+          <div className="absolute w-10 h-10 rounded-full bg-brand/10 animate-slow-pulse" />
+        )}
+        <div className={s.outer} style={s.outerStyle}>
+          {s.inner && <div className={s.inner} />}
+        </div>
+      </div>
+
+      {/* Label */}
+      <div className="flex-1 min-w-0">
+        <p className={`font-semibold leading-tight ${
+          state === 'active' ? 'text-sm text-ink' :
+          state === 'completed' ? 'text-xs text-clay' :
+          'text-xs text-clay'
+        }`}>{label}</p>
+        {sublabel && state !== 'future' && (
+          <p className="text-[10px] text-clay/70 leading-tight mt-0.5">{sublabel}</p>
+        )}
+      </div>
+    </div>
+  );
 }
 
 export default function Dashboard() {
@@ -28,69 +156,41 @@ export default function Dashboard() {
   const [outRequests, setOutRequests] = useState([])
 
   useEffect(() => {
-    if (!user) {
-      navigate('/login')
-      return
-    }
+    if (!user) { navigate('/login'); return }
 
     const searchParams = new URLSearchParams(location.search)
     const topic = searchParams.get('weakTopic')
-    if (topic) {
-      setWeakTopic(topic)
-    }
+    if (topic) setWeakTopic(topic)
 
     let isMounted = true
-    const loadingTimer = setTimeout(() => {
-      if (isMounted) setShowLoading(true)
-    }, 150)
+    const loadingTimer = setTimeout(() => { if (isMounted) setShowLoading(true) }, 150)
 
     async function fetchDashboardData() {
       try {
-        const [
-          skillsData,
-          upcomingData,
-          gamiData,
-          outReqData,
-          latestAssessmentData
-        ] = await Promise.all([
+        const [skillsData, upcomingData, gamiData, outReqData, latestAssessmentData] = await Promise.all([
           api.getMyProgress().catch(() => []),
           api.upcomingSessions().catch(() => []),
           api.getGamificationSummary().catch(() => null),
           api.outgoingRequests().catch(() => []),
           api.getLatestAssessment().catch(() => null)
         ])
-
-        if (!isMounted) return;
-
+        if (!isMounted) return
         setSkills(skillsData || [])
         setUpcoming(upcomingData || [])
         setGamification(gamiData)
         setOutRequests(outReqData || [])
-
-        if (!topic && latestAssessmentData && latestAssessmentData.weak_topics) {
-          const topicsArray = latestAssessmentData.weak_topics.split(',').map(t => t.trim()).filter(Boolean);
-          if (topicsArray.length > 0) {
-            setWeakTopic(topicsArray[0]);
-          }
+        if (!topic && latestAssessmentData?.weak_topics) {
+          const arr = latestAssessmentData.weak_topics.split(',').map(t => t.trim()).filter(Boolean)
+          if (arr.length > 0) setWeakTopic(arr[0])
         }
-
       } catch (err) {
         console.error("Dashboard fetch error:", err)
       } finally {
-        if (isMounted) {
-          clearTimeout(loadingTimer)
-          setLoading(false)
-          setShowLoading(false)
-        }
+        if (isMounted) { clearTimeout(loadingTimer); setLoading(false); setShowLoading(false) }
       }
     }
-
     fetchDashboardData()
-
-    return () => {
-      isMounted = false
-      clearTimeout(loadingTimer)
-    }
+    return () => { isMounted = false; clearTimeout(loadingTimer) }
   }, [user, navigate, location.search])
 
   if (!user) return null
@@ -99,10 +199,10 @@ export default function Dashboard() {
   const teachingSkills = skills.filter(s => s.role === 'teaching')
   const nextSession = upcoming.length > 0 ? upcoming[0] : null
   const activeLearningSkill = learningSkills.length > 0
-    ? learningSkills.reduce((prev, current) => (prev.progress_percentage > current.progress_percentage) ? prev : current)
+    ? learningSkills.reduce((prev, cur) => (prev.progress_percentage > cur.progress_percentage) ? prev : cur)
     : null
 
-  // ─── Journey Decision Logic (A1 — exact, unchanged) ───────────────────────
+  // ─── Journey State Machine (A1 — logic fully preserved) ─────────────────
   let heroState = {
     title: "Begin Your Journey",
     description: "Take your first Skill Challenge to establish your baseline and unlock your path.",
@@ -112,19 +212,19 @@ export default function Dashboard() {
   }
 
   if (nextSession) {
-    const peerName = nextSession.tutor_id === user.id ? nextSession.learner_name : nextSession.tutor_name;
-    const dateStr = new Date(nextSession.session_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const peerName = nextSession.tutor_id === user.id ? nextSession.learner_name : nextSession.tutor_name
+    const dateStr = new Date(nextSession.session_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
     heroState = {
       title: "Enter the Learning Arena",
-      description: `Your upcoming session is confirmed. Prepare to learn and practice.`,
+      description: "Your upcoming session is confirmed. Prepare to learn and practice.",
       actionText: "Join Arena →",
       actionUrl: `/session/${nextSession.id}`,
       icon: <Calendar className="w-24 h-24 text-brand" />,
       metadata: [
-        { label: "Partner", value: peerName },
+        { label: "Partner",     value: peerName },
         { label: "Focus Skill", value: nextSession.skill },
-        { label: "Date", value: dateStr },
-        { label: "Time", value: nextSession.start_time }
+        { label: "Date",        value: dateStr },
+        { label: "Time",        value: nextSession.start_time }
       ]
     }
   } else if (weakTopic) {
@@ -145,7 +245,10 @@ export default function Dashboard() {
         icon: <ClipboardCheck className="w-24 h-24 text-brand" />
       }
     } else if (activeLearningSkill.progress_percentage > 0 && activeLearningSkill.progress_percentage < 100) {
-      const relevantRequest = outRequests.find(r => r.skill_name === activeLearningSkill.skill_name && (r.status === 'pending' || r.status === 'accepted'))
+      const relevantRequest = outRequests.find(r =>
+        r.skill_name === activeLearningSkill.skill_name &&
+        (r.status === 'pending' || r.status === 'accepted')
+      )
       if (relevantRequest) {
         if (relevantRequest.status === 'pending') {
           heroState = {
@@ -155,18 +258,18 @@ export default function Dashboard() {
             actionUrl: "/requests",
             icon: <Users className="w-24 h-24 text-brand" />
           }
-        } else if (relevantRequest.status === 'accepted') {
+        } else {
           heroState = {
             title: "Prepare for Learning",
-            description: `Coordinate and schedule a session with your partner to continue your journey.`,
+            description: "Coordinate and schedule a session with your partner to continue your journey.",
             actionText: "Message Partner →",
             actionUrl: `/messages?request_id=${relevantRequest.id}`,
             icon: <BookOpen className="w-24 h-24 text-brand" />,
             metadata: [
-              { label: "Partner", value: relevantRequest.to_user_name },
-              { label: "Focus Skill", value: activeLearningSkill.skill_name },
+              { label: "Partner",           value: relevantRequest.to_user_name },
+              { label: "Focus Skill",       value: activeLearningSkill.skill_name },
               { label: "Recommended Topic", value: weakTopic || "General Practice" },
-              { label: "Status", value: "Waiting to schedule" }
+              { label: "Status",            value: "Waiting to schedule" }
             ]
           }
         }
@@ -198,32 +301,89 @@ export default function Dashboard() {
     }
   }
 
-  const isEmptyState = skills.length === 0 && upcoming.length === 0;
+  const isEmptyState = skills.length === 0 && upcoming.length === 0
 
-  // XP progress percentage
-  const totalPts = gamification?.total_points || user.points || 0;
-  const nextPts  = gamification?.next_milestone_points || 500;
-  const xpPct    = Math.min(100, (totalPts / nextPts) * 100);
+  // XP
+  const totalPts = gamification?.total_points || user.points || 0
+  const nextPts  = gamification?.next_milestone_points || 500
+  const xpPct    = Math.min(100, (totalPts / nextPts) * 100)
 
-  // Time-of-day greeting
-  const hour = new Date().getHours();
-  const timeGreeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
+  // Greeting
+  const hour = new Date().getHours()
+  const timeGreeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'
+
+  // ─── Journey node sequence (data-driven, not hardcoded) ─────────────────
+  // Builds a list of visible nodes with state, label, sublabel
+  const journeyNodes = []
+  if (activeLearningSkill) {
+    // Node 0: Skill challenge (completed if progress > 0)
+    journeyNodes.push({
+      state: activeLearningSkill.progress_percentage > 0 ? 'completed' : 'active',
+      label: 'Skill Challenge',
+      sublabel: activeLearningSkill.skill_name,
+    })
+    // Node 1: Active learning (visible if progress > 0 and < 100)
+    if (activeLearningSkill.progress_percentage > 0) {
+      const isCurrentlyLearning = activeLearningSkill.progress_percentage < 100
+      journeyNodes.push({
+        state: isCurrentlyLearning ? 'active' : 'completed',
+        label: 'Partner Training',
+        sublabel: weakTopic ? `Focus: ${weakTopic}` : activeLearningSkill.skill_name,
+      })
+    }
+    // Node 2: Learning arena (session)
+    if (nextSession) {
+      journeyNodes.push({
+        state: 'active',
+        label: 'Learning Arena',
+        sublabel: `With ${nextSession.tutor_id === user.id ? nextSession.learner_name : nextSession.tutor_name}`,
+      })
+    } else if (activeLearningSkill.progress_percentage >= 50) {
+      journeyNodes.push({
+        state: 'next',
+        label: 'Learning Arena',
+        sublabel: 'Schedule a session',
+      })
+    }
+    // Node 3: Final challenge / mastery
+    if (activeLearningSkill.progress_percentage === 100) {
+      journeyNodes.push({
+        state: activeLearningSkill.badge ? 'completed' : 'active',
+        label: activeLearningSkill.badge ? 'Mastery Earned' : 'Final Challenge',
+        sublabel: activeLearningSkill.badge ? `${activeLearningSkill.skill_name} — Verified` : 'Earn your badge',
+      })
+    } else {
+      journeyNodes.push({
+        state: 'future',
+        label: 'Mastery Verification',
+        sublabel: '',
+      })
+    }
+  }
+  const activeNodeIndex = journeyNodes.findIndex(n => n.state === 'active')
 
   return (
     <div className="min-h-screen pb-24 xl:pb-10 animate-fade-in stagger-1">
 
-      {/* ═══════════════════════════════════════════════════════════
-          HERO BAND — Immersive welcome, full-width, no hard card
-          ═══════════════════════════════════════════════════════════ */}
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-5 md:pt-8 mb-10">
+      {/* ═══════════════════════════════════════════════════════════════
+          HERO BAND
+          ═══════════════════════════════════════════════════════════════ */}
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-5 md:pt-8 mb-0">
         <div className="relative rounded-[2.5rem] overflow-hidden">
 
-          {/* Hero atmospheric layers */}
+          {/* Hero atmospheric */}
           <div className="absolute inset-0 bg-gradient-to-br from-brandLight/70 via-surface/50 to-lift/60" />
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_80%_at_0%_0%,_rgba(67,56,202,0.10)_0%,_transparent_65%)]" />
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_50%_50%_at_100%_100%,_rgba(6,182,212,0.06)_0%,_transparent_70%)]" />
           <div className="absolute -top-8 -right-8 w-48 h-48 bg-brand2/8 rounded-full blur-3xl" />
           <div className="absolute -bottom-4 -left-4 w-32 h-32 bg-accent/6 rounded-full blur-2xl" />
+
+          {/* Mini SVG circuit accent inside hero — subtle tech identity */}
+          <svg className="absolute inset-0 w-full h-full pointer-events-none opacity-[0.05]" aria-hidden="true">
+            <polyline points="75%,15% 82%,15% 82%,22% 88%,22%" stroke="rgb(67,56,202)" strokeWidth="1.5" fill="none" />
+            <circle cx="75%" cy="15%" r="3" fill="rgb(67,56,202)" />
+            <circle cx="88%" cy="22%" r="3" fill="rgb(124,58,237)" />
+          </svg>
 
           <div className="relative z-10 p-6 md:p-8 lg:p-10">
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6 sm:gap-10">
@@ -232,11 +392,8 @@ export default function Dashboard() {
               <div className="flex items-center gap-5 flex-1 min-w-0">
                 <div className="relative shrink-0">
                   <div className="absolute inset-0 bg-brand/15 rounded-full blur-lg scale-110" />
-                  <Avatar
-                    name={user.name}
-                    size="lg"
-                    className="relative z-10 ring-4 ring-white/70 shadow-lg"
-                  />
+                  <Avatar name={user.name} size="lg"
+                    className="relative z-10 ring-4 ring-white/70 shadow-lg" />
                 </div>
                 <div className="min-w-0">
                   <p className="text-[10px] font-bold text-brand/60 uppercase tracking-[0.18em] mb-1 select-none">
@@ -257,17 +414,15 @@ export default function Dashboard() {
                 </div>
               </div>
 
-              {/* Right — State indicators + XP */}
-              <div className="flex flex-col gap-4 w-full sm:w-auto sm:min-w-[200px] sm:items-end">
-
-                {/* Current skill state chips */}
+              {/* Right — Context + XP */}
+              <div className="flex flex-col gap-4 w-full sm:w-auto sm:min-w-[210px] sm:items-end">
                 {activeLearningSkill && (
                   <div className="flex flex-col gap-1 sm:text-right">
                     <p className="text-[9px] font-bold text-clay/70 uppercase tracking-[0.15em]">Currently Exploring</p>
                     <p className="text-base font-bold text-ink leading-tight">{activeLearningSkill.skill_name}</p>
                     {weakTopic && (
                       <>
-                        <p className="text-[9px] font-bold text-clay/70 uppercase tracking-[0.15em] mt-1">Current Focus</p>
+                        <p className="text-[9px] font-bold text-clay/70 uppercase tracking-[0.15em] mt-0.5">Current Focus</p>
                         <p className="text-sm font-semibold text-brand2 leading-tight">{weakTopic}</p>
                       </>
                     )}
@@ -276,8 +431,6 @@ export default function Dashboard() {
                     </p>
                   </div>
                 )}
-
-                {/* XP bar */}
                 <div className="w-full sm:w-48">
                   <div className="flex justify-between items-center mb-1.5">
                     <p className="text-[9px] font-bold text-clay/70 uppercase tracking-[0.12em]">XP to next level</p>
@@ -292,19 +445,40 @@ export default function Dashboard() {
                     </div>
                   </div>
                 </div>
-
               </div>
+
             </div>
           </div>
         </div>
+
+        {/* ─── HERO → JOURNEY VISUAL BRIDGE ───────────────────────────────
+            A subtle descent connector: a small icon + dashed stem that
+            visually links the hero band to the skill journey below.
+            This makes the user feel: "my identity leads into my path."
+        ─────────────────────────────────────────────────────────────────── */}
+        {!isEmptyState && !loading && activeLearningSkill && (
+          <div className="flex flex-col items-start pl-8 sm:pl-10 mt-0 pointer-events-none select-none" aria-hidden="true">
+            {/* Thin dashed connector */}
+            <div className="ml-[6px] w-px h-7 border-l-2 border-dashed border-brand/25" />
+            {/* Small label */}
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-brand/20 border border-brand/35 flex items-center justify-center">
+                <div className="w-1.5 h-1.5 rounded-full bg-brand/60" />
+              </div>
+              <span className="text-[10px] font-bold text-brand/45 uppercase tracking-widest">
+                Skill Journey
+              </span>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* ═══════════════════════════════════════════════════════════
-          LOADING / EMPTY / MAIN CONTENT
-          ═══════════════════════════════════════════════════════════ */}
+      {/* ═══════════════════════════════════════════════════════════════
+          MAIN CONTENT
+          ═══════════════════════════════════════════════════════════════ */}
       {loading ? (
         showLoading ? (
-          <div className="max-w-6xl mx-auto px-4 sm:px-6 space-y-4">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 mt-8 space-y-4">
             <div className="skeleton h-56 w-full rounded-3xl" />
             <div className="grid grid-cols-3 gap-4">
               <div className="skeleton col-span-2 h-32 rounded-2xl" />
@@ -314,19 +488,17 @@ export default function Dashboard() {
         ) : null
 
       ) : isEmptyState ? (
-        /* ─── EMPTY STATE — Universe Awakens ─── */
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 animate-slide-up stagger-2">
+        /* ─── EMPTY STATE ─── */
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 mt-10 animate-slide-up stagger-2">
           <div className="relative rounded-[2.5rem] overflow-hidden p-10 sm:p-16 text-center">
             <div className="absolute inset-0 bg-gradient-to-br from-brandLight/50 via-surface/60 to-lift/70" />
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-brand/6 rounded-full blur-3xl pointer-events-none" />
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 bg-brand2/4 rounded-full blur-2xl pointer-events-none" />
-
-            {/* Orbit rings */}
-            <svg className="absolute inset-0 w-full h-full opacity-[0.07]" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-              <ellipse cx="50%" cy="50%" rx="45%" ry="35%" stroke="rgb(67,56,202)" strokeWidth="1" fill="none" strokeDasharray="6 10" />
-              <ellipse cx="50%" cy="50%" rx="30%" ry="22%" stroke="rgb(124,58,237)" strokeWidth="1" fill="none" strokeDasharray="4 8" />
+            <svg className="absolute inset-0 w-full h-full opacity-[0.06]" aria-hidden="true">
+              <ellipse cx="50%" cy="50%" rx="45%" ry="35%"
+                stroke="rgb(67,56,202)" strokeWidth="1" fill="none" strokeDasharray="6 10" />
+              <ellipse cx="50%" cy="50%" rx="30%" ry="22%"
+                stroke="rgb(124,58,237)" strokeWidth="1" fill="none" strokeDasharray="4 8" />
             </svg>
-
             <div className="relative z-10">
               <div className="w-20 h-20 bg-surface border-4 border-brand/20 rounded-full flex items-center justify-center mx-auto mb-6 shadow-[0_0_30px_rgba(67,56,202,0.25)]">
                 <Compass className="w-10 h-10 text-brand" />
@@ -343,159 +515,190 @@ export default function Dashboard() {
         </div>
 
       ) : (
-        /* ─── MAIN LAYOUT: Journey + Sidebar ─── */
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:grid lg:grid-cols-[1fr_290px] lg:gap-14 lg:items-start space-y-10 lg:space-y-0">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 mt-6
+          lg:grid lg:grid-cols-[1fr_280px] lg:gap-12 lg:items-start
+          space-y-10 lg:space-y-0">
 
-          {/* ══════════════════════════════════════════
-              LEFT COL — SKILL JOURNEY (visual center)
-              ══════════════════════════════════════════ */}
+          {/* ══════════════════════════════════════════════════════
+              LEFT — SKILL JOURNEY (visual center of the world)
+              ══════════════════════════════════════════════════════ */}
           <section className="animate-slide-up stagger-2">
 
-            {/* Section label */}
-            <div className="flex items-center gap-3 mb-9">
-              <div className="flex-1 h-px bg-gradient-to-r from-brand/25 to-transparent" />
-              <h2 className="flex items-center gap-1.5 text-[10px] font-bold text-clay uppercase tracking-[0.15em] shrink-0">
-                <MapPin className="w-3 h-3 text-brand" />
-                Skill Journey
-                {activeLearningSkill && (
-                  <span className="text-brand ml-1 normal-case font-semibold text-[11px]">
-                    — {activeLearningSkill.skill_name}
-                  </span>
-                )}
-              </h2>
-              <div className="flex-1 h-px bg-gradient-to-l from-brand/25 to-transparent" />
-            </div>
-
-            {/* The path container */}
+            {/* ─── JOURNEY CONTAINER ─── */}
             <div className="relative">
 
-              {/* ─── JOURNEY PATH LINE ─── */}
-              <div
-                className="absolute left-[15px] top-5 bottom-5 w-[2px] rounded-full"
-                style={{
-                  background: 'linear-gradient(to bottom, rgb(124,58,237) 0%, rgba(67,56,202,0.5) 40%, rgba(6,182,212,0.2) 80%, rgba(245,158,11,0.15) 100%)',
-                  boxShadow: '0 0 10px rgba(67,56,202,0.25)',
-                }}
-              />
-
-              <div className="space-y-0">
-
-                {/* NODE A: Journey Started (visible only when progress > 0) */}
-                {activeLearningSkill && activeLearningSkill.progress_percentage > 0 && (
-                  <div className="relative flex items-center gap-5 pb-7 z-10">
-                    <div className="w-8 h-8 flex-shrink-0 flex items-center justify-center">
-                      <div
-                        className="w-[14px] h-[14px] rounded-full border-2 border-surface"
-                        style={{ background: 'rgb(124,58,237)', boxShadow: '0 0 10px rgba(124,58,237,0.5)' }}
-                      />
-                    </div>
-                    <div className="opacity-55">
-                      <p className="text-sm font-bold text-ink">Training Commenced</p>
-                      <p className="text-xs text-clay">
-                        You've started your journey in <span className="font-medium">{activeLearningSkill.skill_name}</span>
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                {/* NODE B: CURRENT QUEST — The Dominant Active Zone */}
-                <div className="relative flex items-start gap-5 pb-7 group z-10">
-
-                  {/* Active node indicator */}
-                  <div className="w-8 h-8 flex-shrink-0 flex items-center justify-center mt-4 relative">
-                    <div className="absolute w-11 h-11 bg-brand/12 rounded-full animate-slow-pulse" />
-                    <div
-                      className="relative z-10 w-[26px] h-[26px] bg-surface rounded-full flex items-center justify-center"
-                      style={{ border: '3px solid rgb(67,56,202)', boxShadow: '0 0 18px rgba(67,56,202,0.4)' }}
-                    >
-                      <div className="w-2.5 h-2.5 bg-brand rounded-full" />
-                    </div>
-                  </div>
-
-                  {/* ─── QUEST GLASS REGION ─── */}
+              {/* ─── CURVED PATH SVG (behind everything) ─── */}
+              {journeyNodes.length >= 2 && (
+                <div
+                  className="absolute pointer-events-none"
+                  style={{
+                    left: 14,         /* align with node centers */
+                    top: 32,
+                    width: 4,
+                    /* height is determined by the content, not fixed */
+                    bottom: 24,
+                  }}
+                  aria-hidden="true"
+                >
+                  {/* Glowing completed segment */}
                   <div
-                    className="flex-1 relative rounded-[2rem] overflow-hidden transition-all duration-500 group-hover:shadow-[0_16px_48px_rgba(67,56,202,0.10)]"
+                    className="w-full rounded-full"
                     style={{
-                      background: 'linear-gradient(135deg, rgba(236,238,255,0.75) 0%, rgba(255,255,255,0.55) 50%, rgba(244,244,250,0.65) 100%)',
-                      backdropFilter: 'blur(28px)',
-                      WebkitBackdropFilter: 'blur(28px)',
-                      border: '1px solid rgba(67,56,202,0.13)',
+                      height: activeNodeIndex > 0
+                        ? `${(activeNodeIndex / Math.max(journeyNodes.length - 1, 1)) * 100}%`
+                        : '0%',
+                      background: 'linear-gradient(to bottom, rgb(124,58,237), rgb(67,56,202))',
+                      boxShadow: '0 0 12px rgba(67,56,202,0.40)',
                     }}
-                  >
-                    {/* Inner ambient glow — brightens on hover */}
-                    <div className="absolute top-0 left-0 w-56 h-56 bg-brand/7 rounded-full blur-3xl -translate-x-1/3 -translate-y-1/3 pointer-events-none opacity-60 group-hover:opacity-100 transition-opacity duration-700" />
-                    <div className="absolute bottom-0 right-0 w-40 h-40 bg-accent/5 rounded-full blur-2xl pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
-
-                    <div className="relative z-10 p-6 md:p-8">
-
-                      {/* Eyebrow label */}
-                      <p className="text-[10px] font-bold text-brand uppercase tracking-widest mb-2.5 flex items-center gap-1.5 select-none">
-                        <Star className="w-3.5 h-3.5 fill-brand" />
-                        Your Next Move
-                      </p>
-
-                      {/* Quest title */}
-                      <h3 className="text-2xl md:text-[1.8rem] font-display font-bold text-ink leading-tight mb-3">
-                        {heroState.title}
-                      </h3>
-
-                      {/* Quest description */}
-                      <p className="text-clay font-medium mb-6 text-sm md:text-base max-w-lg leading-relaxed">
-                        {heroState.description}
-                      </p>
-
-                      {/* Metadata grid */}
-                      {heroState.metadata && (
-                        <div className="grid grid-cols-2 gap-y-3.5 gap-x-6 mb-7 max-w-sm">
-                          {heroState.metadata.map(m => (
-                            <div key={m.label}>
-                              <span className="text-clay uppercase tracking-wider text-[9px] font-bold block mb-0.5 select-none">
-                                {m.label}
-                              </span>
-                              <span className="text-ink font-bold text-sm">{m.value}</span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-
-                      {/* CTA */}
-                      <Link
-                        to={heroState.actionUrl}
-                        className="btn-brand text-sm px-7 py-3 rounded-full shadow-[0_8px_24px_rgba(67,56,202,0.22)] inline-flex hover:shadow-[0_12px_32px_rgba(67,56,202,0.32)] transition-shadow"
-                      >
-                        {heroState.actionText}
-                      </Link>
-                    </div>
-
-                    {/* Watermark icon */}
-                    <div className="absolute right-3 bottom-3 pointer-events-none opacity-[0.035] group-hover:opacity-[0.06] transition-opacity duration-700">
-                      <div className="scale-150 origin-bottom-right">
-                        {heroState.icon}
-                      </div>
-                    </div>
-                  </div>
+                  />
+                  {/* Pending dashed segment */}
+                  <div
+                    className="w-full"
+                    style={{
+                      height: activeNodeIndex >= 0
+                        ? `${((journeyNodes.length - 1 - activeNodeIndex) / Math.max(journeyNodes.length - 1, 1)) * 100}%`
+                        : '100%',
+                      borderLeft: '2px dashed rgba(67,56,202,0.20)',
+                    }}
+                  />
                 </div>
+              )}
 
-                {/* NODE C: Mastery Verification (future node) */}
-                {(!activeLearningSkill || activeLearningSkill.progress_percentage < 100 || !activeLearningSkill.badge) && (
-                  <div className="relative flex items-center gap-5 opacity-30 z-10">
-                    <div className="w-8 h-8 flex-shrink-0 flex items-center justify-center">
-                      <div className="w-[14px] h-[14px] rounded-full border-2 border-dashed border-gold/60 bg-transparent" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-bold text-clay">Mastery Verification</p>
-                      <p className="text-xs text-clay/60">Earn your verified badge to teach others</p>
-                    </div>
+              {/* Fallback simple line when no active node */}
+              {(journeyNodes.length === 0 || activeNodeIndex < 0) && (
+                <div
+                  className="absolute pointer-events-none"
+                  style={{
+                    left: 15, top: 36, bottom: 28, width: 2,
+                    background: 'linear-gradient(to bottom, rgba(124,58,237,0.4) 0%, rgba(67,56,202,0.2) 50%, rgba(245,158,11,0.1) 100%)',
+                    boxShadow: '0 0 8px rgba(67,56,202,0.20)',
+                    borderRadius: 9999,
+                  }}
+                  aria-hidden="true"
+                />
+              )}
+
+              <div className="space-y-1">
+
+                {/* ─── JOURNEY NODES ─── */}
+                {journeyNodes.map((node, i) => (
+                  <div key={i} className="relative z-10 pb-4">
+                    <JourneyNode
+                      state={node.state}
+                      label={node.label}
+                      sublabel={node.sublabel}
+                      isLast={i === journeyNodes.length - 1}
+                    />
                   </div>
+                ))}
+
+                {/* Fallback for no active learning skill (empty journey nodes) */}
+                {journeyNodes.length === 0 && (
+                  <>
+                    <div className="relative z-10 pb-5">
+                      <JourneyNode state="active" label="Your Journey" sublabel="Set up your first skill path" />
+                    </div>
+                    <div className="relative z-10 pb-4 opacity-25">
+                      <JourneyNode state="future" label="Mastery Verification" sublabel="" />
+                    </div>
+                  </>
                 )}
 
               </div>
             </div>
 
+            {/* ─── CURRENT QUEST REGION ─────────────────────────────────────────
+                The "destination node" of the current journey segment.
+                Visually differentiated from the timeline above:
+                - larger, atmospheric, glass-like
+                - clear eyebrow label tying it to the active node
+                - offset left margin to feel like it extends from the path
+            ───────────────────────────────────────────────────────────────────── */}
+            <div className="mt-2 ml-9 animate-slide-up stagger-2">
+
+              {/* Connector from last active node into quest region */}
+              <div className="ml-[-22px] flex items-center gap-2 mb-3" aria-hidden="true">
+                <div className="w-5 h-px border-t border-dashed border-brand/30" />
+                <div className="w-1.5 h-1.5 rounded-full bg-brand/40" />
+                <p className="text-[9px] font-bold text-brand/50 uppercase tracking-widest select-none">
+                  Your next move
+                </p>
+              </div>
+
+              {/* Quest glass region */}
+              <div
+                className="relative rounded-[2rem] overflow-hidden group
+                  transition-all duration-500
+                  hover:shadow-[0_20px_60px_rgba(67,56,202,0.12)]"
+                style={{
+                  background: 'linear-gradient(135deg, rgba(236,238,255,0.78) 0%, rgba(255,255,255,0.58) 50%, rgba(244,244,250,0.68) 100%)',
+                  backdropFilter: 'blur(30px)',
+                  WebkitBackdropFilter: 'blur(30px)',
+                  border: '1px solid rgba(67,56,202,0.14)',
+                }}
+              >
+                {/* Ambient glow pools */}
+                <div className="absolute top-0 left-0 w-60 h-60 bg-brand/6 rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2 pointer-events-none opacity-50 group-hover:opacity-100 transition-opacity duration-700" />
+                <div className="absolute bottom-0 right-0 w-44 h-44 bg-accent/5 rounded-full blur-2xl pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+
+                {/* Mini circuit accent inside quest panel */}
+                <svg className="absolute top-4 right-4 opacity-[0.045] pointer-events-none" width="60" height="40" aria-hidden="true">
+                  <polyline points="0,10 15,10 15,20 30,20 30,30 45,30" stroke="rgb(67,56,202)" strokeWidth="1.5" fill="none" />
+                  <circle cx="0"  cy="10" r="2.5" fill="rgb(67,56,202)" />
+                  <circle cx="45" cy="30" r="2.5" fill="rgb(124,58,237)" />
+                </svg>
+
+                <div className="relative z-10 p-6 md:p-7">
+
+                  {/* Quest title */}
+                  <h3 className="text-xl md:text-2xl font-display font-bold text-ink leading-tight mb-2.5">
+                    {heroState.title}
+                  </h3>
+
+                  {/* Quest description */}
+                  <p className="text-clay font-medium text-sm md:text-[0.9rem] max-w-lg leading-relaxed mb-5">
+                    {heroState.description}
+                  </p>
+
+                  {/* Metadata grid */}
+                  {heroState.metadata && (
+                    <div className="grid grid-cols-2 gap-y-3 gap-x-6 mb-6 max-w-sm">
+                      {heroState.metadata.map(m => (
+                        <div key={m.label}>
+                          <span className="text-clay uppercase tracking-wider text-[9px] font-bold block mb-0.5 select-none">
+                            {m.label}
+                          </span>
+                          <span className="text-ink font-bold text-sm">{m.value}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* CTA */}
+                  <Link
+                    to={heroState.actionUrl}
+                    className="btn-brand text-sm px-7 py-3 rounded-full
+                      shadow-[0_8px_24px_rgba(67,56,202,0.22)]
+                      hover:shadow-[0_12px_32px_rgba(67,56,202,0.32)]
+                      inline-flex transition-shadow"
+                  >
+                    {heroState.actionText}
+                  </Link>
+                </div>
+
+                {/* Watermark icon */}
+                <div className="absolute right-4 bottom-4 pointer-events-none opacity-[0.030] group-hover:opacity-[0.055] transition-opacity duration-700">
+                  <div className="scale-[1.6] origin-bottom-right">
+                    {heroState.icon}
+                  </div>
+                </div>
+              </div>
+            </div>
+
             {/* ─── OTHER ACTIVE LEARNING PATHS ─── */}
             {learningSkills.filter(s => s.id !== activeLearningSkill?.id).length > 0 && (
-              <div className="mt-10 animate-slide-up stagger-3">
-                <p className="text-[10px] font-bold text-clay uppercase tracking-widest mb-4">Other Active Paths</p>
+              <div className="mt-8 animate-slide-up stagger-3">
+                <p className="text-[10px] font-bold text-clay uppercase tracking-widest mb-3">Other Active Paths</p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {learningSkills.filter(s => s.id !== activeLearningSkill?.id).map(s => (
                     <div
@@ -521,23 +724,25 @@ export default function Dashboard() {
             )}
           </section>
 
-          {/* ══════════════════════════════════════════
-              RIGHT COL — LEARNING STATE PANEL
-              ══════════════════════════════════════════ */}
-          <aside className="space-y-8 animate-slide-up stagger-3">
+          {/* ══════════════════════════════════════════════════════
+              RIGHT — STATE PANEL
+              ══════════════════════════════════════════════════════ */}
+          <aside className="space-y-7 animate-slide-up stagger-3">
 
             {/* ─── MASTERED SKILLS ─── */}
             <div>
-              <p className="text-[10px] font-bold text-clay uppercase tracking-widest mb-4 flex items-center gap-1.5">
+              <p className="text-[10px] font-bold text-clay uppercase tracking-widest mb-3.5 flex items-center gap-1.5">
                 <CheckCircle className="w-3.5 h-3.5 text-gold" />
                 Mastered
               </p>
               {teachingSkills.length > 0 ? (
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   {teachingSkills.map(s => (
                     <div
                       key={s.id}
-                      className="flex items-center justify-between px-4 py-3 rounded-xl bg-surface/50 backdrop-blur-sm border-l-2 border-gold/45 hover:bg-surface/80 transition-colors group"
+                      className="flex items-center justify-between px-4 py-3 rounded-xl
+                        bg-surface/50 backdrop-blur-sm border-l-2 border-gold/45
+                        hover:bg-surface/80 transition-colors group"
                     >
                       <span className="font-semibold text-sm text-ink group-hover:text-ink/90">{s.skill_name}</span>
                       {s.badge && <SkillBadge badge={s.badge} />}
@@ -545,8 +750,8 @@ export default function Dashboard() {
                   ))}
                 </div>
               ) : (
-                <div className="rounded-xl border border-dashed border-line/35 px-4 py-6 text-center">
-                  <Award className="w-5 h-5 text-clay/35 mx-auto mb-2" />
+                <div className="rounded-xl border border-dashed border-line/35 px-4 py-5 text-center">
+                  <Award className="w-5 h-5 text-clay/35 mx-auto mb-1.5" />
                   <p className="text-xs text-clay leading-relaxed">
                     Complete a skill path to add it to your inventory.
                   </p>
@@ -559,7 +764,7 @@ export default function Dashboard() {
 
             {/* ─── COMING UP ─── */}
             <div>
-              <p className="text-[10px] font-bold text-clay uppercase tracking-widest mb-4 flex items-center gap-1.5">
+              <p className="text-[10px] font-bold text-clay uppercase tracking-widest mb-3.5 flex items-center gap-1.5">
                 <Calendar className="w-3.5 h-3.5" />
                 Coming Up
               </p>
@@ -576,8 +781,7 @@ export default function Dashboard() {
                   <div className="flex items-center gap-3">
                     <Avatar
                       name={nextSession.tutor_id === user.id ? nextSession.learner_name : nextSession.tutor_name}
-                      size="md"
-                      className="shrink-0"
+                      size="md" className="shrink-0"
                     />
                     <div className="flex-1 min-w-0">
                       <p className="font-bold text-ink text-sm line-clamp-1">{nextSession.skill}</p>
@@ -615,21 +819,24 @@ export default function Dashboard() {
               <div className="h-px bg-gradient-to-r from-transparent via-line/40 to-transparent" />
             )}
 
-            {/* ─── QUICK LINKS ─── */}
-            <div className="space-y-1.5">
+            {/* ─── QUICK ACTIONS ─── */}
+            <div className="space-y-1">
               <p className="text-[10px] font-bold text-clay uppercase tracking-widest mb-3 flex items-center gap-1.5">
                 <Zap className="w-3.5 h-3.5" />
                 Quick Actions
               </p>
               {[
-                { to: '/marketplace', label: 'Discover Partners' },
-                { to: '/assessment',  label: 'Take a Skill Challenge' },
+                { to: '/marketplace',  label: 'Discover Partners' },
+                { to: '/assessment',   label: 'Take a Skill Challenge' },
                 { to: '/gamification', label: 'View Full Journey' },
               ].map(({ to, label }) => (
                 <Link
                   key={to}
                   to={to}
-                  className="flex items-center justify-between px-4 py-2.5 rounded-xl text-sm font-semibold text-clay hover:text-brand hover:bg-brand/6 transition-all duration-200 group"
+                  className="flex items-center justify-between px-4 py-2.5 rounded-xl
+                    text-sm font-semibold text-clay
+                    hover:text-brand hover:bg-brand/6
+                    transition-all duration-200 group"
                 >
                   <span>{label}</span>
                   <span className="opacity-0 group-hover:opacity-100 transition-opacity text-brand text-base leading-none">→</span>
@@ -638,7 +845,6 @@ export default function Dashboard() {
             </div>
 
           </aside>
-
         </div>
       )}
     </div>
