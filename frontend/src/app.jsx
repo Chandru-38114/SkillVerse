@@ -55,14 +55,13 @@ export default function App() {
         }).catch(() => {
           clearSession();
           setAuthChecked(true);
-          navigate('/login');
         });
     } else {
       setAuthChecked(true);
     }
-  }, [navigate]);
+  }, []);
 
-  const authRoutes = ['/login', '/signup', '/verify-email', '/forgot-password', '/reset-password', '/verify-certificate/', '/about-skillverse'];
+  const authRoutes = ['/login', '/signup', '/verify-email', '/forgot-password', '/reset-password', '/verify-certificate/'];
   const isAuthRoute = authRoutes.some(path => location.pathname.startsWith(path)) || location.pathname === '/' || location.pathname === '/landing';
 
   if (!authChecked) {
