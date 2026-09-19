@@ -39,15 +39,15 @@ export default function CertificateView() {
         scale: 2,
         useCORS: true,
         logging: false,
-        width: element.scrollWidth,
-        height: element.scrollHeight,
-        windowWidth: element.scrollWidth,
-        windowHeight: element.scrollHeight,
+        width: element.offsetWidth,
+        height: element.offsetHeight,
+        windowWidth: element.offsetWidth,
+        windowHeight: element.offsetHeight,
       });
       const imgData = canvas.toDataURL('image/png');
       
       const pdf = new jsPDF({
-        orientation: 'landscape',
+        orientation: 'portrait',
         unit: 'mm',
         format: 'a4'
       });
@@ -101,65 +101,64 @@ export default function CertificateView() {
         </div>
       </div>
 
-      {/* Certificate Frame - Wrapper with overflow-x-auto for mobile */}
-      <div className="w-full max-w-4xl overflow-x-auto pb-8 shadow-2xl rounded-2xl print:shadow-none print:rounded-none">
+      {/* Certificate Frame - Wrapper with responsive aspect ratio */}
+      <div className="w-full max-w-3xl mx-auto shadow-2xl print:shadow-none print:w-full print:max-w-none">
         <div 
           ref={certificateRef}
-          className="bg-white p-12 sm:p-16 border-[16px] border-brand/5 relative overflow-hidden min-w-[800px] print:border-none print:min-w-0"
+          className="bg-white p-8 sm:p-12 md:p-16 border-[16px] border-brand/5 relative overflow-hidden aspect-[210/297] flex flex-col print:border-none print:p-0 print:h-screen"
         >
           {/* Background decorations */}
-          <div className="absolute top-0 right-0 w-[450px] h-[450px] bg-brand/5 rounded-bl-[100px] -z-0"></div>
-          <div className="absolute bottom-0 left-0 w-[350px] h-[350px] bg-brand/5 rounded-tr-[100px] -z-0"></div>
+          <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-brand/5 rounded-bl-[100px] -z-0"></div>
+          <div className="absolute bottom-0 left-0 w-[300px] h-[300px] bg-brand/5 rounded-tr-[100px] -z-0"></div>
           
-          <div className="relative z-10 text-center">
+          <div className="relative z-10 text-center flex flex-col h-full justify-between">
             {/* Header */}
-            <div className="mb-14">
-              <h2 className="font-display text-3xl text-brand font-bold tracking-tight mb-2">SkillVerse</h2>
-              <p className="text-xs font-bold text-brand/60 tracking-[0.2em] uppercase">Better Skills. A Brighter Future.</p>
+            <div className="mt-6 mb-10">
+              <h2 className="font-display text-3xl md:text-4xl text-brand font-bold tracking-tight mb-2">SkillVerse</h2>
+              <p className="text-[10px] md:text-xs font-bold text-brand/60 tracking-[0.2em] uppercase">Better Skills. A Brighter Future.</p>
             </div>
             
-            <h1 className="font-display text-5xl sm:text-6xl text-ink font-semibold mb-12 tracking-tight">
-              Certificate of Achievement
-            </h1>
-            
-            <p className="text-xl text-ink/70 font-medium mb-4">This is to certify that</p>
-            <p className="font-display text-4xl sm:text-5xl text-brand font-bold mb-10 border-b-2 border-brand/20 inline-block px-12 pb-3">
-              {cert.user_name}
-            </p>
-            
-            <p className="text-xl text-ink/70 font-medium mb-6">has successfully completed the skill assessment and achieved</p>
-            
-            <div className="mb-4">
-              <span className="font-display text-4xl text-ink font-bold">
-                Mastery in {cert.skill_name}
-              </span>
-            </div>
-            
-            <div className="mb-20 flex justify-center">
-               <span className="inline-flex items-center gap-2 bg-goldLight text-gold px-5 py-2.5 rounded-full text-sm font-bold border-2 border-gold/20 shadow-sm">
-                 <Award className="w-5 h-5" /> Verified {cert.badge} Badge
-               </span>
+            <div className="flex-1 flex flex-col justify-center">
+              <h1 className="font-display text-4xl sm:text-5xl md:text-6xl text-ink font-semibold mb-10 tracking-tight leading-tight">
+                Certificate of<br />Achievement
+              </h1>
+              
+              <p className="text-lg md:text-xl text-ink/70 font-medium mb-3">This is to certify that</p>
+              <p className="font-display text-3xl sm:text-4xl md:text-5xl text-brand font-bold mb-8 border-b-2 border-brand/20 inline-block px-10 pb-2 mx-auto">
+                {cert.user_name}
+              </p>
+              
+              <p className="text-lg md:text-xl text-ink/70 font-medium mb-4 mx-auto max-w-md">has successfully completed the skill assessment and achieved</p>
+              
+              <div className="mb-10">
+                <span className="font-display text-3xl md:text-4xl text-ink font-bold leading-tight">
+                  Mastery in {cert.skill_name}
+                </span>
+              </div>
+              
+              <div className="mb-10 flex justify-center">
+                 <span className="inline-flex items-center gap-2 bg-goldLight text-gold px-6 py-3 rounded-full text-base md:text-lg font-bold border-2 border-gold/20 shadow-sm">
+                   <Award className="w-6 h-6" /> Verified {cert.badge || 'Expert'} Badge
+                 </span>
+              </div>
             </div>
             
             {/* Footer Area */}
-            <div className="flex justify-between items-end pt-10 relative">
-              {/* Line separator */}
-              <div className="absolute top-0 left-12 right-12 h-px bg-ink/10"></div>
-              
-              <div className="text-left flex gap-12">
+            <div className="flex justify-between items-end pt-8 relative border-t border-ink/10 mt-auto">
+              <div className="text-left flex flex-col gap-6">
                 <div>
                   <p className="text-[10px] text-brand uppercase font-bold tracking-widest mb-1">Issued On</p>
-                  <p className="font-medium text-lg text-ink">{issueDate}</p>
+                  <p className="font-medium text-base md:text-lg text-ink">{issueDate}</p>
                 </div>
                 <div>
                   <p className="text-[10px] text-brand uppercase font-bold tracking-widest mb-1">Certificate ID</p>
-                  <p className="text-sm text-ink/80 font-mono font-bold bg-brand/5 px-2.5 py-1 rounded-md">{cert.certificate_id}</p>
+                  <p className="text-xs md:text-sm text-ink/80 font-mono font-bold bg-brand/5 px-2.5 py-1 rounded-md inline-block">{cert.certificate_id}</p>
                 </div>
               </div>
               
-              <div className="flex flex-col items-center bg-white p-3 rounded-xl shadow-sm border border-brand/10">
-                <QRCode value={verifyUrl} size={80} />
-                <p className="text-[9px] text-brand font-bold uppercase tracking-widest mt-3">Scan to verify</p>
+              <div className="flex flex-col items-center bg-white p-3 rounded-xl shadow-sm border border-brand/10 z-10">
+                <QRCode value={verifyUrl} size={80} className="w-16 h-16 md:w-20 md:h-20" />
+                <p className="text-[8px] md:text-[9px] text-brand font-bold uppercase tracking-widest mt-2">Scan to verify</p>
               </div>
             </div>
           </div>
