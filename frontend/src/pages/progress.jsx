@@ -3,7 +3,16 @@ import { Link, useNavigate } from "react-router-dom";
 import { CheckCircle, ArrowRight, Award, History, TrendingUp, Clock, BookOpen } from "lucide-react";
 import { api } from "../api";
 
-
+const getStageProgressWidth = (stage) => {
+  switch (stage) {
+    case "Discovered": return "10%";
+    case "Baseline Established": return "25%";
+    case "Practicing": return "50%";
+    case "Developing": return "75%";
+    case "Mastery": return "100%";
+    default: return "0%";
+  }
+};
 
 export default function Progress() {
   const [progressData, setProgressData] = useState([]);
@@ -150,7 +159,13 @@ export default function Progress() {
                         )}
                       </div>
                       
-
+                      {/* Visual Progress Line */}
+                      <div className="w-full bg-brand/10 h-1.5 rounded-full overflow-hidden mb-5">
+                        <div 
+                          className="bg-brand h-full rounded-full transition-all duration-1000 ease-out" 
+                          style={{ width: getStageProgressWidth(skill.stage) }}
+                        ></div>
+                      </div>
 
                       {/* B3: Narrative Progress */}
                       <div className="mb-5 min-h-[60px]">
