@@ -85,7 +85,7 @@ export default function CertificateView() {
   if (error) return <div className="p-8 text-center text-clay font-bold">{error}</div>;
   if (!cert) return null;
 
-  const verifyUrl = `${window.location.origin}/verify/${cert.certificate_id}`;
+  const verifyUrl = `${window.location.origin}/verify-certificate/${cert.certificate_id}`;
   const issueDate = new Date(cert.issue_date).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
 
   return (

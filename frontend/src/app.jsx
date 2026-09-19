@@ -61,7 +61,7 @@ export default function App() {
     }
   }, [navigate]);
 
-  const authRoutes = ['/login', '/signup', '/verify-email', '/forgot-password', '/reset-password', '/verify/'];
+  const authRoutes = ['/login', '/signup', '/verify-email', '/forgot-password', '/reset-password', '/verify-certificate/'];
   const isAuthRoute = authRoutes.some(path => location.pathname.startsWith(path)) || location.pathname === '/' || location.pathname === '/landing';
 
   if (!authChecked) {
@@ -133,7 +133,7 @@ export default function App() {
           element={<ProtectedRoute><CertificateView /></ProtectedRoute>}
         />
         <Route
-          path="/verify/:certId"
+          path="/verify-certificate/:certId"
           element={<VerifyCertificate />}
         />
         <Route
