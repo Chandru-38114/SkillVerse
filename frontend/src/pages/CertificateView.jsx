@@ -33,10 +33,16 @@ export default function CertificateView() {
     if (!certificateRef.current) return;
     try {
       setDownloading(true);
-      const canvas = await html2canvas(certificateRef.current, {
+      const element = certificateRef.current;
+      
+      const canvas = await html2canvas(element, {
         scale: 2,
         useCORS: true,
-        logging: false
+        logging: false,
+        width: element.scrollWidth,
+        height: element.scrollHeight,
+        windowWidth: element.scrollWidth,
+        windowHeight: element.scrollHeight,
       });
       const imgData = canvas.toDataURL('image/png');
       
@@ -46,12 +52,24 @@ export default function CertificateView() {
         format: 'a4'
       });
       
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+      const availablePdfWidth = pdf.internal.pageSize.getWidth();
+      const availablePdfHeight = pdf.internal.pageSize.getHeight();
       
-      const yOffset = (pdf.internal.pageSize.getHeight() - pdfHeight) / 2;
+      const imgWidth = canvas.width;
+      const imgHeight = canvas.height;
       
-      pdf.addImage(imgData, 'PNG', 0, Math.max(0, yOffset), pdfWidth, pdfHeight);
+      const scale = Math.min(
+        availablePdfWidth / imgWidth,
+        availablePdfHeight / imgHeight
+      );
+      
+      const finalPdfWidth = imgWidth * scale;
+      const finalPdfHeight = imgHeight * scale;
+      
+      const xOffset = (availablePdfWidth - finalPdfWidth) / 2;
+      const yOffset = (availablePdfHeight - finalPdfHeight) / 2;
+      
+      pdf.addImage(imgData, 'PNG', xOffset, yOffset, finalPdfWidth, finalPdfHeight);
       pdf.save(`SkillVerse_Certificate_${cert.skill_name.replace(/\s+/g, '_')}.pdf`);
     } catch (err) {
       console.error("Failed to generate PDF", err);
