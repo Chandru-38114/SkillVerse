@@ -230,8 +230,8 @@ export const api = {
     });
   },
 
-  submitReview: (requestId, data) => request(`/reviews/${requestId}`, { method: "POST", body: data }),
-  getMyReviewForRequest: (requestId) => request(`/reviews/my/${requestId}`),
+  submitReview: (sessionId, data) => request(`/reviews/session/${sessionId}`, { method: "POST", body: data }),
+  getMyReviewForSession: (sessionId) => request(`/reviews/my/session/${sessionId}`),
   getUserReviews: (userId) => request(`/reviews/user/${userId}`, { auth: false }),
 
   // Sessions

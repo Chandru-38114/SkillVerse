@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { api } from '../../api'
 
-export default function ReviewForm({ requestId, otherName, onSubmitted }) {
+export default function ReviewForm({ sessionId, otherName, onSubmitted }) {
   const [rating, setRating] = useState(0)
   const [hovered, setHovered] = useState(0)
   const [comment, setComment] = useState('')
@@ -14,7 +14,7 @@ export default function ReviewForm({ requestId, otherName, onSubmitted }) {
     setFormError('')
     setSubmitting(true)
     try {
-      await api.submitReview(requestId, { rating, comment })
+      await api.submitReview(sessionId, { rating, comment })
       onSubmitted()
     } catch (err) {
       setFormError(err.message)

@@ -28,9 +28,9 @@ export default function QuestReview() {
         const currentProgress = allProgress.find(p => p.skill_name === skillName)
         setProgress(currentProgress)
         
-        // Check if a review already exists
-        if (s.request_id) {
-          const existingReview = await api.getMyReviewForRequest(s.request_id)
+        // Check if a review already exists for this session
+        if (s.id) {
+          const existingReview = await api.getMyReviewForSession(s.id)
           if (existingReview) {
             setReviewed(true)
           }
@@ -170,7 +170,7 @@ export default function QuestReview() {
                 </div>
               ) : session.request_id ? (
                 <ReviewForm 
-                  requestId={session.request_id}
+                  sessionId={session.id}
                   otherName={peerName}
                   onSubmitted={handleReviewSubmitted}
                 />

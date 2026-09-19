@@ -31,9 +31,9 @@ def _to_out(r: models.Review) -> schemas.ReviewOut:
     )
 
 
-@router.post("/{request_id}", response_model=schemas.ReviewOut)
+@router.post("/session/{session_id}", response_model=schemas.ReviewOut)
 def submit_review(
-    request_id: int,
+    session_id: int,
     payload: schemas.ReviewCreate,
     current_user: models.User = Depends(auth.get_current_user),
     db: Session = Depends(get_db),
@@ -42,25 +42,25 @@ def submit_review(
     Submit a review for a completed session.
 
     Validation rules (all enforced server-side):
-    1. Connection must exist and current user must be a participant.
-    2. Connection status must be 'completed'.
+    1. Session must exist and current user must be a participant.
+    2. Session status must be 'completed'.
     3. Rating must be between 1 and 5 inclusive.
     4. A user cannot review themselves.
-    5. A user cannot submit a second review for the same connection.
+    5. A user cannot submit a second review for the same session.
     """
     # ── 1. Fetch and authorise ────────────────────────────────────────────────
-    req = db.query(models.ConnectionRequest).filter(
-        models.ConnectionRequest.id == request_id
+    session = db.query(models.Session).filter(
+        models.Session.id == session_id
     ).first()
 
-    if not req or current_user.id not in (req.from_user_id, req.to_user_id):
-        raise HTTPException(status_code=404, detail="Connection not found")
+    if not session or current_user.id not in (session.tutor_id, session.learner_id):
+        raise HTTPException(status_code=404, detail="Session not found")
 
     # ── 2. Must be completed ──────────────────────────────────────────────────
-    if req.status != "completed":
+    if session.status != "completed":
         raise HTTPException(
             status_code=400,
-            detail=f"Reviews can only be submitted for completed sessions (current status: {req.status}).",
+            detail=f"Reviews can only be submitted for completed sessions (current status: {session.status}).",
         )
 
     # ── 3. Rating range ───────────────────────────────────────────────────────
@@ -72,14 +72,14 @@ def submit_review(
 
     # ── 4. No self-review (sanity guard, not normally reachable) ──────────────
     reviewee_id = (
-        req.to_user_id if current_user.id == req.from_user_id else req.from_user_id
+        session.learner_id if current_user.id == session.tutor_id else session.tutor_id
     )
     if reviewee_id == current_user.id:
         raise HTTPException(status_code=400, detail="You cannot review yourself.")
 
     # ── 5. No duplicate reviews ───────────────────────────────────────────────
     already = db.query(models.Review).filter(
-        models.Review.request_id == request_id,
+        models.Review.session_id == session_id,
         models.Review.reviewer_id == current_user.id,
     ).first()
     if already:
@@ -92,7 +92,8 @@ def submit_review(
     review = models.Review(
         reviewer_id=current_user.id,
         reviewee_id=reviewee_id,
-        request_id=request_id,
+        request_id=session.request_id,
+        session_id=session.id,
         rating=payload.rating,
         comment=payload.comment or "",
     )
@@ -140,19 +141,19 @@ def get_user_reviews(
     )
 
 
-@router.get("/my/{request_id}", response_model=schemas.ReviewOut)
-def get_my_review_for_request(
-    request_id: int,
+@router.get("/my/session/{session_id}", response_model=schemas.ReviewOut)
+def get_my_review_for_session(
+    session_id: int,
     current_user: models.User = Depends(auth.get_current_user),
     db: Session = Depends(get_db),
 ):
     """
-    Check whether the current user has already reviewed a specific connection.
+    Check whether the current user has already reviewed a specific session.
     Returns the review if it exists, or 404 if not yet submitted.
     Used by the frontend to decide whether to show 'Leave Review' or 'Review submitted'.
     """
     review = db.query(models.Review).filter(
-        models.Review.request_id == request_id,
+        models.Review.session_id == session_id,
         models.Review.reviewer_id == current_user.id,
     ).first()
 

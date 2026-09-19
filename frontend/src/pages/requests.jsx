@@ -22,12 +22,34 @@ export default function Requests() {
       setOutgoing(out)
 
       const completed = [...inc, ...out].filter((r) => r.status === 'completed')
+      
+      let sessions = []
+      try {
+        sessions = await api.mySessions()
+      } catch (e) {
+        console.error("Failed to fetch sessions", e)
+      }
+
+      const completedSessionsToReview = []
+      completed.forEach((r) => {
+        const reqSessions = sessions.filter(s => s.request_id === r.id && s.status === 'completed')
+        reqSessions.sort((a, b) => new Date(b.session_date) - new Date(a.session_date))
+        if (reqSessions.length > 0) {
+          completedSessionsToReview.push({ r, s: reqSessions[0] })
+        }
+      })
+
       const checks = await Promise.allSettled(
-        completed.map((r) => api.getMyReviewForRequest(r.id))
+        completedSessionsToReview.map((item) => api.getMyReviewForSession(item.s.id))
       )
+      
       const map = {}
-      completed.forEach((r, i) => {
-        map[r.id] = checks[i].status === 'fulfilled'
+      completedSessionsToReview.forEach((item, i) => {
+        if (checks[i].status === 'fulfilled' && checks[i].value) {
+          map[item.r.id] = { reviewed: true, sessionId: item.s.id }
+        } else {
+          map[item.r.id] = { reviewed: false, sessionId: item.s.id }
+        }
       })
       setReviewedMap(map)
     } catch (err) {
@@ -60,7 +82,7 @@ export default function Requests() {
   }
 
   function markReviewed(requestId) {
-    setReviewedMap((m) => ({ ...m, [requestId]: true }))
+    setReviewedMap((m) => ({ ...m, [requestId]: { ...m[requestId], reviewed: true } }))
   }
 
   const list = tab === 'incoming' ? incoming : outgoing
@@ -190,15 +212,15 @@ function RequestCard({ r, tab, onAccept, onDecline, onComplete, reviewed, onRevi
         )}
 
         {/* Review panel */}
-        {r.status === 'completed' && (
+        {r.status === 'completed' && reviewed && (
           <div className="mt-4 pt-4 border-t border-line/10">
-            {reviewed ? (
+            {reviewed.reviewed ? (
               <p className="alert-success inline-flex items-center gap-1.5">
                 <span>✓</span> Review submitted — thanks for the feedback!
               </p>
             ) : (
               <ReviewForm
-                requestId={r.id}
+                sessionId={reviewed.sessionId}
                 otherName={otherName}
                 onSubmitted={onReviewed}
               />

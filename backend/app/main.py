@@ -91,6 +91,18 @@ async def lifespan(app: FastAPI):
                         print(f"[startup] Failed to add gender column: {e}")
                 else:
                     print("[startup] gender column already exists.")
+                    
+            reviews_cols = [c['name'] for c in inspector.get_columns('reviews')] if inspector.has_table('reviews') else []
+            with engine.connect() as conn:
+                if 'session_id' not in reviews_cols:
+                    try:
+                        with conn.begin():
+                            conn.execute(text("ALTER TABLE reviews ADD COLUMN session_id INTEGER REFERENCES sessions(id) NULL;"))
+                        print("[startup] Added session_id column to reviews.")
+                    except Exception as e:
+                        print(f"[startup] Failed to add session_id column: {e}")
+                else:
+                    print("[startup] session_id column already exists in reviews.")
         except Exception as e:
             print(f"[startup] Database schema creation failed: {e}")
 

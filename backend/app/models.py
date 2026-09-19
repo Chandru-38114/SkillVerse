@@ -171,6 +171,12 @@ class Review(Base):
         nullable=False
     )
 
+    session_id = Column(
+        Integer,
+        ForeignKey("sessions.id"),
+        nullable=True
+    )
+
     rating = Column(Integer, nullable=False)
     comment = Column(Text, default="")
     created_at = Column(DateTime, default=utc_now)
@@ -186,6 +192,7 @@ class Review(Base):
     )
 
     request = relationship("ConnectionRequest")
+    session = relationship("Session")
 
 
 class Session(Base):

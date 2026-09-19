@@ -572,11 +572,23 @@ function ForwardModal({ message, inbox, currentRequestId, onClose, onForward }) 
 
   useEffect(() => {
     if (activeConversation?.request_status === 'completed' && reviewedStatus[selectedRequestId] === undefined) {
-      api.getMyReviewForRequest(selectedRequestId).then(res => {
-         setReviewedStatus(prev => ({ ...prev, [selectedRequestId]: !!res }))
-      }).catch(err => {
-         setReviewedStatus(prev => ({ ...prev, [selectedRequestId]: false }))
-      })
+      const checkReview = async () => {
+        try {
+          const sessions = await api.mySessions();
+          const reqSessions = sessions.filter(s => s.request_id === selectedRequestId && s.status === 'completed');
+          reqSessions.sort((a, b) => new Date(b.session_date) - new Date(a.session_date));
+          if (reqSessions.length > 0) {
+            const sid = reqSessions[0].id;
+            const res = await api.getMyReviewForSession(sid);
+            setReviewedStatus(prev => ({ ...prev, [selectedRequestId]: { reviewed: !!res, sessionId: sid } }));
+          } else {
+            setReviewedStatus(prev => ({ ...prev, [selectedRequestId]: { reviewed: false, sessionId: null } }));
+          }
+        } catch (err) {
+          setReviewedStatus(prev => ({ ...prev, [selectedRequestId]: { reviewed: false, sessionId: null } }));
+        }
+      };
+      checkReview();
     }
   }, [activeConversation?.request_status, selectedRequestId, reviewedStatus])
 
@@ -844,9 +856,9 @@ function ForwardModal({ message, inbox, currentRequestId, onClose, onForward }) 
                       )
                     })}
                     <div ref={bottomRef} />
-                    {activeConversation?.request_status === 'completed' && (
+                    {activeConversation?.request_status === 'completed' && reviewedStatus[selectedRequestId]?.sessionId && (
                       <div className="mt-6 mb-4">
-                        {reviewedStatus[selectedRequestId] ? (
+                        {reviewedStatus[selectedRequestId].reviewed ? (
                           <div className="bg-moss/10 border border-moss/20 rounded-xl p-4 text-center">
                             <p className="text-moss font-semibold mb-2">✓ Review submitted</p>
                             <Link to="/dashboard" className="btn-primary inline-flex mt-2">
@@ -856,9 +868,9 @@ function ForwardModal({ message, inbox, currentRequestId, onClose, onForward }) 
                         ) : (
                           <div className="bg-surface border border-line rounded-xl p-5 shadow-sm max-w-lg mx-auto">
                             <ReviewForm 
-                              requestId={selectedRequestId} 
+                              sessionId={reviewedStatus[selectedRequestId].sessionId} 
                               otherName={activeConversation.other_user_name} 
-                              onSubmitted={() => setReviewedStatus(prev => ({ ...prev, [selectedRequestId]: true }))} 
+                              onSubmitted={() => setReviewedStatus(prev => ({ ...prev, [selectedRequestId]: { ...prev[selectedRequestId], reviewed: true } }))} 
                             />
                           </div>
                         )}
