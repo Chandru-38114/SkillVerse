@@ -6,6 +6,7 @@ from ..utils.timezone import utc_now
 
 from .. import models, schemas, auth
 from ..database import get_db
+from ..services.summarization import generate_session_summary
 
 router = APIRouter(prefix="/progress", tags=["progress"])
 
@@ -124,7 +125,7 @@ def get_skill_progress(skill_name: str, db: Session = Depends(get_db), current_u
         history=[schemas.SessionProgressOut(
             id=h.id, session_id=h.session_id, user_id=h.user_id, skill_id=h.skill_id,
             topics_discussed=h.topics_discussed or "", topics_completed=h.topics_completed or "",
-            learning_notes=h.learning_notes or "", duration_minutes=h.duration_minutes or 0,
+            learning_notes=h.learning_notes or "", semantic_summary=h.semantic_summary, duration_minutes=h.duration_minutes or 0,
             level_before=h.level_before, level_after=h.level_after,
             progress_percentage_before=h.progress_percentage_before or 0,
             progress_percentage_after=h.progress_percentage_after or 0,
@@ -149,6 +150,7 @@ def get_history(db: Session = Depends(get_db), current_user: models.User = Depen
             topics_discussed=h.topics_discussed or "",
             topics_completed=h.topics_completed or "",
             learning_notes=h.learning_notes or "",
+            semantic_summary=h.semantic_summary,
             duration_minutes=h.duration_minutes or 0,
             level_before=h.level_before,
             level_after=h.level_after,
@@ -184,6 +186,7 @@ def get_session_progress(session_id: int, db: Session = Depends(get_db), current
             topics_discussed="",
             topics_completed="",
             learning_notes="",
+            semantic_summary=None,
             duration_minutes=0,
             progress_percentage_before=0,
             progress_percentage_after=0,
@@ -199,6 +202,7 @@ def get_session_progress(session_id: int, db: Session = Depends(get_db), current
         topics_discussed=prog.topics_discussed or "",
         topics_completed=prog.topics_completed or "",
         learning_notes=prog.learning_notes or "",
+        semantic_summary=prog.semantic_summary,
         duration_minutes=prog.duration_minutes or 0,
         level_before=prog.level_before,
         level_after=prog.level_after,
@@ -320,6 +324,33 @@ def complete_session(session_id: int, db: Session = Depends(get_db), current_use
     if sess.status != "completed":
         sess.status = "completed"
         
+    # Attempt LLM Summarization
+    if not prog.semantic_summary:
+        try:
+            messages = db.query(models.Message).filter(models.Message.request_id == sess.request_id).order_by(models.Message.created_at).all()
+            chat_history = "\n".join([f"{msg.sender_id}: {msg.content}" for msg in messages])
+            
+            wb = db.query(models.WhiteboardState).filter(models.WhiteboardState.session_id == session_id).first()
+            whiteboard_state = wb.state if wb else ""
+            
+            comp = db.query(models.CompilerState).filter(models.CompilerState.session_id == session_id).first()
+            compiler_code = comp.code if comp else ""
+            
+            summary = generate_session_summary(chat_history, whiteboard_state, compiler_code)
+            if summary and not summary.startswith("Error"):
+                prog.semantic_summary = summary
+                
+                # Also save the semantic summary for the other participant if their progress record exists
+                other_user_id = sess.learner_id if current_user.id == sess.tutor_id else sess.tutor_id
+                other_prog = db.query(models.SessionProgress).filter(
+                    models.SessionProgress.session_id == session_id,
+                    models.SessionProgress.user_id == other_user_id
+                ).first()
+                if other_prog:
+                    other_prog.semantic_summary = summary
+        except Exception as e:
+            pass
+
     db.commit()
     
     return {"status": "ok", "sessions_completed": user_skill.sessions_completed}

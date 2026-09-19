@@ -31,3 +31,5 @@ websockets
 supabase>=2.3.0
 pytz
 pytz
+google-generativeai
+google-generativeai

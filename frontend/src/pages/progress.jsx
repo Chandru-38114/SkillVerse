@@ -221,6 +221,12 @@ export default function Progress() {
                         Topics: <span className="font-normal text-clay">{hist.topics_completed || hist.topics_discussed || "General Practice"}</span>
                       </p>
                     </div>
+                    {hist.semantic_summary && (
+                      <div className="bg-paper/50 p-2.5 rounded border border-line text-xs font-medium text-ink/80 leading-relaxed mb-1">
+                        <span className="font-bold text-clay block mb-0.5">What You Worked On</span>
+                        {hist.semantic_summary}
+                      </div>
+                    )}
                     <div className="flex items-center justify-between bg-brand/5 p-3 rounded-lg border border-brand/10">
                       <div className="flex items-center gap-1.5 text-sm font-bold text-brand">
                         <TrendingUp className="w-4 h-4" /> 

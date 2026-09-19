@@ -358,6 +358,7 @@ class SessionProgressUpdate(BaseModel):
     topics_discussed: Optional[str] = None
     topics_completed: Optional[str] = None
     learning_notes: Optional[str] = None
+    semantic_summary: Optional[str] = None
 
 class SessionProgressOut(BaseModel):
     id: int
@@ -367,6 +368,7 @@ class SessionProgressOut(BaseModel):
     topics_discussed: str
     topics_completed: str
     learning_notes: str
+    semantic_summary: Optional[str] = None
     duration_minutes: int
     level_before: Optional[str] = None
     level_after: Optional[str] = None

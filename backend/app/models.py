@@ -279,6 +279,7 @@ class SessionProgress(Base):
     topics_discussed = Column(Text, default="")
     topics_completed = Column(Text, default="")
     learning_notes = Column(Text, default="")
+    semantic_summary = Column(Text, nullable=True)
     
     duration_minutes = Column(Integer, default=0)
     level_before = Column(String, nullable=True)
