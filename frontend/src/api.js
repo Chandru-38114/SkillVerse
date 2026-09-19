@@ -257,7 +257,7 @@ export const api = {
 
   // Certificates
   getMyCertificates: () => request("/certificates/my"),
-  generateCertificate: (skillName) => request(`/certificates/generate?skill_name=${encodeURIComponent(skillName)}`, { method: "POST" }),
+  generateCertificate: (skillName) => request(`/certificates/generate`, { method: "POST", body: { skill_name: skillName } }),
   verifyCertificate: (certId) => request(`/certificates/verify/${certId}`, { auth: false }),
 
   // Progress & Notes

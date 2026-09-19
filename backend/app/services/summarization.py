@@ -18,7 +18,7 @@ def generate_session_summary(chat_history: str, whiteboard_state: str, compiler_
     api_key = os.getenv("GEMINI_API_KEY")
     if not HAS_GENAI or not api_key:
         # Return a fallback summary if the API isn't configured
-        return "Session summary unavailable (Gemini API not configured)."
+        return None
 
     try:
         genai.configure(api_key=api_key)

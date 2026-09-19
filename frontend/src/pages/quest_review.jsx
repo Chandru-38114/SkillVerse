@@ -30,9 +30,16 @@ export default function QuestReview() {
         
         // Check if a review already exists for this session
         if (s.id) {
-          const existingReview = await api.getMyReviewForSession(s.id)
-          if (existingReview) {
-            setReviewed(true)
+          try {
+            const existingReview = await api.getMyReviewForSession(s.id)
+            if (existingReview) {
+              setReviewed(true)
+            }
+          } catch (reviewErr) {
+            // It's expected for this to throw "No review found" if the user hasn't reviewed yet.
+            if (reviewErr.message !== "No review found") {
+              throw reviewErr;
+            }
           }
         }
       } catch (err) {
