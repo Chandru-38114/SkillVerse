@@ -12,13 +12,13 @@ from fastapi import WebSocket
 
 class ConnectionManager:
     def __init__(self):
-        self.active_connections: Dict[int, List[WebSocket]] = {}
+        self.active_connections: Dict[str, List[WebSocket]] = {}
 
-    async def connect(self, room_id: int, websocket: WebSocket) -> None:
+    async def connect(self, room_id: str, websocket: WebSocket) -> None:
         await websocket.accept()
         self.active_connections.setdefault(room_id, []).append(websocket)
 
-    def disconnect(self, room_id: int, websocket: WebSocket) -> None:
+    def disconnect(self, room_id: str, websocket: WebSocket) -> None:
         conns = self.active_connections.get(room_id)
         if not conns:
             return
@@ -27,7 +27,7 @@ class ConnectionManager:
         if not conns:
             self.active_connections.pop(room_id, None)
 
-    async def broadcast(self, room_id: int, message: dict) -> None:
+    async def broadcast(self, room_id: str, message: dict) -> None:
         dead = []
         for connection in self.active_connections.get(room_id, []):
             try:
@@ -37,7 +37,7 @@ class ConnectionManager:
         for connection in dead:
             self.disconnect(room_id, connection)
 
-    def room_size(self, room_id: int) -> int:
+    def room_size(self, room_id: str) -> int:
         return len(self.active_connections.get(room_id, []))
 
 

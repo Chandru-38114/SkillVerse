@@ -224,7 +224,14 @@ def _serialize_message(msg: models.Message) -> dict:
 async def _broadcast_message_update(request_id: int, msg: models.Message) -> None:
     """Broadcast a message_update event to all participants in a conversation."""
     try:
-        await chat_manager.broadcast(request_id, {
+        db = SessionLocal()
+        req = db.query(models.ConnectionRequest).filter(models.ConnectionRequest.id == request_id).first()
+        room_id = str(request_id)
+        if req:
+            u1, u2 = min(req.from_user_id, req.to_user_id), max(req.from_user_id, req.to_user_id)
+            room_id = f"pair_{u1}_{u2}"
+        db.close()
+        await chat_manager.broadcast(room_id, {
             "type": "message_update",
             "message": _serialize_message(msg),
         })
@@ -395,9 +402,10 @@ def mark_conversation_read(
     db.commit()
 
     try:
+        room_id = f"pair_{min(current_user.id, other_user_id)}_{max(current_user.id, other_user_id)}"
         import asyncio
         loop = asyncio.get_running_loop()
-        loop.create_task(chat_manager.broadcast(request_id, {
+        loop.create_task(chat_manager.broadcast(room_id, {
             "type": "messages_read",
             "request_id": request_id,
             "reader_id": current_user.id,
@@ -531,17 +539,18 @@ async def chat_websocket(websocket: WebSocket, request_id: int, token: str = Que
         await websocket.close(code=error_code)
         return
 
-    await chat_manager.connect(request_id, websocket)
+    room_id = f"pair_{min(user.id, other_user_id)}_{max(user.id, other_user_id)}"
+    await chat_manager.connect(room_id, websocket)
 
     # Broadcast presence online
-    await chat_manager.broadcast(request_id, {
+    await chat_manager.broadcast(room_id, {
         "type": "presence_update",
         "user_id": user.id,
         "status": "online"
     })
 
     # Tell me if the other user is already online
-    if chat_manager.room_size(request_id) > 1:
+    if chat_manager.room_size(room_id) > 1:
         await websocket.send_json({
             "type": "presence_update",
             "user_id": other_user_id,
@@ -562,11 +571,11 @@ async def chat_websocket(websocket: WebSocket, request_id: int, token: str = Que
 
             msg_payload = await run_in_threadpool(_save_message_and_notify, request_id, user.id, user.name, content, metadata)
             msg_payload["type"] = "message"
-            await chat_manager.broadcast(request_id, msg_payload)
+            await chat_manager.broadcast(room_id, msg_payload)
     except WebSocketDisconnect:
-        chat_manager.disconnect(request_id, websocket)
+        chat_manager.disconnect(room_id, websocket)
         last_active_iso = await run_in_threadpool(_update_last_active, user.id)
-        await chat_manager.broadcast(request_id, {
+        await chat_manager.broadcast(room_id, {
             "type": "presence_update",
             "user_id": user.id,
             "status": "offline",
