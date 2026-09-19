@@ -7,19 +7,10 @@ from ..utils.timezone import utc_now
 from .. import models, schemas, auth
 from ..database import get_db
 from ..services.summarization import generate_session_summary
+from ..utils.progress_utils import compute_skill_stage
 
 router = APIRouter(prefix="/progress", tags=["progress"])
 
-def compute_skill_stage(assessments_count: int, sessions_completed: int, badge: Optional[str], level: str, total_learning_minutes: int):
-    if badge:
-        return "Mastery", f"You successfully passed the final challenge and earned your verified {badge} badge.", "Guide others or explore new skills"
-    if sessions_completed >= 5:
-        return "Developing", f"You have completed {sessions_completed} sessions. You are now eligible for the final verification challenge.", "Take the final challenge to earn a badge"
-    if sessions_completed > 0:
-        return "Practicing", f"You have completed {sessions_completed} learning sessions, accumulating {total_learning_minutes} minutes of practice.", f"Complete {5 - sessions_completed} more sessions to reach Developing"
-    if assessments_count > 0:
-        return "Baseline Established", f"You completed your first assessment, establishing your baseline level as {level}.", "Complete your first learning session"
-    return "Discovered", "You have added this skill to your journey.", "Take a skill challenge to establish your baseline"
 
 @router.get("/my", response_model=List[schemas.UserSkillProgressOut])
 def get_my_progress(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):

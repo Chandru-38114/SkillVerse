@@ -132,7 +132,7 @@ export default function Progress() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               {progressData.map((skill, idx) => {
                 const certForSkill = certificates.find(c => c.skill_name === skill.skill_name && c.badge === skill.badge);
-                const isEligible = skill.stage === "Mastery" || skill.stage === "Developing";
+                const isEligible = skill.stage === "Mastery";
                 const whatHappened = skill.what_happened || "";
                 const nextMilestone = skill.next_milestone || "Keep learning and practicing to grow this skill.";
                 const staggerClass = `stagger-${Math.min(idx + 3, 5)}`;

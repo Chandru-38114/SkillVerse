@@ -7,6 +7,7 @@ from ..notification_service import create_notification
 
 from .. import models, schemas, auth
 from ..database import get_db
+from ..utils.progress_utils import compute_skill_stage
 
 router = APIRouter(prefix="/certificates", tags=["certificates"])
 
@@ -31,11 +32,15 @@ def generate_certificate(
     if not us:
         raise HTTPException(status_code=400, detail="You do not have this skill registered.")
 
-    if not us.badge or us.level == "Unassessed":
-        raise HTTPException(status_code=400, detail="You must complete a skill assessment to earn a badge first.")
+    assessments = db.query(models.AssessmentAttempt).filter(
+        models.AssessmentAttempt.user_id == current_user.id,
+        models.AssessmentAttempt.skill_id == skill.id
+    ).count()
 
-    if us.progress_percentage < 100:
-        raise HTTPException(status_code=400, detail="You must reach 100% learning progress to earn this certificate.")
+    stage, _, _ = compute_skill_stage(assessments, us.sessions_completed, us.badge, us.level, us.total_learning_minutes)
+
+    if stage != "Mastery":
+        raise HTTPException(status_code=400, detail="You must reach Mastery stage to earn this certificate.")
 
     # Prevent duplicate generation for the same skill and same badge
     existing_cert = db.query(models.Certificate).filter(
