@@ -9,6 +9,17 @@ from ..database import get_db
 
 router = APIRouter(prefix="/progress", tags=["progress"])
 
+def compute_skill_stage(assessments_count: int, sessions_completed: int, badge: Optional[str]):
+    if badge:
+        return "Mastery", "Guide others or explore new skills"
+    if sessions_completed >= 5:
+        return "Developing", "Take the final challenge to earn a badge"
+    if sessions_completed > 0:
+        return "Practicing", f"Complete {5 - sessions_completed} more sessions to reach Developing"
+    if assessments_count > 0:
+        return "Baseline Established", "Complete your first learning session"
+    return "Discovered", "Take a skill challenge to establish your baseline"
+
 @router.get("/my", response_model=List[schemas.UserSkillProgressOut])
 def get_my_progress(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
     user_skills = db.query(models.UserSkill).filter(models.UserSkill.user_id == current_user.id).all()
@@ -23,7 +34,7 @@ def get_my_progress(db: Session = Depends(get_db), current_user: models.User = D
         history = db.query(models.SessionProgress).filter(
             models.SessionProgress.user_id == current_user.id,
             models.SessionProgress.skill_id == us.skill_id,
-            models.SessionProgress.progress_percentage_after > 0
+            models.SessionProgress.duration_minutes > 0
         ).order_by(models.SessionProgress.created_at.desc()).all()
         
         history_items = []
@@ -45,6 +56,8 @@ def get_my_progress(db: Session = Depends(get_db), current_user: models.User = D
                 updated_at=h.updated_at
             ))
         
+        stage, next_milestone = compute_skill_stage(assessments, us.sessions_completed, us.badge)
+        
         us_out = schemas.UserSkillProgressOut(
             id=us.id,
             skill_id=us.skill_id,
@@ -57,6 +70,8 @@ def get_my_progress(db: Session = Depends(get_db), current_user: models.User = D
             sessions_completed=us.sessions_completed,
             total_learning_minutes=us.total_learning_minutes,
             assessment_count=assessments,
+            stage=stage,
+            next_milestone=next_milestone,
             history=history_items
         )
         out.append(us_out)
@@ -85,8 +100,10 @@ def get_skill_progress(skill_name: str, db: Session = Depends(get_db), current_u
     history = db.query(models.SessionProgress).filter(
         models.SessionProgress.user_id == current_user.id,
         models.SessionProgress.skill_id == skill.id,
-        models.SessionProgress.progress_percentage_after > 0
+        models.SessionProgress.duration_minutes > 0
     ).order_by(models.SessionProgress.created_at.desc()).all()
+    
+    stage, next_milestone = compute_skill_stage(assessments, user_skill.sessions_completed, user_skill.badge)
     
     return schemas.UserSkillProgressOut(
         id=user_skill.id,
@@ -100,6 +117,8 @@ def get_skill_progress(skill_name: str, db: Session = Depends(get_db), current_u
         sessions_completed=user_skill.sessions_completed,
         total_learning_minutes=user_skill.total_learning_minutes,
         assessment_count=assessments,
+        stage=stage,
+        next_milestone=next_milestone,
         history=[schemas.SessionProgressOut(
             id=h.id, session_id=h.session_id, user_id=h.user_id, skill_id=h.skill_id,
             topics_discussed=h.topics_discussed or "", topics_completed=h.topics_completed or "",
@@ -115,7 +134,7 @@ def get_skill_progress(skill_name: str, db: Session = Depends(get_db), current_u
 def get_history(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
     history = db.query(models.SessionProgress).filter(
         models.SessionProgress.user_id == current_user.id,
-        models.SessionProgress.progress_percentage_after > 0
+        models.SessionProgress.duration_minutes > 0
     ).order_by(models.SessionProgress.created_at.desc()).all()
     
     result = []
@@ -288,17 +307,12 @@ def complete_session(session_id: int, db: Session = Depends(get_db), current_use
     prog.progress_percentage_before = user_skill.progress_percentage
     prog.duration_minutes = duration
     
-    if user_skill.role == "learning":
-        new_prog = min(100, user_skill.progress_percentage + 10)
-    else:
-        new_prog = min(100, user_skill.progress_percentage + 5)
-        
-    user_skill.progress_percentage = new_prog
+    # We no longer invent progress percentage.
     user_skill.sessions_completed += 1
     user_skill.total_learning_minutes += duration
     
     prog.level_after = user_skill.level
-    prog.progress_percentage_after = new_prog
+    prog.progress_percentage_after = user_skill.progress_percentage
     
     # We update session status to completed if it isn't already
     if sess.status != "completed":
@@ -306,4 +320,4 @@ def complete_session(session_id: int, db: Session = Depends(get_db), current_use
         
     db.commit()
     
-    return {"status": "ok", "progress_percentage": new_prog}
+    return {"status": "ok", "sessions_completed": user_skill.sessions_completed}

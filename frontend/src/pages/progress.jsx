@@ -3,21 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { CheckCircle, ArrowRight, Award, History, TrendingUp, Clock, BookOpen } from "lucide-react";
 import { api } from "../api";
 
-function getSkillNarrative(skill) {
-  if (skill.progress_percentage === 100 && skill.badge) {
-    return "This skill has reached its current milestone.";
-  }
-  if (skill.progress_percentage >= 80) {
-    return "You're getting close to your next skill milestone.";
-  }
-  if (skill.sessions_completed > 0) {
-    return "You've already started building momentum through your sessions.";
-  }
-  if (skill.progress_percentage < 40) {
-    return "Keep building the fundamentals through practice and sessions.";
-  }
-  return "Keep learning and practicing to grow this skill.";
-}
+
 
 export default function Progress() {
   const [progressData, setProgressData] = useState([]);
@@ -137,8 +123,8 @@ export default function Progress() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               {progressData.map((skill, idx) => {
                 const certForSkill = certificates.find(c => c.skill_name === skill.skill_name && c.badge === skill.badge);
-                const isEligible = skill.progress_percentage >= 100 && skill.badge && skill.level !== "Unassessed";
-                const narrative = getSkillNarrative(skill);
+                const isEligible = skill.stage === "Mastery" || skill.stage === "Developing";
+                const narrative = skill.next_milestone || "Keep learning and practicing to grow this skill.";
                 const staggerClass = `stagger-${Math.min(idx + 3, 5)}`;
                 
                 return (
@@ -150,7 +136,7 @@ export default function Progress() {
                           <h2 className="text-xl font-bold text-ink leading-tight">{skill.skill_name}</h2>
                         </div>
                         <span className="text-sm font-bold text-brand bg-brand/10 px-2.5 py-1.5 rounded-md">
-                          {skill.progress_percentage}%
+                          {skill.stage}
                         </span>
                       </div>
                       
@@ -163,17 +149,7 @@ export default function Progress() {
                         )}
                       </div>
                       
-                      <div className="w-full bg-line/50 rounded-full h-2 mb-4 overflow-hidden relative">
-                        <div 
-                          className="bg-brand h-full rounded-full transition-all duration-700 ease-out animate-progress" 
-                          style={{ width: `${Math.min(100, skill.progress_percentage)}%` }}
-                        ></div>
-                        {skill.progress_percentage === 100 && (
-                          <div className="absolute right-0 top-1/2 -translate-y-1/2 w-4 h-4 bg-white rounded-full border-2 border-brand flex items-center justify-center">
-                            <Star className="w-2 h-2 text-brand" />
-                          </div>
-                        )}
-                      </div>
+
 
                       {/* B3: Narrative Progress */}
                       <p className="text-sm font-medium text-ink/80 mb-5 min-h-[40px]">{narrative}</p>

@@ -236,7 +236,7 @@ export default function Dashboard() {
       icon: <Users className="w-24 h-24 text-brand" />
     }
   } else if (activeLearningSkill) {
-    if (activeLearningSkill.progress_percentage === 0) {
+    if (activeLearningSkill.stage === "Discovered") {
       heroState = {
         title: "Take the Skill Challenge",
         description: `Assess your ${activeLearningSkill.skill_name} to establish your baseline and earn initial XP.`,
@@ -244,7 +244,7 @@ export default function Dashboard() {
         actionUrl: `/assessment?skill=${encodeURIComponent(activeLearningSkill.skill_name)}&role=learning&autoStart=true`,
         icon: <ClipboardCheck className="w-24 h-24 text-brand" />
       }
-    } else if (activeLearningSkill.progress_percentage > 0 && activeLearningSkill.progress_percentage < 100) {
+    } else if (activeLearningSkill.stage === "Baseline Established" || activeLearningSkill.stage === "Practicing") {
       const relevantRequest = outRequests.find(r =>
         r.skill_name === activeLearningSkill.skill_name &&
         (r.status === 'pending' || r.status === 'accepted')
@@ -282,7 +282,7 @@ export default function Dashboard() {
           icon: <BookOpen className="w-24 h-24 text-brand" />
         }
       }
-    } else if (activeLearningSkill.progress_percentage === 100 && !activeLearningSkill.badge) {
+    } else if (activeLearningSkill.stage === "Developing") {
       heroState = {
         title: "The Final Challenge Awaits",
         description: `You've completed the learning path for ${activeLearningSkill.skill_name}. Take the final challenge to earn your verified badge.`,
@@ -290,7 +290,7 @@ export default function Dashboard() {
         actionUrl: `/assessment?skill=${encodeURIComponent(activeLearningSkill.skill_name)}&role=learning&autoStart=true`,
         icon: <CheckCircle className="w-24 h-24 text-brand" />
       }
-    } else if (activeLearningSkill.progress_percentage === 100 && activeLearningSkill.badge) {
+    } else if (activeLearningSkill.stage === "Mastery") {
       heroState = {
         title: "Mastery Achieved",
         description: `You hold a verified badge in ${activeLearningSkill.skill_name}. You can now guide others or begin a new quest.`,
@@ -316,21 +316,24 @@ export default function Dashboard() {
   // Builds a list of visible nodes with state, label, sublabel
   const journeyNodes = []
   if (activeLearningSkill) {
-    // Node 0: Skill challenge (completed if progress > 0)
+    // Node 0: Skill challenge
+    const hasBaseline = activeLearningSkill.stage !== "Discovered"
     journeyNodes.push({
-      state: activeLearningSkill.progress_percentage > 0 ? 'completed' : 'active',
+      state: hasBaseline ? 'completed' : 'active',
       label: 'Skill Challenge',
       sublabel: activeLearningSkill.skill_name,
     })
-    // Node 1: Active learning (visible if progress > 0 and < 100)
-    if (activeLearningSkill.progress_percentage > 0) {
-      const isCurrentlyLearning = activeLearningSkill.progress_percentage < 100
+    
+    // Node 1: Active learning
+    if (hasBaseline) {
+      const isDevelopingOrMastery = activeLearningSkill.stage === "Developing" || activeLearningSkill.stage === "Mastery"
       journeyNodes.push({
-        state: isCurrentlyLearning ? 'active' : 'completed',
+        state: isDevelopingOrMastery ? 'completed' : 'active',
         label: 'Partner Training',
         sublabel: weakTopic ? `Focus: ${weakTopic}` : activeLearningSkill.skill_name,
       })
     }
+    
     // Node 2: Learning arena (session)
     if (nextSession) {
       journeyNodes.push({
@@ -338,19 +341,20 @@ export default function Dashboard() {
         label: 'Learning Arena',
         sublabel: `With ${nextSession.tutor_id === user.id ? nextSession.learner_name : nextSession.tutor_name}`,
       })
-    } else if (activeLearningSkill.progress_percentage >= 50) {
+    } else if (activeLearningSkill.stage === "Practicing") {
       journeyNodes.push({
         state: 'next',
         label: 'Learning Arena',
         sublabel: 'Schedule a session',
       })
     }
+    
     // Node 3: Final challenge / mastery
-    if (activeLearningSkill.progress_percentage === 100) {
+    if (activeLearningSkill.stage === "Developing" || activeLearningSkill.stage === "Mastery") {
       journeyNodes.push({
-        state: activeLearningSkill.badge ? 'completed' : 'active',
-        label: activeLearningSkill.badge ? 'Mastery Earned' : 'Final Challenge',
-        sublabel: activeLearningSkill.badge ? `${activeLearningSkill.skill_name} — Verified` : 'Earn your badge',
+        state: activeLearningSkill.stage === "Mastery" ? 'completed' : 'active',
+        label: activeLearningSkill.stage === "Mastery" ? 'Mastery Earned' : 'Final Challenge',
+        sublabel: activeLearningSkill.stage === "Mastery" ? `${activeLearningSkill.skill_name} — Verified` : 'Earn your badge',
       })
     } else {
       journeyNodes.push({
