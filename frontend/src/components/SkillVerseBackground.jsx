@@ -61,7 +61,20 @@ export default function SkillVerseBackground() {
       <div className="absolute top-[30%] right-[20%] w-[40vw] h-[40vw] max-w-[500px] max-h-[500px] rounded-full bg-accent/5 blur-[100px] animate-ambient-drift-3 mix-blend-multiply opacity-50" />
 
       {/* 
-        LAYER 5: Very subtle noise for texture/paper feel
+        LAYER 5: Blueprint Dot Grid for Structured Learning Atmosphere
+      */}
+      <div 
+        className="absolute inset-0 opacity-[0.25]" 
+        style={{ 
+          backgroundImage: 'radial-gradient(rgb(var(--color-brand)) 1px, transparent 1px)',
+          backgroundSize: '24px 24px',
+          maskImage: 'radial-gradient(ellipse at center, black 40%, transparent 80%)',
+          WebkitMaskImage: 'radial-gradient(ellipse at center, black 40%, transparent 80%)'
+        }} 
+      />
+
+      {/* 
+        LAYER 6: Very subtle noise for texture/paper feel
       */}
       <div className="absolute inset-0 opacity-[0.02] mix-blend-overlay" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=%220 0 200 200%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noiseFilter%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.8%22 numOctaves=%224%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noiseFilter)%22/%3E%3C/svg%3E")' }}></div>
       

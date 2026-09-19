@@ -147,17 +147,26 @@ export default function Navbar() {
             <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 relative transition-transform group-hover:scale-105 duration-300">
               <div className="absolute inset-0 bg-brand/10 blur-md rounded-full scale-125 opacity-0 group-hover:opacity-100 transition-opacity"></div>
               <svg className="w-6 h-6 relative z-10" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <circle cx="24" cy="24" r="22" className="stroke-line" strokeWidth="1" strokeDasharray="2 6" />
-                <path d="M 12 14 L 24 36 L 36 14" className="stroke-brandLight" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
-                <path d="M 34 14 C 34 14 28 8 24 16 C 20 24 34 26 24 36 C 18 42 12 36 12 36" className="stroke-brand" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
-                <circle cx="12" cy="14" r="3.5" className="fill-brand drop-shadow-sm" />
-                <circle cx="34" cy="14" r="3.5" className="fill-brand2 drop-shadow-sm" />
-                <circle cx="24" cy="25" r="3" className="fill-white stroke-accent stroke-2" />
-                <circle cx="24" cy="36" r="3.5" className="fill-brand drop-shadow-sm" />
-                <circle cx="12" cy="36" r="3" className="fill-gold drop-shadow-sm" />
+                {/* SV Monogram / Node Network */}
+                <path d="M14 34 L14 18 C14 13 20 12 24 16 C28 20 34 19 34 14 L34 30" stroke="url(#logoGrad)" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M14 34 L24 44 L34 30" stroke="url(#logoGrad)" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+                
+                {/* Nodes */}
+                <circle cx="14" cy="18" r="4" className="fill-brand" />
+                <circle cx="34" cy="14" r="3" className="fill-brand2" />
+                <circle cx="14" cy="34" r="3" className="fill-accent" />
+                <circle cx="34" cy="30" r="3.5" className="fill-brand" />
+                <circle cx="24" cy="44" r="4" className="fill-gold" />
+                
+                <defs>
+                  <linearGradient id="logoGrad" x1="14" y1="14" x2="34" y2="44" gradientUnits="userSpaceOnUse">
+                    <stop stopColor="rgb(var(--color-brand))" />
+                    <stop offset="1" stopColor="rgb(var(--color-accent))" />
+                  </linearGradient>
+                </defs>
               </svg>
             </div>
-            <div className="text-ink drop-shadow-sm">
+            <div className="text-ink drop-shadow-sm ml-0.5">
               Skill<span className="text-transparent bg-clip-text bg-gradient-to-r from-brand to-brand2">Verse</span>
             </div>
           </Link>

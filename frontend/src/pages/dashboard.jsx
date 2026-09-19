@@ -202,13 +202,16 @@ export default function Dashboard() {
   return (
     <div className="page space-y-4 md:space-y-6 pb-8 animate-fade-in stagger-1">
       
-      {/* Player Stats Header */}
-      <section className="mb-4 section-panel flex flex-col md:flex-row items-center justify-between gap-6">
-        <div className="flex items-center gap-5">
+      {/* Player Stats Header & Greeting */}
+      <section className="mb-6 flex flex-col md:flex-row items-center justify-between gap-6 relative z-10">
+        <div className="flex items-center gap-5 w-full md:w-auto bg-surface/60 backdrop-blur-3xl rounded-[2rem] border border-white/60 shadow-sm p-4 md:pr-8">
           <Avatar name={user.name} size="lg" className="shrink-0 drop-shadow-sm ring-4 ring-white" />
           <div>
+            <p className="text-xs font-bold text-clay uppercase tracking-wider mb-0.5">
+              {new Date().getHours() < 12 ? 'Good morning' : new Date().getHours() < 18 ? 'Good afternoon' : 'Good evening'},
+            </p>
             <h1 className="text-2xl md:text-3xl font-display font-bold text-ink mb-1">
-              {user.name.split(' ')[0]}'s Journey
+              {user.name.split(' ')[0]}
             </h1>
             <p className="text-sm font-semibold text-brand flex items-center gap-1.5">
               <Award className="w-4 h-4" /> Level: {gamification?.next_milestone_title || "Explorer"}
@@ -292,8 +295,10 @@ export default function Dashboard() {
                      </div>
                    </div>
                    
-                   <div className="flex-1 card-hover section-panel p-8 md:p-10 z-10 group/card border-transparent hover:border-brand/20">
-                     <div className="absolute inset-0 bg-gradient-to-br from-brand/5 to-transparent pointer-events-none" />
+                   <div className="flex-1 card-hover bg-surface/60 backdrop-blur-2xl rounded-[2rem] p-8 md:p-10 z-10 group/card border border-white/60 hover:border-brand/30 shadow-[0_8px_30px_rgb(0,0,0,0.04)] relative overflow-hidden">
+                     {/* Inner glowing aura */}
+                     <div className="absolute -inset-10 bg-gradient-to-br from-brand/10 via-transparent to-accent/5 opacity-0 group-hover/card:opacity-100 transition-opacity duration-700 pointer-events-none" />
+                     
                      <div className="relative z-10">
                        <p className="text-[10px] font-bold text-brand uppercase tracking-widest mb-3 flex items-center gap-1.5">
                          <Star className="w-4 h-4 fill-brand text-brand" /> Your next move
@@ -304,7 +309,7 @@ export default function Dashboard() {
                        <p className="text-clay font-medium mb-8 text-base md:text-lg max-w-lg leading-relaxed">{heroState.description}</p>
                        
                        {heroState.metadata && (
-                         <div className="grid grid-cols-2 gap-y-4 gap-x-6 mb-10 max-w-md bg-white/60 rounded-2xl p-4 border border-white/80 shadow-sm">
+                         <div className="grid grid-cols-2 gap-y-4 gap-x-6 mb-10 max-w-md bg-white/80 rounded-2xl p-4 border border-white shadow-sm">
                            {heroState.metadata.map(m => (
                              <div key={m.label} className="text-sm">
                                <span className="text-clay uppercase tracking-wider text-[10px] font-bold block mb-1">{m.label}</span>
@@ -314,11 +319,11 @@ export default function Dashboard() {
                          </div>
                        )}
 
-                       <Link to={heroState.actionUrl} className="btn-brand text-base px-8 py-4 rounded-full">
+                       <Link to={heroState.actionUrl} className="btn-brand text-base px-8 py-4 rounded-full shadow-[0_8px_20px_rgba(67,56,202,0.2)]">
                          {heroState.actionText}
                        </Link>
                      </div>
-                     <div className="absolute right-[-10%] bottom-[-10%] hidden sm:flex items-center justify-end pr-6 pointer-events-none opacity-[0.04] group-hover/card:opacity-[0.08] group-hover/card:scale-110 transition-all duration-700 scale-125">
+                     <div className="absolute right-[-5%] bottom-[-5%] hidden sm:flex items-center justify-end pr-6 pointer-events-none opacity-[0.03] group-hover/card:opacity-[0.06] transition-all duration-700 scale-150">
                        {heroState.icon}
                      </div>
                    </div>
