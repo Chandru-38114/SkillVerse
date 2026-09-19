@@ -103,6 +103,18 @@ async def lifespan(app: FastAPI):
                         print(f"[startup] Failed to add session_id column: {e}")
                 else:
                     print("[startup] session_id column already exists in reviews.")
+
+            session_progress_cols = [c['name'] for c in inspector.get_columns('session_progress')] if inspector.has_table('session_progress') else []
+            with engine.connect() as conn:
+                if 'semantic_summary' not in session_progress_cols:
+                    try:
+                        with conn.begin():
+                            conn.execute(text("ALTER TABLE session_progress ADD COLUMN semantic_summary TEXT NULL;"))
+                        print("[startup] Added semantic_summary column to session_progress.")
+                    except Exception as e:
+                        print(f"[startup] Failed to add semantic_summary column: {e}")
+                else:
+                    print("[startup] semantic_summary column already exists in session_progress.")
         except Exception as e:
             print(f"[startup] Database schema creation failed: {e}")
 
