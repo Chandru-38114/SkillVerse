@@ -203,7 +203,7 @@ export default function Dashboard() {
     <div className="page space-y-4 md:space-y-6 pb-8 animate-fade-in stagger-1">
       
       {/* Player Stats Header */}
-      <section className="mb-4 bg-surface/40 backdrop-blur-3xl p-6 rounded-[2rem] border border-white/50 shadow-sm flex flex-col md:flex-row items-center justify-between gap-6">
+      <section className="mb-4 section-panel flex flex-col md:flex-row items-center justify-between gap-6">
         <div className="flex items-center gap-5">
           <Avatar name={user.name} size="lg" className="shrink-0 drop-shadow-sm ring-4 ring-white" />
           <div>
@@ -215,16 +215,19 @@ export default function Dashboard() {
             </p>
           </div>
         </div>
-        <div className="w-full md:w-72 bg-white/50 rounded-2xl p-4 border border-white/60 shadow-sm">
-           <div className="flex justify-between items-end mb-2">
+        <div className="w-full md:w-72 bg-white/50 rounded-2xl p-4 border border-white/60 shadow-sm relative overflow-hidden group">
+           <div className="absolute inset-0 bg-gradient-to-r from-brandLight/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+           <div className="flex justify-between items-end mb-2 relative z-10">
              <p className="text-[10px] font-bold text-clay uppercase tracking-wider">XP to next level</p>
              <p className="text-xs text-ink font-bold">{gamification?.total_points || user.points || 0} / {gamification?.next_milestone_points || 500}</p>
            </div>
-           <div className="w-full bg-lift/80 h-2 rounded-full overflow-hidden shadow-inner">
+           <div className="w-full bg-lift/80 h-2 rounded-full overflow-hidden shadow-inner relative z-10">
              <div 
-               className="bg-brand h-full rounded-full transition-all duration-700 ease-out animate-progress" 
+               className="bg-brand h-full rounded-full transition-all duration-700 ease-out animate-progress relative" 
                style={{ width: `${Math.min(100, (((gamification?.total_points || user.points || 0) / (gamification?.next_milestone_points || 500)) * 100))}%` }} 
-             />
+             >
+                <div className="absolute top-0 bottom-0 right-0 w-4 bg-white/30 blur-[2px] -skew-x-12" />
+             </div>
            </div>
         </div>
       </section>
@@ -235,8 +238,9 @@ export default function Dashboard() {
         ) : null
       ) : isEmptyState ? (
         // Start Journey Node
-        <div className="card p-8 sm:p-12 text-center bg-surface/60 border border-brand/30 shadow-[0_0_40px_rgba(34,211,238,0.1)] mt-6 max-w-4xl mx-auto animate-slide-up stagger-2 relative overflow-hidden">
+        <div className="section-panel p-8 sm:p-12 text-center mt-6 max-w-4xl mx-auto animate-slide-up stagger-2 relative">
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-brand/10 rounded-full blur-3xl pointer-events-none" />
+          
           <div className="w-20 h-20 bg-surface border-4 border-brand/20 text-brand rounded-full flex items-center justify-center mx-auto mb-6 relative z-10 shadow-[0_0_20px_rgba(34,211,238,0.3)]">
             <Compass className="w-10 h-10" />
           </div>
@@ -288,11 +292,11 @@ export default function Dashboard() {
                      </div>
                    </div>
                    
-                   <div className="flex-1 card-hover bg-surface/80 backdrop-blur-3xl border border-white p-8 md:p-10 overflow-hidden relative rounded-[2rem] z-10 group/card shadow-[0_4px_24px_-12px_rgba(67,56,202,0.15)]">
+                   <div className="flex-1 card-hover section-panel p-8 md:p-10 z-10 group/card border-transparent hover:border-brand/20">
                      <div className="absolute inset-0 bg-gradient-to-br from-brand/5 to-transparent pointer-events-none" />
                      <div className="relative z-10">
                        <p className="text-[10px] font-bold text-brand uppercase tracking-widest mb-3 flex items-center gap-1.5">
-                         <Star className="w-4 h-4 fill-brand text-brand" /> Current Quest
+                         <Star className="w-4 h-4 fill-brand text-brand" /> Your next move
                        </p>
                        <h3 className="text-3xl md:text-4xl font-display font-bold text-ink leading-tight mb-3">
                          {heroState.title}
@@ -387,7 +391,7 @@ export default function Dashboard() {
                 <Calendar className="w-3.5 h-3.5" /> Scheduled Events
               </h3>
               {nextSession ? (
-                <div className="card p-4 border border-brand/20 bg-surface/50 backdrop-blur-xl shadow-elev-2 flex flex-col gap-3 group hover:border-brand/40 transition-colors">
+                <div className="section-panel p-5 bg-surface/60 backdrop-blur-xl shadow-elev-2 flex flex-col gap-3 group hover:border-brand/40 transition-colors">
                    <div className="flex items-center gap-3">
                      <Avatar name={nextSession.tutor_id === user.id ? nextSession.learner_name : nextSession.tutor_name} size="md" className="shrink-0" />
                      <div className="flex-1 min-w-0">

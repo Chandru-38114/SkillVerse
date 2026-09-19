@@ -151,13 +151,18 @@ export default function Marketplace() {
 
   return (
     <div className="min-h-screen bg-transparent font-body text-ink pb-16 relative z-10">
-      <section className="pt-10 pb-8 px-4 sm:px-6 max-w-5xl mx-auto border-b border-line/10 mb-6 relative">
-        <div className="max-w-3xl mx-auto text-center mb-8">
-          <h1 className="text-3xl md:text-4xl font-bold mb-4 text-ink tracking-tight drop-shadow-md">Find Your Learning Partner</h1>
-          <p className="text-lg text-ink/70 drop-shadow-sm">Connect with peers to teach what you know, and learn what you don't.</p>
+      <section className="pt-10 pb-8 px-4 sm:px-6 max-w-5xl mx-auto mb-6 relative">
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[300px] bg-brandLight/30 rounded-full blur-[100px] pointer-events-none" />
+        
+        <div className="max-w-3xl mx-auto text-center mb-8 relative z-10">
+          <div className="w-16 h-16 mx-auto mb-4 bg-brand/10 rounded-2xl flex items-center justify-center rotate-3 border border-brand/20 shadow-sm">
+            <svg className="w-8 h-8 text-brand -rotate-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+          </div>
+          <h1 className="text-3xl md:text-4xl font-display font-bold mb-4 text-ink tracking-tight drop-shadow-md">Find Your Learning Partner</h1>
+          <p className="text-lg text-clay drop-shadow-sm font-medium">Connect with peers to teach what you know, and learn what you don't.</p>
         </div>
 
-        <div className="max-w-2xl mx-auto">
+        <div className="max-w-2xl mx-auto relative z-10">
           <form onSubmit={handleSearchSubmit} className="relative shadow-sm mb-6 flex rounded-[2rem] bg-surface/80 backdrop-blur-3xl border border-white focus-within:border-brand/40 focus-within:shadow-[0_4px_24px_-12px_rgba(67,56,202,0.2)] transition-all overflow-hidden p-1.5">
             <div className="pl-5 pr-2 py-3 flex items-center justify-center text-ink/40">
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
@@ -240,9 +245,9 @@ export default function Marketplace() {
               const staggerClass = `stagger-${(idx % 5) + 1}`;
 
               return (
-                <div key={teacher.user_id} className={`card-hover overflow-hidden flex flex-col bg-surface/80 backdrop-blur-3xl border border-white shadow-sm rounded-[2rem] animate-slide-up ${staggerClass}`}>
+                <div key={teacher.user_id} className={`section-panel p-0 overflow-hidden flex flex-col group/teacher animate-slide-up hover:border-brand/30 hover:shadow-[0_8px_30px_-12px_rgba(67,56,202,0.2)] transition-all ${staggerClass}`}>
                   
-                  <div className="p-5 flex-1 flex flex-col relative">
+                  <div className="p-6 flex-1 flex flex-col relative">
                     <div className="absolute inset-0 bg-gradient-to-br from-brand/5 to-transparent pointer-events-none" />
                     <div className="flex gap-4 mb-5 relative z-10">
                       <Avatar url={teacher.profile_picture_url} name={teacher.name} size="lg" className="shrink-0" />
@@ -309,7 +314,7 @@ export default function Marketplace() {
                     </div>
                   </div>
 
-                  <div className="p-5 md:p-6 border-t border-line/5 bg-white/40 relative z-10">
+                  <div className="p-5 md:p-6 bg-lift/40 relative z-10 mt-auto border-t border-white/40">
                     <RequestControl
                       rel={rel}
                       teacher={teacher}

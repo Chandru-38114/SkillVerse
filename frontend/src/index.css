@@ -15,45 +15,45 @@
 ──────────────────────────────────────────────────── */
 @layer base {
   :root {
-    /* SkillVerse 2.0 - Light-First - Royal Indigo */
-    --color-paper:      248 250 252;   /* Slate 50 */
+    /* SkillVerse 2.0 - Light-First Environment */
+    --color-paper:      252 251 249;   /* Soft Ivory */
     --color-surface:    255 255 255;   /* White */
-    --color-lift:       241 245 249;   /* Slate 100 */
-    --color-ink:        15  23  42;    /* Slate 900 */
-    --color-clay:       71  85  105;   /* Slate 600 */
-    --color-line:       226 232 240;   /* Slate 200 */
+    --color-lift:       244 244 250;   /* Lavender Mist */
+    --color-ink:        18  24  43;    /* Deep Navy */
+    --color-clay:       90  100 120;   /* Muted Slate */
+    --color-line:       232 233 241;   /* Soft Mist */
     
-    /* Brand - Indigo / Violet / Cyan */
-    --color-brand:      67  56  202;   /* Indigo 700 */
-    --color-brand2:     124 58  237;   /* Violet 600 */
-    --color-brandLight: 224 231 255;   /* Indigo 100 */
-    --color-accent:     6   182 212;   /* Cyan 500 */
+    /* Brand - Royal Indigo / Violet / Cyan */
+    --color-brand:      67  56  202;   /* Royal Indigo #4338CA */
+    --color-brand2:     124 58  237;   /* Violet #7C3AED */
+    --color-brandLight: 236 238 255;   /* Pale Indigo */
+    --color-accent:     6   182 212;   /* Electric Cyan #06B6D4 */
     
     /* Gold/Accent */
-    --color-gold:       245 158 11;    /* Amber 500 */
-    --color-goldLight:  254 243 199;   /* Amber 100 */
+    --color-gold:       245 158 11;    /* Warm Amber #F59E0B */
+    --color-goldLight:  254 248 231;   /* Pale Amber */
     
     /* Chat bubbles */
     --color-bubbleMe:   67  56  202;
-    --color-bubbleThem: 241 245 249;
+    --color-bubbleThem: 244 244 250;
   }
 
   /* Force light theme variables on .dark since we are ignoring forced dark mode */
   .dark {
-    --color-paper:      248 250 252;
+    --color-paper:      252 251 249;
     --color-surface:    255 255 255;
-    --color-lift:       241 245 249;
-    --color-ink:        15  23  42;
-    --color-clay:       71  85  105;
-    --color-line:       226 232 240;
+    --color-lift:       244 244 250;
+    --color-ink:        18  24  43;
+    --color-clay:       90  100 120;
+    --color-line:       232 233 241;
     --color-brand:      67  56  202;
     --color-brand2:     124 58  237;
-    --color-brandLight: 224 231 255;
+    --color-brandLight: 236 238 255;
     --color-accent:     6   182 212;
     --color-gold:       245 158 11;
-    --color-goldLight:  254 243 199;
+    --color-goldLight:  254 248 231;
     --color-bubbleMe:   67  56  202;
-    --color-bubbleThem: 241 245 249;
+    --color-bubbleThem: 244 244 250;
   }
 }
 
@@ -74,13 +74,18 @@ input, textarea, select {
    COMPONENT CLASSES
 ──────────────────────────────────────────────────── */
 
-/* Cards */
+/* Cards & Panels */
 .card {
   @apply bg-surface/90 backdrop-blur-2xl rounded-[1.5rem] shadow-sm border border-brand/5 p-6 md:p-8 transition-all duration-300;
 }
 
 .card-hover {
   @apply card hover:shadow-[0_12px_40px_-16px_rgba(67,56,202,0.15)] hover:-translate-y-1 hover:border-brand/20 hover:bg-surface;
+}
+
+/* Section Panel for open layout without rigid card borders */
+.section-panel {
+  @apply bg-surface/40 backdrop-blur-3xl rounded-[2rem] border border-white/60 shadow-sm p-6 md:p-8 relative overflow-hidden;
 }
 
 /* Buttons */
