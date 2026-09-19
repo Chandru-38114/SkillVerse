@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import QRCode from 'react-qr-code';
 import { api } from '../api';
 import { Award } from 'lucide-react';
+import SkillBadge from '../components/skillbadge';
 
 export default function VerifyCertificate() {
   const { certId } = useParams();
@@ -63,8 +64,11 @@ export default function VerifyCertificate() {
       {/* Certificate Frame - Wrapper with responsive aspect ratio */}
       <div className="w-full max-w-3xl mx-auto shadow-2xl print:shadow-none print:w-full print:max-w-none">
         <div 
-          className="bg-white p-8 sm:p-12 md:p-16 border-[16px] border-brand/5 relative overflow-hidden aspect-[210/297] flex flex-col print:border-none print:p-0 print:h-screen"
+          className="bg-white p-8 sm:p-12 md:p-16 relative overflow-hidden aspect-[210/297] flex flex-col print:p-0 print:h-screen"
         >
+          {/* Inner Border to ensure html2canvas captures it completely without cropping */}
+          <div className="absolute inset-0 border-[16px] border-brand/5 pointer-events-none z-50 print:hidden"></div>
+
           {/* Background decorations */}
           <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-brand/5 rounded-bl-[100px] -z-0"></div>
           <div className="absolute bottom-0 left-0 w-[300px] h-[300px] bg-brand/5 rounded-tr-[100px] -z-0"></div>
@@ -95,9 +99,10 @@ export default function VerifyCertificate() {
               </div>
               
               <div className="mb-10 flex justify-center">
-                 <span className="inline-flex items-center gap-2 bg-goldLight text-gold px-6 py-3 rounded-full text-base md:text-lg font-bold border-2 border-gold/20 shadow-sm">
-                   <Award className="w-6 h-6" /> Verified {cert.badge || 'Expert'} Badge
-                 </span>
+                 <div className="inline-flex items-center gap-3 bg-white px-6 py-3 rounded-full border border-brand/10 shadow-sm z-20">
+                   <SkillBadge badge={cert.badge || 'Expert'} size="lg" />
+                   <span className="text-base md:text-lg font-bold text-ink/70">Verified Badge</span>
+                 </div>
               </div>
             </div>
             
