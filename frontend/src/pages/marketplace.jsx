@@ -3,6 +3,9 @@ import BackButton from "../components/BackButton";
 import { Link } from 'react-router-dom'
 import { api, getSessionUser } from '../api'
 import Avatar from '../components/ui/Avatar'
+import { EmptyStateIllustration } from '../components/illustrations'
+import { GradientOrb, DecorativeGrid } from '../components/visuals'
+import { FadeIn, StaggerContainer, StaggerItem, Reveal } from '../components/animations'
 
 function defaultForm() {
   return {
@@ -123,7 +126,6 @@ export default function Marketplace() {
         message: form.message
       })
       
-      // Force status update without reload
       setStatusMap(prev => ({ ...prev, [`${teacher.user_id}-${skillName}`]: { status: 'pending' } }))
       alert(`Connection request sent to ${teacher.name}!`)
     } catch (err) {
@@ -163,87 +165,109 @@ export default function Marketplace() {
   const CATEGORIES = ['Java', 'Python', 'React', 'Data Science', 'Machine Learning', 'Figma', 'JavaScript']
 
   return (
-    <div className="min-h-screen bg-paper font-body text-ink pb-16 relative z-10">
-      <section className="pt-10 pb-8 px-4 sm:px-6 max-w-5xl mx-auto mb-6">
-        <div className="max-w-3xl mx-auto text-center mb-10">
-          <h1 className="text-3xl md:text-4xl font-display font-bold mb-3 text-ink tracking-tight">Find Your Learning Partner</h1>
-          <p className="text-lg text-clay font-medium">Connect with peers to teach what you know, and learn what you don't.</p>
-        </div>
+    <div className="min-h-screen bg-paper font-body text-ink pb-24 relative overflow-hidden z-10">
+      <DecorativeGrid className="opacity-40" />
+      <GradientOrb color="bg-brand2" size="w-[500px] h-[500px]" className="-top-40 -left-20" opacity="opacity-20" />
+      <GradientOrb color="bg-brand" size="w-[600px] h-[600px]" className="-right-60 top-40" opacity="opacity-[0.15]" blur="blur-[120px]" />
 
-        <div className="max-w-2xl mx-auto">
-          <form onSubmit={handleSearchSubmit} className="relative shadow-sm mb-6 flex rounded-xl bg-surface border border-line focus-within:border-brand/40 focus-within:ring-2 focus-within:ring-brand/10 transition-all overflow-hidden p-1">
-            <div className="pl-5 pr-2 py-3 flex items-center justify-center text-ink/40">
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-            </div>
-            <input
-              type="text"
-              placeholder="Search by skill (e.g. Java) or person name..."
-              className="w-full py-3.5 px-2 bg-transparent text-ink placeholder:text-ink/40 focus:outline-none font-medium"
-              value={query}
-              onChange={e => setQuery(e.target.value)}
-            />
-            <button type="submit" className="btn-primary px-8 py-2.5">
-              Search
-            </button>
-          </form>
-
-          <div className="flex flex-wrap justify-center gap-2 mb-8">
-            <span className="text-xs text-ink/50 font-bold uppercase tracking-wider py-1.5 mr-2">Popular:</span>
-            {CATEGORIES.map(c => (
-              <button 
-                key={c}
-                onClick={() => handleCategoryClick(c)}
-                className="px-4 py-1.5 text-xs font-semibold rounded-full bg-surface border border-line text-ink/70 hover:border-brand/30 hover:text-brand transition-all shadow-sm"              >
-                {c}
-              </button>
-            ))}
+      <section className="pt-10 pb-8 px-4 sm:px-6 max-w-5xl mx-auto mb-6 relative z-10">
+        <Reveal duration={0.6} yOffset={30}>
+          <div className="max-w-3xl mx-auto text-center mb-10">
+            <h1 className="text-4xl md:text-5xl font-display font-bold mb-4 text-ink tracking-tight">Discover Partners</h1>
+            <p className="text-lg text-clay font-medium">Find the perfect peer to teach what you know, or learn what you don't.</p>
           </div>
+        </Reveal>
 
-          <div className="flex flex-wrap items-center justify-between gap-4 border-t border-line/10 pt-6">
-            <div className="flex bg-surface/40 backdrop-blur-md p-1 rounded-lg border border-line/20 inline-flex">
-              {['All', 'I Want to Learn', 'I Can Teach'].map(f => (
-                <button
-                  key={f}
-                  onClick={() => handleFilterChange(f)}
-                  className={`px-4 py-2 text-sm font-semibold rounded-xl transition-all ${activeFilter === f ? 'bg-brand text-white shadow-sm' : 'text-clay hover:text-ink hover:bg-white/80'}`}
+        <Reveal duration={0.6} delay={0.1} yOffset={20}>
+          <div className="max-w-3xl mx-auto bg-surface border border-line shadow-xl shadow-brand/5 rounded-3xl p-6 md:p-8 backdrop-blur-sm">
+            <form onSubmit={handleSearchSubmit} className="relative mb-8 flex flex-col md:flex-row gap-4">
+              <div className="relative flex-1">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-ink/40">
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                </div>
+                <input
+                  type="text"
+                  placeholder="Search by skill (e.g. React) or name..."
+                  className="w-full py-4 pl-12 pr-4 bg-paper/50 rounded-xl border border-line focus:outline-none focus:border-brand/50 focus:ring-2 focus:ring-brand/10 transition-all text-ink font-medium shadow-inner"
+                  value={query}
+                  onChange={e => setQuery(e.target.value)}
+                />
+              </div>
+              <button type="submit" className="btn-primary px-10 py-4 shadow-lg shadow-brand/20 whitespace-nowrap">
+                Search
+              </button>
+            </form>
+
+            <div className="flex flex-wrap justify-center gap-2 mb-8">
+              <span className="text-xs text-clay font-bold uppercase tracking-wider py-1.5 mr-2 flex items-center">Popular:</span>
+              {CATEGORIES.map(c => (
+                <button 
+                  key={c}
+                  onClick={() => handleCategoryClick(c)}
+                  className="px-4 py-1.5 text-xs font-semibold rounded-full bg-lift border border-line text-ink/80 hover:border-brand/40 hover:text-brand hover:bg-brand/5 transition-colors shadow-sm"              
                 >
-                  {f}
+                  {c}
                 </button>
               ))}
             </div>
 
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-bold uppercase tracking-wider text-ink/50">Min Proficiency:</span>
-              <select 
-                className="input text-sm py-1.5 bg-surface/60 backdrop-blur-md w-auto font-medium border-line/20 text-ink/90"
-                value={proficiency}
-                onChange={e => setProficiency(e.target.value)}
-              >
-                {['All', 'Intermediate', 'Advanced', 'Expert'].map(l => (
-                  <option key={l} value={l} className="bg-surface text-ink">{l}</option>
+            <div className="flex flex-wrap items-center justify-between gap-6 border-t border-line/50 pt-6">
+              <div className="flex bg-paper p-1 rounded-xl border border-line shadow-inner inline-flex">
+                {['All', 'I Want to Learn', 'I Can Teach'].map(f => (
+                  <button
+                    key={f}
+                    onClick={() => handleFilterChange(f)}
+                    className={`px-5 py-2.5 text-sm font-bold rounded-lg transition-all ${activeFilter === f ? 'bg-brand text-white shadow-md' : 'text-clay hover:text-ink hover:bg-lift'}`}
+                  >
+                    {f}
+                  </button>
                 ))}
-              </select>
-            </div>
-            
-            <div className="w-full text-center mt-2">
-              <p className="text-[10px] text-clay/70 italic">* Availability filtering is not supported (data model currently unavailable).</p>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <span className="text-xs font-bold uppercase tracking-wider text-clay flex items-center">Min Level:</span>
+                <select 
+                  className="input text-sm py-2.5 bg-paper font-semibold border-line text-ink shadow-sm rounded-xl focus:border-brand/50 focus:ring-2 focus:ring-brand/10 outline-none"
+                  value={proficiency}
+                  onChange={e => setProficiency(e.target.value)}
+                >
+                  {['All', 'Intermediate', 'Advanced', 'Expert'].map(l => (
+                    <option key={l} value={l}>{l}</option>
+                  ))}
+                </select>
+              </div>
             </div>
           </div>
-        </div>
+        </Reveal>
       </section>
 
-      <section className="px-4 sm:px-6 max-w-[1200px] mx-auto animate-fade-in stagger-2">
+      <section className="px-4 sm:px-6 max-w-7xl mx-auto relative z-10">
         {error && <div className="alert-error mb-8 max-w-2xl mx-auto">{error}</div>}
 
         {loading ? (
           <TeacherSkeleton />
         ) : filteredResults.length === 0 ? (
-          <EmptyTeachers query={query} filter={activeFilter} proficiency={proficiency} />
+          <FadeIn>
+            <div className="card max-w-3xl mx-auto border-dashed border-2 border-line bg-surface/50 backdrop-blur-sm p-12">
+              <EmptyStateIllustration 
+                message={`No partners found${query ? ` for "${query}"` : ''}`} 
+                secondaryMessage={
+                  activeFilter === 'I Want to Learn' ? 'Try adjusting your filters, no one currently teaches those skills.' :
+                  activeFilter === 'I Can Teach' ? 'No partners are currently looking to learn those skills.' :
+                  'Adjust your search or clear filters to see more results.'
+                } 
+              />
+              {(activeFilter !== 'All' || proficiency !== 'All' || query) && (
+                <div className="mt-8 flex justify-center">
+                  <button onClick={() => window.location.reload()} className="btn-secondary px-8">Clear All Filters</button>
+                </div>
+              )}
+            </div>
+          </FadeIn>
         ) : (
-          <div className="grid lg:grid-cols-2 xl:grid-cols-3 gap-6">
-            {filteredResults.map((teacher, idx) => {
+          <StaggerContainer staggerDelay={0.1} className="grid lg:grid-cols-2 gap-8 xl:gap-10">
+            {filteredResults.map((teacher) => {
               const ratings = ratingsMap[teacher.user_id]
-              
               const form = formMap[teacher.user_id] || defaultForm()
               
               let displaySkills = [];
@@ -268,93 +292,84 @@ export default function Marketplace() {
               }
               
               const rel = statusMap[`${teacher.user_id}-${targetSkill}`] || { status: null }
-              const staggerClass = `stagger-${(idx % 5) + 1}`;
 
               return (
-                <div key={teacher.user_id} className={`card p-0 overflow-hidden flex flex-col group/teacher animate-slide-up hover:border-brand/30 transition-all ${staggerClass}`}>
-                  
-                  <div className="p-6 flex-1 flex flex-col relative">
-                    <div className="flex gap-4 mb-5 relative z-10">
-                      <Avatar url={teacher.profile_picture_url} name={teacher.name} size="lg" className="shrink-0" />
-                      <div>
-                        <h3 className="text-xl font-bold text-ink">{teacher.name}</h3>
-                        {teacher.college && <p className="text-xs font-semibold text-clay uppercase tracking-wider mt-0.5">{teacher.college}</p>}
-                        <RatingSummary data={ratings} />
-                        {teacher.bio && (
-                          <p className="mt-2 text-sm text-ink/80 line-clamp-2">
-                            {teacher.bio}
-                          </p>
-                        )}
-                      </div>
-                      
-                      {teacher.match_context && (
-                        <div className="ml-auto flex items-start">
-                          <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider font-bold text-brand bg-brand/10 border border-brand/20 px-2 py-1 rounded">
-                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
-                            {teacher.match_context === "Perfect skill exchange" ? "Perfect Match" : "Strong Match"}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                    
+                <StaggerItem key={teacher.user_id}>
+                  <div className="card p-0 h-full flex flex-col bg-surface border-line hover:border-brand/30 hover:shadow-2xl shadow-brand/5 transition-all duration-300 group overflow-hidden relative">
                     {teacher.match_context && (
-                      <div className="mb-5 bg-brand/5 rounded-lg px-4 py-3 border border-brand/10">
-                        <p className="text-sm font-medium text-brand flex items-center gap-2">
-                          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
-                          {teacher.match_context}
-                        </p>
+                      <div className="absolute top-0 right-0 z-20">
+                        <div className="bg-brand text-white text-[10px] uppercase font-bold tracking-wider px-3 py-1.5 rounded-bl-xl shadow-md">
+                          {teacher.match_context === "Perfect skill exchange" ? "Perfect Match" : "Strong Match"}
+                        </div>
                       </div>
                     )}
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mt-auto">
-                      <div>
-                        <h4 className="text-[10px] uppercase tracking-widest text-clay font-bold mb-3 flex items-center gap-1.5">
-                          <span className="w-1.5 h-1.5 rounded-full bg-moss"></span>
-                          Can Teach
-                        </h4>
-                        <div className="flex flex-wrap gap-2">
-                          {teacher.teaching_skills.length === 0 ? <span className="text-xs text-ink/40 italic">None</span> : teacher.teaching_skills.map(s => (
-                            <div key={s.skill_name} className="flex flex-col bg-lift border border-line px-3 py-1.5 rounded-lg">
-                              <span className="text-sm font-bold text-ink">{s.skill_name}</span> 
-                              <span className="text-[10px] text-brand uppercase tracking-wide font-bold">{s.level}</span>
-                            </div>
-                          ))}
+                    
+                    <div className="p-6 md:p-8 flex-1 flex flex-col relative z-10">
+                      <div className="flex gap-5 mb-8 items-start">
+                        <Avatar url={teacher.profile_picture_url} name={teacher.name} size="lg" className="shrink-0 ring-4 ring-lift" />
+                        <div className="pt-1">
+                          <h3 className="text-2xl font-bold text-ink group-hover:text-brand transition-colors">{teacher.name}</h3>
+                          {teacher.college && <p className="text-xs font-bold text-clay uppercase tracking-widest mt-1">{teacher.college}</p>}
+                          <RatingSummary data={ratings} />
                         </div>
                       </div>
 
-                      <div>
-                        <h4 className="text-[10px] uppercase tracking-widest text-clay font-bold mb-3 flex items-center gap-1.5">
-                          <span className="w-1.5 h-1.5 rounded-full bg-brand"></span>
-                          Wants to Learn
-                        </h4>
-                        <div className="flex flex-wrap gap-2">
-                          {teacher.learning_skills.length === 0 ? <span className="text-xs text-ink/40 italic">None</span> : teacher.learning_skills.map(s => (
-                            <div key={s.skill_name} className="flex flex-col bg-lift border border-line px-3 py-1.5 rounded-lg">
-                              <span className="text-sm font-bold text-ink">{s.skill_name}</span> 
-                              <span className="text-[10px] text-brand2 uppercase tracking-wide font-bold">{s.level === 'Unassessed' ? 'Beginner' : s.level}</span>
-                            </div>
-                          ))}
+                      {teacher.bio && (
+                        <p className="mb-6 text-sm text-clay leading-relaxed italic">
+                          "{teacher.bio}"
+                        </p>
+                      )}
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mt-auto bg-lift/50 p-5 rounded-2xl border border-line/50">
+                        <div>
+                          <h4 className="text-[10px] uppercase tracking-widest text-clay font-bold mb-3 flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-brand"></span>
+                            Can Teach
+                          </h4>
+                          <div className="flex flex-col gap-2">
+                            {teacher.teaching_skills.length === 0 ? <span className="text-xs text-ink/40 italic">None</span> : teacher.teaching_skills.map(s => (
+                              <div key={s.skill_name} className="flex justify-between items-center bg-surface border border-line/50 px-3 py-2 rounded-lg">
+                                <span className="text-sm font-bold text-ink">{s.skill_name}</span> 
+                                <span className="text-[9px] text-brand uppercase tracking-widest font-bold bg-brand/10 px-1.5 py-0.5 rounded">{s.level}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div>
+                          <h4 className="text-[10px] uppercase tracking-widest text-clay font-bold mb-3 flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-brand2"></span>
+                            Wants to Learn
+                          </h4>
+                          <div className="flex flex-col gap-2">
+                            {teacher.learning_skills.length === 0 ? <span className="text-xs text-ink/40 italic">None</span> : teacher.learning_skills.map(s => (
+                              <div key={s.skill_name} className="flex justify-between items-center bg-surface border border-line/50 px-3 py-2 rounded-lg">
+                                <span className="text-sm font-bold text-ink">{s.skill_name}</span> 
+                                <span className="text-[9px] text-brand2 uppercase tracking-widest font-bold bg-brand2/10 px-1.5 py-0.5 rounded">{s.level === 'Unassessed' ? 'Beginner' : s.level}</span>
+                              </div>
+                            ))}
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
 
-                  <div className="p-5 md:p-6 bg-lift relative z-10 mt-auto border-t border-line">
-                    <RequestControl
-                      rel={rel}
-                      teacher={teacher}
-                      targetSkill={targetSkill}
-                      form={form}
-                      displaySkills={displaySkills}
-                      submitting={submitting}
-                      onFormChange={(field, value) => updateForm(teacher.user_id, field, value)}
-                      onSend={() => sendRequest(teacher, targetSkill)}
-                    />
+                    <div className="p-6 md:p-8 bg-lift border-t border-line relative z-10">
+                      <RequestControl
+                        rel={rel}
+                        teacher={teacher}
+                        targetSkill={targetSkill}
+                        form={form}
+                        displaySkills={displaySkills}
+                        submitting={submitting}
+                        onFormChange={(field, value) => updateForm(teacher.user_id, field, value)}
+                        onSend={() => sendRequest(teacher, targetSkill)}
+                      />
+                    </div>
                   </div>
-                </div>
+                </StaggerItem>
               )
             })}
-          </div>
+          </StaggerContainer>
         )}
       </section>
     </div>
@@ -366,36 +381,36 @@ function RequestControl({ rel, teacher, targetSkill, form, displaySkills, onForm
   const isTeachingThem = selectedSkillIntent === 'teach';
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col gap-1.5">
-        <p className="text-[11px] font-bold text-clay uppercase tracking-wider">Connect Request</p>
+    <div className="space-y-5">
+      <div className="flex flex-col gap-2">
+        <p className="text-[10px] font-bold text-clay uppercase tracking-widest">Connect Request</p>
         {displaySkills.length > 1 ? (
           <select
-            className="input text-sm py-2 bg-surface/60 backdrop-blur-md font-medium border-line/20 text-ink/90"
+            className="input text-sm py-2.5 bg-surface font-bold border-line text-ink shadow-sm rounded-xl focus:border-brand/50 focus:ring-2 focus:ring-brand/10 outline-none"
             value={targetSkill}
             onChange={(e) => onFormChange('target_skill', e.target.value)}
           >
-            <option value="" disabled className="bg-surface text-ink">Select a skill...</option>
+            <option value="" disabled>Select a skill...</option>
             {displaySkills.map(s => (
-              <option key={s.skill_name} value={s.skill_name} className="bg-surface text-ink">
+              <option key={s.skill_name} value={s.skill_name}>
                 {s.intent === 'teach' ? `I want to teach them ${s.skill_name}` : `I want to learn ${s.skill_name}`}
               </option>
             ))}
           </select>
         ) : displaySkills.length === 1 ? (
-          <p className="text-sm font-medium text-ink bg-surface/60 border border-brand/20 shadow-[0_0_15px_rgba(34,211,238,0.1)] px-3.5 py-2 rounded-lg">
-            {isTeachingThem ? 'I want to teach them ' : 'I want to learn '}<span className="font-bold text-brand drop-shadow-sm">{targetSkill}</span>
+          <p className="text-sm font-bold text-ink bg-surface border border-line shadow-sm px-4 py-3 rounded-xl flex items-center">
+            {isTeachingThem ? 'I want to teach them ' : 'I want to learn '}<span className="ml-1 text-brand">{targetSkill}</span>
           </p>
         ) : (
-          <p className="text-sm font-medium text-clay bg-surface/40 border border-line/10 px-3.5 py-2 rounded-lg italic">
-            No specific skills available for this role.
+          <p className="text-sm font-medium text-clay bg-surface border border-line/50 px-4 py-3 rounded-xl italic">
+            No specific skills available.
           </p>
         )}
       </div>
 
       {rel.status === 'accepted' ? (
         <div className="flex items-center justify-between pt-2">
-          <span className="inline-flex items-center gap-1.5 text-sm font-bold text-moss2 bg-mossLight/50 px-3 py-1.5 rounded-full border border-moss/20">
+          <span className="inline-flex items-center gap-2 text-sm font-bold text-green-600 bg-green-50 px-4 py-2 rounded-full border border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800">
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
             Already Connected
           </span>
@@ -406,8 +421,8 @@ function RequestControl({ rel, teacher, targetSkill, form, displaySkills, onForm
           )}
         </div>
       ) : rel.status === 'pending' ? (
-        <div className="text-center pt-2">
-          <span className="inline-flex items-center gap-1.5 text-sm font-bold text-gold bg-goldLight/50 px-4 py-2 rounded-full border border-gold/20 w-full justify-center">
+        <div className="pt-2">
+          <span className="inline-flex items-center gap-2 text-sm font-bold text-amber-600 bg-amber-50 px-4 py-3 rounded-xl border border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800 w-full justify-center">
             <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
             Request Pending
           </span>
@@ -415,17 +430,16 @@ function RequestControl({ rel, teacher, targetSkill, form, displaySkills, onForm
       ) : (
         <>
           <div>
-            <label className="text-xs text-ink/60 font-semibold mb-1 block">Personal Message</label>
             <input
-              className="input text-sm py-2 bg-surface/60 backdrop-blur-md border-line/20 text-ink/90 placeholder:text-ink/40"
-              placeholder={`Hi ${teacher.name}, let's connect!`}
+              className="input text-sm py-3 bg-surface border-line text-ink placeholder:text-ink/30 rounded-xl focus:border-brand/50 focus:ring-2 focus:ring-brand/10 outline-none shadow-inner"
+              placeholder={`Hi ${teacher.name.split(' ')[0]}, let's connect!`}
               value={form.message}
               onChange={(e) => onFormChange('message', e.target.value)}
               disabled={displaySkills.length === 0}
             />
           </div>
 
-          <button onClick={onSend} disabled={!targetSkill || submitting || displaySkills.length === 0} className="btn-primary w-full mt-2 justify-center">
+          <button onClick={onSend} disabled={!targetSkill || submitting || displaySkills.length === 0} className="btn-primary w-full py-3 shadow-md shadow-brand/20">
             {(rel.status === 'declined' || rel.status === 'completed')
               ? 'Send Request Again'
               : 'Send Connection Request'}
@@ -438,20 +452,20 @@ function RequestControl({ rel, teacher, targetSkill, form, displaySkills, onForm
 
 function RatingSummary({ data }) {
   if (!data || data.review_count === 0) return (
-    <div className="mt-1 text-[11px] uppercase tracking-wider text-clay font-bold">New member</div>
+    <div className="mt-2 text-[10px] uppercase tracking-widest text-clay font-bold bg-lift inline-block px-2 py-1 rounded">New member</div>
   )
   const filled = Math.round(data.average_rating)
   return (
-    <div className="flex items-center gap-1 mt-1">
+    <div className="flex items-center gap-1.5 mt-2 bg-lift inline-flex px-2.5 py-1 rounded-lg border border-line/50">
       <span className="flex text-[10px]">
         {[1, 2, 3, 4, 5].map((s) => (
-          <svg key={s} className={`w-3.5 h-3.5 ${s <= filled ? 'text-gold fill-gold' : 'text-line fill-paper'}`} viewBox="0 0 20 20">
+          <svg key={s} className={`w-3.5 h-3.5 ${s <= filled ? 'text-amber-400 fill-amber-400' : 'text-line fill-paper'}`} viewBox="0 0 20 20">
             <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
           </svg>
         ))}
       </span>
-      <span className="text-[11px] text-ink/70 font-bold ml-1">
-        {data.average_rating.toFixed(1)} <span className="font-normal text-clay">({data.review_count})</span>
+      <span className="text-xs text-ink font-bold">
+        {data.average_rating.toFixed(1)} <span className="font-semibold text-clay/70">({data.review_count})</span>
       </span>
     </div>
   )
@@ -459,54 +473,31 @@ function RatingSummary({ data }) {
 
 function TeacherSkeleton() {
   return (
-    <div className="grid lg:grid-cols-2 gap-6 max-w-5xl mx-auto">
+    <div className="grid lg:grid-cols-2 gap-8 xl:gap-10">
       {[...Array(4)].map((_, i) => (
-        <div key={i} className="card overflow-hidden flex flex-col">
-          <div className="p-6 flex-1 border-b border-line/40">
-            <div className="flex gap-4 mb-6">
+        <div key={i} className="card p-0 overflow-hidden flex flex-col border-line shadow-sm">
+          <div className="p-6 md:p-8 flex-1">
+            <div className="flex gap-5 mb-8">
               <div className="w-16 h-16 rounded-full skeleton shrink-0" />
-              <div className="space-y-2 w-full mt-2">
-                <div className="skeleton h-5 w-1/3 rounded" />
-                <div className="skeleton h-3 w-1/4 rounded" />
+              <div className="space-y-3 w-full mt-1">
+                <div className="skeleton h-6 w-1/3 rounded-lg" />
+                <div className="skeleton h-3 w-1/4 rounded-lg" />
               </div>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mt-12">
-              <div className="space-y-3">
-                <div className="skeleton h-3 w-20 rounded" />
-                <div className="skeleton h-8 w-full rounded" />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mt-12 bg-lift/50 p-5 rounded-2xl border border-line/50">
+              <div className="space-y-4">
+                <div className="skeleton h-3 w-20 rounded-lg" />
+                <div className="skeleton h-10 w-full rounded-xl" />
               </div>
-              <div className="space-y-3">
-                <div className="skeleton h-3 w-20 rounded" />
-                <div className="skeleton h-8 w-full rounded" />
+              <div className="space-y-4">
+                <div className="skeleton h-3 w-20 rounded-lg" />
+                <div className="skeleton h-10 w-full rounded-xl" />
               </div>
             </div>
           </div>
-          <div className="p-5 bg-paper/30 h-32 skeleton rounded-none border-t border-line/40" />
+          <div className="p-6 md:p-8 bg-lift h-40 skeleton rounded-none border-t border-line" />
         </div>
       ))}
-    </div>
-  )
-}
-
-function EmptyTeachers({ query, filter, proficiency }) {
-  let message = 'Adjust your filters or try a different search.'
-  if (filter === 'I Want to Learn') message = 'No matching partners found who can teach those skills.'
-  if (filter === 'I Can Teach') message = 'No matching partners found who want to learn those skills.'
-
-  return (
-    <div className="card p-10 text-center flex flex-col items-center justify-center border-dashed border-2 bg-transparent shadow-none border-line max-w-5xl mx-auto">
-      <div className="w-16 h-16 bg-line/30 rounded-full flex items-center justify-center mb-5">
-        <svg className="w-8 h-8 text-clay" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-        </svg>
-      </div>
-      <h2 className="text-xl md:text-2xl font-bold text-ink mb-2">No partners found{query ? ` for "${query}"` : ''}</h2>
-      <p className="text-sm text-clay max-w-sm mx-auto font-medium mb-6">
-        {message}
-      </p>
-      {(filter !== 'All' || proficiency !== 'All' || query) && (
-        <button onClick={() => window.location.reload()} className="btn-secondary text-sm font-bold">Clear All Filters</button>
-      )}
     </div>
   )
 }
