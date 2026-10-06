@@ -346,6 +346,20 @@ export default function Dashboard() {
                       </div>
                     </div>
                   </StaggerItem>
+
+                  <StaggerItem>
+                    <div className="card bg-brandLight/40 border-line/50 p-6 relative overflow-hidden">
+                      <div className="absolute -right-4 -top-4 text-brand opacity-10">
+                        <BookOpen className="w-24 h-24" />
+                      </div>
+                      <h4 className="font-bold text-brand uppercase tracking-wider text-[10px] mb-2 flex items-center gap-1.5">
+                        <Star className="w-3 h-3" /> SkillVerse Insight
+                      </h4>
+                      <p className="text-sm text-ink/80 font-medium leading-relaxed relative z-10 italic">
+                        "Teaching a concept can reveal what you truly understand. Share your knowledge to solidify it."
+                      </p>
+                    </div>
+                  </StaggerItem>
                 </div>
               </div>
             )}
