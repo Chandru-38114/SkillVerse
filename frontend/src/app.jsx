@@ -36,7 +36,7 @@ const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "NO_CLIENT_ID_
 function RootRedirect() {
   const user = getSessionUser()
   const token = getToken()
-  if (!user || !token) return <Navigate to="/login" replace />
+  if (!user || !token) return <Landing />
   if (!user.is_email_verified) return <Navigate to="/verify-email" replace />
   return <Navigate to="/dashboard" replace />
 }
