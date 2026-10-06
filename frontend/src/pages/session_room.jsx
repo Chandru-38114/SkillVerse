@@ -136,7 +136,7 @@ function SessionRoomComponent() {
   }
 
   return (
-    <div className="flex flex-col bg-[#F8F9FA] h-[100dvh] w-full overflow-hidden text-ink">
+    <div className="flex flex-col bg-paper h-[100dvh] w-full overflow-hidden text-ink">
       {/* 🚀 Header 🚀 */}
       <header className="flex-none bg-surface border-b border-line px-4 sm:px-6 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0 z-20 shadow-sm">
         <div className="flex items-center gap-4">
@@ -190,8 +190,8 @@ function SessionRoomComponent() {
                   setActiveTab(id)
                   document.getElementById(`section-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
                 }}
-                className={`flex flex-col items-center gap-1.5 p-2 w-14 rounded-xl transition-all ${
-                  activeTab === id ? 'bg-brand/10 text-brand' : 'text-clay hover:text-ink hover:bg-ink/5'
+                className={`flex flex-col items-center justify-center gap-1.5 p-2 w-14 rounded-xl transition-all ${
+                  activeTab === id ? 'bg-lift text-brand shadow-sm border border-line' : 'text-clay hover:text-ink hover:bg-lift/50'
                 }`}
               >
                  <Icon className="w-5 h-5" />
@@ -253,9 +253,9 @@ function SessionRoomComponent() {
                   
                   {/* Notes */}
                   <div className="flex-1 bg-surface border border-line rounded-2xl shadow-sm overflow-hidden flex flex-col h-full">
-                     <div className="px-5 py-4 border-b border-line flex items-center gap-3 bg-lift/30 shrink-0">
-                        <div className="p-1.5 bg-brand/10 rounded-md">
-                           <FileText className="w-4 h-4 text-brand" />
+                     <div className="px-5 py-4 border-b border-line flex items-center gap-3 bg-surface shrink-0">
+                        <div className="p-1.5 bg-lift rounded-md border border-line text-ink">
+                           <FileText className="w-4 h-4" />
                         </div>
                         <span className="text-sm font-bold text-ink">Session Notes</span>
                      </div>
@@ -266,9 +266,9 @@ function SessionRoomComponent() {
 
                   {/* Materials */}
                   <div id="section-Materials" className="flex-1 bg-surface border border-line rounded-2xl shadow-sm overflow-hidden flex flex-col h-full">
-                     <div className="px-5 py-4 border-b border-line flex items-center gap-3 bg-lift/30 shrink-0">
-                        <div className="p-1.5 bg-brand/10 rounded-md">
-                           <FolderOpen className="w-4 h-4 text-brand" />
+                     <div className="px-5 py-4 border-b border-line flex items-center gap-3 bg-surface shrink-0">
+                        <div className="p-1.5 bg-lift rounded-md border border-line text-ink">
+                           <FolderOpen className="w-4 h-4" />
                         </div>
                         <span className="text-sm font-bold text-ink">Materials</span>
                      </div>

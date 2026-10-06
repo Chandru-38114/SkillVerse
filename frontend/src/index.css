@@ -15,13 +15,13 @@
 ──────────────────────────────────────────────────── */
 @layer base {
   :root {
-    /* SkillVerse 2.0 - Light-First Environment */
-    --color-paper:      252 251 249;   /* Soft Ivory */
-    --color-surface:    255 255 255;   /* White */
-    --color-lift:       244 244 250;   /* Lavender Mist */
-    --color-ink:        18  24  43;    /* Deep Navy */
-    --color-clay:       90  100 120;   /* Muted Slate */
-    --color-line:       232 233 241;   /* Soft Mist */
+    /* SkillVerse 2.0 - Light-First Environment (Modern SaaS) */
+    --color-paper:      250 250 250;   /* #FAFAFA */
+    --color-surface:    255 255 255;   /* #FFFFFF */
+    --color-lift:       243 244 246;   /* #F3F4F6 */
+    --color-ink:        17  24  39;    /* #111827 */
+    --color-clay:       107 114 128;   /* #6B7280 */
+    --color-line:       229 231 235;   /* #E5E7EB */
     
     /* Brand - Royal Indigo / Violet / Cyan */
     --color-brand:      67  56  202;   /* Royal Indigo #4338CA */
@@ -40,12 +40,12 @@
 
   /* Force light theme variables on .dark since we are ignoring forced dark mode */
   .dark {
-    --color-paper:      252 251 249;
+    --color-paper:      250 250 250;
     --color-surface:    255 255 255;
-    --color-lift:       244 244 250;
-    --color-ink:        18  24  43;
-    --color-clay:       90  100 120;
-    --color-line:       232 233 241;
+    --color-lift:       243 244 246;
+    --color-ink:        17  24  39;
+    --color-clay:       107 114 128;
+    --color-line:       229 231 235;
     --color-brand:      67  56  202;
     --color-brand2:     124 58  237;
     --color-brandLight: 236 238 255;
@@ -76,23 +76,23 @@ input, textarea, select {
 
 /* Cards & Panels */
 .card {
-  @apply bg-surface/90 backdrop-blur-2xl rounded-[1.5rem] shadow-sm border border-brand/5 p-6 md:p-8 transition-all duration-300;
+  @apply bg-surface rounded-xl shadow-sm border border-line p-6 md:p-8 transition-all duration-300;
 }
 
 .card-hover {
-  @apply card hover:shadow-[0_12px_40px_-16px_rgba(67,56,202,0.15)] hover:-translate-y-1 hover:border-brand/20 hover:bg-surface;
+  @apply card hover:shadow-md hover:-translate-y-1 hover:border-line hover:bg-surface;
 }
 
 /* Section Panel for open layout without rigid card borders */
 .section-panel {
-  @apply bg-surface/40 backdrop-blur-3xl rounded-[2rem] border border-white/60 shadow-sm p-6 md:p-8 relative overflow-hidden;
+  @apply bg-surface rounded-2xl border border-line shadow-sm p-6 md:p-8 relative overflow-hidden;
 }
 
 /* Buttons */
 .btn-primary {
-  @apply bg-brand text-white px-7 py-3 rounded-2xl font-bold text-sm tracking-wide
-         min-h-[48px] md:min-h-[44px]
-         hover:bg-brand2 hover:shadow-[0_8px_24px_-8px_rgba(124,58,237,0.4)] hover:-translate-y-0.5 transition-all duration-300
+  @apply bg-ink text-white px-6 py-2.5 rounded-lg font-medium text-sm tracking-wide
+         min-h-[40px] md:min-h-[36px]
+         hover:bg-ink/90 hover:shadow-sm transition-all duration-200
          disabled:opacity-40 disabled:cursor-not-allowed
          inline-flex items-center justify-center gap-2;
 }
@@ -102,9 +102,9 @@ input, textarea, select {
 }
 
 .btn-secondary {
-  @apply bg-lift/80 text-ink px-7 py-3 rounded-2xl font-bold text-sm border border-transparent
-         min-h-[48px] md:min-h-[44px]
-         hover:bg-surface hover:border-line hover:shadow-sm hover:-translate-y-0.5 transition-all duration-300
+  @apply bg-surface text-ink px-6 py-2.5 rounded-lg font-medium text-sm border border-line
+         min-h-[40px] md:min-h-[36px]
+         hover:bg-lift hover:border-line hover:shadow-sm transition-all duration-200
          inline-flex items-center justify-center gap-2;
 }
 

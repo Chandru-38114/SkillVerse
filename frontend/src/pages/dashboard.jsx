@@ -363,14 +363,7 @@ export default function Dashboard() {
           HERO BAND
           ═══════════════════════════════════════════════════════════════ */}
       <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-5 md:pt-8 mb-0">
-        <div className="relative rounded-[2.5rem] overflow-hidden">
-
-          {/* Hero atmospheric */}
-          <div className="absolute inset-0 bg-gradient-to-br from-brandLight/70 via-surface/50 to-lift/60" />
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_80%_at_0%_0%,_rgba(67,56,202,0.10)_0%,_transparent_65%)]" />
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_50%_50%_at_100%_100%,_rgba(6,182,212,0.06)_0%,_transparent_70%)]" />
-          <div className="absolute -top-8 -right-8 w-48 h-48 bg-brand2/8 rounded-full blur-3xl" />
-          <div className="absolute -bottom-4 -left-4 w-32 h-32 bg-accent/6 rounded-full blur-2xl" />
+        <div className="relative rounded-2xl overflow-hidden bg-surface border border-line shadow-sm">
 
           {/* Mini SVG circuit accent inside hero — subtle tech identity */}
           <svg className="absolute inset-0 w-full h-full pointer-events-none opacity-[0.05]" aria-hidden="true">
@@ -464,15 +457,7 @@ export default function Dashboard() {
       ) : isEmptyState ? (
         /* ─── EMPTY STATE ─── */
         <div className="max-w-6xl mx-auto px-4 sm:px-6 mt-10 animate-slide-up stagger-2">
-          <div className="relative rounded-[2.5rem] overflow-hidden p-10 sm:p-16 text-center">
-            <div className="absolute inset-0 bg-gradient-to-br from-brandLight/50 via-surface/60 to-lift/70" />
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-brand/6 rounded-full blur-3xl pointer-events-none" />
-            <svg className="absolute inset-0 w-full h-full opacity-[0.06]" aria-hidden="true">
-              <ellipse cx="50%" cy="50%" rx="45%" ry="35%"
-                stroke="rgb(67,56,202)" strokeWidth="1" fill="none" strokeDasharray="6 10" />
-              <ellipse cx="50%" cy="50%" rx="30%" ry="22%"
-                stroke="rgb(124,58,237)" strokeWidth="1" fill="none" strokeDasharray="4 8" />
-            </svg>
+          <div className="card text-center py-16">
             <div className="relative z-10">
               <div className="w-20 h-20 bg-surface border-4 border-brand/20 rounded-full flex items-center justify-center mx-auto mb-6 shadow-[0_0_30px_rgba(67,56,202,0.25)]">
                 <Compass className="w-10 h-10 text-brand" />
@@ -601,19 +586,10 @@ export default function Dashboard() {
 
               {/* Quest glass region */}
               <div
-                className="relative rounded-[2rem] overflow-hidden group
-                  transition-all duration-500
-                  hover:shadow-[0_20px_60px_rgba(67,56,202,0.12)]"
-                style={{
-                  background: 'linear-gradient(135deg, rgba(236,238,255,0.78) 0%, rgba(255,255,255,0.58) 50%, rgba(244,244,250,0.68) 100%)',
-                  backdropFilter: 'blur(30px)',
-                  WebkitBackdropFilter: 'blur(30px)',
-                  border: '1px solid rgba(67,56,202,0.14)',
-                }}
+                className="relative rounded-2xl overflow-hidden group bg-surface border border-line shadow-sm transition-all duration-300 hover:shadow-md"
               >
                 {/* Ambient glow pools */}
-                <div className="absolute top-0 left-0 w-60 h-60 bg-brand/6 rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2 pointer-events-none opacity-50 group-hover:opacity-100 transition-opacity duration-700" />
-                <div className="absolute bottom-0 right-0 w-44 h-44 bg-accent/5 rounded-full blur-2xl pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+                <div className="absolute top-0 left-0 w-60 h-60 bg-brand/5 rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
 
                 {/* Mini circuit accent inside quest panel */}
                 <svg className="absolute top-4 right-4 opacity-[0.045] pointer-events-none" width="60" height="40" aria-hidden="true">
@@ -651,10 +627,7 @@ export default function Dashboard() {
                   {/* CTA */}
                   <Link
                     to={heroState.actionUrl}
-                    className="btn-brand text-sm px-7 py-3 rounded-full
-                      shadow-[0_8px_24px_rgba(67,56,202,0.22)]
-                      hover:shadow-[0_12px_32px_rgba(67,56,202,0.32)]
-                      inline-flex transition-shadow"
+                    className="btn-primary"
                   >
                     {heroState.actionText}
                   </Link>
@@ -678,7 +651,7 @@ export default function Dashboard() {
                   {learningSkills.filter(s => s.id !== activeLearningSkill?.id).map(s => (
                     <div
                       key={s.id}
-                      className="bg-surface/50 backdrop-blur-lg border border-line/20 px-4 py-3 rounded-xl flex flex-col gap-2 hover:border-brand/25 transition-colors"
+                      className="bg-surface border border-line px-4 py-3 rounded-xl flex flex-col gap-2 hover:border-brand/40 transition-colors"
                     >
                       <div className="flex justify-between items-center">
                         <span className="font-bold text-sm text-ink">{s.skill_name}</span>
@@ -711,15 +684,7 @@ export default function Dashboard() {
                 Coming Up
               </p>
               {nextSession ? (
-                <div
-                  className="rounded-2xl p-4 space-y-3"
-                  style={{
-                    background: 'rgba(255,255,255,0.55)',
-                    backdropFilter: 'blur(16px)',
-                    WebkitBackdropFilter: 'blur(16px)',
-                    border: '1px solid rgba(232,233,241,0.6)',
-                  }}
-                >
+                <div className="rounded-xl p-4 space-y-3 bg-surface border border-line shadow-sm">
                   <div className="flex items-center gap-3">
                     <Avatar
                       name={nextSession.tutor_id === user.id ? nextSession.learner_name : nextSession.tutor_name}
@@ -773,8 +738,8 @@ export default function Dashboard() {
                     <div
                       key={s.id}
                       className="flex items-center justify-between px-4 py-3 rounded-xl
-                        bg-surface/50 backdrop-blur-sm border-l-2 border-gold/45
-                        hover:bg-surface/80 transition-colors group"
+                        bg-surface border border-line
+                        hover:bg-lift transition-colors group"
                     >
                       <span className="font-semibold text-sm text-ink group-hover:text-ink/90">{s.skill_name}</span>
                       {s.badge && <SkillBadge badge={s.badge} />}

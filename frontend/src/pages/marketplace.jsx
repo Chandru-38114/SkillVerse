@@ -163,20 +163,15 @@ export default function Marketplace() {
   const CATEGORIES = ['Java', 'Python', 'React', 'Data Science', 'Machine Learning', 'Figma', 'JavaScript']
 
   return (
-    <div className="min-h-screen bg-transparent font-body text-ink pb-16 relative z-10">
-      <section className="pt-10 pb-8 px-4 sm:px-6 max-w-5xl mx-auto mb-6 relative">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[300px] bg-brandLight/30 rounded-full blur-[100px] pointer-events-none" />
-        
-        <div className="max-w-3xl mx-auto text-center mb-8 relative z-10">
-          <div className="w-16 h-16 mx-auto mb-4 bg-brand/10 rounded-2xl flex items-center justify-center rotate-3 border border-brand/20 shadow-sm">
-            <svg className="w-8 h-8 text-brand -rotate-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
-          </div>
-          <h1 className="text-3xl md:text-4xl font-display font-bold mb-4 text-ink tracking-tight drop-shadow-md">Find Your Learning Partner</h1>
-          <p className="text-lg text-clay drop-shadow-sm font-medium">Connect with peers to teach what you know, and learn what you don't.</p>
+    <div className="min-h-screen bg-paper font-body text-ink pb-16 relative z-10">
+      <section className="pt-10 pb-8 px-4 sm:px-6 max-w-5xl mx-auto mb-6">
+        <div className="max-w-3xl mx-auto text-center mb-10">
+          <h1 className="text-3xl md:text-4xl font-display font-bold mb-3 text-ink tracking-tight">Find Your Learning Partner</h1>
+          <p className="text-lg text-clay font-medium">Connect with peers to teach what you know, and learn what you don't.</p>
         </div>
 
-        <div className="max-w-2xl mx-auto relative z-10">
-          <form onSubmit={handleSearchSubmit} className="relative shadow-sm mb-6 flex rounded-[2rem] bg-surface/80 backdrop-blur-3xl border border-white focus-within:border-brand/40 focus-within:shadow-[0_4px_24px_-12px_rgba(67,56,202,0.2)] transition-all overflow-hidden p-1.5">
+        <div className="max-w-2xl mx-auto">
+          <form onSubmit={handleSearchSubmit} className="relative shadow-sm mb-6 flex rounded-xl bg-surface border border-line focus-within:border-brand/40 focus-within:ring-2 focus-within:ring-brand/10 transition-all overflow-hidden p-1">
             <div className="pl-5 pr-2 py-3 flex items-center justify-center text-ink/40">
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
             </div>
@@ -187,7 +182,7 @@ export default function Marketplace() {
               value={query}
               onChange={e => setQuery(e.target.value)}
             />
-            <button type="submit" className="bg-brand hover:bg-brand2 transition-colors text-white px-8 py-3 rounded-2xl font-bold text-sm tracking-wide shadow-sm">
+            <button type="submit" className="btn-primary px-8 py-2.5">
               Search
             </button>
           </form>
@@ -198,7 +193,7 @@ export default function Marketplace() {
               <button 
                 key={c}
                 onClick={() => handleCategoryClick(c)}
-                className="px-4 py-1.5 text-xs font-semibold rounded-full bg-white/60 backdrop-blur-md border border-white text-ink/70 hover:border-brand/30 hover:text-brand hover:bg-white transition-all shadow-sm"              >
+                className="px-4 py-1.5 text-xs font-semibold rounded-full bg-surface border border-line text-ink/70 hover:border-brand/30 hover:text-brand transition-all shadow-sm"              >
                 {c}
               </button>
             ))}
@@ -276,10 +271,9 @@ export default function Marketplace() {
               const staggerClass = `stagger-${(idx % 5) + 1}`;
 
               return (
-                <div key={teacher.user_id} className={`section-panel p-0 overflow-hidden flex flex-col group/teacher animate-slide-up hover:border-brand/30 hover:shadow-[0_8px_30px_-12px_rgba(67,56,202,0.2)] transition-all ${staggerClass}`}>
+                <div key={teacher.user_id} className={`card p-0 overflow-hidden flex flex-col group/teacher animate-slide-up hover:border-brand/30 transition-all ${staggerClass}`}>
                   
                   <div className="p-6 flex-1 flex flex-col relative">
-                    <div className="absolute inset-0 bg-gradient-to-br from-brand/5 to-transparent pointer-events-none" />
                     <div className="flex gap-4 mb-5 relative z-10">
                       <Avatar url={teacher.profile_picture_url} name={teacher.name} size="lg" className="shrink-0" />
                       <div>
@@ -320,7 +314,7 @@ export default function Marketplace() {
                         </h4>
                         <div className="flex flex-wrap gap-2">
                           {teacher.teaching_skills.length === 0 ? <span className="text-xs text-ink/40 italic">None</span> : teacher.teaching_skills.map(s => (
-                            <div key={s.skill_name} className="flex flex-col bg-white/60 border border-white px-4 py-2 rounded-xl shadow-sm">
+                            <div key={s.skill_name} className="flex flex-col bg-lift border border-line px-3 py-1.5 rounded-lg">
                               <span className="text-sm font-bold text-ink">{s.skill_name}</span> 
                               <span className="text-[10px] text-brand uppercase tracking-wide font-bold">{s.level}</span>
                             </div>
@@ -335,7 +329,7 @@ export default function Marketplace() {
                         </h4>
                         <div className="flex flex-wrap gap-2">
                           {teacher.learning_skills.length === 0 ? <span className="text-xs text-ink/40 italic">None</span> : teacher.learning_skills.map(s => (
-                            <div key={s.skill_name} className="flex flex-col bg-white/60 border border-white px-4 py-2 rounded-xl shadow-sm">
+                            <div key={s.skill_name} className="flex flex-col bg-lift border border-line px-3 py-1.5 rounded-lg">
                               <span className="text-sm font-bold text-ink">{s.skill_name}</span> 
                               <span className="text-[10px] text-brand2 uppercase tracking-wide font-bold">{s.level === 'Unassessed' ? 'Beginner' : s.level}</span>
                             </div>
@@ -345,7 +339,7 @@ export default function Marketplace() {
                     </div>
                   </div>
 
-                  <div className="p-5 md:p-6 bg-lift/40 relative z-10 mt-auto border-t border-white/40">
+                  <div className="p-5 md:p-6 bg-lift relative z-10 mt-auto border-t border-line">
                     <RequestControl
                       rel={rel}
                       teacher={teacher}
