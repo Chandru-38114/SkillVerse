@@ -262,7 +262,7 @@ export default function Settings() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="field-label">Date of Birth</label>
-                    <input type="date" className="input" value={dob} onChange={e => setDob(e.target.value)} />
+                    <input type="date" className="input" value={dob} onChange={e => setDob(e.target.value)} onClick={(e) => { if (e.target.showPicker) { e.target.showPicker(); } }} />
                   </div>
                   <div>
                     <label className="field-label">Gender</label>

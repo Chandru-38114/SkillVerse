@@ -196,6 +196,11 @@ function Field({ id, label, value, onChange, type = 'text', required = false, pl
           required={required}
           placeholder={placeholder}
           onChange={(e) => onChange(e.target.value)}
+          onClick={(e) => {
+            if (type === 'date' && e.target.showPicker) {
+              e.target.showPicker();
+            }
+          }}
         />
       )}
     </div>

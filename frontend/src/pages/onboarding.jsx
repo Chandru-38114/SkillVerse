@@ -162,7 +162,7 @@ function Field({ id, label, value, onChange, type = 'text', required = false }) 
       {type === 'password' ? (
         <PasswordInput id={id} value={value} required={required} onChange={(e) => onChange(e.target.value)} />
       ) : (
-        <input id={id} className="input" type={type} value={value} required={required} onChange={(e) => onChange(e.target.value)} />
+        <input id={id} className="input" type={type} value={value} required={required} onChange={(e) => onChange(e.target.value)} onClick={(e) => { if (type === 'date' && e.target.showPicker) { e.target.showPicker(); } }} />
       )}
     </div>
   )

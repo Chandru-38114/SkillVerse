@@ -3,7 +3,7 @@ import os
 import sys
 import tempfile
 import subprocess
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, WebSocket
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, Field
 
