@@ -6,7 +6,6 @@ import Compiler from '../components/Compiler'
 import Whiteboard from '../components/Whiteboard'
 import Materials from '../components/Materials'
 import Notes from '../components/Notes'
-import Chat from './chat'
 import { Code2, PenLine, FileText, FolderOpen, ChevronDown, ChevronUp, Info, Hand, CheckCircle2, Play, BookOpen, User, Calendar } from 'lucide-react'
 
 const TABS = [
@@ -203,7 +202,6 @@ function SessionRoomComponent() {
         <VideoChat 
            sessionId={session.id} 
            onLeave={handleLeave} 
-           chatComponent={<Chat requestId={session.request_id || req?.id} embedded={true} />}
         >
           {/* 🚀 Workspace 🚀 */}
           <div className="flex-1 flex flex-col overflow-y-auto bg-paper p-4 lg:p-6 gap-6 scroll-smooth">

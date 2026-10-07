@@ -3,7 +3,7 @@ import BackButton from "../components/BackButton";
 import { Link, useSearchParams } from 'react-router-dom'
 import { api } from '../api'
 import SkillBadge from '../components/skillbadge'
-import { Compass, Swords, Target, Route, ArrowRight, ShieldCheck, Play } from 'lucide-react'
+import { Compass, Swords, Target, Route, ArrowRight, ShieldCheck, Play, Maximize, AlertTriangle, ChevronRight, ChevronLeft, Clock, Code2 } from 'lucide-react'
 
 const STEPS = { PICK: 'pick', QUIZ: 'quiz', RESULT: 'result' }
 
@@ -14,9 +14,76 @@ export default function Assessment() {
   const [role, setRole] = useState('teaching')
   const [questions, setQuestions] = useState([])
   const [answers, setAnswers] = useState({})
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
   const [result, setResult] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  
+  // Security / Anti-cheat
+  const [violations, setViolations] = useState(0)
+  const [isFullscreen, setIsFullscreen] = useState(false)
+
+  // Timer
+  const DEFAULT_TIME = 20 * 60; // 20 minutes
+  const [timeLeft, setTimeLeft] = useState(DEFAULT_TIME);
+
+  const enterFullscreen = async () => {
+    try {
+      if (document.documentElement.requestFullscreen) {
+        await document.documentElement.requestFullscreen();
+      }
+    } catch (err) {
+      console.warn("Fullscreen request blocked:", err);
+    }
+  };
+
+  useEffect(() => {
+    if (step === STEPS.QUIZ) {
+      const handleBlur = () => {
+        setViolations(v => v + 1);
+        alert("Warning: You left the Skill Arena window. This violation has been recorded locally.");
+        window.focus();
+      };
+      
+      const handleFullscreenChange = () => {
+        if (!document.fullscreenElement) {
+          setIsFullscreen(false);
+          setViolations(v => v + 1);
+          alert("Warning: Please return to Skill Arena fullscreen mode. This violation has been recorded locally.");
+        } else {
+          setIsFullscreen(true);
+        }
+      };
+
+      window.addEventListener('blur', handleBlur);
+      document.addEventListener('fullscreenchange', handleFullscreenChange);
+
+      return () => {
+        window.removeEventListener('blur', handleBlur);
+        document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      };
+    }
+  }, [step]);
+
+  useEffect(() => {
+    let timer;
+    if (step === STEPS.QUIZ && !loading) {
+      if (timeLeft > 0) {
+        timer = setInterval(() => {
+          setTimeLeft(t => t - 1);
+        }, 1000);
+      } else {
+        submitQuiz();
+      }
+    }
+    return () => clearInterval(timer);
+  }, [step, timeLeft, loading]);
+
+  const formatTime = (seconds) => {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m}:${s < 10 ? '0' : ''}${s}`;
+  };
 
   async function executeStartQuiz(skillToStart) {
     if (!skillToStart.trim()) return
@@ -26,7 +93,12 @@ export default function Assessment() {
       const qs = await api.assessmentQuestions(skillToStart.trim())
       setQuestions(qs)
       setAnswers({})
+      setViolations(0)
+      setTimeLeft(DEFAULT_TIME)
+      setCurrentQuestionIndex(0)
       setStep(STEPS.QUIZ)
+      // Attempt to enter fullscreen immediately
+      enterFullscreen()
     } catch (err) {
       setError(err.message)
     } finally {
@@ -53,17 +125,22 @@ export default function Assessment() {
   }, [searchParams])
 
   async function submitQuiz() {
+    if (loading) return;
     setLoading(true)
     setError('')
     try {
       const payload = {
         skill_name: skillName.trim(),
         role,
-        answers: Object.entries(answers).map(([question_id, answer]) => ({ question_id, answer })),
+        answers: Object.entries(answers).map(([question_id, answer]) => ({ question_id, answer }))
       }
       const res = await api.submitAssessment(payload)
       setResult(res)
       setStep(STEPS.RESULT)
+      // Exit fullscreen
+      if (document.fullscreenElement) {
+        document.exitFullscreen().catch(console.error);
+      }
     } catch (err) {
       setError(err.message)
     } finally {
@@ -73,7 +150,19 @@ export default function Assessment() {
 
   const answeredCount = Object.keys(answers).length
   const totalCount = questions.length
-  const progress = totalCount > 0 ? Math.round((answeredCount / totalCount) * 100) : 0
+  const progress = totalCount > 0 ? Math.round(((currentQuestionIndex + 1) / totalCount) * 100) : 0
+
+  const handleNext = () => {
+    if (currentQuestionIndex < totalCount - 1) {
+      setCurrentQuestionIndex(i => i + 1)
+    }
+  }
+
+  const handlePrev = () => {
+    if (currentQuestionIndex > 0) {
+      setCurrentQuestionIndex(i => i - 1)
+    }
+  }
 
   return (
     <div className="max-w-2xl mx-auto px-4 sm:px-6 py-8 sm:py-12 animate-fade-in">
@@ -82,13 +171,13 @@ export default function Assessment() {
         <div className="animate-slide-up">
           <div className="flex items-center gap-2 mb-3">
              <div className="w-8 h-8 rounded-full bg-brand/10 text-brand flex items-center justify-center shrink-0 border border-brand/20">
-                <Compass className="w-4 h-4" />
+                <Swords className="w-4 h-4" />
              </div>
-             <p className="text-[10px] font-bold text-brand uppercase tracking-wider">Skill Journey • Start Node</p>
+             <p className="text-[10px] font-bold text-brand uppercase tracking-wider">Skill Arena</p>
           </div>
-          <h1 className="font-display text-4xl mb-2 text-ink">Start your Skill Challenge</h1>
+          <h1 className="font-display text-4xl mb-2 text-ink">Enter the Skill Arena</h1>
           <p className="text-clay text-sm mb-8">
-            Discover where you stand. Python and JavaScript have full challenges. Other skills use placeholders.
+            Prove your mastery. You will enter a focused, fullscreen environment. 
           </p>
 
           <form onSubmit={startQuiz} className="space-y-6">
@@ -105,7 +194,7 @@ export default function Assessment() {
             </div>
 
             <div>
-              <p className="field-label mb-3">Assessment goal</p>
+              <p className="field-label mb-3">Arena Goal</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <RoleOption
                   label="I want to teach it"
@@ -129,8 +218,8 @@ export default function Assessment() {
             {error && <p className="alert-error">{error}</p>}
 
             <button disabled={loading || !skillName.trim()} className="btn-primary w-full py-3 flex justify-center items-center gap-2 text-sm">
-              {loading ? 'Initializing challenge…' : (
-                 <>Enter Challenge <ArrowRight className="w-4 h-4" /></>
+              {loading ? 'Initializing Arena…' : (
+                 <>Enter Arena <ArrowRight className="w-4 h-4" /></>
               )}
             </button>
           </form>
@@ -138,80 +227,150 @@ export default function Assessment() {
       )}
 
       {/* ── Step: Quiz ── */}
-      {step === STEPS.QUIZ && (
-        <div className="animate-slide-up">
-          <div className="flex items-center justify-between mb-4">
+      {step === STEPS.QUIZ && questions.length > 0 && (
+        <div 
+          className="animate-slide-up"
+          onCopy={e => e.preventDefault()}
+          onCut={e => e.preventDefault()}
+          onPaste={e => e.preventDefault()}
+          onContextMenu={e => e.preventDefault()}
+          style={{ userSelect: 'none' }}
+        >
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
             <div>
               <p className="text-[10px] font-bold text-brand uppercase tracking-wider mb-1 flex items-center gap-1.5">
-                <Swords className="w-3.5 h-3.5" /> Current Challenge
+                <Swords className="w-3.5 h-3.5" /> Skill Arena: {skillName}
               </p>
-              <h1 className="font-display text-3xl text-ink">{skillName}</h1>
+              <h1 className="font-display text-2xl text-ink">Question {currentQuestionIndex + 1} of {totalCount}</h1>
             </div>
-            <div className="text-right">
-              <p className="text-xs text-clay font-bold tracking-wide mb-1.5">{answeredCount}/{totalCount} ANSWERED</p>
-              <div className="w-32 h-1.5 bg-line/50 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-brand rounded-full transition-all duration-500 ease-out animate-progress"
-                  style={{ width: `${progress}%` }}
-                />
+            <div className="flex flex-col items-end gap-2">
+              <div className="flex items-center gap-3">
+                <div className={`flex items-center gap-1.5 text-sm font-mono px-3 py-1 rounded-full ${timeLeft < 300 ? 'bg-red-50 text-red-600 font-bold' : 'bg-ink/5 text-ink/70'}`}>
+                  <Clock className="w-4 h-4" />
+                  {formatTime(timeLeft)}
+                </div>
+                {!isFullscreen && (
+                  <button onClick={enterFullscreen} className="text-xs text-brand flex items-center gap-1 hover:underline">
+                    <Maximize className="w-3.5 h-3.5" /> Enter Fullscreen
+                  </button>
+                )}
+                {violations > 0 && (
+                  <div className="flex items-center gap-1 text-xs font-bold text-red-600 bg-red-50 px-2 py-1 rounded">
+                    <AlertTriangle className="w-3 h-3" /> {violations} Violations
+                  </div>
+                )}
+              </div>
+              <div className="text-right">
+                <div className="w-32 h-1.5 bg-line/50 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-brand rounded-full transition-all duration-500 ease-out animate-progress"
+                    style={{ width: `${progress}%` }}
+                  />
+                </div>
               </div>
             </div>
           </div>
 
-          <div className="mt-8 space-y-4">
-            {questions.map((q, i) => (
-              <div
-                key={q.id}
-                className={`card p-5 transition-all duration-150 ${answers[q.id] ? 'border-moss/30' : ''}`}
-              >
-                <div className="flex items-center gap-2 mb-3">
-                  <span className="text-xs font-mono text-ink/30 bg-ink/5 px-2 py-0.5 rounded-full">
-                    Q{i + 1}
-                  </span>
-                  <span className="text-xs text-ink/40">{q.topic}</span>
-                  {answers[q.id] && (
-                    <span className="ml-auto text-xs text-brand">✓ answered</span>
-                  )}
-                </div>
-                <p className="font-medium text-sm mb-4 whitespace-pre-wrap leading-relaxed">{q.question}</p>
-                <div className="space-y-2">
-                  {q.options.map((opt) => (
-                    <label
-                      key={opt}
-                      className={`flex items-center gap-3 text-sm cursor-pointer px-3 py-2.5 rounded-lg border transition-all duration-100
-                        ${answers[q.id] === opt
-                          ? 'border-brand bg-brand/5 text-brand'
-                          : 'border-transparent hover:border-line hover:bg-paper'
-                        }`}
-                    >
-                      <input
-                        type="radio"
-                        name={q.id}
-                        className="accent-brand"
-                        checked={answers[q.id] === opt}
-                        onChange={() => setAnswers((a) => ({ ...a, [q.id]: opt }))}
-                      />
-                      {opt}
-                    </label>
-                  ))}
-                </div>
+          <div className="mt-4">
+            <div className="card p-6 shadow-sm border-line/50">
+              <div className="flex items-center gap-2 mb-4">
+                <span className="text-xs font-mono text-ink/40 bg-ink/5 px-2 py-0.5 rounded-full">
+                  Topic
+                </span>
+                <span className="text-sm font-medium text-ink/70">{questions[currentQuestionIndex].topic}</span>
               </div>
-            ))}
+              <p className="font-medium text-lg mb-6 whitespace-pre-wrap leading-relaxed text-ink">
+                {questions[currentQuestionIndex].question}
+              </p>
+              
+              {(!questions[currentQuestionIndex].type || questions[currentQuestionIndex].type === 'MCQ') && (
+                <div className="space-y-3">
+                  {questions[currentQuestionIndex].options?.map((opt) => {
+                    const qId = questions[currentQuestionIndex].id;
+                    const isSelected = answers[qId] === opt;
+                    return (
+                      <label
+                        key={opt}
+                        className={`flex items-start gap-3 text-sm cursor-pointer px-4 py-3.5 rounded-xl border-2 transition-all duration-150
+                          ${isSelected
+                            ? 'border-brand bg-brand/5 text-brand shadow-sm'
+                            : 'border-line hover:border-ink/20 hover:bg-paper'
+                          }`}
+                      >
+                        <input
+                          type="radio"
+                          name={qId}
+                          className="accent-brand mt-0.5"
+                          checked={isSelected}
+                          onChange={() => setAnswers((a) => ({ ...a, [qId]: opt }))}
+                        />
+                        <span className={isSelected ? 'font-medium' : ''}>{opt}</span>
+                      </label>
+                    )
+                  })}
+                </div>
+              )}
+
+              {questions[currentQuestionIndex].type === 'CODING' && (
+                <div className="p-8 border-2 border-dashed border-brand/20 bg-brand/5 rounded-xl text-center">
+                  <Code2 className="w-10 h-10 text-brand/40 mx-auto mb-3" />
+                  <p className="text-sm font-bold text-brand mb-1">Course Compiler Integration Pending</p>
+                  <p className="text-xs text-brand/70 max-w-xs mx-auto">This practical coding challenge will be fully interactive in the next phase of the Skill Arena.</p>
+                </div>
+              )}
+
+              {questions[currentQuestionIndex].type === 'PROBLEM_SOLVING' && (
+                <div className="space-y-3">
+                  <textarea 
+                    className="input min-h-[150px] resize-y w-full" 
+                    placeholder="Describe your solution approach..."
+                    value={answers[questions[currentQuestionIndex].id] || ''}
+                    onChange={(e) => setAnswers(a => ({...a, [questions[currentQuestionIndex].id]: e.target.value}))}
+                    style={{ userSelect: 'text' }}
+                  />
+                </div>
+              )}
+            </div>
           </div>
 
           {error && <p className="alert-error mt-4">{error}</p>}
 
-          <button
-            onClick={submitQuiz}
-            disabled={loading || answeredCount < totalCount}
-            className="btn-primary w-full mt-8 py-3.5 justify-center font-semibold text-sm shadow-sm"
-          >
-            {loading
-              ? 'Analyzing performance…'
-              : answeredCount < totalCount
-              ? `Answer all ${totalCount} challenges to submit`
-              : 'Complete Challenge'}
-          </button>
+          <div className="flex items-center justify-between mt-8">
+            <button
+              onClick={handlePrev}
+              disabled={currentQuestionIndex === 0}
+              className="btn-secondary px-4 py-2 flex items-center gap-1 disabled:opacity-50"
+            >
+              <ChevronLeft className="w-4 h-4" /> Previous
+            </button>
+            
+            {currentQuestionIndex < totalCount - 1 ? (
+              <button
+                onClick={handleNext}
+                className="btn-primary px-6 py-2 flex items-center gap-1 shadow-sm"
+              >
+                Next <ChevronRight className="w-4 h-4" />
+              </button>
+            ) : (
+              <button
+                onClick={submitQuiz}
+                disabled={loading || answeredCount < totalCount}
+                className="btn-primary px-6 py-2 flex items-center gap-2 shadow-sm"
+              >
+                {loading
+                  ? 'Analyzing...'
+                  : answeredCount < totalCount
+                  ? `Answer all questions`
+                  : 'Submit Arena'}
+              </button>
+            )}
+          </div>
+          
+          {currentQuestionIndex === totalCount - 1 && answeredCount < totalCount && (
+            <p className="text-center text-xs text-clay mt-4">
+              You have answered {answeredCount} out of {totalCount} questions.
+            </p>
+          )}
         </div>
       )}
 
@@ -226,9 +385,14 @@ export default function Assessment() {
           </div>
           
           <div className="text-center mb-8">
-             <p className="text-[10px] font-bold text-gold uppercase tracking-wider mb-2">Discovery Complete</p>
+             <p className="text-[10px] font-bold text-gold uppercase tracking-wider mb-2">Arena Complete</p>
              <h1 className="font-display text-4xl text-ink mb-1">{skillName}</h1>
-             <p className="text-clay text-sm">Your initial assessment is verified.</p>
+             <p className="text-clay text-sm">Your assessment is verified.</p>
+             {violations > 0 && (
+               <p className="text-xs text-red-600 font-bold mt-2">
+                 Note: {violations} security violation(s) were recorded during this session.
+               </p>
+             )}
           </div>
 
           {/* Score hero */}

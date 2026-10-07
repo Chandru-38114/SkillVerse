@@ -2,12 +2,11 @@ import React, { useEffect, useRef, useState, createContext } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { REACTION_EMOJIS, getEmojiForKey } from '../utils/emojis'
 import { api, getSessionUser } from '../api'
-import { Mic, MicOff, Video, VideoOff, Hand, Smile , User } from 'lucide-react'
-
+import { Mic, MicOff, Video, VideoOff, Hand, Smile, User, Monitor, Maximize } from 'lucide-react'
 
 export const SessionWebSocketContext = createContext(null)
 
-export default function VideoChat({ sessionId, children, onLeave, chatComponent }) {
+export default function VideoChat({ sessionId, children, onLeave }) {
   const navigate = useNavigate()
   const [stream, setStream] = useState(null)
   const [remoteStream, setRemoteStream] = useState(null)
@@ -19,10 +18,12 @@ export default function VideoChat({ sessionId, children, onLeave, chatComponent 
   const [activeEmojis, setActiveEmojis] = useState([])
   const [isMuted, setIsMuted] = useState(false)
   const [isVideoOff, setIsVideoOff] = useState(false)
+  const [isScreenSharing, setIsScreenSharing] = useState(false)
 
   const localVideoRef = useRef(null)
   const remoteVideoRef = useRef(null)
   const pcRef = useRef(null)
+  const screenStreamRef = useRef(null)
   const wsRef = useRef(null)
   const streamRef = useRef(null)
   const remoteUserIdRef = useRef(null)
@@ -403,6 +404,10 @@ export default function VideoChat({ sessionId, children, onLeave, chatComponent 
         streamRef.current.getTracks().forEach(track => track.stop())
         streamRef.current = null
       }
+      if (screenStreamRef.current) {
+        screenStreamRef.current.getTracks().forEach(track => track.stop())
+        screenStreamRef.current = null
+      }
     }
   }, [sessionId])
 
@@ -455,6 +460,59 @@ export default function VideoChat({ sessionId, children, onLeave, chatComponent 
     if (videoTrack) {
       videoTrack.enabled = !videoTrack.enabled
       setIsVideoOff(!videoTrack.enabled)
+    }
+  }
+
+  async function toggleScreenShare() {
+    if (!pcRef.current) return;
+    
+    if (isScreenSharing) {
+      if (screenStreamRef.current) {
+        screenStreamRef.current.getTracks().forEach(t => t.stop());
+        screenStreamRef.current = null;
+      }
+      const videoSender = pcRef.current.getSenders().find(s => s.track && s.track.kind === 'video');
+      if (videoSender && stream) {
+        const videoTrack = stream.getVideoTracks()[0];
+        if (videoTrack) {
+          videoSender.replaceTrack(videoTrack);
+        }
+      }
+      setIsScreenSharing(false);
+      if (localVideoRef.current && stream) {
+        localVideoRef.current.srcObject = stream;
+      }
+    } else {
+      try {
+        const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+        screenStreamRef.current = screenStream;
+        
+        const screenTrack = screenStream.getVideoTracks()[0];
+        screenTrack.onended = () => {
+          toggleScreenShare(); // Handle browser UI stop
+        };
+
+        const videoSender = pcRef.current.getSenders().find(s => s.track && s.track.kind === 'video');
+        if (videoSender) {
+          videoSender.replaceTrack(screenTrack);
+        } else {
+           pcRef.current.addTrack(screenTrack, streamRef.current || screenStream);
+        }
+        setIsScreenSharing(true);
+        if (localVideoRef.current) {
+          localVideoRef.current.srcObject = screenStream;
+        }
+      } catch (err) {
+        console.warn('Failed to start screen share:', err);
+      }
+    }
+  }
+
+  function toggleFullscreen() {
+    if (remoteVideoRef.current) {
+      if (remoteVideoRef.current.requestFullscreen) {
+        remoteVideoRef.current.requestFullscreen();
+      }
     }
   }
 
@@ -523,7 +581,7 @@ export default function VideoChat({ sessionId, children, onLeave, chatComponent 
         </SessionWebSocketContext.Provider>
       </div>
 
-      {/* Right Sidebar (Video + Chat) */}
+      {/* Right Sidebar (Video) */}
       <div className="md:w-[320px] lg:w-[360px] xl:w-[400px] shrink-0 flex flex-col bg-surface border-l border-line z-20 overflow-hidden relative">
         
         {/* Video Card Area */}
@@ -631,12 +689,21 @@ export default function VideoChat({ sessionId, children, onLeave, chatComponent 
                 ))}
               </div>
             </div>
+            <button
+              onClick={toggleScreenShare}
+              className={`w-10 h-10 rounded-full flex items-center justify-center transition-all text-base ${isScreenSharing ? 'bg-brand text-white shadow-lg shadow-brand/20' : 'bg-ink/5 text-ink hover:bg-ink/10'}`}
+              title={isScreenSharing ? 'Stop Screen Sharing' : 'Share Screen'}
+            >
+              <Monitor size={18} />
+            </button>
+            <button
+              onClick={toggleFullscreen}
+              className="w-10 h-10 rounded-full flex items-center justify-center transition-all text-base bg-ink/5 text-ink hover:bg-ink/10"
+              title="Fullscreen Video"
+            >
+              <Maximize size={18} />
+            </button>
           </div>
-        </div>
-
-        {/* Chat Component injected from session_room */}
-        <div className="flex-1 overflow-hidden relative">
-          {chatComponent}
         </div>
       </div>
     </div>
