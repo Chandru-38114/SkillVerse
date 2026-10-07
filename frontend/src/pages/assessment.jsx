@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import BackButton from "../components/BackButton";
 import { Link, useSearchParams } from 'react-router-dom'
 import { api } from '../api'
@@ -22,6 +22,8 @@ export default function Assessment() {
   // Security / Anti-cheat
   const [violations, setViolations] = useState(0)
   const [isFullscreen, setIsFullscreen] = useState(false)
+  const [showWarning, setShowWarning] = useState(null)
+  const lastViolation = useRef(0)
 
   // Timer
   const DEFAULT_TIME = 20 * 60; // 20 minutes
@@ -39,17 +41,29 @@ export default function Assessment() {
 
   useEffect(() => {
     if (step === STEPS.QUIZ) {
+      const handleBeforeUnload = (e) => {
+        e.preventDefault();
+        e.returnValue = '';
+      };
+
+      const recordViolation = (msg) => {
+        const now = Date.now();
+        // Debounce violations by 2 seconds to avoid double counting
+        if (now - lastViolation.current > 2000) {
+          lastViolation.current = now;
+          setViolations(v => v + 1);
+          setShowWarning(msg);
+        }
+      };
+
       const handleBlur = () => {
-        setViolations(v => v + 1);
-        alert("Warning: You left the Skill Arena window. This violation has been recorded locally.");
-        window.focus();
+        recordViolation("You left the Skill Arena window. This violation has been recorded locally.");
       };
       
       const handleFullscreenChange = () => {
         if (!document.fullscreenElement) {
           setIsFullscreen(false);
-          setViolations(v => v + 1);
-          alert("Warning: Please return to Skill Arena fullscreen mode. This violation has been recorded locally.");
+          recordViolation("Please return to Skill Arena fullscreen mode. This violation has been recorded locally.");
         } else {
           setIsFullscreen(true);
         }
@@ -57,10 +71,12 @@ export default function Assessment() {
 
       window.addEventListener('blur', handleBlur);
       document.addEventListener('fullscreenchange', handleFullscreenChange);
+      window.addEventListener('beforeunload', handleBeforeUnload);
 
       return () => {
         window.removeEventListener('blur', handleBlur);
         document.removeEventListener('fullscreenchange', handleFullscreenChange);
+        window.removeEventListener('beforeunload', handleBeforeUnload);
       };
     }
   }, [step]);
@@ -164,6 +180,9 @@ export default function Assessment() {
     }
   }
 
+  const currentQuestion = questions[currentQuestionIndex];
+  const qType = currentQuestion ? (currentQuestion.type || 'mcq').toLowerCase() : 'mcq';
+
   return (
     <div className="max-w-2xl mx-auto px-4 sm:px-6 py-8 sm:py-12 animate-fade-in">
       {/* ✨ Step: Pick skill ✨ */}
@@ -228,14 +247,31 @@ export default function Assessment() {
 
       {/* ── Step: Quiz ── */}
       {step === STEPS.QUIZ && questions.length > 0 && (
-        <div 
-          className="animate-slide-up"
-          onCopy={e => e.preventDefault()}
+        <div className="fixed inset-0 z-50 bg-white overflow-y-auto">
+          <div className="max-w-2xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
+            <div 
+              className="animate-slide-up"
+              onCopy={e => e.preventDefault()}
           onCut={e => e.preventDefault()}
           onPaste={e => e.preventDefault()}
           onContextMenu={e => e.preventDefault()}
           style={{ userSelect: 'none' }}
         >
+          {showWarning && (
+            <div className="fixed inset-0 z-[60] bg-ink/40 backdrop-blur-sm flex items-center justify-center p-4" style={{ userSelect: 'auto' }}>
+              <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl border border-line">
+                <div className="flex items-center gap-3 text-red-600 mb-4">
+                  <AlertTriangle className="w-6 h-6" />
+                  <h3 className="font-bold text-lg">Security Violation</h3>
+                </div>
+                <p className="text-sm text-ink/70 mb-6 font-medium">{showWarning}</p>
+                <button onClick={() => setShowWarning(null)} className="btn-primary w-full py-2.5 justify-center">
+                  Acknowledge and Continue
+                </button>
+              </div>
+            </div>
+          )}
+
           <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
             <div>
               <p className="text-[10px] font-bold text-brand uppercase tracking-wider mb-1 flex items-center gap-1.5">
@@ -283,7 +319,7 @@ export default function Assessment() {
                 {questions[currentQuestionIndex].question}
               </p>
               
-              {(!questions[currentQuestionIndex].type || questions[currentQuestionIndex].type === 'MCQ') && (
+              {(qType === 'mcq' || qType === 'output') && (
                 <div className="space-y-3">
                   {questions[currentQuestionIndex].options?.map((opt) => {
                     const qId = questions[currentQuestionIndex].id;
@@ -311,7 +347,7 @@ export default function Assessment() {
                 </div>
               )}
 
-              {questions[currentQuestionIndex].type === 'CODING' && (
+              {qType === 'coding' && (
                 <div className="p-8 border-2 border-dashed border-brand/20 bg-brand/5 rounded-xl text-center">
                   <Code2 className="w-10 h-10 text-brand/40 mx-auto mb-3" />
                   <p className="text-sm font-bold text-brand mb-1">Course Compiler Integration Pending</p>
@@ -319,7 +355,7 @@ export default function Assessment() {
                 </div>
               )}
 
-              {questions[currentQuestionIndex].type === 'PROBLEM_SOLVING' && (
+              {qType === 'problem_solving' && (
                 <div className="space-y-3">
                   <textarea 
                     className="input min-h-[150px] resize-y w-full" 
@@ -371,6 +407,8 @@ export default function Assessment() {
               You have answered {answeredCount} out of {totalCount} questions.
             </p>
           )}
+            </div>
+          </div>
         </div>
       )}
 
