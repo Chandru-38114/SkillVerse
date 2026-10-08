@@ -19,7 +19,7 @@ function LocalCompiler({ code, onChange, language }) {
     setError('');
     setOutput('');
     try {
-      const res = await api.runCompiler("arena_assessment", code);
+      const res = await api.runArenaCode(code);
       if (res.error) setError(res.error);
       setOutput(res.output || '');
     } catch (err) {
@@ -85,6 +85,7 @@ export default function Assessment() {
   const [skillName, setSkillName] = useState('')
   const [role, setRole] = useState('teaching')
   const [questions, setQuestions] = useState([])
+  const [attemptId, setAttemptId] = useState(null)
   const [answers, setAnswers] = useState({})
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
   const [result, setResult] = useState(null)
@@ -199,8 +200,9 @@ export default function Assessment() {
     setLoading(true)
     setError('')
     try {
-      const qs = await api.assessmentQuestions(skillToStart.trim())
-      setQuestions(qs)
+      const res = await api.startAssessment(skillToStart.trim())
+      setQuestions(res.questions)
+      setAttemptId(res.attempt_id)
       setAnswers({})
       setViolations(0)
       setTimeLeft(DEFAULT_TIME)
@@ -241,6 +243,7 @@ export default function Assessment() {
       const payload = {
         skill_name: skillName.trim(),
         role,
+        attempt_id: attemptId,
         answers: Object.entries(answers).map(([question_id, answer]) => ({ question_id, answer }))
       }
       const res = await api.submitAssessment(payload)
@@ -333,7 +336,7 @@ export default function Assessment() {
             {error && <p className="alert-error">{error}</p>}
 
             <button disabled={loading || !skillName.trim()} className="btn-primary w-full py-3 flex justify-center items-center gap-2 text-sm">
-              {loading ? 'Initializing Arena…' : (
+              {loading ? 'Generating your questions…' : (
                  <>Enter Arena <ArrowRight className="w-4 h-4" /></>
               )}
             </button>

@@ -103,6 +103,20 @@ class AssessmentAttempt(Base):
     created_at = Column(DateTime, default=utc_now)
 
 
+class AssessmentSession(Base):
+    """One generated Skill Arena attempt. Holds the questions WITH answers so
+    scoring happens against the server's copy, never the client's."""
+    __tablename__ = "assessment_sessions"
+
+    id = Column(String(36), primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    skill_name = Column(String, nullable=False)
+    source = Column(String(16), nullable=False, default="ai")  # "ai" or "bank"
+    questions = Column(JSON, nullable=False)
+    created_at = Column(DateTime, default=utc_now)
+    submitted_at = Column(DateTime, nullable=True)
+
+
 class ConnectionRequest(Base):
     __tablename__ = "connection_requests"
 

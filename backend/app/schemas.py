@@ -135,6 +135,10 @@ class AssessmentSubmit(BaseModel):
     skill_name: str
     role: str = "teaching"  # what the assessment result is used for
     answers: List[AssessmentSubmitAnswer]
+    attempt_id: Optional[str] = None  # from POST /assessments/start; scored against the server's stored copy
+
+class AssessmentStart(BaseModel):
+    skill_name: str
 
 
 class AssessmentResult(BaseModel):

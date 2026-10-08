@@ -195,6 +195,8 @@ export const api = {
 
   getLatestAssessment: () => request("/assessments/latest"),
   assessmentQuestions: (skill) => request(`/assessments/questions/${encodeURIComponent(skill)}`),
+  // Generates a fresh AI assessment; answers stay on the server. POST, so it is never cached.
+  startAssessment: (skill) => request("/assessments/start", { method: "POST", body: { skill_name: skill } }),
   submitAssessment: (data) => request("/assessments/submit", { method: "POST", body: data }),
 
 
@@ -303,6 +305,7 @@ export const api = {
   // Compiler (Session Room)
   getCompilerState: (sessionId) => request(`/compiler/${sessionId}/state`),
   runCompiler: (sessionId, code) => request(`/compiler/${sessionId}/run`, { method: "POST", body: { code } }),
+  runArenaCode: (code) => request("/compiler/arena/run", { method: "POST", body: { code } }),
 
 };
 

@@ -1,13 +1,56 @@
+import logging
+import uuid
+
 from fastapi import APIRouter, Depends, HTTPException
+from starlette.concurrency import run_in_threadpool
 from sqlalchemy.orm import Session
 from ..notification_service import create_notification
 
 from .. import models, schemas, auth
 from ..database import get_db
-from ..data.questions import get_questions_for_skill
+from ..data.questions import get_questions_for_skill, QUESTION_BANK
+from ..services.question_generator import (
+    GenerationError, canonical_skill, generate_assessment, sanitize,
+)
+from ..utils.timezone import utc_now
 from .users import get_or_create_skill
 
 router = APIRouter(prefix="/assessments", tags=["assessments"])
+logger = logging.getLogger(__name__)
+
+
+@router.post("/start")
+async def start_assessment(
+    payload: schemas.AssessmentStart,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user),
+):
+    """Generate a fresh assessment with Gemini and store it (with answers) server-side.
+    Returns the attempt id and the questions WITHOUT answers. Falls back to the
+    hand-written bank if AI generation is unavailable for a skill that has one."""
+    skill = canonical_skill(payload.skill_name)
+    if not skill:
+        raise HTTPException(status_code=400, detail="Skill name is required")
+
+    source = "ai"
+    try:
+        questions = await run_in_threadpool(generate_assessment, skill)
+    except GenerationError as err:
+        logger.warning("[arena] AI generation unavailable for %s: %s", skill, err)
+        if skill.lower() not in QUESTION_BANK:
+            raise HTTPException(
+                status_code=503,
+                detail="The AI question generator is busy right now. Please try again in a minute.",
+            )
+        questions, source = get_questions_for_skill(skill), "bank"
+
+    session = models.AssessmentSession(
+        id=str(uuid.uuid4()), user_id=current_user.id, skill_name=skill,
+        source=source, questions=questions,
+    )
+    db.add(session)
+    db.commit()
+    return {"attempt_id": session.id, "skill_name": skill, "source": source, "questions": sanitize(questions)}
 
 
 @router.get("/latest", response_model=schemas.AssessmentAttemptOut)
@@ -68,7 +111,19 @@ def submit_assessment(
     current_user: models.User = Depends(auth.get_current_user),
     db: Session = Depends(get_db),
 ):
-    questions = get_questions_for_skill(payload.skill_name)
+    skill_name = payload.skill_name
+    if payload.attempt_id:
+        session = db.query(models.AssessmentSession).filter(models.AssessmentSession.id == payload.attempt_id).first()
+        if not session or session.user_id != current_user.id:
+            raise HTTPException(status_code=404, detail="Assessment attempt not found")
+        if session.submitted_at is not None:
+            raise HTTPException(status_code=409, detail="This assessment has already been submitted")
+        session.submitted_at = utc_now()  # committed together with the results below
+        questions = session.questions
+        skill_name = session.skill_name
+    else:
+        # Legacy path: static question bank
+        questions = get_questions_for_skill(payload.skill_name)
     if not questions:
         raise HTTPException(status_code=404, detail="No questions for this skill")
 
@@ -101,13 +156,13 @@ def submit_assessment(
     # Persist attempt + update the user's skill record
     attempt = models.AssessmentAttempt(
         user_id=current_user.id,
-        skill_id=get_or_create_skill(db, payload.skill_name).id,
+        skill_id=get_or_create_skill(db, skill_name).id,
         score=score,
         weak_topics=",".join(weak_topics),
     )
     db.add(attempt)
 
-    skill = get_or_create_skill(db, payload.skill_name)
+    skill = get_or_create_skill(db, skill_name)
     user_skill = (
         db.query(models.UserSkill)
         .filter(models.UserSkill.user_id == current_user.id, models.UserSkill.skill_id == skill.id)
@@ -118,7 +173,7 @@ def submit_assessment(
         db.add(user_skill)
 
     had_badge_before = bool(user_skill.badge) if hasattr(user_skill, 'badge') else False
-    
+
     user_skill.latest_score = score
     user_skill.level = level
     user_skill.badge = badge
