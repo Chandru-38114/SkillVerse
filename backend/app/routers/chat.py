@@ -533,37 +533,42 @@ def _save_message_and_notify(request_id: int, user_id: int, user_name: str, cont
         db_msg.close()
 
 @router.websocket("/ws/{request_id}")
-async def chat_websocket(websocket: WebSocket, request_id: int, token: str = Query(...)):
+async def chat_websocket(websocket: WebSocket, request_id: int, token: str = Query("")):
+    await websocket.accept()
     user, error_code, other_user_id = await run_in_threadpool(_ws_auth_and_authz, token, request_id)
     if error_code:
         await websocket.close(code=error_code)
         return
 
     room_id = f"pair_{min(user.id, other_user_id)}_{max(user.id, other_user_id)}"
-    await chat_manager.connect(room_id, websocket)
+    await chat_manager.connect(room_id, websocket, accept=False)
 
-    # Broadcast presence online
-    await chat_manager.broadcast(room_id, {
-        "type": "presence_update",
-        "user_id": user.id,
-        "status": "online"
-    })
-
-    # Tell me if the other user is already online
-    if chat_manager.room_size(room_id) > 1:
-        await websocket.send_json({
+    try:
+        # Broadcast presence online
+        await chat_manager.broadcast(room_id, {
             "type": "presence_update",
-            "user_id": other_user_id,
+            "user_id": user.id,
             "status": "online"
         })
 
-    # Send history immediately upon connection
-    hist_messages = await run_in_threadpool(_fetch_history, request_id, user.id)
-    await websocket.send_json({"type": "history", "messages": hist_messages})
+        # Tell me if the other user is already online
+        if chat_manager.room_size(room_id) > 1:
+            await websocket.send_json({
+                "type": "presence_update",
+                "user_id": other_user_id,
+                "status": "online"
+            })
 
-    try:
+        # Send history immediately upon connection
+        hist_messages = await run_in_threadpool(_fetch_history, request_id, user.id)
+        await websocket.send_json({"type": "history", "messages": hist_messages})
+
         while True:
             data = await websocket.receive_json()
+            if data.get("type") == "ping":
+                await websocket.send_json({"type": "pong"})
+                continue
+
             content = (data.get("content") or "").strip()
             metadata = data.get("metadata", {})
             if not content and not metadata:
@@ -573,14 +578,25 @@ async def chat_websocket(websocket: WebSocket, request_id: int, token: str = Que
             msg_payload["type"] = "message"
             await chat_manager.broadcast(room_id, msg_payload)
     except WebSocketDisconnect:
+        pass
+    except Exception:
+        logger.exception("Chat websocket error (request_id=%s, user_id=%s)", request_id, user.id)
+        try:
+            await websocket.close(code=1011)
+        except Exception:
+            pass
+    finally:
         chat_manager.disconnect(room_id, websocket)
-        last_active_iso = await run_in_threadpool(_update_last_active, user.id)
-        await chat_manager.broadcast(room_id, {
-            "type": "presence_update",
-            "user_id": user.id,
-            "status": "offline",
-            "last_active": last_active_iso
-        })
+        try:
+            last_active_iso = await run_in_threadpool(_update_last_active, user.id)
+            await chat_manager.broadcast(room_id, {
+                "type": "presence_update",
+                "user_id": user.id,
+                "status": "offline",
+                "last_active": last_active_iso
+            })
+        except Exception:
+            logger.exception("Error broadcasting offline presence")
 
 def _update_last_active(user_id: int) -> str:
     db = SessionLocal()

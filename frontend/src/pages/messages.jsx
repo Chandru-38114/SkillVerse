@@ -230,11 +230,36 @@ function ForwardModal({ message, inbox, currentRequestId, onClose, onForward }) 
     let ws = null
     let reconnectTimer = null
     let currentDelay = RECONNECT_DELAY_MS
+    
+    const HEARTBEAT_INTERVAL_MS = 25000
+    const HISTORY_FALLBACK_MS = 6000
+    let heartbeatTimer = null
+    let historyFallbackTimer = null
+    let historyLoaded = false
 
     setLoadingMessages(true)
     setMessages([])
     setConnectionState('connecting')
     setWsError('')
+
+    const loadHistoryOverRest = async (reqId) => {
+      if (!isActive || historyLoaded) return
+      try {
+        const msgs = await api.listMessages(reqId)
+        if (isActive && !historyLoaded) {
+          historyLoaded = true
+          setMessages(msgs)
+          setLoadingMessages(false)
+        }
+      } catch (err) {
+        if (isActive && !historyLoaded) {
+          setLoadingMessages(false)
+          setWsError('Could not load messages. Check your connection.')
+        }
+      }
+    }
+
+    historyFallbackTimer = setTimeout(() => loadHistoryOverRest(selectedRequestId), HISTORY_FALLBACK_MS)
 
     const connectWs = (reqId) => {
       if (!isActive) return
@@ -247,12 +272,25 @@ function ForwardModal({ message, inbox, currentRequestId, onClose, onForward }) 
         setConnectionState('live')
         currentDelay = RECONNECT_DELAY_MS
         setWsError('')
+        if (heartbeatTimer) clearInterval(heartbeatTimer)
+        heartbeatTimer = setInterval(() => {
+          if (ws && ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: 'ping' }))
+          }
+        }, HEARTBEAT_INTERVAL_MS)
       }
 
       ws.onmessage = (event) => {
         if (!isActive) return
-        const data = JSON.parse(event.data)
+        let data
+        try {
+          data = JSON.parse(event.data)
+        } catch (e) {
+          return
+        }
+        if (data.type === 'pong') return
         if (data.type === 'history') {
+          historyLoaded = true
           setMessages(data.messages)
           setLoadingMessages(false)
         } else if (data.type === 'message') {
@@ -275,11 +313,17 @@ function ForwardModal({ message, inbox, currentRequestId, onClose, onForward }) 
       ws.onclose = (event) => {
         if (!isActive) return
         socketRef.current = null
+        if (heartbeatTimer) {
+          clearInterval(heartbeatTimer)
+          heartbeatTimer = null
+        }
         if (event.code === 4401 || event.code === 4403 || event.code === 1008) {
           setConnectionState('offline')
+          setLoadingMessages(false)
           setWsError(event.code === 4401 ? 'Session expired. Please log in again.' : 'Access denied.')
           return
         }
+        loadHistoryOverRest(reqId)
         setConnectionState('reconnecting')
         reconnectTimer = setTimeout(() => {
           if (!isActive) return
@@ -297,6 +341,8 @@ function ForwardModal({ message, inbox, currentRequestId, onClose, onForward }) 
     return () => {
       isActive = false
       if (reconnectTimer) clearTimeout(reconnectTimer)
+      if (historyFallbackTimer) clearTimeout(historyFallbackTimer)
+      if (heartbeatTimer) clearInterval(heartbeatTimer)
       if (ws) { ws.onclose = null; ws.close() }
       if (socketRef.current === ws) socketRef.current = null
     }
