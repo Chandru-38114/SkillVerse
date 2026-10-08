@@ -239,7 +239,7 @@ async def _broadcast_message_update(request_id: int, msg: models.Message) -> Non
         pass  # Never let a failed broadcast crash the REST response
 
 
-from sqlalchemy import or_, desc, func
+from sqlalchemy import or_, and_, desc, func
 
 @router.get("/inbox", response_model=List[schemas.InboxConversationOut])
 def get_inbox(
