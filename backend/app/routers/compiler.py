@@ -1,14 +1,11 @@
 from typing import Optional
-import os
-import sys
-import tempfile
-import subprocess
 from fastapi import APIRouter, Depends, HTTPException, WebSocket
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, Field
 
 from .. import models, auth
 from ..database import get_db, SessionLocal
+from ..services.code_runner import run_python
 
 router = APIRouter(prefix="/compiler", tags=["compiler"])
 
@@ -19,49 +16,12 @@ class RunResponse(BaseModel):
     output: str
     error: Optional[str] = None
 
-SANDBOX_SCRIPT = os.path.join(os.path.dirname(__file__), '..', 'sandbox.py')
-MAX_OUTPUT_CHARS = 20000
-
-
-def _limit_resources():  # runs in the child process before the sandbox starts (Linux only)
-    import resource
-    resource.setrlimit(resource.RLIMIT_AS, (256 * 1024 * 1024, 256 * 1024 * 1024))  # 256 MB memory
-    resource.setrlimit(resource.RLIMIT_CPU, (3, 3))                                   # 3 s CPU
-    resource.setrlimit(resource.RLIMIT_FSIZE, (1024 * 1024, 1024 * 1024))             # no big files
-    resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
-
 
 def execute_python(code: str) -> "RunResponse":
     """Run untrusted Python in the sandbox with an empty environment and hard limits.
     The child never sees DATABASE_URL, GEMINI_API_KEY or any other server secret."""
-    temp_path = None
-    try:
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False, encoding='utf-8') as temp_file:
-            temp_file.write(code)
-            temp_path = temp_file.name
-        result = subprocess.run(
-            [sys.executable, '-I', '-S', SANDBOX_SCRIPT, temp_path],  # isolated mode, no site-packages
-            capture_output=True,
-            text=True,
-            timeout=4.0,
-            env={},
-            preexec_fn=_limit_resources if os.name == 'posix' else None,
-        )
-        output = result.stdout[:MAX_OUTPUT_CHARS]
-        error = result.stderr[:MAX_OUTPUT_CHARS] if result.returncode != 0 else None
-        if result.returncode != 0 and not error:
-            error = "Execution Error: the program was stopped (memory or CPU limit exceeded)."
-        return RunResponse(output=output, error=error)
-    except subprocess.TimeoutExpired:
-        return RunResponse(output="", error="Execution Error: Code exceeded the time limit.")
-    except Exception as e:
-        return RunResponse(output="", error=f"System Error: Could not execute code. {str(e)}")
-    finally:
-        if temp_path and os.path.exists(temp_path):
-            try:
-                os.remove(temp_path)
-            except OSError:
-                pass
+    result = run_python(code)
+    return RunResponse(output=result["output"], error=result["error"])
 
 
 # Declared BEFORE "/{session_id}/run" so "arena" is not parsed as a session id.

@@ -22,7 +22,7 @@ ALLOWED_NODES = {
     ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef, ast.Return,
     ast.Delete, ast.Assign, ast.TypeAlias, ast.AugAssign, ast.AnnAssign,
     ast.For, ast.AsyncFor, ast.While, ast.If, ast.With, ast.AsyncWith,
-    ast.Match, ast.Raise, ast.Try, ast.TryStar, ast.Assert, ast.Import,
+    ast.Match, ast.Raise, ast.Try, ast.TryStar, ast.ExceptHandler, ast.Assert, ast.Import,
     ast.ImportFrom, ast.Global, ast.Nonlocal, ast.Expr, ast.Pass, ast.Break,
     ast.Continue, ast.BoolOp, ast.NamedExpr, ast.BinOp, ast.UnaryOp, ast.Lambda,
     ast.IfExp, ast.Dict, ast.Set, ast.ListComp, ast.SetComp, ast.DictComp,

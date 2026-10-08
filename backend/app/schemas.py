@@ -139,6 +139,7 @@ class AssessmentSubmit(BaseModel):
 
 class AssessmentStart(BaseModel):
     skill_name: str
+    level: Optional[str] = None
 
 
 class AssessmentResult(BaseModel):

@@ -10,8 +10,9 @@ from .. import models, schemas, auth
 from ..database import get_db
 from ..data.questions import get_questions_for_skill, QUESTION_BANK
 from ..services.question_generator import (
-    GenerationError, canonical_skill, generate_assessment, sanitize,
+    GenerationError, canonical_level, canonical_skill, generate_assessment, sanitize,
 )
+from ..services.code_grader import grade_coding_answer
 from ..utils.timezone import utc_now
 from .users import get_or_create_skill
 
@@ -31,10 +32,11 @@ async def start_assessment(
     skill = canonical_skill(payload.skill_name)
     if not skill:
         raise HTTPException(status_code=400, detail="Skill name is required")
+    level = canonical_level(payload.level)
 
     source = "ai"
     try:
-        questions = await run_in_threadpool(generate_assessment, skill)
+        questions = await run_in_threadpool(generate_assessment, skill, level)
     except GenerationError as err:
         logger.warning("[arena] AI generation unavailable for %s: %s", skill, err)
         if skill.lower() not in QUESTION_BANK:
@@ -50,7 +52,10 @@ async def start_assessment(
     )
     db.add(session)
     db.commit()
-    return {"attempt_id": session.id, "skill_name": skill, "source": source, "questions": sanitize(questions)}
+    return {
+        "attempt_id": session.id, "skill_name": skill, "source": source,
+        "level": level, "questions": sanitize(questions),
+    }
 
 
 @router.get("/latest", response_model=schemas.AssessmentAttemptOut)
@@ -127,31 +132,41 @@ def submit_assessment(
     if not questions:
         raise HTTPException(status_code=404, detail="No questions for this skill")
 
-    answer_key = {q["id"]: q for q in questions}
     submitted = {a.question_id: a.answer for a in payload.answers}
 
-    per_topic_correct = {}
+    per_topic_earned = {}
     per_topic_total = {}
-    correct_count = 0
+    total_marks = 0.0
+    earned_marks = 0.0
+    coding_feedback = []
 
     for q in questions:
         topic = q["topic"]
-        per_topic_total[topic] = per_topic_total.get(topic, 0) + 1
-        is_correct = submitted.get(q["id"]) == q["answer"]
-        if is_correct:
-            correct_count += 1
-            per_topic_correct[topic] = per_topic_correct.get(topic, 0) + 1
+        marks = q.get("marks", 1)
+        total_marks += marks
+        per_topic_total[topic] = per_topic_total.get(topic, 0) + marks
 
-    score = round((correct_count / len(questions)) * 100, 1)
+        if q.get("type") == "coding":
+            answer = submitted.get(q["id"], "")
+            result = grade_coding_answer(answer, q["function_name"], q["tests"])
+            earned = marks * result["fraction"]
+            coding_feedback.append(f"{q.get('title', q['topic'])}: {result['detail']}")
+        else:
+            earned = marks if submitted.get(q["id"]) == q["answer"] else 0
+
+        earned_marks += earned
+        per_topic_earned[topic] = per_topic_earned.get(topic, 0) + earned
+
+    score = round((earned_marks / total_marks) * 100, 1) if total_marks else 0.0
     level = level_for_score(score)
     badge = badge_for_score(score)
 
-    # Weak topics = topics where the user got less than 60% right
+    # Weak topics = topics where the user earned less than 60% of that topic's marks
     weak_topics = [
         topic for topic in per_topic_total
-        if (per_topic_correct.get(topic, 0) / per_topic_total[topic]) < 0.6
+        if (per_topic_earned.get(topic, 0) / per_topic_total[topic]) < 0.6
     ]
-    study_plan = study_plan_for_topics(weak_topics)
+    study_plan = coding_feedback + study_plan_for_topics(weak_topics)
 
     # Persist attempt + update the user's skill record
     attempt = models.AssessmentAttempt(

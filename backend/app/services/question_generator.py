@@ -17,9 +17,11 @@ Question types map onto what the Skill Arena already renders:
     code tracing      -> type "output"  (snippet appended to the question)
     debugging         -> type "mcq"     (buggy snippet appended to the question)
 """
+import json
 import logging
 import os
 import random
+import re
 import time
 import uuid
 from typing import List, Optional
@@ -67,6 +69,25 @@ def canonical_skill(skill_name: str) -> str:
     return SKILL_ALIASES.get(key, skill_name.strip())
 
 
+CODING_SKILLS = {"Python", "Data Structures and Algorithms"}
+
+
+def supports_coding(skill: str) -> bool:
+    return skill in CODING_SKILLS
+
+
+LEVELS = {
+    "beginner": "Beginner: stick to fundamentals, simple syntax and short, obvious logic.",
+    "intermediate": "Intermediate: everyday problem-solving, some multi-step logic.",
+    "expert": "Expert: trickier edge cases, more advanced language features and less obvious logic.",
+}
+
+
+def canonical_level(level: Optional[str]) -> str:
+    key = (level or "").strip().lower()
+    return key if key in LEVELS else "intermediate"
+
+
 # ── Structured-output schema (mirrors route.ts, plus a `topic` per item) ─────
 
 class _GenMCQ(BaseModel):
@@ -91,6 +112,24 @@ class _GenAssessment(BaseModel):
     debugging_questions: List[_GenDebug]
 
 
+class _GenTestCase(BaseModel):
+    args_json: str
+    expected_json: str
+
+
+class _GenCodingProblem(BaseModel):
+    topic: str
+    title: str
+    problem: str
+    function_name: str
+    starter_code: str
+    test_cases: List[_GenTestCase]
+
+
+class _GenCodingSet(BaseModel):
+    problems: List[_GenCodingProblem]
+
+
 # ── Configuration ────────────────────────────────────────────────────────────
 
 def _models() -> List[str]:
@@ -98,20 +137,22 @@ def _models() -> List[str]:
     return [m.strip() for m in raw.split(",") if m.strip()]
 
 
-N_MCQ = int(os.getenv("ARENA_N_MCQ", "6"))
-N_TRACE = int(os.getenv("ARENA_N_TRACE", "3"))
-N_DEBUG = int(os.getenv("ARENA_N_DEBUG", "1"))
-MIN_VALID = int(os.getenv("ARENA_MIN_VALID", "7"))  # fewer usable items than this -> try next model
+N_MCQ = int(os.getenv("ARENA_N_MCQ", "12"))
+N_TRACE = int(os.getenv("ARENA_N_TRACE", "5"))
+N_DEBUG = int(os.getenv("ARENA_N_DEBUG", "3"))
+N_CODING = int(os.getenv("ARENA_N_CODING", "2"))
+MIN_VALID = int(os.getenv("ARENA_MIN_VALID", "14"))  # fewer usable items than this -> try next model
+MIN_TEST_CASES = 3
 
 
-def _prompt(skill: str, level_hint: Optional[str]) -> str:
+def _prompt(skill: str, level: str) -> str:
     topics = SKILL_TOPICS.get(skill)
     topic_line = (
         f"Tag every question with exactly one topic from this list: {', '.join(topics)}. Spread questions across topics."
         if topics else
         "Tag every question with one short topic name (1-3 words). Spread questions across different topics."
     )
-    level_line = f"Target difficulty: {level_hint}." if level_hint else "Mix easy, medium and hard questions."
+    level_line = f"Target difficulty: {LEVELS.get(level, LEVELS['intermediate'])}"
     return f"""Generate a technical skill assessment for "{skill}".
 Return EXACTLY:
 - {N_MCQ} multiple-choice concept questions (mcqs)
@@ -125,6 +166,29 @@ Rules:
 - Explanations are one or two sentences.
 - {topic_line}
 - {level_line}"""
+
+
+def _coding_prompt(skill: str, level: str) -> str:
+    level_line = LEVELS.get(level, LEVELS["intermediate"])
+    return f"""Generate {N_CODING} Python problem-solving exercises for a "{skill}" assessment.
+Target difficulty: {level_line}
+
+For each problem return:
+- topic: a short topic name
+- title: a short title
+- problem: the problem statement in plain language, with NO example code or sample solution in it
+- function_name: a valid Python identifier for the function the student must write (snake_case, not starting with "_")
+- starter_code: a stub like "def {{function_name}}(...):\\n    pass"
+- test_cases: exactly 5 test cases, each with:
+    - args_json: a JSON array string of the arguments to pass, in order
+    - expected_json: a JSON string of the exact value the function must RETURN
+
+Hard rules:
+- The function must RETURN its answer, never print it.
+- Use only plain JSON-safe data: integers, strings, booleans, lists, dicts. No floats, no randomness,
+  no sets, nothing that depends on dict/set ordering, no dates or times.
+- The solution may only need: the builtins, plus the math, collections, itertools and datetime modules.
+- Test cases must be deterministic and fully specified by args_json and expected_json."""
 
 
 # ── Validation and conversion ────────────────────────────────────────────────
@@ -156,6 +220,7 @@ def _convert(item: _GenMCQ, qtype: str, code: Optional[str], allowed_topics: Opt
         "id": f"ai-{uuid.uuid4().hex[:10]}",
         "topic": topic,
         "type": qtype,
+        "marks": 1,
         "question": question,
         "options": opts,
         "answer": answer,
@@ -172,6 +237,52 @@ def _to_questions(gen: _GenAssessment, skill: str) -> List[dict]:
     return out
 
 
+_FUNC_NAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+
+
+def _convert_coding(item: _GenCodingProblem, allowed_topics: Optional[List[str]]) -> Optional[dict]:
+    name = item.function_name.strip()
+    if not _FUNC_NAME_RE.match(name) or name.startswith("_"):
+        return None
+    if not item.problem.strip() or not item.title.strip():
+        return None
+
+    tests = []
+    for tc in item.test_cases:
+        try:
+            args = json.loads(tc.args_json)
+            expected = json.loads(tc.expected_json)
+        except (ValueError, TypeError):
+            continue
+        if not isinstance(args, list):
+            continue
+        tests.append({"args": args, "expected": expected})
+    if len(tests) < MIN_TEST_CASES:
+        return None
+
+    topic = item.topic.strip() or "General"
+    if allowed_topics and topic not in allowed_topics:
+        match = next((t for t in allowed_topics if t.lower() == topic.lower()), None)
+        topic = match or topic
+
+    return {
+        "id": f"ai-code-{uuid.uuid4().hex[:10]}",
+        "topic": topic,
+        "type": "coding",
+        "marks": 5,
+        "title": item.title.strip(),
+        "question": item.problem.strip(),
+        "function_name": name,
+        "starter_code": item.starter_code.strip(),
+        "tests": tests,
+    }
+
+
+def _to_coding_questions(gen: _GenCodingSet, skill: str) -> List[dict]:
+    allowed = SKILL_TOPICS.get(skill)
+    return [q for q in (_convert_coding(p, allowed) for p in gen.problems[:N_CODING]) if q]
+
+
 # ── Gemini call with model fallback and 503 backoff ──────────────────────────
 
 def _is_overloaded(err: Exception) -> bool:
@@ -179,7 +290,7 @@ def _is_overloaded(err: Exception) -> bool:
     return any(s in msg for s in ("503", "UNAVAILABLE", "high demand", "overloaded"))
 
 
-def _call_model(client, model: str, prompt: str, retries: int = 3, delay: float = 1.5) -> _GenAssessment:
+def _call_model(client, model: str, prompt: str, schema, retries: int = 3, delay: float = 1.5):
     for attempt in range(1, retries + 1):
         try:
             resp = client.models.generate_content(
@@ -187,13 +298,13 @@ def _call_model(client, model: str, prompt: str, retries: int = 3, delay: float 
                 contents=prompt,
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json",
-                    response_schema=_GenAssessment,
+                    response_schema=schema,
                     temperature=0.9,
                 ),
             )
             if getattr(resp, "parsed", None) is not None:
                 return resp.parsed
-            return _GenAssessment.model_validate_json(resp.text or "{}")
+            return schema.model_validate_json(resp.text or "{}")
         except Exception as err:  # noqa: BLE001 - SDK raises several error types
             if _is_overloaded(err) and attempt < retries:
                 logger.warning("[arena] %s overloaded (attempt %d/%d), retrying in %.1fs", model, attempt, retries, delay)
@@ -204,22 +315,41 @@ def _call_model(client, model: str, prompt: str, retries: int = 3, delay: float 
     raise GenerationError(f"{model}: retries exhausted")
 
 
-def generate_assessment(skill_name: str, level_hint: Optional[str] = None) -> List[dict]:
+def _generate_coding_questions(client, skill: str, level: str) -> List[dict]:
+    prompt = _coding_prompt(skill, level)
+    for model in _models():
+        try:
+            gen = _call_model(client, model, prompt, _GenCodingSet)
+            problems = _to_coding_questions(gen, skill)
+            if problems:
+                return problems
+        except Exception as err:  # noqa: BLE001
+            logger.warning("[arena] coding generation failed with %s: %s", model, err)
+    return []
+
+
+def generate_assessment(skill_name: str, level: Optional[str] = None) -> List[dict]:
     """Return a list of questions WITH answers. Raises GenerationError if AI is unavailable."""
     api_key = os.getenv("GEMINI_API_KEY")
     if not HAS_GENAI or not api_key:
         raise GenerationError("Gemini is not configured (missing google-genai or GEMINI_API_KEY).")
 
     skill = canonical_skill(skill_name)
-    prompt = _prompt(skill, level_hint)
+    level = canonical_level(level)
+    prompt = _prompt(skill, level)
     client = genai.Client(api_key=api_key)
 
     last_error: Optional[Exception] = None
     for model in _models():
         try:
-            questions = _to_questions(_call_model(client, model, prompt), skill)
+            questions = _to_questions(_call_model(client, model, prompt, _GenAssessment), skill)
             if len(questions) >= MIN_VALID:
                 logger.info("[arena] generated %d questions for %s with %s", len(questions), skill, model)
+                if supports_coding(skill):
+                    try:
+                        questions += _generate_coding_questions(client, skill, level)
+                    except Exception as err:  # noqa: BLE001
+                        logger.warning("[arena] coding questions unavailable for %s: %s", skill, err)
                 return questions
             last_error = GenerationError(f"{model} returned only {len(questions)} valid questions")
             logger.warning("[arena] %s", last_error)
@@ -230,8 +360,21 @@ def generate_assessment(skill_name: str, level_hint: Optional[str] = None) -> Li
 
 
 def sanitize(questions: List[dict]) -> List[dict]:
-    """What the browser is allowed to see: no answer, no explanation."""
-    return [
-        {"id": q["id"], "topic": q["topic"], "type": q["type"], "question": q["question"], "options": q.get("options", [])}
-        for q in questions
-    ]
+    """What the browser is allowed to see: no answer, no explanation, no tests."""
+    out = []
+    for q in questions:
+        if q["type"] == "coding":
+            first = q["tests"][0]
+            out.append({
+                "id": q["id"], "topic": q["topic"], "type": q["type"], "marks": q["marks"],
+                "title": q["title"], "question": q["question"],
+                "function_name": q["function_name"], "starter_code": q["starter_code"],
+                "test_count": len(q["tests"]),
+                "example": {"args": first["args"], "expected": first["expected"]},
+            })
+        else:
+            out.append({
+                "id": q["id"], "topic": q["topic"], "type": q["type"], "marks": q.get("marks", 1),
+                "question": q["question"], "options": q.get("options", []),
+            })
+    return out

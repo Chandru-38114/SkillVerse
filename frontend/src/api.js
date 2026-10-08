@@ -196,7 +196,7 @@ export const api = {
   getLatestAssessment: () => request("/assessments/latest"),
   assessmentQuestions: (skill) => request(`/assessments/questions/${encodeURIComponent(skill)}`),
   // Generates a fresh AI assessment; answers stay on the server. POST, so it is never cached.
-  startAssessment: (skill) => request("/assessments/start", { method: "POST", body: { skill_name: skill } }),
+  startAssessment: (skill, level) => request("/assessments/start", { method: "POST", body: { skill_name: skill, level } }),
   submitAssessment: (data) => request("/assessments/submit", { method: "POST", body: data }),
 
 

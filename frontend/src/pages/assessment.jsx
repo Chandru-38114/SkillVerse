@@ -84,6 +84,7 @@ export default function Assessment() {
   const [step, setStep] = useState(STEPS.PICK)
   const [skillName, setSkillName] = useState('')
   const [role, setRole] = useState('teaching')
+  const [level, setLevel] = useState('intermediate')
   const [questions, setQuestions] = useState([])
   const [attemptId, setAttemptId] = useState(null)
   const [answers, setAnswers] = useState({})
@@ -100,7 +101,7 @@ export default function Assessment() {
   const lastViolation = useRef(0)
 
   // Timer
-  const DEFAULT_TIME = 20 * 60; // 20 minutes
+  const DEFAULT_TIME = 45 * 60; // 45 minutes
   const [timeLeft, setTimeLeft] = useState(DEFAULT_TIME);
 
   const enterFullscreen = async () => {
@@ -200,10 +201,14 @@ export default function Assessment() {
     setLoading(true)
     setError('')
     try {
-      const res = await api.startAssessment(skillToStart.trim())
+      const res = await api.startAssessment(skillToStart.trim(), level)
       setQuestions(res.questions)
       setAttemptId(res.attempt_id)
-      setAnswers({})
+      const prefill = {}
+      res.questions.forEach(q => {
+        if (q.type === 'coding' && q.starter_code) prefill[q.id] = q.starter_code
+      })
+      setAnswers(prefill)
       setViolations(0)
       setTimeLeft(DEFAULT_TIME)
       setCurrentQuestionIndex(0)
@@ -309,6 +314,24 @@ export default function Assessment() {
                 onChange={(e) => setSkillName(e.target.value)}
                 autoFocus
               />
+            </div>
+
+            <div>
+              <p className="field-label mb-3">Difficulty</p>
+              <div className="grid grid-cols-3 gap-3 mb-2">
+                {['beginner', 'intermediate', 'expert'].map((lvl) => (
+                  <RoleOption
+                    key={lvl}
+                    label={lvl.charAt(0).toUpperCase() + lvl.slice(1)}
+                    sub=""
+                    value={lvl}
+                    role={level}
+                    setRole={setLevel}
+                    icon={lvl === 'beginner' ? '🌱' : lvl === 'expert' ? '🔥' : '⚡'}
+                  />
+                ))}
+              </div>
+              <p className="text-xs text-clay mb-6">20 questions plus 2 problem-solving challenges. 45 minutes.</p>
             </div>
 
             <div>
@@ -433,13 +456,19 @@ export default function Assessment() {
                   <div className="bg-white rounded-2xl p-6 md:p-10 border border-line shadow-sm mb-6">
                     <div className="flex items-center gap-2 mb-6">
                       <span className="text-xs font-bold uppercase tracking-wider text-ink/50 bg-ink/5 px-2.5 py-1 rounded-full">Topic: {currentQuestion.topic}</span>
-                      <span className="text-xs font-bold uppercase tracking-wider text-brand bg-brand/10 px-2.5 py-1 rounded-full">{qType.replace('_', ' ')}</span>
+                      <span className="text-xs font-bold uppercase tracking-wider text-brand bg-brand/10 px-2.5 py-1 rounded-full">
+                        {qType === 'coding' ? `problem solving · ${currentQuestion.marks || 5} marks` : qType.replace('_', ' ')}
+                      </span>
                     </div>
-                    
+
+                    {qType === 'coding' && currentQuestion.title && (
+                      <h3 className="text-lg font-bold text-ink mb-2">{currentQuestion.title}</h3>
+                    )}
+
                     <h2 className="text-xl font-medium text-ink leading-relaxed mb-8 whitespace-pre-wrap select-none">
                       {currentQuestion.question}
                     </h2>
-                    
+
                     {(qType === 'mcq' || qType === 'output') ? (
                       <div className="space-y-3">
                         {currentQuestion.options?.map((opt) => {
@@ -473,11 +502,27 @@ export default function Assessment() {
                         />
                       </div>
                     ) : qType === 'coding' ? (
-                      <LocalCompiler 
-                        code={answers[currentQuestion.id] || ''} 
-                        onChange={code => setAnswers(a => ({...a, [currentQuestion.id]: code}))}
-                        language={skillName} 
-                      />
+                      <div className="space-y-4">
+                        <div className="bg-paper border border-line rounded-xl p-4 text-sm text-ink/80 space-y-1.5">
+                          <p><span className="font-bold text-ink">Function name:</span> <code className="font-mono bg-ink/5 px-1.5 py-0.5 rounded">{currentQuestion.function_name}</code></p>
+                          {currentQuestion.example && (
+                            <p>
+                              <span className="font-bold text-ink">Example:</span>{' '}
+                              <code className="font-mono bg-ink/5 px-1.5 py-0.5 rounded">
+                                {currentQuestion.function_name}({(currentQuestion.example.args || []).map(a => JSON.stringify(a)).join(', ')}) should return {JSON.stringify(currentQuestion.example.expected)}
+                              </code>
+                            </p>
+                          )}
+                          <p className="text-xs text-clay">
+                            Checked against {currentQuestion.test_count || 5} test cases. Partial credit is given for passing some but not all.
+                          </p>
+                        </div>
+                        <LocalCompiler
+                          code={answers[currentQuestion.id] || ''}
+                          onChange={code => setAnswers(a => ({...a, [currentQuestion.id]: code}))}
+                          language="Python"
+                        />
+                      </div>
                     ) : null}
                   </div>
                 </motion.div>
