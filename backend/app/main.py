@@ -115,6 +115,44 @@ async def lifespan(app: FastAPI):
                         print(f"[startup] Failed to add semantic_summary column: {e}")
                 else:
                     print("[startup] semantic_summary column already exists in session_progress.")
+
+            assessment_sessions_cols = [c['name'] for c in inspector.get_columns('assessment_sessions')] if inspector.has_table('assessment_sessions') else []
+            with engine.connect() as conn:
+                if 'expires_at' not in assessment_sessions_cols:
+                    try:
+                        with conn.begin():
+                            conn.execute(text("ALTER TABLE assessment_sessions ADD COLUMN expires_at TIMESTAMP WITH TIME ZONE;"))
+                        print("[startup] Added expires_at column (TIMESTAMP WITH TIME ZONE) to assessment_sessions.")
+                    except Exception as e:
+                        print(f"[startup] Failed to add expires_at (TIMESTAMP WITH TIME ZONE): {e}")
+                        try:
+                            with conn.begin():
+                                conn.execute(text("ALTER TABLE assessment_sessions ADD COLUMN expires_at DATETIME;"))
+                            print("[startup] Added expires_at column (DATETIME) to assessment_sessions.")
+                        except Exception as e2:
+                            print(f"[startup] Failed to add expires_at (DATETIME): {e2}")
+                else:
+                    print("[startup] expires_at column already exists in assessment_sessions.")
+
+                if 'violations' not in assessment_sessions_cols:
+                    try:
+                        with conn.begin():
+                            conn.execute(text("ALTER TABLE assessment_sessions ADD COLUMN violations INTEGER NOT NULL DEFAULT 0;"))
+                        print("[startup] Added violations column to assessment_sessions.")
+                    except Exception as e:
+                        print(f"[startup] Failed to add violations column: {e}")
+                else:
+                    print("[startup] violations column already exists in assessment_sessions.")
+
+                if 'terminated' not in assessment_sessions_cols:
+                    try:
+                        with conn.begin():
+                            conn.execute(text("ALTER TABLE assessment_sessions ADD COLUMN terminated BOOLEAN NOT NULL DEFAULT FALSE;"))
+                        print("[startup] Added terminated column to assessment_sessions.")
+                    except Exception as e:
+                        print(f"[startup] Failed to add terminated column: {e}")
+                else:
+                    print("[startup] terminated column already exists in assessment_sessions.")
         except Exception as e:
             print(f"[startup] Database schema creation failed: {e}")
 

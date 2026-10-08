@@ -136,6 +136,8 @@ class AssessmentSubmit(BaseModel):
     role: str = "teaching"  # what the assessment result is used for
     answers: List[AssessmentSubmitAnswer]
     attempt_id: Optional[str] = None  # from POST /assessments/start; scored against the server's stored copy
+    violations: int = 0  # client-reported; recorded as evidence only, never affects the score
+    terminated: bool = False
 
 class AssessmentStart(BaseModel):
     skill_name: str
@@ -148,6 +150,8 @@ class AssessmentResult(BaseModel):
     badge: Optional[str]
     weak_topics: List[str]
     study_plan: List[str]
+    violations: int = 0
+    terminated: bool = False
 
 
 class AssessmentAttemptOut(BaseModel):

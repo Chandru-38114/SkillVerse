@@ -1,4 +1,6 @@
+import datetime as dt
 import logging
+import os
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -13,11 +15,22 @@ from ..services.question_generator import (
     GenerationError, canonical_level, canonical_skill, generate_assessment, sanitize,
 )
 from ..services.code_grader import grade_coding_answer
-from ..utils.timezone import utc_now
+from ..utils.timezone import utc_now, enforce_utc_iso
 from .users import get_or_create_skill
 
 router = APIRouter(prefix="/assessments", tags=["assessments"])
 logger = logging.getLogger(__name__)
+
+ARENA_DURATION_MINUTES = int(os.getenv("ARENA_DURATION_MINUTES", "45"))
+ARENA_GRACE_SECONDS = 120
+
+
+def _aware(value: dt.datetime) -> dt.datetime:
+    """SQLite drops tzinfo on round-trip even for DateTime(timezone=True) columns;
+    treat a naive value as UTC so arithmetic against utc_now() never raises."""
+    if value is not None and value.tzinfo is None:
+        return value.replace(tzinfo=dt.timezone.utc)
+    return value
 
 
 @router.post("/start")
@@ -34,6 +47,27 @@ async def start_assessment(
         raise HTTPException(status_code=400, detail="Skill name is required")
     level = canonical_level(payload.level)
 
+    now = utc_now()
+    active = (
+        db.query(models.AssessmentSession)
+        .filter(
+            models.AssessmentSession.user_id == current_user.id,
+            models.AssessmentSession.skill_name == skill,
+            models.AssessmentSession.submitted_at.is_(None),
+            models.AssessmentSession.expires_at > now,
+        )
+        .order_by(models.AssessmentSession.created_at.desc())
+        .first()
+    )
+    if active:
+        active_expires = _aware(active.expires_at)
+        seconds_remaining = max(0, int((active_expires - now).total_seconds()))
+        return {
+            "attempt_id": active.id, "skill_name": active.skill_name, "source": active.source,
+            "level": level, "questions": sanitize(active.questions), "resumed": True,
+            "expires_at": enforce_utc_iso(active_expires), "seconds_remaining": seconds_remaining,
+        }
+
     source = "ai"
     try:
         questions = await run_in_threadpool(generate_assessment, skill, level)
@@ -46,15 +80,18 @@ async def start_assessment(
             )
         questions, source = get_questions_for_skill(skill), "bank"
 
+    expires_at = now + dt.timedelta(minutes=ARENA_DURATION_MINUTES)
     session = models.AssessmentSession(
         id=str(uuid.uuid4()), user_id=current_user.id, skill_name=skill,
-        source=source, questions=questions,
+        source=source, questions=questions, expires_at=expires_at,
     )
     db.add(session)
     db.commit()
     return {
         "attempt_id": session.id, "skill_name": skill, "source": source,
-        "level": level, "questions": sanitize(questions),
+        "level": level, "questions": sanitize(questions), "resumed": False,
+        "expires_at": enforce_utc_iso(expires_at),
+        "seconds_remaining": ARENA_DURATION_MINUTES * 60,
     }
 
 
@@ -117,13 +154,20 @@ def submit_assessment(
     db: Session = Depends(get_db),
 ):
     skill_name = payload.skill_name
+    terminated = payload.terminated
+    violations = max(0, payload.violations)
     if payload.attempt_id:
         session = db.query(models.AssessmentSession).filter(models.AssessmentSession.id == payload.attempt_id).first()
         if not session or session.user_id != current_user.id:
             raise HTTPException(status_code=404, detail="Assessment attempt not found")
         if session.submitted_at is not None:
             raise HTTPException(status_code=409, detail="This assessment has already been submitted")
-        session.submitted_at = utc_now()  # committed together with the results below
+        now = utc_now()
+        if session.expires_at is not None and now > _aware(session.expires_at) + dt.timedelta(seconds=ARENA_GRACE_SECONDS):
+            terminated = True
+        session.submitted_at = now  # committed together with the results below
+        session.violations = violations
+        session.terminated = terminated
         questions = session.questions
         skill_name = session.skill_name
     else:
@@ -206,4 +250,5 @@ def submit_assessment(
     return schemas.AssessmentResult(
         score=score, level=level, badge=badge,
         weak_topics=weak_topics, study_plan=study_plan,
+        violations=violations, terminated=terminated,
     )

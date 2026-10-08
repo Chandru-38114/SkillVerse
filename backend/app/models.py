@@ -115,6 +115,9 @@ class AssessmentSession(Base):
     questions = Column(JSON, nullable=False)
     created_at = Column(DateTime, default=utc_now)
     submitted_at = Column(DateTime, nullable=True)
+    expires_at = Column(DateTime(timezone=True), nullable=True)
+    violations = Column(Integer, nullable=False, default=0)
+    terminated = Column(Boolean, nullable=False, default=False)
 
 
 class ConnectionRequest(Base):

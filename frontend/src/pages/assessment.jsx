@@ -6,13 +6,14 @@ import SkillBadge from '../components/skillbadge'
 import { Compass, Swords, Target, Route, ArrowRight, ShieldCheck, Play, Maximize, AlertTriangle, ChevronRight, ChevronLeft, Clock, Code2, ShieldAlert } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 
-const STEPS = { PICK: 'pick', QUIZ: 'quiz', RESULT: 'result', TERMINATED: 'terminated' }
+const STEPS = { PICK: 'pick', RULES: 'rules', QUIZ: 'quiz', RESULT: 'result', TERMINATED: 'terminated' }
 const MAX_VIOLATIONS = 3;
 
-function LocalCompiler({ code, onChange, language }) {
+function LocalCompiler({ code, onChange, language, onViolation }) {
   const [output, setOutput] = useState('');
   const [error, setError] = useState('');
   const [isRunning, setIsRunning] = useState(false);
+  const lastEditorTextRef = useRef('');
 
   const handleRun = async () => {
     setIsRunning(true);
@@ -42,6 +43,21 @@ function LocalCompiler({ code, onChange, language }) {
     }
   };
 
+  // Remember exactly what was copied/cut from THIS editor, so paste can tell
+  // "pasted my own code back" apart from "pasted something from outside".
+  const captureEditorText = (e) => {
+    const ta = e.target;
+    lastEditorTextRef.current = code.substring(ta.selectionStart, ta.selectionEnd);
+  };
+
+  const handlePaste = (e) => {
+    const clipboardText = e.clipboardData ? e.clipboardData.getData('text') : '';
+    if (clipboardText !== lastEditorTextRef.current) {
+      e.preventDefault();
+      onViolation?.('Pasting external code is not allowed.');
+    }
+  };
+
   return (
     <div className="flex flex-col border border-line rounded-xl overflow-hidden shadow-sm bg-[#1e1e1e]">
        <div className="bg-[#2d2d2d] border-b border-[#404040] px-4 py-3 flex items-center justify-between">
@@ -56,10 +72,13 @@ function LocalCompiler({ code, onChange, language }) {
            {isRunning ? 'Running...' : 'Run Code'}
          </button>
        </div>
-       <textarea 
+       <textarea
          value={code}
          onChange={e => onChange(e.target.value)}
          onKeyDown={handleKeyDown}
+         onCopy={captureEditorText}
+         onCut={captureEditorText}
+         onPaste={handlePaste}
          className="w-full h-[300px] p-4 bg-[#1e1e1e] text-[#d4d4d4] font-mono text-sm resize-y focus:outline-none"
          spellCheck="false"
          placeholder="Write your code here..."
@@ -92,22 +111,29 @@ export default function Assessment() {
   const [result, setResult] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  
+  const [resumed, setResumed] = useState(false)
+  const [rulesAccepted, setRulesAccepted] = useState(false)
+
   // Security / Anti-cheat
   const [violations, setViolations] = useState(0)
   const [isFullscreen, setIsFullscreen] = useState(false)
-  const [showWarning, setShowWarning] = useState(null)
+  const [showWarning, setShowWarning] = useState(null) // { count, message }
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false)
   const lastViolation = useRef(0)
 
-  // Timer
-  const DEFAULT_TIME = 45 * 60; // 45 minutes
+  // Timer — always seeded from the server's seconds_remaining, never a hardcoded value,
+  // so a resumed attempt only gets the time actually left.
+  const DEFAULT_TIME = 45 * 60; // fallback only, used if the server ever omits seconds_remaining
   const [timeLeft, setTimeLeft] = useState(DEFAULT_TIME);
 
-  const enterFullscreen = async () => {
+  // Called directly as the FIRST statement of a click handler (no await before it) so the
+  // browser still sees it as part of the user gesture. Declared non-async on purpose.
+  const requestFullscreenSync = () => {
     try {
-      if (document.documentElement.requestFullscreen) {
-        await document.documentElement.requestFullscreen();
+      const el = document.documentElement;
+      const p = el.requestFullscreen ? el.requestFullscreen() : null;
+      if (p && typeof p.catch === 'function') {
+        p.catch(err => console.warn("Fullscreen request blocked:", err));
       }
     } catch (err) {
       console.warn("Fullscreen request blocked:", err);
@@ -121,10 +147,10 @@ export default function Assessment() {
       setViolations(v => {
         const newV = v + 1;
         if (newV >= MAX_VIOLATIONS) {
-          submitQuiz(true); // Terminate and auto-submit
+          submitQuiz(true, newV); // Terminate and auto-submit
           return newV;
         }
-        setShowWarning(`Violation ${newV} of ${MAX_VIOLATIONS}\n\n${msg}`);
+        setShowWarning({ count: newV, message: msg });
         return newV;
       });
     }
@@ -142,7 +168,7 @@ export default function Assessment() {
           recordViolation("You left the Skill Arena window. Return immediately.");
         }
       };
-      
+
       const handleFullscreenChange = () => {
         if (!document.fullscreenElement) {
           setIsFullscreen(false);
@@ -152,16 +178,38 @@ export default function Assessment() {
         }
       };
 
+      const isInsideEditor = (target) =>
+        !!(target && target.closest && (target.closest('textarea') || target.closest('input')));
+
+      const handleKeyDown = (e) => {
+        const key = e.key.toLowerCase();
+        const mod = e.ctrlKey || e.metaKey;
+
+        // Devtools shortcuts: always blocked, and counted as a violation.
+        if (key === 'f12' || (mod && e.shiftKey && ['i', 'j', 'c'].includes(key))) {
+          e.preventDefault();
+          recordViolation("Developer tools are disabled during the Skill Arena.");
+          return;
+        }
+
+        // Copy/cut/paste/select-all/print/save/view-source: blocked outside the editor only.
+        if (!isInsideEditor(e.target) && mod && ['c', 'x', 'v', 'a', 'p', 's', 'u'].includes(key)) {
+          e.preventDefault();
+        }
+      };
+
       window.addEventListener('blur', handleVisibilityBlur);
       document.addEventListener('visibilitychange', handleVisibilityBlur);
       document.addEventListener('fullscreenchange', handleFullscreenChange);
       window.addEventListener('beforeunload', handleBeforeUnload);
+      document.addEventListener('keydown', handleKeyDown);
 
       return () => {
         window.removeEventListener('blur', handleVisibilityBlur);
         document.removeEventListener('visibilitychange', handleVisibilityBlur);
         document.removeEventListener('fullscreenchange', handleFullscreenChange);
         window.removeEventListener('beforeunload', handleBeforeUnload);
+        document.removeEventListener('keydown', handleKeyDown);
       };
     }
   }, [step]);
@@ -196,6 +244,9 @@ export default function Assessment() {
     return `${m}:${s < 10 ? '0' : ''}${s}`;
   };
 
+  // Phase 1: fetch the questions and show the rules screen. Fullscreen is NOT
+  // requested here — by the time generation finishes (10-20s) the click gesture
+  // that triggered this has expired and requestFullscreen() would be rejected.
   async function executeStartQuiz(skillToStart) {
     if (!skillToStart.trim()) return
     setLoading(true)
@@ -210,10 +261,11 @@ export default function Assessment() {
       })
       setAnswers(prefill)
       setViolations(0)
-      setTimeLeft(DEFAULT_TIME)
+      setTimeLeft(res.seconds_remaining ?? DEFAULT_TIME)
+      setResumed(!!res.resumed)
       setCurrentQuestionIndex(0)
-      setStep(STEPS.QUIZ)
-      enterFullscreen()
+      setRulesAccepted(false)
+      setStep(STEPS.RULES)
     } catch (err) {
       setError(err.message)
     } finally {
@@ -226,20 +278,28 @@ export default function Assessment() {
     executeStartQuiz(skillName)
   }
 
+  // Phase 2: the rules screen's Start button. requestFullscreenSync() runs as the
+  // very first statement, synchronously, still inside the click gesture.
+  function handleStartExam() {
+    requestFullscreenSync();
+    setCurrentQuestionIndex(0);
+    setStep(STEPS.QUIZ);
+  }
+
   useEffect(() => {
     const s = searchParams.get('skill')
     const r = searchParams.get('role')
     const auto = searchParams.get('autoStart') === 'true'
-    
+
     if (s) setSkillName(s)
     if (r) setRole(r)
-    
+
     if (s && auto) {
        executeStartQuiz(s)
     }
   }, [searchParams])
 
-  async function submitQuiz(isTermination = false) {
+  async function submitQuiz(isTermination = false, violationsOverride = null) {
     if (loading) return;
     setLoading(true)
     setError('')
@@ -249,7 +309,9 @@ export default function Assessment() {
         skill_name: skillName.trim(),
         role,
         attempt_id: attemptId,
-        answers: Object.entries(answers).map(([question_id, answer]) => ({ question_id, answer }))
+        answers: Object.entries(answers).map(([question_id, answer]) => ({ question_id, answer })),
+        violations: violationsOverride ?? violations,
+        terminated: isTermination,
       }
       const res = await api.submitAssessment(payload)
       setResult(res)
@@ -300,8 +362,14 @@ export default function Assessment() {
           </div>
           <h1 className="font-display text-4xl mb-2 text-ink">Enter the Skill Arena</h1>
           <p className="text-clay text-sm mb-8">
-            Prove your mastery. You will enter a focused, fullscreen environment. 
+            Prove your mastery. You will enter a focused, fullscreen environment.
           </p>
+
+          {typeof window !== 'undefined' && window.innerWidth < 768 && (
+            <p className="text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-6">
+              The Skill Arena works best on a laptop or desktop.
+            </p>
+          )}
 
           <form onSubmit={startQuiz} className="space-y-6">
             <div>
@@ -367,24 +435,95 @@ export default function Assessment() {
         </div>
       )}
 
+      {/* ── Step: Rules ── */}
+      {step === STEPS.RULES && (
+        <div className="animate-slide-up">
+          <div className="flex items-center gap-2 mb-3">
+             <div className="w-8 h-8 rounded-full bg-brand/10 text-brand flex items-center justify-center shrink-0 border border-brand/20">
+                <ShieldAlert className="w-4 h-4" />
+             </div>
+             <p className="text-[10px] font-bold text-brand uppercase tracking-wider">Before you begin</p>
+          </div>
+          <h1 className="font-display text-3xl mb-2 text-ink">Arena Rules</h1>
+
+          {resumed && (
+            <p className="text-xs font-semibold text-brand bg-brand/10 border border-brand/20 rounded-lg px-3 py-2 mb-4">
+              Resuming your attempt — the timer kept running while you were away.
+            </p>
+          )}
+
+          <ul className="space-y-3 mb-6">
+            {[
+              "Stay fullscreen — leaving it counts as a violation.",
+              "Do not switch tabs or windows.",
+              "Copying, pasting and right-click are disabled outside the code editor.",
+              "3 violations end the exam and submit it automatically.",
+              "The timer keeps running — the attempt cannot be restarted with new questions.",
+            ].map((rule, i) => (
+              <li key={i} className="flex items-start gap-3 text-sm text-ink/80 bg-surface border border-line rounded-xl px-4 py-3">
+                <ShieldAlert className="w-4 h-4 text-brand shrink-0 mt-0.5" />
+                {rule}
+              </li>
+            ))}
+          </ul>
+
+          <label className="flex items-start gap-3 text-sm text-ink mb-6 cursor-pointer">
+            <input
+              type="checkbox"
+              className="mt-1 accent-brand"
+              checked={rulesAccepted}
+              onChange={(e) => setRulesAccepted(e.target.checked)}
+            />
+            I understand and agree to these rules.
+          </label>
+
+          {error && <p className="alert-error mb-4">{error}</p>}
+
+          <button
+            onClick={handleStartExam}
+            disabled={!rulesAccepted}
+            className="btn-primary w-full py-3 flex justify-center items-center gap-2 text-sm"
+          >
+            <Maximize className="w-4 h-4" /> Start Exam (Fullscreen)
+          </button>
+        </div>
+      )}
+
       {/* ── Step: Quiz ── */}
       {step === STEPS.QUIZ && questions.length > 0 && (
-        <div 
+        <div
           className="fixed inset-0 z-50 bg-[#f8f9fc] flex flex-col overflow-hidden"
           onCopy={e => { if(!e.target.closest('textarea')) e.preventDefault() }}
           onCut={e => { if(!e.target.closest('textarea')) e.preventDefault() }}
           onPaste={e => { if(!e.target.closest('textarea')) e.preventDefault() }}
           onContextMenu={e => { if(!e.target.closest('textarea') && !e.target.closest('input')) e.preventDefault() }}
         >
+          {step === STEPS.QUIZ && !isFullscreen && (
+            <div className="fixed inset-0 z-[90] bg-white/95 backdrop-blur-md flex items-center justify-center p-4">
+              <div className="bg-white rounded-2xl p-8 max-w-md w-full shadow-2xl border border-line text-center">
+                <div className="w-16 h-16 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4 border-4 border-red-100">
+                  <Maximize className="w-8 h-8" />
+                </div>
+                <h3 className="font-display font-bold text-2xl mb-2 text-ink">Fullscreen is required</h3>
+                <p className="text-clay font-medium mb-6">The Skill Arena can only be answered in fullscreen mode.</p>
+                <button onClick={requestFullscreenSync} className="btn-primary w-full py-3 justify-center text-lg shadow-md">
+                  Click to continue
+                </button>
+              </div>
+            </div>
+          )}
           {showWarning && (
             <div className="fixed inset-0 z-[100] bg-ink/60 backdrop-blur-sm flex items-center justify-center p-4" style={{ userSelect: 'auto' }}>
               <div className="bg-white rounded-2xl p-8 max-w-md w-full shadow-2xl border border-line animate-slide-up text-center">
                 <div className="w-16 h-16 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4 border-4 border-red-100">
                   <AlertTriangle className="w-8 h-8" />
                 </div>
-                <h3 className="font-display font-bold text-2xl mb-2 text-ink">Security Warning</h3>
-                <p className="text-clay font-medium mb-6 whitespace-pre-wrap">{showWarning}</p>
-                <button onClick={() => { setShowWarning(null); enterFullscreen(); }} className="btn-primary w-full py-3 justify-center text-lg shadow-md">
+                <h3 className="font-display font-bold text-2xl mb-2 text-ink">Violation {showWarning.count} of {MAX_VIOLATIONS}</h3>
+                <p className="text-clay font-medium mb-3 whitespace-pre-wrap">{showWarning.message}</p>
+                {showWarning.count === MAX_VIOLATIONS - 1 && (
+                  <p className="text-red-600 font-bold mb-3">One more violation will end your exam.</p>
+                )}
+                <button onClick={() => { setShowWarning(null); requestFullscreenSync(); }} className="btn-primary w-full py-3 justify-center text-lg shadow-md">
                   Acknowledge and Continue
                 </button>
               </div>
@@ -521,6 +660,7 @@ export default function Assessment() {
                           code={answers[currentQuestion.id] || ''}
                           onChange={code => setAnswers(a => ({...a, [currentQuestion.id]: code}))}
                           language="Python"
+                          onViolation={recordViolation}
                         />
                       </div>
                     ) : null}
@@ -585,10 +725,15 @@ export default function Assessment() {
                 <ShieldAlert className="w-10 h-10" />
               </div>
               <h1 className="font-display text-3xl mb-3 text-ink">Skill Arena Terminated</h1>
-              <p className="text-clay mb-8 text-sm font-medium leading-relaxed">
+              <p className="text-clay mb-4 text-sm font-medium leading-relaxed">
                  Your Skill Arena was closed because the maximum number of security violations ({MAX_VIOLATIONS}) was reached.
                  Your attempt has been recorded and submitted.
               </p>
+              {result && result.violations > 0 && (
+                <p className="text-xs text-red-600 font-bold mb-6 bg-red-50 inline-block px-3 py-1 rounded-full border border-red-100">
+                  {result.violations} security violation{result.violations === 1 ? '' : 's'} were recorded during this attempt
+                </p>
+              )}
               <button onClick={() => setStep(STEPS.RESULT)} disabled={loading} className="btn-primary w-full py-3 justify-center shadow-md">
                  {loading ? 'Processing...' : 'View Result'}
               </button>
@@ -610,9 +755,9 @@ export default function Assessment() {
              <p className="text-[10px] font-bold text-gold uppercase tracking-wider mb-2">Arena Complete</p>
              <h1 className="font-display text-4xl text-ink mb-1">{skillName}</h1>
              <p className="text-clay text-sm">Your assessment is verified.</p>
-             {violations > 0 && (
+             {result.violations > 0 && (
                <p className="text-xs text-red-600 font-bold mt-2 bg-red-50 inline-block px-3 py-1 rounded-full border border-red-100">
-                 Note: {violations} security violation(s) were recorded.
+                 {result.violations} security violation{result.violations === 1 ? '' : 's'} were recorded during this attempt
                </p>
              )}
           </div>
