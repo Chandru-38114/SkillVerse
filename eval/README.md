@@ -53,3 +53,13 @@ still exercises the OS-independent wall-clock timeout, but the `[0] * 10**9`
 memory-exhaustion case won't be capped by the 256 MB ceiling the way it is in
 production. Run that script on Linux for the memory-ceiling figures quoted
 in the paper; the timeout and output-truncation figures hold on any platform.
+
+The infinite-loop containment cases (in both `sandbox_security_test.py` and
+`grader_correctness_test.py`) accept either containment message for this same
+reason: on Linux the 3s RLIMIT_CPU fires first and the runaway code is
+reported as a CPU/memory limit violation, while on Windows (no rlimits) only
+the wall-clock timeout can catch it, reported as "exceeded the time limit."
+Both are correct containment of the same program. The figures quoted in the
+paper must be measured on Linux, matching deployment — that is the path that
+exercises the real RLIMIT_CPU/RLIMIT_AS enforcement, not just the fallback
+wall-clock timeout.

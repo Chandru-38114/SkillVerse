@@ -115,10 +115,17 @@ def main() -> bool:
         f"elapsed={alloc_elapsed:.2f}s output={alloc_result['output']!r} error={alloc_result['error']!r}",
     )
 
+    # On POSIX, code_runner's preexec_fn installs RLIMIT_CPU (3s), which fires
+    # before the 4s wall-clock timeout, so an infinite loop is reported as a
+    # CPU/memory limit violation. On non-POSIX (e.g. Windows) there is no
+    # preexec_fn at all, so only the wall-clock timeout can catch it. Both are
+    # correct containment for the same program; only the message differs.
     loop_result, loop_elapsed = timed_run("while True:\n    pass")
-    ok = loop_elapsed < WALL_CLOCK_GUARD and loop_result["error"] is not None and "time limit" in loop_result["error"].lower()
+    error_text = (loop_result["error"] or "").lower()
+    hit_a_limit = "time limit" in error_text or "memory or cpu limit" in error_text
+    ok = loop_elapsed < WALL_CLOCK_GUARD and loop_result["error"] is not None and hit_a_limit
     r.check(
-        "CONTAINED: infinite while True loop (hits wall-clock timeout)",
+        "CONTAINED: infinite loop (CPU or wall-clock limit)",
         ok,
         f"elapsed={loop_elapsed:.2f}s error={loop_result['error']!r}" if not ok else "",
     )

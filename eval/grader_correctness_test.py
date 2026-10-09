@@ -112,13 +112,21 @@ def main() -> bool:
         f"detail={syntax_result['detail']!r}",
     )
 
+    # On POSIX, code_runner's preexec_fn installs RLIMIT_CPU (3s), which fires
+    # before the 8s wall-clock timeout grade_coding_answer uses, so a runaway
+    # answer is reported as a CPU/memory limit violation there instead of a
+    # timeout. On non-POSIX (e.g. Windows) there is no preexec_fn, so only the
+    # wall-clock timeout can catch it. Both are correct containment for the
+    # same answer; only the message differs, and `passed` is 0 either way.
     timeout_result = grade_coding_answer(
         "def sort_list(a):\n    while True:\n        pass", FUNCTION_NAME, TESTS
     )
+    detail_text = (timeout_result["detail"] or "").lower()
     r.check(
-        "infinite loop -> detail reports a timeout",
-        "time limit" in (timeout_result["detail"] or "").lower(),
-        f"detail={timeout_result['detail']!r}",
+        "infinite loop -> passed 0, detail reports a CPU or wall-clock limit",
+        timeout_result["passed"] == 0
+        and ("time limit" in detail_text or "memory or cpu limit" in detail_text),
+        f"passed={timeout_result['passed']} detail={timeout_result['detail']!r}",
     )
 
     return r.summary()
