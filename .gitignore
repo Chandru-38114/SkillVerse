@@ -27,3 +27,8 @@ scratch/
 
 # Runtime User Uploads
 backend/uploads/
+backend/venv*
+create_zip.py
+
+# Evaluation suite scratch data (throwaway SQLite files, not for the repo)
+eval/tmp/
