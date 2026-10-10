@@ -24,8 +24,9 @@ import random
 import re
 import time
 import uuid
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
+import requests
 from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
@@ -132,9 +133,23 @@ class _GenCodingSet(BaseModel):
 
 # ── Configuration ────────────────────────────────────────────────────────────
 
-def _models() -> List[str]:
-    raw = os.getenv("GEMINI_MODELS", "gemini-3.6-flash,gemini-3.5-flash-lite")
-    return [m.strip() for m in raw.split(",") if m.strip()]
+def _provider_chain() -> List[Tuple[str, str]]:
+    order_raw = os.getenv("ARENA_PROVIDER_ORDER", "gemini,openrouter")
+    order = [p.strip().lower() for p in order_raw.split(",") if p.strip()]
+
+    chain: List[Tuple[str, str]] = []
+    for provider in order:
+        if provider == "gemini":
+            if not os.getenv("GEMINI_API_KEY"):
+                continue
+            raw = os.getenv("GEMINI_MODELS", "gemini-3.6-flash,gemini-3.5-flash-lite")
+            chain += [("gemini", m.strip()) for m in raw.split(",") if m.strip()]
+        elif provider == "openrouter":
+            if not os.getenv("OPENROUTER_API_KEY"):
+                continue
+            raw = os.getenv("OPENROUTER_MODELS", "qwen/qwen3-4b:free")
+            chain += [("openrouter", m.strip()) for m in raw.split(",") if m.strip()]
+    return chain
 
 
 N_MCQ = int(os.getenv("ARENA_N_MCQ", "12"))
@@ -287,7 +302,10 @@ def _to_coding_questions(gen: _GenCodingSet, skill: str) -> List[dict]:
 
 def _is_overloaded(err: Exception) -> bool:
     msg = str(err)
-    return any(s in msg for s in ("503", "UNAVAILABLE", "high demand", "overloaded"))
+    return any(s in msg for s in (
+        "503", "UNAVAILABLE", "high demand", "overloaded",
+        "429", "rate limit", "Too Many Requests", "502", "504",
+    ))
 
 
 def _call_model(client, model: str, prompt: str, schema, retries: int = 3, delay: float = 1.5):
@@ -315,47 +333,110 @@ def _call_model(client, model: str, prompt: str, schema, retries: int = 3, delay
     raise GenerationError(f"{model}: retries exhausted")
 
 
-def _generate_coding_questions(client, skill: str, level: str) -> List[dict]:
-    prompt = _coding_prompt(skill, level)
-    for model in _models():
+_CODE_FENCE_RE = re.compile(r"^```(?:json)?\s*|\s*```$", re.IGNORECASE)
+
+
+def _with_json_schema_instruction(prompt: str, schema) -> str:
+    schema_json = json.dumps(schema.model_json_schema())
+    return (
+        f"{prompt}\n\n"
+        "Reply with ONE JSON object and nothing else: no markdown, no code fences, no commentary. "
+        f"The JSON object must conform to this JSON schema:\n{schema_json}"
+    )
+
+
+def _call_openrouter(model: str, prompt: str, schema, retries: int = 3, delay: float = 1.5):
+    api_key = os.getenv("OPENROUTER_API_KEY")
+    full_prompt = _with_json_schema_instruction(prompt, schema)
+    for attempt in range(1, retries + 1):
         try:
-            gen = _call_model(client, model, prompt, _GenCodingSet)
+            resp = requests.post(
+                "https://openrouter.ai/api/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": model,
+                    "messages": [{"role": "user", "content": full_prompt}],
+                    "temperature": 0.9,
+                    "max_tokens": 4000,
+                    "response_format": {"type": "json_object"},
+                },
+                timeout=90,
+            )
+            if resp.status_code != 200:
+                raise GenerationError(f"openrouter {resp.status_code}: {resp.text[:300]}")
+            data = resp.json()
+            text = data["choices"][0]["message"]["content"].strip()
+            text = _CODE_FENCE_RE.sub("", text).strip()
+            return schema.model_validate_json(text)
+        except Exception as err:  # noqa: BLE001
+            if _is_overloaded(err) and attempt < retries:
+                logger.warning("[arena] openrouter/%s overloaded (attempt %d/%d), retrying in %.1fs", model, attempt, retries, delay)
+                time.sleep(delay)
+                delay *= 2
+                continue
+            raise
+    raise GenerationError(f"openrouter/{model}: retries exhausted")
+
+
+def _call(provider: str, model: str, prompt: str, schema, client=None):
+    if provider == "gemini":
+        return _call_model(client, model, prompt, schema)
+    if provider == "openrouter":
+        return _call_openrouter(model, prompt, schema)
+    raise GenerationError(f"unknown provider: {provider}")
+
+
+def _generate_coding_questions(chain: List[Tuple[str, str]], client, skill: str, level: str) -> List[dict]:
+    prompt = _coding_prompt(skill, level)
+    for provider, model in chain:
+        try:
+            gen = _call(provider, model, prompt, _GenCodingSet, client)
             problems = _to_coding_questions(gen, skill)
             if problems:
                 return problems
         except Exception as err:  # noqa: BLE001
-            logger.warning("[arena] coding generation failed with %s: %s", model, err)
+            logger.warning("[arena] coding generation failed with %s/%s: %s", provider, model, err)
     return []
 
 
 def generate_assessment(skill_name: str, level: Optional[str] = None) -> List[dict]:
     """Return a list of questions WITH answers. Raises GenerationError if AI is unavailable."""
-    api_key = os.getenv("GEMINI_API_KEY")
-    if not HAS_GENAI or not api_key:
-        raise GenerationError("Gemini is not configured (missing google-genai or GEMINI_API_KEY).")
+    chain = _provider_chain()
+    if not chain:
+        raise GenerationError("No AI provider is configured (missing API keys for gemini/openrouter).")
 
     skill = canonical_skill(skill_name)
     level = canonical_level(level)
     prompt = _prompt(skill, level)
-    client = genai.Client(api_key=api_key)
+
+    client = None
+    if any(provider == "gemini" for provider, _ in chain):
+        api_key = os.getenv("GEMINI_API_KEY")
+        if HAS_GENAI and api_key:
+            client = genai.Client(api_key=api_key)
 
     last_error: Optional[Exception] = None
-    for model in _models():
+    for provider, model in chain:
+        if provider == "gemini" and client is None:
+            continue
         try:
-            questions = _to_questions(_call_model(client, model, prompt, _GenAssessment), skill)
+            questions = _to_questions(_call(provider, model, prompt, _GenAssessment, client), skill)
             if len(questions) >= MIN_VALID:
-                logger.info("[arena] generated %d questions for %s with %s", len(questions), skill, model)
+                logger.info("[arena] generated %d questions for %s with %s/%s", len(questions), skill, provider, model)
                 if supports_coding(skill):
                     try:
-                        questions += _generate_coding_questions(client, skill, level)
+                        questions += _generate_coding_questions(chain, client, skill, level)
                     except Exception as err:  # noqa: BLE001
                         logger.warning("[arena] coding questions unavailable for %s: %s", skill, err)
                 return questions
-            last_error = GenerationError(f"{model} returned only {len(questions)} valid questions")
+            last_error = GenerationError(f"{provider}/{model} returned only {len(questions)} valid questions")
             logger.warning("[arena] %s", last_error)
         except Exception as err:  # noqa: BLE001
             last_error = err
-            logger.warning("[arena] generation failed with %s: %s", model, err)
+            logger.warning("[arena] generation failed with %s/%s: %s", provider, model, err)
     raise GenerationError(str(last_error) if last_error else "No models configured")
 
 
