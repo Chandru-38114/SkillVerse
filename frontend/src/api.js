@@ -268,6 +268,8 @@ export const api = {
   completeSessionProgress: (sessionId) => request(`/progress/session/${sessionId}/complete`, { method: "POST" }),
   getMyProgress: () => request("/progress/my"),
   getProgressHistory: () => request("/progress/history"),
+  startSessionQuiz: (sessionId) => request(`/progress/session/${sessionId}/quiz/start`, { method: "POST" }),
+  submitSessionQuiz: (sessionId, payload) => request(`/progress/session/${sessionId}/quiz/submit`, { method: "POST", body: payload }),
 
   // Whiteboard
   getWhiteboard: (sessionId) => request(`/sessions/${sessionId}/whiteboard`),

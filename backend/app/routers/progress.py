@@ -1,15 +1,39 @@
+import logging
+import uuid
 from fastapi import APIRouter, Depends, HTTPException, status
+from starlette.concurrency import run_in_threadpool
 from sqlalchemy.orm import Session
-from typing import List
+from pydantic import BaseModel
+from typing import List, Optional
 import datetime as dt
 from ..utils.timezone import utc_now
 
 from .. import models, schemas, auth
 from ..database import get_db
 from ..services.summarization import generate_session_summary
+from ..services.question_generator import GenerationError, generate_session_quiz, sanitize
+from ..services.learning_plan import build_next_session_plan
 from ..utils.progress_utils import compute_skill_stage
+from .assessments import level_for_score
 
 router = APIRouter(prefix="/progress", tags=["progress"])
+logger = logging.getLogger(__name__)
+
+
+def _split_topics(raw: Optional[str]) -> List[str]:
+    if not raw:
+        return []
+    return [t.strip() for t in raw.split(",") if t.strip()]
+
+
+class SessionQuizAnswer(BaseModel):
+    question_id: str
+    answer: str
+
+
+class SessionQuizSubmit(BaseModel):
+    attempt_id: str
+    answers: List[SessionQuizAnswer]
 
 
 @router.get("/my", response_model=List[schemas.UserSkillProgressOut])
@@ -340,8 +364,112 @@ def complete_session(session_id: int, db: Session = Depends(get_db), current_use
                 if other_prog:
                     other_prog.semantic_summary = summary
         except Exception as e:
-            pass
+            logger.warning("[progress] session summary generation failed for session %s: %s", session_id, e)
 
     db.commit()
-    
+
     return {"status": "ok", "sessions_completed": user_skill.sessions_completed}
+
+
+@router.post("/session/{session_id}/quiz/start")
+async def start_session_quiz(session_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    """Formative-only post-session knowledge check. Never affects UserSkill, badges,
+    points or marketplace ranking - it writes only to this user's SessionProgress row."""
+    sess = db.query(models.Session).filter(models.Session.id == session_id).first()
+    if not sess:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    if current_user.id not in [sess.tutor_id, sess.learner_id]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    if sess.status != "completed":
+        raise HTTPException(status_code=400, detail="This session has not been completed yet")
+
+    prog = db.query(models.SessionProgress).filter(
+        models.SessionProgress.session_id == session_id,
+        models.SessionProgress.user_id == current_user.id,
+    ).first()
+    if not prog or not prog.semantic_summary:
+        raise HTTPException(status_code=409, detail="The session summary is not ready yet")
+
+    active = db.query(models.AssessmentSession).filter(
+        models.AssessmentSession.user_id == current_user.id,
+        models.AssessmentSession.session_id == session_id,
+        models.AssessmentSession.submitted_at.is_(None),
+    ).order_by(models.AssessmentSession.created_at.desc()).first()
+    if active:
+        return {"attempt_id": active.id, "questions": sanitize(active.questions), "resumed": True}
+
+    topics = _split_topics(prog.topics_discussed)
+    try:
+        questions = await run_in_threadpool(
+            generate_session_quiz, sess.skill, prog.level_before or "intermediate", prog.semantic_summary, topics,
+        )
+    except GenerationError as err:
+        logger.warning("[arena] session quiz unavailable for session %s: %s", session_id, err)
+        raise HTTPException(
+            status_code=503,
+            detail="The AI quiz generator is busy right now. Please try again in a minute.",
+        )
+
+    attempt = models.AssessmentSession(
+        id=str(uuid.uuid4()), user_id=current_user.id, skill_name=sess.skill,
+        source="session", session_id=session_id, questions=questions,
+    )
+    db.add(attempt)
+    db.commit()
+    return {"attempt_id": attempt.id, "questions": sanitize(questions), "resumed": False}
+
+
+@router.post("/session/{session_id}/quiz/submit")
+def submit_session_quiz(session_id: int, payload: SessionQuizSubmit, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    attempt = db.query(models.AssessmentSession).filter(models.AssessmentSession.id == payload.attempt_id).first()
+    if not attempt or attempt.user_id != current_user.id or attempt.session_id != session_id:
+        raise HTTPException(status_code=404, detail="Session quiz attempt not found")
+    if attempt.submitted_at is not None:
+        raise HTTPException(status_code=409, detail="This session quiz has already been submitted")
+
+    sess = db.query(models.Session).filter(models.Session.id == session_id).first()
+    if not sess:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    prog = db.query(models.SessionProgress).filter(
+        models.SessionProgress.session_id == session_id,
+        models.SessionProgress.user_id == current_user.id,
+    ).first()
+    if not prog:
+        raise HTTPException(status_code=404, detail="Session progress not found")
+
+    submitted = {a.question_id: a.answer for a in payload.answers}
+
+    total = 0
+    correct = 0
+    missed_topics = []
+    for q in attempt.questions:
+        total += 1
+        if submitted.get(q["id"]) == q["answer"]:
+            correct += 1
+        elif q["topic"] not in missed_topics:
+            missed_topics.append(q["topic"])
+
+    score = round((correct / total) * 100, 1) if total else 0.0
+    attempt.submitted_at = utc_now()
+
+    weak_topics = []
+    attempt_row = db.query(models.AssessmentAttempt).filter(
+        models.AssessmentAttempt.user_id == current_user.id,
+        models.AssessmentAttempt.skill_id == prog.skill_id,
+    ).order_by(models.AssessmentAttempt.created_at.desc()).first()
+    if attempt_row and attempt_row.weak_topics:
+        weak_topics = _split_topics(attempt_row.weak_topics)
+
+    next_session_plan = build_next_session_plan(
+        sess.skill, prog.semantic_summary or "", score, missed_topics, weak_topics,
+    )
+
+    prog.progress_percentage_after = int(score)
+    prog.level_after = level_for_score(score)
+    prog.next_session_plan = "\n".join(next_session_plan)
+
+    db.commit()
+    return {"score": score, "missed_topics": missed_topics, "next_session_plan": next_session_plan}

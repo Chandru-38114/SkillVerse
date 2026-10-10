@@ -131,6 +131,10 @@ class _GenCodingSet(BaseModel):
     problems: List[_GenCodingProblem]
 
 
+class _GenQuizSet(BaseModel):
+    mcqs: List[_GenMCQ]
+
+
 # ── Configuration ────────────────────────────────────────────────────────────
 
 def _provider_chain() -> List[Tuple[str, str]]:
@@ -158,6 +162,9 @@ N_DEBUG = int(os.getenv("ARENA_N_DEBUG", "3"))
 N_CODING = int(os.getenv("ARENA_N_CODING", "2"))
 MIN_VALID = int(os.getenv("ARENA_MIN_VALID", "14"))  # fewer usable items than this -> try next model
 MIN_TEST_CASES = 3
+
+N_SESSION_QUIZ = 5
+MIN_SESSION_QUIZ_VALID = 3  # fewer usable items than this -> try next provider
 
 
 def _prompt(skill: str, level: str) -> str:
@@ -206,6 +213,28 @@ Hard rules:
 - Test cases must be deterministic and fully specified by args_json and expected_json."""
 
 
+def _session_quiz_prompt(skill: str, level: str, summary: str, topics: List[str]) -> str:
+    topics_line = ", ".join(topics) if topics else "the topics mentioned in the summary"
+    return f"""A learner at level "{level}" just finished a "{skill}" learning session.
+Here is a factual summary of what was actually covered in that session:
+
+--- SESSION SUMMARY ---
+{summary}
+
+Topics covered: {topics_line}
+
+Generate EXACTLY {N_SESSION_QUIZ} multiple-choice questions (mcqs) that check whether the
+learner retained what was covered in THIS session.
+Rules:
+- Base every question ONLY on the session summary and the topics above. Never test
+  anything not evidenced there.
+- Every question has exactly 4 distinct, non-empty options, exactly one of them correct.
+- correct_option_index is the 0-based index of the correct option.
+- Tag every question with exactly one topic from this list: {topics_line}.
+- No code-writing questions - objective, conceptual items only.
+- Explanations are one or two sentences."""
+
+
 # ── Validation and conversion ────────────────────────────────────────────────
 
 def _clean_options(options: List[str]) -> Optional[List[str]]:
@@ -250,6 +279,11 @@ def _to_questions(gen: _GenAssessment, skill: str) -> List[dict]:
     out += [q for q in (_convert(t, "output", t.snippet, allowed) for t in gen.logic_questions[:N_TRACE]) if q]
     out += [q for q in (_convert(d, "mcq", d.buggy_snippet, allowed) for d in gen.debugging_questions[:N_DEBUG]) if q]
     return out
+
+
+def _to_quiz_questions(gen: _GenQuizSet, topics: List[str]) -> List[dict]:
+    allowed = topics or None
+    return [q for q in (_convert(m, "mcq", None, allowed) for m in gen.mcqs[:N_SESSION_QUIZ]) if q]
 
 
 _FUNC_NAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
@@ -511,6 +545,41 @@ def generate_assessment(skill_name: str, level: Optional[str] = None) -> List[di
         except Exception as err:  # noqa: BLE001
             last_error = err
             logger.warning("[arena] generation failed with %s/%s: %s", provider, model, err)
+    raise GenerationError(str(last_error) if last_error else "No models configured")
+
+
+def generate_session_quiz(skill: str, level: str, summary: str, topics: List[str]) -> List[dict]:
+    """Return 5 MCQs testing ONLY the supplied session summary/topics, WITH answers.
+    Raises GenerationError if no provider produces enough usable items; this is
+    deliberately NOT backed by the static question bank - it must come from the session."""
+    chain = _provider_chain()
+    if not chain:
+        raise GenerationError("No AI provider is configured (missing API keys for gemini/openrouter).")
+
+    skill = canonical_skill(skill)
+    level = canonical_level(level)
+    prompt = _session_quiz_prompt(skill, level, summary, topics)
+
+    client = None
+    if any(provider == "gemini" for provider, _ in chain):
+        api_key = os.getenv("GEMINI_API_KEY")
+        if HAS_GENAI and api_key:
+            client = genai.Client(api_key=api_key)
+
+    last_error: Optional[Exception] = None
+    for provider, model in chain:
+        if provider == "gemini" and client is None:
+            continue
+        try:
+            questions = _to_quiz_questions(_call(provider, model, prompt, _GenQuizSet, client), topics)
+            if len(questions) >= MIN_SESSION_QUIZ_VALID:
+                logger.info("[arena] generated %d session quiz questions for %s with %s/%s", len(questions), skill, provider, model)
+                return questions
+            last_error = GenerationError(f"{provider}/{model} returned only {len(questions)} valid questions")
+            logger.warning("[arena] %s", last_error)
+        except Exception as err:  # noqa: BLE001
+            last_error = err
+            logger.warning("[arena] session quiz generation failed with %s/%s: %s", provider, model, err)
     raise GenerationError(str(last_error) if last_error else "No models configured")
 
 

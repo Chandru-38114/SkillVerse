@@ -111,7 +111,8 @@ class AssessmentSession(Base):
     id = Column(String(36), primary_key=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     skill_name = Column(String, nullable=False)
-    source = Column(String(16), nullable=False, default="ai")  # "ai" or "bank"
+    source = Column(String(16), nullable=False, default="ai")  # "ai" or "bank" or "session"
+    session_id = Column(Integer, ForeignKey("sessions.id"), nullable=True)  # null = a normal Skill Arena attempt
     questions = Column(JSON, nullable=False)
     created_at = Column(DateTime, default=utc_now)
     submitted_at = Column(DateTime, nullable=True)
@@ -303,10 +304,11 @@ class SessionProgress(Base):
     level_after = Column(String, nullable=True)
     progress_percentage_before = Column(Integer, default=0)
     progress_percentage_after = Column(Integer, default=0)
-    
+    next_session_plan = Column(Text, nullable=True)
+
     created_at = Column(DateTime, default=utc_now)
     updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)
-    
+
     session = relationship("Session")
     user = relationship("User", foreign_keys=[user_id])
     skill = relationship("Skill")
