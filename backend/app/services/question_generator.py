@@ -214,20 +214,37 @@ Hard rules:
 
 
 def _session_quiz_prompt(skill: str, level: str, summary: str, topics: List[str]) -> str:
-    topics_line = ", ".join(topics) if topics else "the topics mentioned in the summary"
-    return f"""A learner at level "{level}" just finished a "{skill}" learning session.
-Here is a factual summary of what was actually covered in that session:
+    topics_line = ", ".join(topics)
+    return f"""The text below is CONTEXT describing the "{skill}" subject matter that a tutor
+taught a learner during a one-to-one session. It describes WHAT WAS TAUGHT - it is not
+itself the subject of any question.
 
---- SESSION SUMMARY ---
+--- WHAT WAS TAUGHT ---
 {summary}
 
-Topics covered: {topics_line}
+Topics taught: {topics_line}
 
-Generate EXACTLY {N_SESSION_QUIZ} multiple-choice questions (mcqs) that check whether the
-learner retained what was covered in THIS session.
+Generate EXACTLY {N_SESSION_QUIZ} multiple-choice questions (mcqs) that test whether the
+learner UNDERSTOOD THAT SUBJECT MATTER - the "{skill}" concepts themselves, not the
+session record.
+
+STRICT PROHIBITIONS:
+- NEVER ask about the session record itself: not about the chat history, the
+  whiteboard, the compiler, the summary, what was "covered", what was "recorded",
+  or whether the session happened.
+- NEVER refer to "the session", "the summary", "the records" or "the provided data"
+  in a question or an option.
+- Every question must stand on its own as a subject-matter question that would still
+  make sense to someone who never saw this session.
+
+Example of a GOOD question (subject matter, e.g. topic "Recursion"):
+  "What is the base case of a recursive function?"
+Example of a BAD question (about the session record - never do this):
+  "What does the session summary say was discussed about recursion?"
+
 Rules:
-- Base every question ONLY on the session summary and the topics above. Never test
-  anything not evidenced there.
+- Base every question on the subject matter evidenced by what was taught above. Never
+  test anything not evidenced there.
 - Every question has exactly 4 distinct, non-empty options, exactly one of them correct.
 - correct_option_index is the 0-based index of the correct option.
 - Tag every question with exactly one topic from this list: {topics_line}.
@@ -281,9 +298,25 @@ def _to_questions(gen: _GenAssessment, skill: str) -> List[dict]:
     return out
 
 
+_FORBIDDEN_SESSION_PHRASES = (
+    "session", "summary", "chat history", "whiteboard", "compiler",
+    "the record", "records", "provided data", "recorded",
+)
+
+
+def _mentions_session_record(text: str) -> bool:
+    low = text.lower()
+    return any(phrase in low for phrase in _FORBIDDEN_SESSION_PHRASES)
+
+
 def _to_quiz_questions(gen: _GenQuizSet, topics: List[str]) -> List[dict]:
-    allowed = topics or None
-    return [q for q in (_convert(m, "mcq", None, allowed) for m in gen.mcqs[:N_SESSION_QUIZ]) if q]
+    out = []
+    for m in gen.mcqs[:N_SESSION_QUIZ]:
+        q = _convert(m, "mcq", None, topics)
+        if not q or q["topic"] not in topics:
+            continue
+        out.append(q)
+    return out
 
 
 _FUNC_NAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
@@ -549,9 +582,13 @@ def generate_assessment(skill_name: str, level: Optional[str] = None) -> List[di
 
 
 def generate_session_quiz(skill: str, level: str, summary: str, topics: List[str]) -> List[dict]:
-    """Return 5 MCQs testing ONLY the supplied session summary/topics, WITH answers.
-    Raises GenerationError if no provider produces enough usable items; this is
-    deliberately NOT backed by the static question bank - it must come from the session."""
+    """Return 5 MCQs testing the SUBJECT MATTER a tutor taught (never the session
+    record itself), WITH answers. Raises GenerationError if no provider produces
+    enough usable items; this is deliberately NOT backed by the static question
+    bank - it must come from the session."""
+    if not topics:
+        raise GenerationError("No topics available to build a session quiz from.")
+
     chain = _provider_chain()
     if not chain:
         raise GenerationError("No AI provider is configured (missing API keys for gemini/openrouter).")
@@ -572,6 +609,10 @@ def generate_session_quiz(skill: str, level: str, summary: str, topics: List[str
             continue
         try:
             questions = _to_quiz_questions(_call(provider, model, prompt, _GenQuizSet, client), topics)
+            if questions and all(_mentions_session_record(q["question"]) for q in questions):
+                last_error = GenerationError(f"{provider}/{model} returned only session-record questions")
+                logger.warning("[arena] %s", last_error)
+                continue
             if len(questions) >= MIN_SESSION_QUIZ_VALID:
                 logger.info("[arena] generated %d session quiz questions for %s with %s/%s", len(questions), skill, provider, model)
                 return questions

@@ -11,7 +11,7 @@ from ..utils.timezone import utc_now
 from .. import models, schemas, auth
 from ..database import get_db
 from ..services.summarization import generate_session_summary
-from ..services.question_generator import GenerationError, generate_session_quiz, sanitize
+from ..services.question_generator import GenerationError, SKILL_TOPICS, canonical_skill, generate_session_quiz, sanitize
 from ..services.learning_plan import build_next_session_plan
 from ..utils.progress_utils import compute_skill_stage
 from .assessments import level_for_score
@@ -24,6 +24,23 @@ def _split_topics(raw: Optional[str]) -> List[str]:
     if not raw:
         return []
     return [t.strip() for t in raw.split(",") if t.strip()]
+
+
+def _dedupe(items: List[str]) -> List[str]:
+    seen = set()
+    out = []
+    for item in items:
+        if item not in seen:
+            seen.add(item)
+            out.append(item)
+    return out
+
+
+def _has_content(text: Optional[str]) -> bool:
+    return bool(text and text.strip() and text.strip() != "[]")
+
+
+MIN_SESSION_SUMMARY_CHARS = 120
 
 
 class SessionQuizAnswer(BaseModel):
@@ -400,7 +417,28 @@ async def start_session_quiz(session_id: int, db: Session = Depends(get_db), cur
     if active:
         return {"attempt_id": active.id, "questions": sanitize(active.questions), "resumed": True}
 
-    topics = _split_topics(prog.topics_discussed)
+    messages = db.query(models.Message).filter(models.Message.request_id == sess.request_id).all()
+    chat_history = "\n".join(msg.content for msg in messages)
+    wb = db.query(models.WhiteboardState).filter(models.WhiteboardState.session_id == session_id).first()
+    comp = db.query(models.CompilerState).filter(models.CompilerState.session_id == session_id).first()
+    has_source = (
+        _has_content(chat_history)
+        or _has_content(wb.state if wb else None)
+        or _has_content(comp.code if comp else None)
+    )
+
+    topics = _dedupe(
+        _split_topics(prog.topics_discussed)
+        + _split_topics(prog.topics_completed)
+        + SKILL_TOPICS.get(canonical_skill(sess.skill), [])
+    )
+
+    if len(prog.semantic_summary.strip()) < MIN_SESSION_SUMMARY_CHARS or not has_source or not topics:
+        raise HTTPException(
+            status_code=409,
+            detail="There wasn't enough recorded in this session to build a knowledge check.",
+        )
+
     try:
         questions = await run_in_threadpool(
             generate_session_quiz, sess.skill, prog.level_before or "intermediate", prog.semantic_summary, topics,
