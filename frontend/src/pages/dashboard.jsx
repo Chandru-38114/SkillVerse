@@ -61,7 +61,7 @@ export default function Dashboard() {
     }
     fetchDashboardData()
     return () => { isMounted = false; clearTimeout(loadingTimer) }
-  }, [user, navigate, location.search])
+  }, [user?.id, navigate, location.search])
 
   if (!user) return null
 

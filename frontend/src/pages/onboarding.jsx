@@ -24,7 +24,7 @@ export default function Onboarding() {
         navigate('/dashboard')
       }
     }
-  }, [user, navigate, onboardingToken])
+  }, [user?.id, navigate, onboardingToken])
 
   const passwordRules = [
     { label: 'Minimum 6 characters', regex: /.{6,}/ },

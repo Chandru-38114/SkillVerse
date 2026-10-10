@@ -21,7 +21,7 @@ export default function VerifyEmail() {
     } else if (user.is_email_verified) {
       navigate('/dashboard')
     }
-  }, [user, navigate])
+  }, [user?.id, navigate])
 
   useEffect(() => {
     if (cooldown > 0) {

@@ -1,4 +1,6 @@
+import logging
 import os
+import sys
 from sqlalchemy import text
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -6,6 +8,13 @@ from fastapi.staticfiles import StaticFiles
 
 import asyncio
 from contextlib import asynccontextmanager
+
+logging.basicConfig(
+    level=os.getenv("LOG_LEVEL", "INFO").upper(),
+    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+    handlers=[logging.StreamHandler(sys.stdout)],
+    force=True,
+)
 
 from .database import Base, engine
 from .routers import (
