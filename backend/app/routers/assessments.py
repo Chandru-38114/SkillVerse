@@ -15,6 +15,7 @@ from ..services.question_generator import (
     GenerationError, canonical_level, canonical_skill, generate_assessment, sanitize,
 )
 from ..services.code_grader import grade_coding_answer
+from ..services.learning_plan import build_study_plan
 from ..utils.timezone import utc_now, enforce_utc_iso
 from .users import get_or_create_skill
 
@@ -210,7 +211,16 @@ def submit_assessment(
         topic for topic in per_topic_total
         if (per_topic_earned.get(topic, 0) / per_topic_total[topic]) < 0.6
     ]
-    study_plan = coding_feedback + study_plan_for_topics(weak_topics)
+    topic_mastery = {
+        topic: round((per_topic_earned.get(topic, 0) / per_topic_total[topic]) * 100, 1)
+        for topic in per_topic_total
+    }
+    try:
+        roadmap = build_study_plan(skill_name, level, score, weak_topics, topic_mastery)
+    except Exception as err:  # noqa: BLE001
+        logger.warning("[arena] build_study_plan failed for %s: %s", skill_name, err)
+        roadmap = study_plan_for_topics(weak_topics)
+    study_plan = coding_feedback + roadmap
 
     # Persist attempt + update the user's skill record
     attempt = models.AssessmentAttempt(
