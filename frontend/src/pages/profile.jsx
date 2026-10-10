@@ -8,7 +8,7 @@ function SkillBadge({ badge }) {
   if (!badge) return null;
   return (
     <span className="inline-flex items-center gap-1.5 bg-goldLight text-gold px-2 py-1 rounded-md text-[10px] font-bold border border-gold/20 shadow-sm">
-      <CheckCircle className="w-3.5 h-3.5 text-brand" /> Verified
+      <CheckCircle className="w-3.5 h-3.5 text-brandInk" /> Verified
     </span>
   );
 }
@@ -139,7 +139,7 @@ export default function Profile() {
                         <h4 className="font-bold text-ink text-base">{s.skill_name}</h4>
                         <p className="text-xs text-clay font-medium capitalize mt-0.5">{s.level} {s.badge && '• Verified'}</p>
                       </div>
-                      <span className="text-xs font-bold text-brand bg-brand/10 px-2 py-1 rounded-md">
+                      <span className="text-xs font-bold text-brandInk bg-brand/10 px-2 py-1 rounded-md">
                         {s.progress_percentage || 0}%
                       </span>
                     </div>
@@ -152,7 +152,7 @@ export default function Profile() {
             ) : (
               <div className="card p-6 border border-line border-dashed text-center bg-surface">
                 <p className="text-sm text-clay mb-2">You aren't tracking any learning skills yet.</p>
-                <Link to="/marketplace" className="text-xs font-semibold text-brand hover:underline">Find a partner to start learning</Link>
+                <Link to="/marketplace" className="text-xs font-semibold text-brandInk hover:underline">Find a partner to start learning</Link>
               </div>
             )}
           </section>

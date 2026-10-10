@@ -142,7 +142,7 @@ function SessionRoomComponent() {
           <div className="font-display font-bold text-ink">Learning Arena</div>
           <div className="h-6 w-px bg-line" />
           <div className="flex items-center gap-2 px-3 py-1.5 bg-brand/5 rounded-lg border border-brand/10">
-            <span className="text-brand font-semibold text-sm">{session.skill_name || session.skill}</span>
+            <span className="text-brandInk font-semibold text-sm">{session.skill_name || session.skill}</span>
             <span className="text-clay text-xs">with {peerName}</span>
           </div>
         </div>
@@ -190,7 +190,7 @@ function SessionRoomComponent() {
                   document.getElementById(`section-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
                 }}
                 className={`flex flex-col items-center justify-center gap-1.5 p-2 w-14 rounded-xl transition-all ${
-                  activeTab === id ? 'bg-lift text-brand shadow-sm border border-line' : 'text-clay hover:text-ink hover:bg-lift/50'
+                  activeTab === id ? 'bg-lift text-brandInk shadow-sm border border-line' : 'text-clay hover:text-ink hover:bg-lift/50'
                 }`}
               >
                  <Icon className="w-5 h-5" />
@@ -210,7 +210,7 @@ function SessionRoomComponent() {
             {session.notes && (
               <div className="bg-surface rounded-xl p-4 lg:p-5 border border-line shadow-sm flex items-start gap-4 shrink-0 mx-auto max-w-5xl w-full">
                  <div className="p-2 bg-brand/10 rounded-lg shrink-0 mt-0.5">
-                   <BookOpen className="w-5 h-5 text-brand" />
+                   <BookOpen className="w-5 h-5 text-brandInk" />
                  </div>
                  <div>
                    <p className="text-xs font-bold text-clay uppercase tracking-wider mb-1">Today's Quest</p>
@@ -226,7 +226,7 @@ function SessionRoomComponent() {
                   {/* Whiteboard */}
                   <div id="section-Whiteboard" className="flex-1 bg-surface border border-line rounded-2xl shadow-sm overflow-hidden flex flex-col relative group h-full">
                      <div className="absolute top-4 left-4 z-20 bg-white/90 backdrop-blur-sm px-3 py-1.5 rounded-lg border border-line shadow-sm flex items-center gap-2 pointer-events-none transition-opacity group-hover:opacity-30">
-                        <PenLine className="w-4 h-4 text-brand" />
+                        <PenLine className="w-4 h-4 text-brandInk" />
                         <span className="text-xs font-bold text-ink tracking-wide">Whiteboard</span>
                      </div>
                      <div className="absolute inset-0 z-10">
@@ -237,7 +237,7 @@ function SessionRoomComponent() {
                   {/* Compiler */}
                   <div className="flex-1 bg-surface border border-line rounded-2xl shadow-sm overflow-hidden flex flex-col relative group h-full">
                      <div className="absolute top-4 left-4 z-20 bg-white/90 backdrop-blur-sm px-3 py-1.5 rounded-lg border border-line shadow-sm flex items-center gap-2 pointer-events-none transition-opacity group-hover:opacity-30">
-                        <Code2 className="w-4 h-4 text-brand" />
+                        <Code2 className="w-4 h-4 text-brandInk" />
                         <span className="text-xs font-bold text-ink tracking-wide">Compiler</span>
                      </div>
                      <div className="absolute inset-0 z-10 pt-16 xl:pt-14 bg-surface">

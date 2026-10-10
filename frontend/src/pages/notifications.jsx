@@ -85,7 +85,7 @@ const Notifications = () => {
 
   const getIcon = (type) => {
     switch (type) {
-      case 'message': return <MessageSquare className="w-5 h-5 text-brand" />;
+      case 'message': return <MessageSquare className="w-5 h-5 text-brandInk" />;
       case 'request': return <Hand className="w-5 h-5 text-moss" />;
       case 'session': return <Calendar className="w-5 h-5 text-gold" />;
       case 'certificate': return <Award className="w-5 h-5 text-purple-500" />;

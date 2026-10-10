@@ -18,7 +18,7 @@ export default function Landing() {
       <section className="relative z-10 max-w-7xl mx-auto px-6 pt-24 pb-20 md:pt-32 md:pb-28 flex flex-col lg:flex-row items-center gap-12 lg:gap-8">
         <div className="flex-1 text-center lg:text-left">
           <Reveal duration={0.8} yOffset={30}>
-            <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-brand/10 border border-brand/20 text-brand font-bold text-xs uppercase tracking-wider mb-6">
+            <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-brand/10 border border-brand/20 text-brandInk font-bold text-xs uppercase tracking-wider mb-6">
               <Star className="w-3.5 h-3.5" />
               The Peer-to-Peer Learning Network
             </span>
@@ -76,7 +76,7 @@ export default function Landing() {
               num="01" 
               title="Assess" 
               desc="Establish your baseline skill level with an objective challenge." 
-              icon={<Brain className="w-6 h-6 text-brand" />} 
+              icon={<Brain className="w-6 h-6 text-brandInk" />} 
             />
             <StepCard 
               num="02" 
@@ -94,7 +94,7 @@ export default function Landing() {
               num="04" 
               title="Grow" 
               desc="Earn verified badges as you master skills and mentor others." 
-              icon={<Shield className="w-6 h-6 text-brand" />} 
+              icon={<Shield className="w-6 h-6 text-brandInk" />} 
             />
           </StaggerContainer>
         </div>
@@ -146,7 +146,7 @@ export default function Landing() {
       {/* ── FINAL CTA ── */}
       <section className="relative z-10 py-32 text-center px-6">
         <Reveal duration={0.8} yOffset={20}>
-          <Rocket className="w-12 h-12 text-brand mx-auto mb-6" />
+          <Rocket className="w-12 h-12 text-brandInk mx-auto mb-6" />
           <h2 className="text-4xl md:text-5xl font-display font-bold text-ink mb-6">Ready to start your journey?</h2>
           <p className="text-clay text-xl mb-10 max-w-2xl mx-auto">
             Join the community today. Take your first skill challenge and connect with a learning partner in minutes.

@@ -166,12 +166,12 @@ export default function Compiler({ sessionId }) {
             <span className="text-xs font-bold text-clay whitespace-nowrap">Python 3</span>
             <div className="hidden sm:flex items-center gap-1.5 text-[10px] font-medium text-clay bg-lift px-2 py-1 rounded border border-line whitespace-nowrap shrink-0">
               <span>{syncStatus}</span>
-              {saveStatus && <span className="border-l border-line pl-1.5 text-brand">{saveStatus}</span>}
+              {saveStatus && <span className="border-l border-line pl-1.5 text-brandInk">{saveStatus}</span>}
             </div>
           </div>
           <div className="flex items-center gap-1.5 shrink-0">
             {remoteRunIndicator && (
-              <span className="text-[10px] text-brand bg-brand/10 px-2 py-1 rounded animate-pulse whitespace-nowrap shrink-0">
+              <span className="text-[10px] text-brandInk bg-brand/10 px-2 py-1 rounded animate-pulse whitespace-nowrap shrink-0">
                 {remoteRunIndicator}
               </span>
             )}

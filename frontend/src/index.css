@@ -28,6 +28,7 @@
     --color-brand2:     108 207 176;   /* #6CCFB0 mint */
     --color-brandLight: 255 227 207;   /* #FFE3CF */
     --color-accent:     255 138  61;
+    --color-brandInk:   168  72  15;   /* #A8480F - AA-readable accent text, never a fill */
 
     /* Gold/Accent */
     --color-gold:       251 239 196;   /* #FBEFC4 butter */
@@ -50,6 +51,7 @@
     --color-brand2:     108 207 176;
     --color-brandLight: 255 227 207;
     --color-accent:     255 138  61;
+    --color-brandInk:   168  72  15;
     --color-gold:       251 239 196;
     --color-goldLight:  249 245 232;
     --color-bubbleMe:   255 138  61;
@@ -250,7 +252,7 @@ textarea.input {
 
 .dropdown-item {
   @apply w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-ink
-         hover:bg-brand/10 hover:text-brand transition-colors text-left;
+         hover:bg-brand/10 hover:text-brandInk transition-colors text-left;
 }
 
 .dropdown-item-danger {

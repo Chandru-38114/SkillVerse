@@ -57,31 +57,31 @@ export default function VerifyCertificate() {
         
         <div className="relative z-10 flex flex-col items-center text-center">
           <div className="mb-6 flex justify-center">
-            <div className="w-16 h-16 bg-brand/10 rounded-full flex items-center justify-center text-brand">
+            <div className="w-16 h-16 bg-brand/10 rounded-full flex items-center justify-center text-brandInk">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
               </svg>
             </div>
           </div>
           
-          <h2 className="font-display text-2xl text-brand font-bold mb-1">Verified Credential</h2>
+          <h2 className="font-display text-2xl text-brandInk font-bold mb-1">Verified Credential</h2>
           <p className="text-ink/60 mb-8 font-mono text-xs font-medium">ID: {cert.certificate_id}</p>
           
           <div className="w-full max-w-sm space-y-5 bg-brand/5 p-6 rounded-xl border border-brand/10 mx-auto text-left">
             <div>
-              <p className="text-[10px] text-brand uppercase font-bold tracking-widest mb-1">Recipient</p>
+              <p className="text-[10px] text-brandInk uppercase font-bold tracking-widest mb-1">Recipient</p>
               <p className="font-medium text-lg text-ink leading-tight">{cert.user_name}</p>
             </div>
             <div>
-              <p className="text-[10px] text-brand uppercase font-bold tracking-widest mb-1">Achievement</p>
+              <p className="text-[10px] text-brandInk uppercase font-bold tracking-widest mb-1">Achievement</p>
               <p className="font-medium text-lg text-ink leading-tight">Mastery in {cert.skill_name}</p>
             </div>
             <div>
-              <p className="text-[10px] text-brand uppercase font-bold tracking-widest mb-1">Verified Badge</p>
+              <p className="text-[10px] text-brandInk uppercase font-bold tracking-widest mb-1">Verified Badge</p>
               <SkillBadge badge={cert.badge || 'Expert'} size="sm" />
             </div>
             <div>
-              <p className="text-[10px] text-brand uppercase font-bold tracking-widest mb-1">Issued Date</p>
+              <p className="text-[10px] text-brandInk uppercase font-bold tracking-widest mb-1">Issued Date</p>
               <p className="font-medium text-ink">{issueDate}</p>
             </div>
           </div>
@@ -89,7 +89,7 @@ export default function VerifyCertificate() {
           <div className="mt-12 pt-6 border-t border-ink/10 w-full">
             <Link 
               to="/about-skillverse" 
-              className="inline-flex items-center justify-center px-6 py-3 rounded-xl bg-white border border-brand/20 text-brand font-medium hover:bg-brand/5 hover:border-brand/30 transition-all shadow-sm"
+              className="inline-flex items-center justify-center px-6 py-3 rounded-xl bg-white border border-brand/20 text-brandInk font-medium hover:bg-brand/5 hover:border-brand/30 transition-all shadow-sm"
             >
               What is SkillVerse?
             </Link>

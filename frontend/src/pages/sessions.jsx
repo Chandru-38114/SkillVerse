@@ -75,7 +75,7 @@ export default function Sessions() {
                 key={tab}
                 onClick={() => setActiveTab(tab)}
                 className={`px-4 py-3 text-sm font-semibold capitalize whitespace-nowrap transition-colors border-b-2 ${
-                  activeTab === tab ? 'border-brand text-brand' : 'border-transparent text-clay hover:text-ink'
+                  activeTab === tab ? 'border-brand text-brandInk' : 'border-transparent text-clay hover:text-ink'
                 }`}
               >
                 {tab} 
@@ -95,7 +95,7 @@ export default function Sessions() {
                   ))}
                 </div>
               ) : (
-                <EmptyState icon={<Calendar className="w-8 h-8 text-brand" />} title="No upcoming sessions" desc="Connect with a peer to start your next learning session." />
+                <EmptyState icon={<Calendar className="w-8 h-8 text-brandInk" />} title="No upcoming sessions" desc="Connect with a peer to start your next learning session." />
               )
             )}
             
@@ -175,7 +175,7 @@ function SessionCard({ s, onCancel, user, type }) {
 
           {s.notes && type !== 'cancelled' && (
             <div className="bg-surface/60 rounded-lg p-2.5 mt-2 flex items-start gap-2 border border-brand/20">
-              <BookOpen className="w-4 h-4 text-brand shrink-0 mt-0.5" />
+              <BookOpen className="w-4 h-4 text-brandInk shrink-0 mt-0.5" />
               <div className="text-xs text-ink/70 italic leading-relaxed line-clamp-2">"{s.notes}"</div>
             </div>
           )}

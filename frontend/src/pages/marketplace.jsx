@@ -204,7 +204,7 @@ export default function Marketplace() {
                 <button 
                   key={c}
                   onClick={() => handleCategoryClick(c)}
-                  className="px-4 py-1.5 text-xs font-semibold rounded-full bg-lift border border-line text-ink/80 hover:border-brand/40 hover:text-brand hover:bg-brand/5 transition-colors shadow-sm"              
+                  className="px-4 py-1.5 text-xs font-semibold rounded-full bg-lift border border-line text-ink/80 hover:border-brand/40 hover:text-brandInk hover:bg-brand/5 transition-colors shadow-sm"              
                 >
                   {c}
                 </button>
@@ -308,7 +308,7 @@ export default function Marketplace() {
                       <div className="flex gap-5 mb-8 items-start">
                         <Avatar url={teacher.profile_picture_url} name={teacher.name} size="lg" className="shrink-0 ring-4 ring-lift" />
                         <div className="pt-1">
-                          <h3 className="text-2xl font-bold text-ink group-hover:text-brand transition-colors">{teacher.name}</h3>
+                          <h3 className="text-2xl font-bold text-ink group-hover:text-brandInk transition-colors">{teacher.name}</h3>
                           {teacher.college && <p className="text-xs font-bold text-clay uppercase tracking-widest mt-1">{teacher.college}</p>}
                           <RatingSummary data={ratings} />
                         </div>
@@ -330,7 +330,7 @@ export default function Marketplace() {
                             {teacher.teaching_skills.length === 0 ? <span className="text-xs text-ink/40 italic">None</span> : teacher.teaching_skills.map(s => (
                               <div key={s.skill_name} className="flex justify-between items-center bg-surface border border-line/50 px-3 py-2 rounded-lg">
                                 <span className="text-sm font-bold text-ink">{s.skill_name}</span> 
-                                <span className="text-[9px] text-brand uppercase tracking-widest font-bold bg-brand/10 px-1.5 py-0.5 rounded">{s.level}</span>
+                                <span className="text-[9px] text-brandInk uppercase tracking-widest font-bold bg-brand/10 px-1.5 py-0.5 rounded">{s.level}</span>
                               </div>
                             ))}
                           </div>
@@ -399,7 +399,7 @@ function RequestControl({ rel, teacher, targetSkill, form, displaySkills, onForm
           </select>
         ) : displaySkills.length === 1 ? (
           <p className="text-sm font-bold text-ink bg-surface border border-line shadow-sm px-4 py-3 rounded-xl flex items-center">
-            {isTeachingThem ? 'I want to teach them ' : 'I want to learn '}<span className="ml-1 text-brand">{targetSkill}</span>
+            {isTeachingThem ? 'I want to teach them ' : 'I want to learn '}<span className="ml-1 text-brandInk">{targetSkill}</span>
           </p>
         ) : (
           <p className="text-sm font-medium text-clay bg-surface border border-line/50 px-4 py-3 rounded-xl italic">

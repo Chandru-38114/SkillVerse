@@ -95,7 +95,7 @@ export default function Notes({ session, data, onChange, isCompleted }) {
                 >
                   {saving ? "Saving..." : "Save Notes"}
                 </button>
-                {success && <span className="text-sm font-medium text-brand animate-fade-in">Saved!</span>}
+                {success && <span className="text-sm font-medium text-brandInk animate-fade-in">Saved!</span>}
               </div>
             </div>
           )}

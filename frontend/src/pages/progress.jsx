@@ -84,7 +84,7 @@ export default function Progress() {
   return (
     <div className="page pb-12 animate-fade-in stagger-1">
       <div className="mb-6">
-        <Link to="/dashboard" className="text-sm font-semibold text-brand hover:underline flex items-center gap-1">
+        <Link to="/dashboard" className="text-sm font-semibold text-brandInk hover:underline flex items-center gap-1">
           ← Back to Skill Journey
         </Link>
       </div>
@@ -92,7 +92,7 @@ export default function Progress() {
       {isEmptyState ? (
         /* B7: Empty State */
         <div className="card p-8 sm:p-12 text-center bg-brand/5 border border-brand/20 shadow-sm max-w-4xl mx-auto animate-slide-up stagger-2">
-          <div className="w-16 h-16 bg-brand/10 text-brand rounded-full flex items-center justify-center mx-auto mb-4">
+          <div className="w-16 h-16 bg-brand/10 text-brandInk rounded-full flex items-center justify-center mx-auto mb-4">
             <Compass className="w-8 h-8" />
           </div>
           <h2 className="text-2xl font-bold text-ink mb-3">YOUR SKILL JOURNEY IS WAITING</h2>
@@ -112,17 +112,17 @@ export default function Progress() {
               
               <div className="flex flex-wrap gap-5 bg-brand/5 border border-brand/10 p-4 rounded-2xl shadow-sm">
                 <div>
-                  <p className="text-xs font-bold text-brand uppercase tracking-wider mb-1">Active Skills</p>
+                  <p className="text-xs font-bold text-brandInk uppercase tracking-wider mb-1">Active Skills</p>
                   <p className="text-2xl font-bold text-ink">{progressData.length}</p>
                 </div>
                 <div className="w-px bg-brand/20"></div>
                 <div>
-                  <p className="text-xs font-bold text-brand uppercase tracking-wider mb-1">Sessions Completed</p>
+                  <p className="text-xs font-bold text-brandInk uppercase tracking-wider mb-1">Sessions Completed</p>
                   <p className="text-2xl font-bold text-ink">{totalSessions}</p>
                 </div>
                 <div className="w-px bg-brand/20"></div>
                 <div>
-                  <p className="text-xs font-bold text-brand uppercase tracking-wider mb-1">Learning Time</p>
+                  <p className="text-xs font-bold text-brandInk uppercase tracking-wider mb-1">Learning Time</p>
                   <p className="text-2xl font-bold text-ink">{Math.floor(totalLearningMinutes / 60)}h {totalLearningMinutes % 60}m</p>
                 </div>
               </div>
@@ -142,10 +142,10 @@ export default function Progress() {
                     <div>
                       <div className="flex justify-between items-start mb-3">
                         <div>
-                          <p className="text-[10px] font-bold text-brand uppercase tracking-wider mb-0.5">{skill.role === "learning" ? "Learning" : "Teaching"}</p>
+                          <p className="text-[10px] font-bold text-brandInk uppercase tracking-wider mb-0.5">{skill.role === "learning" ? "Learning" : "Teaching"}</p>
                           <h2 className="text-xl font-bold text-ink leading-tight">{skill.skill_name}</h2>
                         </div>
-                        <span className="text-sm font-bold text-brand bg-brand/10 px-2.5 py-1.5 rounded-md">
+                        <span className="text-sm font-bold text-brandInk bg-brand/10 px-2.5 py-1.5 rounded-md">
                           {skill.stage}
                         </span>
                       </div>
@@ -175,10 +175,10 @@ export default function Progress() {
 
                       <div className="flex justify-between text-xs text-clay font-medium mb-6 pt-4 border-t border-line/40">
                         <div className="flex items-center gap-1.5">
-                          <BookOpen className="w-4 h-4 text-brand/70" /> {skill.sessions_completed || 0} sessions
+                          <BookOpen className="w-4 h-4 text-brandInk/70" /> {skill.sessions_completed || 0} sessions
                         </div>
                         <div className="flex items-center gap-1.5">
-                          <Clock className="w-4 h-4 text-brand/70" /> {Math.floor(skill.total_learning_minutes / 60)}h {skill.total_learning_minutes % 60}m
+                          <Clock className="w-4 h-4 text-brandInk/70" /> {Math.floor(skill.total_learning_minutes / 60)}h {skill.total_learning_minutes % 60}m
                         </div>
                       </div>
                     </div>
@@ -205,7 +205,7 @@ export default function Progress() {
                           Take assessment
                         </Link>
                       ) : (
-                        <Link to="/marketplace" className="btn-secondary w-full justify-center bg-surface border-brand/30 text-brand hover:bg-brand/5">
+                        <Link to="/marketplace" className="btn-secondary w-full justify-center bg-surface border-brand/30 text-brandInk hover:bg-brand/5">
                           Continue learning
                         </Link>
                       )}
@@ -220,7 +220,7 @@ export default function Progress() {
             {/* B5: Learning History */}
             <div>
               <h2 className="text-xl font-bold text-ink mb-4 flex items-center gap-2">
-                <History className="w-5 h-5 text-brand" /> Learning History
+                <History className="w-5 h-5 text-brandInk" /> Learning History
               </h2>
               
               <div className="bg-surface rounded-2xl shadow-sm border border-line overflow-hidden">
@@ -243,7 +243,7 @@ export default function Progress() {
                       </div>
                     )}
                     <div className="flex items-center justify-between bg-brand/5 p-3 rounded-lg border border-brand/10">
-                      <div className="flex items-center gap-1.5 text-sm font-bold text-brand">
+                      <div className="flex items-center gap-1.5 text-sm font-bold text-brandInk">
                         <TrendingUp className="w-4 h-4" /> 
                         +{hist.progress_percentage_after - hist.progress_percentage_before}%
                       </div>

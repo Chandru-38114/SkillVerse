@@ -86,7 +86,7 @@ function ForwardModal({ message, inbox, currentRequestId, onClose, onForward }) 
                 <p className="font-semibold text-sm truncate text-ink">{c.other_user_name}</p>
                 <p className="text-xs text-clay truncate">{c.skill_name}</p>
               </div>
-              {selected === c.request_id && <Check className="w-4 h-4 text-brand ml-auto shrink-0" />}
+              {selected === c.request_id && <Check className="w-4 h-4 text-brandInk ml-auto shrink-0" />}
             </button>
           ))}
         </div>
@@ -728,7 +728,7 @@ function ForwardModal({ message, inbox, currentRequestId, onClose, onForward }) 
                           {formatTime(conv.latest_message_time)}
                         </span>
                       </div>
-                      <p className="text-[10px] text-brand font-bold uppercase tracking-wider truncate mb-1.5 opacity-80">{conv.skill_name}</p>
+                      <p className="text-[10px] text-brandInk font-bold uppercase tracking-wider truncate mb-1.5 opacity-80">{conv.skill_name}</p>
                       <p className={`text-xs truncate ${conv.unread_count > 0 ? 'text-ink font-bold' : 'text-clay font-medium'}`}>
                         {conv.latest_message || 'No messages yet'}
                       </p>
@@ -769,7 +769,7 @@ function ForwardModal({ message, inbox, currentRequestId, onClose, onForward }) 
                         {otherPresence.status === 'online' ? 'Online' : 'Offline'}
                       </span>
                       <span className="text-line">&bull;</span>
-                      <span className="text-brand font-bold uppercase tracking-wider">{activeConversation.skill_name}</span>
+                      <span className="text-brandInk font-bold uppercase tracking-wider">{activeConversation.skill_name}</span>
                       {otherPresence.status !== 'online' && otherPresence.last_active && (
                         <>
                           <span className="text-line">&bull;</span>
@@ -784,7 +784,7 @@ function ForwardModal({ message, inbox, currentRequestId, onClose, onForward }) 
                   {/* Search toggle */}
                   <button
                     onClick={() => setChatSearchOpen(o => !o)}
-                    className={`p-2 rounded-full transition-colors min-w-[40px] min-h-[40px] flex items-center justify-center ${chatSearchOpen ? 'bg-brand/10 text-brand' : 'text-clay hover:text-ink hover:bg-ink/5'}`}
+                    className={`p-2 rounded-full transition-colors min-w-[40px] min-h-[40px] flex items-center justify-center ${chatSearchOpen ? 'bg-brand/10 text-brandInk' : 'text-clay hover:text-ink hover:bg-ink/5'}`}
                   >
                     <Search className="w-4 h-4" />
                   </button>
@@ -961,7 +961,7 @@ function ForwardModal({ message, inbox, currentRequestId, onClose, onForward }) 
                 )}
 
                 {uploadingFile && (
-                  <div className="px-4 pb-2 text-xs text-brand font-medium flex items-center gap-2 bg-surface">
+                  <div className="px-4 pb-2 text-xs text-brandInk font-medium flex items-center gap-2 bg-surface">
                     <span className="w-3 h-3 rounded-full border-2 border-brand border-t-transparent animate-spin" />
                     Uploading {uploadingFile}...
                   </div>
@@ -995,7 +995,7 @@ function ForwardModal({ message, inbox, currentRequestId, onClose, onForward }) 
                 ) : (
                   <form onSubmit={handleSend} className="p-3 sm:p-4 bg-transparent flex items-end gap-2 sm:gap-3 shrink-0 shadow-[0_-2px_10px_-4px_rgba(0,0,0,0.2)]">
                     <div className="flex items-center gap-1 mb-1 sm:mb-0">
-                      <label className="p-2 sm:p-2.5 text-clay hover:text-brand hover:bg-brand/10 rounded-full transition-colors cursor-pointer shrink-0" title="Attach file">
+                      <label className="p-2 sm:p-2.5 text-clay hover:text-brandInk hover:bg-brand/10 rounded-full transition-colors cursor-pointer shrink-0" title="Attach file">
                         <input type="file" className="hidden" onChange={handleFileUpload} accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg,.webp" />
                         <Paperclip className="w-[22px] h-[22px]" />
                       </label>
@@ -1004,7 +1004,7 @@ function ForwardModal({ message, inbox, currentRequestId, onClose, onForward }) 
                     <div className="flex-1 relative bg-surface/50 backdrop-blur-md border border-line/20 focus-within:border-brand/50 focus-within:ring-2 focus-within:ring-brand/20 rounded-3xl transition-all shadow-sm flex items-end min-w-0">
                       <button
                         type="button"
-                        className="p-2.5 sm:p-3 text-clay hover:text-brand transition-colors shrink-0"
+                        className="p-2.5 sm:p-3 text-clay hover:text-brandInk transition-colors shrink-0"
                         onClick={() => setShowEmojiPicker(!showEmojiPicker)}
                         title="Emojis"
                       >
@@ -1026,7 +1026,7 @@ function ForwardModal({ message, inbox, currentRequestId, onClose, onForward }) 
                       <button
                         type="button"
                         onClick={startRecording}
-                        className={`p-2.5 sm:p-3 transition-colors shrink-0 ${draft.trim() ? 'hidden' : 'text-clay hover:text-brand'}`}
+                        className={`p-2.5 sm:p-3 transition-colors shrink-0 ${draft.trim() ? 'hidden' : 'text-clay hover:text-brandInk'}`}
                         title="Voice Message"
                       >
                         <Mic className="w-[22px] h-[22px]" />
@@ -1055,10 +1055,10 @@ function ForwardModal({ message, inbox, currentRequestId, onClose, onForward }) 
           ) : (
             <div className="hidden md:flex flex-1 flex-col items-center justify-center bg-transparent p-8 animate-fade-in stagger-2">
               <div className="max-w-md w-full bg-surface/40 backdrop-blur-md border border-line/10 rounded-2xl p-8 text-center shadow-[0_0_30px_rgba(34,211,238,0.1)] relative overflow-hidden">
-                <div className="absolute -top-10 -right-10 text-brand/5 rotate-12 pointer-events-none">
+                <div className="absolute -top-10 -right-10 text-brandInk/5 rotate-12 pointer-events-none">
                   <MessageCircle className="w-48 h-48" />
                 </div>
-                <div className="w-16 h-16 bg-brand/10 text-brand rounded-full flex items-center justify-center mx-auto mb-5 relative z-10 shadow-[0_0_15px_rgba(34,211,238,0.2)]">
+                <div className="w-16 h-16 bg-brand/10 text-brandInk rounded-full flex items-center justify-center mx-auto mb-5 relative z-10 shadow-[0_0_15px_rgba(34,211,238,0.2)]">
                   <MessageCircle className="w-8 h-8" />
                 </div>
                 <h2 className="text-xl font-bold text-ink mb-3 drop-shadow-sm">Welcome to Connect</h2>

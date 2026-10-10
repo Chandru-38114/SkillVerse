@@ -185,7 +185,7 @@ export default function Navbar() {
                       to={to}
                       className={`px-3 py-2 rounded-lg text-[13px] font-semibold transition-all duration-150 whitespace-nowrap ${
                         active
-                          ? 'bg-brand/15 text-brand'
+                          ? 'bg-brand/15 text-brandInk'
                           : 'text-clay hover:text-ink hover:bg-lift'
                       }`}
                     >
@@ -209,7 +209,7 @@ export default function Navbar() {
                 <div className="relative" ref={notifRef}>
                   <button
                     onClick={openNotifPanel}
-                    className={`relative p-2 rounded-lg transition-all ${notifOpen ? 'bg-brand/15 text-brand' : 'text-clay hover:text-brand hover:bg-brand/10'}`}
+                    className={`relative p-2 rounded-lg transition-all ${notifOpen ? 'bg-brand/15 text-brandInk' : 'text-clay hover:text-brandInk hover:bg-brand/10'}`}
                     aria-label="Notifications"
                   >
                     <BellIcon />
@@ -225,7 +225,7 @@ export default function Navbar() {
                       <div className="flex items-center justify-between px-4 py-3 border-b border-line bg-surface">
                         <span className="text-sm font-semibold text-ink">Notifications</span>
                         <div className="flex gap-3">
-                          <button onClick={handleMarkAll} className="text-xs font-medium text-brand hover:underline">Mark all read</button>
+                          <button onClick={handleMarkAll} className="text-xs font-medium text-brandInk hover:underline">Mark all read</button>
                           <Link to="/notifications" onClick={() => setNotifOpen(false)} className="text-xs font-medium text-clay hover:text-ink">View all</Link>
                         </div>
                       </div>
@@ -309,7 +309,7 @@ export default function Navbar() {
               ].map(link => {
                 const active = location.pathname.startsWith(link.to);
                 return (
-                  <Link key={link.to} to={link.to} className={`px-2 py-1.5 text-xs font-semibold whitespace-nowrap transition-colors border-b-2 ${active ? 'border-brand text-brand' : 'border-transparent text-clay hover:text-ink'}`}>
+                  <Link key={link.to} to={link.to} className={`px-2 py-1.5 text-xs font-semibold whitespace-nowrap transition-colors border-b-2 ${active ? 'border-brand text-brandInk' : 'border-transparent text-clay hover:text-ink'}`}>
                     {link.label}
                   </Link>
                 )
@@ -327,7 +327,7 @@ export default function Navbar() {
               ].map(link => {
                 const active = location.pathname.startsWith(link.to);
                 return (
-                  <Link key={link.to} to={link.to} className={`px-2 py-1.5 text-xs font-semibold whitespace-nowrap transition-colors border-b-2 ${active ? 'border-brand text-brand' : 'border-transparent text-clay hover:text-ink'}`}>
+                  <Link key={link.to} to={link.to} className={`px-2 py-1.5 text-xs font-semibold whitespace-nowrap transition-colors border-b-2 ${active ? 'border-brand text-brandInk' : 'border-transparent text-clay hover:text-ink'}`}>
                     {link.label}
                   </Link>
                 )
@@ -350,10 +350,10 @@ export default function Navbar() {
                   key={to}
                   to={to}
                   className={`flex flex-col items-center justify-center w-full h-full gap-1 transition-colors ${
-                    active ? 'text-brand' : 'text-clay hover:text-ink'
+                    active ? 'text-brandInk' : 'text-clay hover:text-ink'
                   }`}
                 >
-                  <div className={`p-1.5 rounded-full transition-colors ${active ? 'bg-brand/15 text-brand' : ''}`}>
+                  <div className={`p-1.5 rounded-full transition-colors ${active ? 'bg-brand/15 text-brandInk' : ''}`}>
                     {icon}
                   </div>
                   <span className={`text-[10px] ${active ? 'font-bold' : 'font-semibold'}`}>{label}</span>

@@ -53,14 +53,14 @@ export default function Gamification() {
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
       <div className="mb-6">
-        <Link to="/dashboard" className="text-sm font-semibold text-brand hover:underline flex items-center gap-1">
+        <Link to="/dashboard" className="text-sm font-semibold text-brandInk hover:underline flex items-center gap-1">
           ← Back to Skill Journey
         </Link>
       </div>
 
       <div className="mb-10 text-center relative py-6">
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-brandLight/20 rounded-full blur-[80px] pointer-events-none" />
-        <div className="w-16 h-16 bg-brand/10 text-brand rounded-2xl mx-auto mb-4 flex items-center justify-center rotate-3 border border-brand/20 shadow-sm relative z-10">
+        <div className="w-16 h-16 bg-brand/10 text-brandInk rounded-2xl mx-auto mb-4 flex items-center justify-center rotate-3 border border-brand/20 shadow-sm relative z-10">
           <Trophy className="w-8 h-8 -rotate-3" />
         </div>
         <h1 className="font-display text-4xl mb-2 flex items-center justify-center gap-2 relative z-10 text-ink tracking-tight drop-shadow-md">
@@ -79,11 +79,11 @@ export default function Gamification() {
           <div className="section-panel p-6 text-center relative overflow-hidden group">
             <div className="absolute right-0 top-0 w-32 h-32 bg-gradient-to-bl from-brand/5 to-transparent rounded-bl-full pointer-events-none" />
             <h2 className="text-sm font-bold text-clay uppercase tracking-wider mb-2 relative z-10">Your Standing</h2>
-            <div className="font-display text-5xl text-brand mb-1 relative z-10">{summary?.total_points || 0}</div>
+            <div className="font-display text-5xl text-brandInk mb-1 relative z-10">{summary?.total_points || 0}</div>
             <div className="text-sm text-clay mb-4 relative z-10">Total Points</div>
             
             {summary?.current_rank && (
-              <div className="inline-block bg-brand/10 text-brand px-4 py-1.5 rounded-full text-sm font-bold mb-4 border border-brand/20 shadow-sm relative z-10">
+              <div className="inline-block bg-brand/10 text-brandInk px-4 py-1.5 rounded-full text-sm font-bold mb-4 border border-brand/20 shadow-sm relative z-10">
                 Rank #{summary.current_rank}
               </div>
             )}
@@ -104,12 +104,12 @@ export default function Gamification() {
 
           <div className="section-panel p-6">
             <h2 className="font-display text-xl mb-6 text-ink flex items-center gap-2">
-              <Award className="w-5 h-5 text-brand" /> Achievements
+              <Award className="w-5 h-5 text-brandInk" /> Achievements
             </h2>
             <div className="space-y-4">
               {summary?.achievements.map(ach => (
                 <div key={ach.id} className={`flex gap-4 p-3 rounded-2xl border transition-all ${ach.earned ? 'bg-white/40 border-white/60 shadow-sm' : 'bg-transparent border-transparent opacity-50 grayscale'}`}>
-                  <div className={`flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center ${ach.earned ? 'bg-brand/10 text-brand' : 'bg-lift text-clay'}`}>
+                  <div className={`flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center ${ach.earned ? 'bg-brand/10 text-brandInk' : 'bg-lift text-clay'}`}>
                     {ACHIEVEMENT_ICONS[ach.id] || <Award className="w-6 h-6" />}
                   </div>
                   <div className="flex-1">
@@ -131,9 +131,9 @@ export default function Gamification() {
           <div className="section-panel p-0 overflow-hidden flex flex-col">
             <div className="p-6 border-b border-line/10 bg-lift/40 flex justify-between items-center relative z-10">
               <h2 className="font-display text-xl text-ink flex items-center gap-2">
-                <Users className="w-5 h-5 text-brand" /> Top Learners & Tutors
+                <Users className="w-5 h-5 text-brandInk" /> Top Learners & Tutors
               </h2>
-              <span className="text-xs font-bold text-brand bg-brand/10 px-3 py-1 rounded-full shadow-sm">{leaderboard.length} users</span>
+              <span className="text-xs font-bold text-brandInk bg-brand/10 px-3 py-1 rounded-full shadow-sm">{leaderboard.length} users</span>
             </div>
             
             <div className="divide-y divide-line/10 max-h-[600px] overflow-y-auto bg-transparent relative z-10">
@@ -142,9 +142,9 @@ export default function Gamification() {
                 
                 // Medals for top 3
                 let rankBadge = <span className="font-bold text-clay w-6 text-center text-sm">{user.rank}</span>;
-                if (user.rank === 1) rankBadge = <Medal className="w-6 h-6 text-brand" title="1st Place" />;
-                if (user.rank === 2) rankBadge = <Medal className="w-6 h-6 text-brand/60" title="2nd Place" />;
-                if (user.rank === 3) rankBadge = <Medal className="w-6 h-6 text-brand/30" title="3rd Place" />;
+                if (user.rank === 1) rankBadge = <Medal className="w-6 h-6 text-brandInk" title="1st Place" />;
+                if (user.rank === 2) rankBadge = <Medal className="w-6 h-6 text-brandInk/60" title="2nd Place" />;
+                if (user.rank === 3) rankBadge = <Medal className="w-6 h-6 text-brandInk/30" title="3rd Place" />;
 
                 return (
                   <div 
@@ -162,7 +162,7 @@ export default function Gamification() {
                           </div>
                         )}
                         <div>
-                          <p className={`font-bold text-sm ${isCurrentUser ? 'text-brand' : 'text-ink'}`}>
+                          <p className={`font-bold text-sm ${isCurrentUser ? 'text-brandInk' : 'text-ink'}`}>
                             {user.name} {isCurrentUser && <span className="text-[10px] font-bold tracking-wider bg-brand text-white px-2 py-0.5 rounded-full ml-2 align-middle uppercase">You</span>}
                           </p>
                         </div>

@@ -181,7 +181,7 @@ export default function Dashboard() {
                 <div className="relative p-8 md:p-12 lg:p-16 flex flex-col md:flex-row items-center gap-10">
                   <div className="flex-1 text-center md:text-left z-10">
                     <Reveal duration={0.6}>
-                      <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-brand/10 border border-brand/20 text-brand font-bold text-xs uppercase tracking-wider mb-6">
+                      <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-brand/10 border border-brand/20 text-brandInk font-bold text-xs uppercase tracking-wider mb-6">
                         <Star className="w-3.5 h-3.5" />
                         {gamification?.next_milestone_title || 'Explorer'} Level
                       </div>
@@ -219,7 +219,7 @@ export default function Dashboard() {
                   <StaggerItem>
                     <div className="flex items-center justify-between mb-4">
                       <h3 className="text-2xl font-display font-bold text-ink">Learning Paths</h3>
-                      <Link to="/gamification" className="text-sm font-semibold text-brand hover:underline">View All</Link>
+                      <Link to="/gamification" className="text-sm font-semibold text-brandInk hover:underline">View All</Link>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {learningSkills.length === 0 ? (
@@ -232,8 +232,8 @@ export default function Dashboard() {
                           <div key={s.id} className="card p-6 bg-surface border-line hover:border-brand/30 hover:shadow-lg transition-all duration-300 group">
                             <div className="flex justify-between items-start mb-4">
                               <div>
-                                <h4 className="text-lg font-bold text-ink mb-1 group-hover:text-brand transition-colors">{s.skill_name}</h4>
-                                <span className="text-xs font-semibold text-brand bg-brand/10 px-2 py-1 rounded">{s.stage}</span>
+                                <h4 className="text-lg font-bold text-ink mb-1 group-hover:text-brandInk transition-colors">{s.skill_name}</h4>
+                                <span className="text-xs font-semibold text-brandInk bg-brand/10 px-2 py-1 rounded">{s.stage}</span>
                               </div>
                               <div className="text-right">
                                 <span className="text-2xl font-bold text-ink">{s.progress_percentage || 0}%</span>
@@ -289,7 +289,7 @@ export default function Dashboard() {
                     <div className="card p-0 overflow-hidden bg-surface border-line">
                       <div className="bg-brand/5 p-4 border-b border-line/50 flex items-center justify-between">
                         <h4 className="font-bold text-ink uppercase tracking-wider text-xs">Upcoming Session</h4>
-                        <Calendar className="w-4 h-4 text-brand" />
+                        <Calendar className="w-4 h-4 text-brandInk" />
                       </div>
                       <div className="p-6">
                         {nextSession ? (
@@ -298,7 +298,7 @@ export default function Dashboard() {
                               <Avatar name={nextSession.tutor_id === user.id ? nextSession.learner_name : nextSession.tutor_name} size="md" className="ring-2 ring-line" />
                               <div>
                                 <p className="font-bold text-ink">{nextSession.tutor_id === user.id ? nextSession.learner_name : nextSession.tutor_name}</p>
-                                <p className="text-xs font-semibold text-brand bg-brand/10 inline-block px-2 py-0.5 rounded mt-1">{nextSession.skill}</p>
+                                <p className="text-xs font-semibold text-brandInk bg-brand/10 inline-block px-2 py-0.5 rounded mt-1">{nextSession.skill}</p>
                               </div>
                             </div>
                             <div className="bg-paper rounded-lg p-3 border border-line">
@@ -315,7 +315,7 @@ export default function Dashboard() {
                           <div className="text-center py-6">
                             <Calendar className="w-10 h-10 text-clay/30 mx-auto mb-3" />
                             <p className="text-sm text-clay font-medium mb-4">You have no upcoming sessions scheduled.</p>
-                            <Link to="/marketplace" className="text-sm font-bold text-brand hover:underline">Find a partner →</Link>
+                            <Link to="/marketplace" className="text-sm font-bold text-brandInk hover:underline">Find a partner →</Link>
                           </div>
                         )}
                       </div>
@@ -336,7 +336,7 @@ export default function Dashboard() {
                             to={to}
                             className="flex items-center p-3 rounded-xl hover:bg-lift transition-colors group border border-transparent hover:border-line"
                           >
-                            <div className="w-8 h-8 rounded-lg bg-brand/10 text-brand flex items-center justify-center mr-3 group-hover:scale-110 transition-transform">
+                            <div className="w-8 h-8 rounded-lg bg-brand/10 text-brandInk flex items-center justify-center mr-3 group-hover:scale-110 transition-transform">
                               <Icon className="w-4 h-4" />
                             </div>
                             <span className="text-sm font-bold text-clay group-hover:text-ink">{label}</span>
@@ -349,10 +349,10 @@ export default function Dashboard() {
 
                   <StaggerItem>
                     <div className="card bg-brandLight/40 border-line/50 p-6 relative overflow-hidden">
-                      <div className="absolute -right-4 -top-4 text-brand opacity-10">
+                      <div className="absolute -right-4 -top-4 text-brandInk opacity-10">
                         <BookOpen className="w-24 h-24" />
                       </div>
-                      <h4 className="font-bold text-brand uppercase tracking-wider text-[10px] mb-2 flex items-center gap-1.5">
+                      <h4 className="font-bold text-brandInk uppercase tracking-wider text-[10px] mb-2 flex items-center gap-1.5">
                         <Star className="w-3 h-3" /> SkillVerse Insight
                       </h4>
                       <p className="text-sm text-ink/80 font-medium leading-relaxed relative z-10 italic">

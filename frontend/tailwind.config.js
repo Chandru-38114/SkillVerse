@@ -9,6 +9,8 @@ export default {
         brand:      "rgb(var(--color-brand)      / <alpha-value>)",
         brand2:     "rgb(var(--color-brand2)     / <alpha-value>)",
         brandLight: "rgb(var(--color-brandLight) / <alpha-value>)",
+        // Readable accent for TEXT - brand itself is a fill colour only, never text
+        brandInk:   "rgb(var(--color-brandInk)    / <alpha-value>)",
         // Aliases kept for backward compat
         moss:       "rgb(var(--color-brand)      / <alpha-value>)",
         moss2:      "rgb(var(--color-brand2)     / <alpha-value>)",

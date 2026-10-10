@@ -275,14 +275,14 @@ export default function DateTimePicker({ date, startTime, endTime, onDateChange,
                 <div className="flex items-baseline gap-1">
                   <button 
                     onClick={() => setStep('hour')}
-                    className={`text-5xl font-display font-medium rounded-xl px-3 py-2 transition-colors ${step === 'hour' ? 'text-brand bg-brand/10' : 'text-ink hover:bg-lift'}`}
+                    className={`text-5xl font-display font-medium rounded-xl px-3 py-2 transition-colors ${step === 'hour' ? 'text-brandInk bg-brand/10' : 'text-ink hover:bg-lift'}`}
                   >
                     {String(selectedHour).padStart(2, '0')}
                   </button>
                   <span className="text-4xl font-display text-clay/50 pb-2">:</span>
                   <button 
                     onClick={() => setStep('minute')}
-                    className={`text-5xl font-display font-medium rounded-xl px-3 py-2 transition-colors ${step === 'minute' ? 'text-brand bg-brand/10' : 'text-ink hover:bg-lift'}`}
+                    className={`text-5xl font-display font-medium rounded-xl px-3 py-2 transition-colors ${step === 'minute' ? 'text-brandInk bg-brand/10' : 'text-ink hover:bg-lift'}`}
                   >
                     {String(selectedMin).padStart(2, '0')}
                   </button>

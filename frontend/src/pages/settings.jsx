@@ -182,25 +182,25 @@ export default function Settings() {
             <div className="grid grid-cols-3 gap-1">
               <button
                 onClick={() => setTheme('light')}
-                className={`flex flex-col items-center gap-2 py-4 px-2 rounded-lg transition-colors ${theme === 'light' ? 'bg-brand/10 text-brand' : 'hover:bg-ink/5 text-ink/70'}`}
+                className={`flex flex-col items-center gap-2 py-4 px-2 rounded-lg transition-colors ${theme === 'light' ? 'bg-brand/10 text-brandInk' : 'hover:bg-ink/5 text-ink/70'}`}
               >
-                <Sun className={`w-6 h-6 ${theme === 'light' ? 'text-brand' : 'opacity-70'}`} />
+                <Sun className={`w-6 h-6 ${theme === 'light' ? 'text-brandInk' : 'opacity-70'}`} />
                 <span className="text-xs font-semibold">Light</span>
               </button>
               
               <button
                 onClick={() => setTheme('dark')}
-                className={`flex flex-col items-center gap-2 py-4 px-2 rounded-lg transition-colors ${theme === 'dark' ? 'bg-brand/10 text-brand' : 'hover:bg-ink/5 text-ink/70'}`}
+                className={`flex flex-col items-center gap-2 py-4 px-2 rounded-lg transition-colors ${theme === 'dark' ? 'bg-brand/10 text-brandInk' : 'hover:bg-ink/5 text-ink/70'}`}
               >
-                <Moon className={`w-6 h-6 ${theme === 'dark' ? 'text-brand' : 'opacity-70'}`} />
+                <Moon className={`w-6 h-6 ${theme === 'dark' ? 'text-brandInk' : 'opacity-70'}`} />
                 <span className="text-xs font-semibold">Dark</span>
               </button>
               
               <button
                 onClick={() => setTheme('system')}
-                className={`flex flex-col items-center gap-2 py-4 px-2 rounded-lg transition-colors ${theme === 'system' ? 'bg-brand/10 text-brand' : 'hover:bg-ink/5 text-ink/70'}`}
+                className={`flex flex-col items-center gap-2 py-4 px-2 rounded-lg transition-colors ${theme === 'system' ? 'bg-brand/10 text-brandInk' : 'hover:bg-ink/5 text-ink/70'}`}
               >
-                <Monitor className={`w-6 h-6 ${theme === 'system' ? 'text-brand' : 'opacity-70'}`} />
+                <Monitor className={`w-6 h-6 ${theme === 'system' ? 'text-brandInk' : 'opacity-70'}`} />
                 <span className="text-xs font-semibold">System</span>
               </button>
             </div>

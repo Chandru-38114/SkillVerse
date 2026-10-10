@@ -53,7 +53,7 @@ export default function SkillVerseLogo({ className = "", compact = false }) {
           <h1 className="font-display text-3xl font-bold tracking-tight text-ink">
             Skill<span className="text-transparent bg-clip-text bg-gradient-to-r from-brand to-brand2">Verse</span>
           </h1>
-          <p className="text-brand/80 font-bold tracking-[0.25em] text-[10px] mt-2 uppercase">
+          <p className="text-brandInk/80 font-bold tracking-[0.25em] text-[10px] mt-2 uppercase">
             Peer-to-Peer Learning
           </p>
         </div>

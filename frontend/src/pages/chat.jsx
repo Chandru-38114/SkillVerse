@@ -337,7 +337,7 @@ export default function Chat({ requestId, embedded = false }) {
 
               {scheduleData.date && scheduleData.startTime && scheduleData.endTime && (
                 <div className="p-4 bg-brand/5 border border-brand/20 rounded-xl mt-4">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-brand mb-1">Session Summary</p>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-brandInk mb-1">Session Summary</p>
                   <p className="text-sm text-ink font-medium">
                     {new Date(scheduleData.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} â€¢ {scheduleData.startTime} to {scheduleData.endTime} <span className="text-clay font-normal ml-1">IST</span>
                   </p>

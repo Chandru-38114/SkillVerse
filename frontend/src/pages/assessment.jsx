@@ -355,10 +355,10 @@ export default function Assessment() {
       {step === STEPS.PICK && (
         <div className="animate-slide-up">
           <div className="flex items-center gap-2 mb-3">
-             <div className="w-8 h-8 rounded-full bg-brand/10 text-brand flex items-center justify-center shrink-0 border border-brand/20">
+             <div className="w-8 h-8 rounded-full bg-brand/10 text-brandInk flex items-center justify-center shrink-0 border border-brand/20">
                 <Swords className="w-4 h-4" />
              </div>
-             <p className="text-[10px] font-bold text-brand uppercase tracking-wider">Skill Arena</p>
+             <p className="text-[10px] font-bold text-brandInk uppercase tracking-wider">Skill Arena</p>
           </div>
           <h1 className="font-display text-4xl mb-2 text-ink">Enter the Skill Arena</h1>
           <p className="text-clay text-sm mb-8">
@@ -439,15 +439,15 @@ export default function Assessment() {
       {step === STEPS.RULES && (
         <div className="animate-slide-up">
           <div className="flex items-center gap-2 mb-3">
-             <div className="w-8 h-8 rounded-full bg-brand/10 text-brand flex items-center justify-center shrink-0 border border-brand/20">
+             <div className="w-8 h-8 rounded-full bg-brand/10 text-brandInk flex items-center justify-center shrink-0 border border-brand/20">
                 <ShieldAlert className="w-4 h-4" />
              </div>
-             <p className="text-[10px] font-bold text-brand uppercase tracking-wider">Before you begin</p>
+             <p className="text-[10px] font-bold text-brandInk uppercase tracking-wider">Before you begin</p>
           </div>
           <h1 className="font-display text-3xl mb-2 text-ink">Arena Rules</h1>
 
           {resumed && (
-            <p className="text-xs font-semibold text-brand bg-brand/10 border border-brand/20 rounded-lg px-3 py-2 mb-4">
+            <p className="text-xs font-semibold text-brandInk bg-brand/10 border border-brand/20 rounded-lg px-3 py-2 mb-4">
               Resuming your attempt — the timer kept running while you were away.
             </p>
           )}
@@ -461,7 +461,7 @@ export default function Assessment() {
               "The timer keeps running — the attempt cannot be restarted with new questions.",
             ].map((rule, i) => (
               <li key={i} className="flex items-start gap-3 text-sm text-ink/80 bg-surface border border-line rounded-xl px-4 py-3">
-                <ShieldAlert className="w-4 h-4 text-brand shrink-0 mt-0.5" />
+                <ShieldAlert className="w-4 h-4 text-brandInk shrink-0 mt-0.5" />
                 {rule}
               </li>
             ))}
@@ -554,7 +554,7 @@ export default function Assessment() {
           {/* Header */}
           <header className="bg-white border-b border-line px-4 sm:px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between shrink-0 shadow-sm z-10 gap-4">
             <div className="flex flex-col">
-              <div className="flex items-center gap-2 text-brand">
+              <div className="flex items-center gap-2 text-brandInk">
                 <Swords className="w-4 h-4" />
                 <span className="text-xs font-bold uppercase tracking-wider">Skill Arena</span>
               </div>
@@ -595,7 +595,7 @@ export default function Assessment() {
                   <div className="bg-white rounded-2xl p-6 md:p-10 border border-line shadow-sm mb-6">
                     <div className="flex items-center gap-2 mb-6">
                       <span className="text-xs font-bold uppercase tracking-wider text-ink/50 bg-ink/5 px-2.5 py-1 rounded-full">Topic: {currentQuestion.topic}</span>
-                      <span className="text-xs font-bold uppercase tracking-wider text-brand bg-brand/10 px-2.5 py-1 rounded-full">
+                      <span className="text-xs font-bold uppercase tracking-wider text-brandInk bg-brand/10 px-2.5 py-1 rounded-full">
                         {qType === 'coding' ? `problem solving · ${currentQuestion.marks || 5} marks` : qType.replace('_', ' ')}
                       </span>
                     </div>
@@ -617,7 +617,7 @@ export default function Assessment() {
                             <label
                               key={opt}
                               className={`flex items-start gap-3 text-sm cursor-pointer px-5 py-4 rounded-xl border-2 transition-all duration-150
-                                ${isSelected ? 'border-brand bg-brand/5 text-brand shadow-sm' : 'border-line hover:border-ink/20 hover:bg-paper'}`}
+                                ${isSelected ? 'border-brand bg-brand/5 text-brandInk shadow-sm' : 'border-line hover:border-ink/20 hover:bg-paper'}`}
                             >
                               <input
                                 type="radio"
@@ -688,7 +688,7 @@ export default function Assessment() {
                     onClick={() => setCurrentQuestionIndex(i)}
                     className={`w-8 h-8 rounded-full text-xs font-bold shrink-0 transition-colors flex items-center justify-center ${
                       i === currentQuestionIndex ? 'bg-brand text-white border border-brand ring-2 ring-brand/30 shadow-sm' :
-                      answers[q.id] ? 'bg-brand/10 text-brand border border-brand/20' : 
+                      answers[q.id] ? 'bg-brand/10 text-brandInk border border-brand/20' : 
                       'bg-paper text-clay border border-line hover:bg-lift'
                     }`}
                   >
@@ -771,7 +771,7 @@ export default function Assessment() {
                <span className="font-semibold text-sm text-ink">{result.level}</span>
              </div>
              {result.badge && (
-               <p className="text-xs font-bold text-brand bg-brand/10 inline-block px-3 py-1 rounded-full mt-3">+50 XP Earned</p>
+               <p className="text-xs font-bold text-brandInk bg-brand/10 inline-block px-3 py-1 rounded-full mt-3">+50 XP Earned</p>
              )}
           </div>
 
@@ -802,7 +802,7 @@ export default function Assessment() {
               <ul className="space-y-1.5">
                 {result.study_plan.slice(0, 3).map((line, i) => (
                   <li key={i} className="flex items-start gap-2 text-xs text-ink/70">
-                    <span className="text-brand/50 font-bold mt-0.5">•</span>
+                    <span className="text-brandInk/50 font-bold mt-0.5">•</span>
                     <span className="line-clamp-2">{line}</span>
                   </li>
                 ))}
@@ -817,7 +817,7 @@ export default function Assessment() {
             >
               Continue your Skill Journey <Play className="w-4 h-4 fill-current" />
             </Link>
-            <Link to="/marketplace" className="text-center text-xs font-semibold text-brand hover:underline py-2">
+            <Link to="/marketplace" className="text-center text-xs font-semibold text-brandInk hover:underline py-2">
               or find a partner in the Marketplace
             </Link>
           </div>
@@ -841,7 +841,7 @@ function RoleOption({ label, sub, value, role, setRole, icon }) {
     >
       <div className="flex items-center gap-2 mb-1">
         <span>{icon}</span>
-        <span className={`text-sm font-medium ${active ? 'text-brand' : 'text-ink'}`}>{label}</span>
+        <span className={`text-sm font-medium ${active ? 'text-brandInk' : 'text-ink'}`}>{label}</span>
       </div>
       <p className="text-xs text-ink/40">{sub}</p>
     </button>

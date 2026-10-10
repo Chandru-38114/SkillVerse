@@ -118,7 +118,7 @@ export default function Materials({ session, onBack }) {
               accept=".pdf,.txt,.doc,.docx"
             />
             <div className="w-12 h-12 bg-surface border border-line group-hover:border-brand/30 rounded-full flex items-center justify-center mx-auto mb-3 transition-colors">
-              <FileText className="w-6 h-6 text-brand" />
+              <FileText className="w-6 h-6 text-brandInk" />
             </div>
             <h3 className="text-sm font-bold text-ink mb-1">Click to upload material</h3>
             <p className="text-xs text-clay mb-4">Supported formats: PDF, DOC, DOCX, TXT (Max 5MB)</p>
@@ -142,7 +142,7 @@ export default function Materials({ session, onBack }) {
             materials.map(mat => (
               <div key={mat.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 bg-surface border border-line rounded-2xl hover:border-brand/30 transition-colors group shadow-sm hover:shadow">
                 <div className="flex items-start gap-4 w-full sm:w-auto overflow-hidden">
-                  <div className="w-10 h-10 bg-brand/10 border border-brand/20 text-brand rounded-xl flex items-center justify-center shrink-0">
+                  <div className="w-10 h-10 bg-brand/10 border border-brand/20 text-brandInk rounded-xl flex items-center justify-center shrink-0">
                     {mat.file_type.includes("pdf") ? <FileText className="w-5 h-5" /> : <File className="w-5 h-5" />}
                   </div>
                   <div className="min-w-0">

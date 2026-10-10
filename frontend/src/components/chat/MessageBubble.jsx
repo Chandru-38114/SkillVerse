@@ -27,7 +27,7 @@ export function MessageRenderer({ content }) {
   if (fileMatch) {
     return (
       <a href={fileMatch[2]} target="_blank" rel="noreferrer" className="flex items-center gap-3 mt-2 mb-1 px-4 py-3 bg-surface border border-line/40 rounded-xl hover:bg-lift transition-colors group shadow-sm w-fit max-w-full">
-        <div className="p-2 bg-brand/10 text-brand rounded-lg group-hover:bg-brand/20 transition-colors">
+        <div className="p-2 bg-brand/10 text-brandInk rounded-lg group-hover:bg-brand/20 transition-colors">
           <FileText className="w-5 h-5 shrink-0" />
         </div>
         <span className="text-sm font-semibold text-ink truncate flex-1">{fileMatch[1]}</span>
@@ -41,9 +41,9 @@ export function ReplyPreview({ msg, onCancel }) {
   if (!msg) return null
   return (
     <div className="flex items-start gap-3 px-4 py-3 bg-surface border-t border-line">
-      <CornerUpLeft className="w-4 h-4 text-brand mt-0.5 shrink-0" />
+      <CornerUpLeft className="w-4 h-4 text-brandInk mt-0.5 shrink-0" />
       <div className="flex-1 min-w-0 border-l-2 border-brand pl-3">
-        <p className="text-[10px] font-bold text-brand uppercase tracking-wider mb-0.5">Replying to</p>
+        <p className="text-[10px] font-bold text-brandInk uppercase tracking-wider mb-0.5">Replying to</p>
         <p className="text-sm text-ink truncate">{truncate(msg.content || 'Attachment', 80)}</p>
       </div>
       <button onClick={onCancel} className="p-1.5 text-clay hover:text-ink hover:bg-line/50 rounded-full transition-colors shrink-0">
@@ -65,8 +65,8 @@ export function ReactionBubbles({ reactions, messageId, currentUserId, onToggle 
             onClick={() => onToggle(messageId, reactionKey)}
             className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-xs border transition-colors ${
               mine
-                ? 'bg-brand/15 border-brand/30 text-brand font-semibold'
-                : 'bg-lift border-line text-clay hover:bg-brand/10 hover:border-brand/20 hover:text-brand'
+                ? 'bg-brand/15 border-brand/30 text-brandInk font-semibold'
+                : 'bg-lift border-line text-clay hover:bg-brand/10 hover:border-brand/20 hover:text-brandInk'
             }`}
           >
             <span>{getEmojiForKey(reactionKey)}</span>
@@ -126,7 +126,7 @@ export function FileAttachment({ meta, reqId }) {
 
   return (
     <a href={signedUrl || '#'} target={signedUrl ? "_blank" : "_self"} rel="noreferrer" className={`flex items-center gap-3 mt-1.5 px-3.5 py-2.5 ${error ? 'bg-red-500/10 border-red-500/20' : 'bg-surface border-line/40 hover:bg-lift shadow-sm'} border rounded-xl transition-colors w-full max-w-[260px] ${(!signedUrl && !error) ? 'opacity-50 pointer-events-none' : ''} ${error ? 'pointer-events-none' : 'group'}`}>
-      <div className={`p-2 rounded-lg transition-colors ${error ? 'bg-red-500/20 text-red-500' : 'bg-brand/10 text-brand group-hover:bg-brand/20'}`}>
+      <div className={`p-2 rounded-lg transition-colors ${error ? 'bg-red-500/20 text-red-500' : 'bg-brand/10 text-brandInk group-hover:bg-brand/20'}`}>
         <FileText className="w-5 h-5 shrink-0" />
       </div>
       <div className="min-w-0 flex-1">
@@ -179,7 +179,7 @@ export default function MessageBubble({ m, reqId, isMe, isConsecutive, currentUs
       <div className={`max-w-[85%] md:max-w-[75%] relative`}>
         {/* Forwarded indicator */}
         {isForwarded && (
-          <p className={`text-[10px] font-medium mb-0.5 flex items-center gap-1 ${isMe ? 'text-right justify-end text-brand/70' : 'text-clay'}`}>
+          <p className={`text-[10px] font-medium mb-0.5 flex items-center gap-1 ${isMe ? 'text-right justify-end text-brandInk/70' : 'text-clay'}`}>
             <Forward className="w-3 h-3" /> Forwarded
           </p>
         )}
@@ -190,7 +190,7 @@ export default function MessageBubble({ m, reqId, isMe, isConsecutive, currentUs
             onClick={handleScrollToReply}
             className="reply-quote"
           >
-            <p className="text-[10px] text-brand font-semibold">↳ Replied to</p>
+            <p className="text-[10px] text-brandInk font-semibold">↳ Replied to</p>
             <p className="text-[11px] text-clay truncate">{truncate(replyPreview, 55)}</p>
           </button>
         )}
@@ -247,7 +247,7 @@ export default function MessageBubble({ m, reqId, isMe, isConsecutive, currentUs
               <div className="relative">
                 <button
                   onClick={() => setEmojiBarOpen(o => !o)}
-                  className="p-1 text-clay hover:text-brand hover:bg-brand/10 rounded-full min-w-[32px] min-h-[32px] flex items-center justify-center"
+                  className="p-1 text-clay hover:text-brandInk hover:bg-brand/10 rounded-full min-w-[32px] min-h-[32px] flex items-center justify-center"
                 >
                   <Smile className="w-4 h-4" />
                 </button>
@@ -270,7 +270,7 @@ export default function MessageBubble({ m, reqId, isMe, isConsecutive, currentUs
               <div className="relative">
                 <button
                   onClick={() => setMenuOpen(o => !o)}
-                  className="p-1 text-clay hover:text-brand hover:bg-brand/10 rounded-full min-w-[32px] min-h-[32px] flex items-center justify-center"
+                  className="p-1 text-clay hover:text-brandInk hover:bg-brand/10 rounded-full min-w-[32px] min-h-[32px] flex items-center justify-center"
                 >
                   <MoreVertical className="w-4 h-4" />
                 </button>

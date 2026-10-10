@@ -11,7 +11,7 @@ export default function AboutSkillVerse() {
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <button
           onClick={() => navigate(-1)}
-          className="flex items-center text-ink/70 hover:text-brand transition-colors font-medium"
+          className="flex items-center text-ink/70 hover:text-brandInk transition-colors font-medium"
         >
           <ArrowLeft className="w-5 h-5 mr-2" />
           Back
@@ -28,7 +28,7 @@ export default function AboutSkillVerse() {
           <h2 className="text-2xl md:text-3xl font-medium text-ink/80 mb-8">
             Better Skills. A Brighter Future.
           </h2>
-          <p className="text-xl md:text-2xl font-light text-brand mb-12 max-w-2xl mx-auto">
+          <p className="text-xl md:text-2xl font-light text-brandInk mb-12 max-w-2xl mx-auto">
             "Learning is better when you learn with people."
           </p>
           <div className="rounded-2xl overflow-hidden shadow-xl mb-12 bg-white">
@@ -46,7 +46,7 @@ export default function AboutSkillVerse() {
         {/* DISCOVER YOUR SKILLS */}
         <section className="mb-20 grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
           <div className="order-2 md:order-1">
-            <h2 className="text-3xl font-heading font-bold mb-6 text-brand">Discover Your Skills</h2>
+            <h2 className="text-3xl font-heading font-bold mb-6 text-brandInk">Discover Your Skills</h2>
             <p className="text-lg text-ink/80 leading-relaxed">
               Start with what you want to learn. SkillVerse helps you explore skills, understand where you stand, and find the next step in your learning journey.
             </p>
@@ -70,7 +70,7 @@ export default function AboutSkillVerse() {
             />
           </div>
           <div>
-            <h2 className="text-3xl font-heading font-bold mb-6 text-brand">Learn With Others</h2>
+            <h2 className="text-3xl font-heading font-bold mb-6 text-brandInk">Learn With Others</h2>
             <p className="text-lg text-ink/80 leading-relaxed">
               Learning becomes more meaningful when knowledge is shared. Connect with people who can teach what they know, learn from their experience, and grow together.
             </p>
@@ -80,7 +80,7 @@ export default function AboutSkillVerse() {
         {/* PRACTICE AND BUILD MASTERY */}
         <section className="mb-24 grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
           <div className="order-2 md:order-1">
-            <h2 className="text-3xl font-heading font-bold mb-6 text-brand">Practice and Build Mastery</h2>
+            <h2 className="text-3xl font-heading font-bold mb-6 text-brandInk">Practice and Build Mastery</h2>
             <p className="text-lg text-ink/80 leading-relaxed">
               Knowledge grows through practice. SkillVerse gives learners opportunities to apply what they learn, practice with others, complete learning sessions, and steadily develop mastery.
             </p>
@@ -101,16 +101,16 @@ export default function AboutSkillVerse() {
             SkillVerse turns learning into an active journey. Assessments reveal where you are. Connections help you learn with others. Practice sessions turn knowledge into action. Teaching lets you share what you know. Each meaningful learning activity moves your journey forward.
           </p>
           
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-6 font-medium text-brand text-lg">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-6 font-medium text-brandInk text-lg">
             <div className="w-full sm:w-auto px-6 py-3 bg-white rounded-full shadow-sm border border-brand/10 text-center">Discover</div>
-            <div className="hidden sm:block text-brand/50">→</div>
-            <div className="sm:hidden text-brand/50">↓</div>
+            <div className="hidden sm:block text-brandInk/50">→</div>
+            <div className="sm:hidden text-brandInk/50">↓</div>
             <div className="w-full sm:w-auto px-6 py-3 bg-white rounded-full shadow-sm border border-brand/10 text-center">Practice</div>
-            <div className="hidden sm:block text-brand/50">→</div>
-            <div className="sm:hidden text-brand/50">↓</div>
+            <div className="hidden sm:block text-brandInk/50">→</div>
+            <div className="sm:hidden text-brandInk/50">↓</div>
             <div className="w-full sm:w-auto px-6 py-3 bg-white rounded-full shadow-sm border border-brand/10 text-center">Develop</div>
-            <div className="hidden sm:block text-brand/50">→</div>
-            <div className="sm:hidden text-brand/50">↓</div>
+            <div className="hidden sm:block text-brandInk/50">→</div>
+            <div className="sm:hidden text-brandInk/50">↓</div>
             <div className="w-full sm:w-auto px-6 py-3 bg-white rounded-full shadow-sm border border-brand/10 text-center">Master</div>
           </div>
         </section>
@@ -124,18 +124,18 @@ export default function AboutSkillVerse() {
           
           <div className="flex flex-col items-center justify-center space-y-4 font-medium text-ink">
             <div className="w-48 text-center py-4 bg-paper rounded-xl">Discover</div>
-            <div className="text-brand/50">↓</div>
+            <div className="text-brandInk/50">↓</div>
             <div className="w-48 text-center py-4 bg-paper rounded-xl">Practice</div>
-            <div className="text-brand/50">↓</div>
+            <div className="text-brandInk/50">↓</div>
             <div className="w-48 text-center py-4 bg-paper rounded-xl">Develop</div>
-            <div className="text-brand/50">↓</div>
+            <div className="text-brandInk/50">↓</div>
             <div className="w-48 text-center py-4 bg-brand text-white rounded-xl shadow-md">Master</div>
           </div>
         </section>
 
         {/* SKILLVERSE CERTIFICATES */}
         <section className="mb-24 text-center max-w-3xl mx-auto">
-          <h2 className="text-3xl font-heading font-bold mb-6 text-brand">SkillVerse Certificates</h2>
+          <h2 className="text-3xl font-heading font-bold mb-6 text-brandInk">SkillVerse Certificates</h2>
           <p className="text-lg text-ink/80 leading-relaxed">
             When a learner reaches verified Mastery in a skill, SkillVerse can issue a certificate recognizing that achievement. Each certificate includes a unique certificate ID and QR verification so its authenticity can be checked online.
           </p>
@@ -149,7 +149,7 @@ export default function AboutSkillVerse() {
           <h2 className="text-4xl font-heading font-bold text-ink mb-3">
             SkillVerse
           </h2>
-          <p className="text-xl text-brand">
+          <p className="text-xl text-brandInk">
             Better Skills. A Brighter Future.
           </p>
         </section>
