@@ -389,6 +389,80 @@ def _call(provider: str, model: str, prompt: str, schema, client=None):
     raise GenerationError(f"unknown provider: {provider}")
 
 
+def _call_model_text(client, model: str, prompt: str, retries: int = 3, delay: float = 1.5) -> str:
+    for attempt in range(1, retries + 1):
+        try:
+            resp = client.models.generate_content(model=model, contents=prompt)
+            return (resp.text or "").strip()
+        except Exception as err:  # noqa: BLE001
+            if _is_overloaded(err) and attempt < retries:
+                logger.warning("[arena] %s overloaded (attempt %d/%d), retrying in %.1fs", model, attempt, retries, delay)
+                time.sleep(delay)
+                delay *= 2
+                continue
+            raise
+    raise GenerationError(f"{model}: retries exhausted")
+
+
+def _call_openrouter_text(model: str, prompt: str, retries: int = 3, delay: float = 1.5) -> str:
+    api_key = os.getenv("OPENROUTER_API_KEY")
+    for attempt in range(1, retries + 1):
+        try:
+            resp = requests.post(
+                "https://openrouter.ai/api/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": model,
+                    "messages": [{"role": "user", "content": prompt}],
+                    "temperature": 0.9,
+                    "max_tokens": 4000,
+                },
+                timeout=90,
+            )
+            if resp.status_code != 200:
+                raise GenerationError(f"openrouter {resp.status_code}: {resp.text[:300]}")
+            data = resp.json()
+            return data["choices"][0]["message"]["content"].strip()
+        except Exception as err:  # noqa: BLE001
+            if _is_overloaded(err) and attempt < retries:
+                logger.warning("[arena] openrouter/%s overloaded (attempt %d/%d), retrying in %.1fs", model, attempt, retries, delay)
+                time.sleep(delay)
+                delay *= 2
+                continue
+            raise
+    raise GenerationError(f"openrouter/{model}: retries exhausted")
+
+
+def generate_text(prompt: str, timeout: float = 60) -> Optional[str]:
+    """Plain-text generation over the shared provider chain. Never raises."""
+    chain = _provider_chain()
+    client = None
+    if any(provider == "gemini" for provider, _ in chain):
+        api_key = os.getenv("GEMINI_API_KEY")
+        if HAS_GENAI and api_key:
+            client = genai.Client(api_key=api_key)
+
+    for provider, model in chain:
+        try:
+            if provider == "gemini":
+                if client is None:
+                    continue
+                text = _call_model_text(client, model, prompt)
+            elif provider == "openrouter":
+                text = _call_openrouter_text(model, prompt)
+            else:
+                continue
+            if text:
+                logger.info("[arena] text generated with %s/%s", provider, model)
+                return text
+        except Exception as err:  # noqa: BLE001
+            logger.warning("[arena] text generation failed with %s/%s: %s", provider, model, err)
+    return None
+
+
 def _generate_coding_questions(chain: List[Tuple[str, str]], client, skill: str, level: str) -> List[dict]:
     prompt = _coding_prompt(skill, level)
     for provider, model in chain:
