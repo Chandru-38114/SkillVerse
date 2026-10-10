@@ -125,6 +125,16 @@ async def lifespan(app: FastAPI):
                 else:
                     print("[startup] semantic_summary column already exists in session_progress.")
 
+                if 'next_session_plan' not in session_progress_cols:
+                    try:
+                        with conn.begin():
+                            conn.execute(text("ALTER TABLE session_progress ADD COLUMN next_session_plan TEXT;"))
+                        print("[startup] Added next_session_plan column to session_progress.")
+                    except Exception as e:
+                        print(f"[startup] Failed to add next_session_plan column: {e}")
+                else:
+                    print("[startup] next_session_plan column already exists in session_progress.")
+
             assessment_sessions_cols = [c['name'] for c in inspector.get_columns('assessment_sessions')] if inspector.has_table('assessment_sessions') else []
             with engine.connect() as conn:
                 if 'expires_at' not in assessment_sessions_cols:
@@ -162,6 +172,22 @@ async def lifespan(app: FastAPI):
                         print(f"[startup] Failed to add terminated column: {e}")
                 else:
                     print("[startup] terminated column already exists in assessment_sessions.")
+
+                if 'session_id' not in assessment_sessions_cols:
+                    try:
+                        with conn.begin():
+                            conn.execute(text("ALTER TABLE assessment_sessions ADD COLUMN session_id INTEGER REFERENCES sessions(id) NULL;"))
+                        print("[startup] Added session_id column (with FK) to assessment_sessions.")
+                    except Exception as e:
+                        print(f"[startup] Failed to add session_id (with FK): {e}")
+                        try:
+                            with conn.begin():
+                                conn.execute(text("ALTER TABLE assessment_sessions ADD COLUMN session_id INTEGER;"))
+                            print("[startup] Added session_id column (no FK) to assessment_sessions.")
+                        except Exception as e2:
+                            print(f"[startup] Failed to add session_id (no FK): {e2}")
+                else:
+                    print("[startup] session_id column already exists in assessment_sessions.")
         except Exception as e:
             print(f"[startup] Database schema creation failed: {e}")
 
