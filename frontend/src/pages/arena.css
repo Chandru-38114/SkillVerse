@@ -1,0 +1,77 @@
+/* Skill Arena — component styles taken from the ArenaV2 design.
+   Every rule is scoped under .sv-arena so the design's own .card / .pill / .btn
+   cannot collide with the app's classes of the same name. */
+
+.sv-arena{
+  --acc:#FF8A3D; --accd:#C4581A; --accl:#FFE3CF;
+  font-family:Inter,system-ui,sans-serif;color:#29251F;background:#F8F3E9;
+  min-height:100vh;position:relative;
+}
+.sv-arena *{box-sizing:border-box}
+.sv-arena a{color:#29251F}
+.sv-arena pre{margin:0}
+
+.sv-arena .muted{color:#6E6455}
+.sv-arena .eb{font-size:12px;font-weight:800;letter-spacing:.1em;color:#6E6455}
+.sv-arena .mono{font-family:"JetBrains Mono",ui-monospace,Menlo,monospace}
+
+.sv-arena .btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:10px;
+  min-height:50px;padding:0 24px;border:2px solid #29251F;border-radius:10px;
+  font:800 16px Inter,sans-serif;color:#29251F;text-decoration:none;cursor:pointer;
+  transition:transform 180ms ease,box-shadow 180ms ease,background-color 180ms ease;
+}
+.sv-arena .btn-p{background:var(--acc);box-shadow:inset 0 2px 0 rgba(255,255,255,.45),0 4px 0 var(--accd),0 7px 0 #29251F}
+.sv-arena .btn-p:hover:not([aria-disabled="true"]){transform:translateY(3px);box-shadow:0 2px 0 var(--accd),0 4px 0 #29251F}
+.sv-arena .btn-s{background:#FFFDF8;box-shadow:inset 0 2px 0 rgba(255,255,255,.9),0 4px 0 #D2BEA0,0 7px 0 #29251F}
+.sv-arena .btn-s:hover:not([aria-disabled="true"]){background:#F0E5D2;transform:translateY(3px);box-shadow:0 2px 0 #D2BEA0,0 4px 0 #29251F}
+.sv-arena .btn-d{background:#E2533A;color:#FFFDF8;box-shadow:0 4px 0 #9A2B1E,0 7px 0 #29251F}
+.sv-arena .btn[aria-disabled="true"]{background:#EDE6D8;color:#8C8273;border-color:#B9AE9C;box-shadow:none;cursor:not-allowed}
+.sv-arena .btn:focus-visible,
+.sv-arena a:focus-visible,
+.sv-arena button:focus-visible,
+.sv-arena input:focus-visible,
+.sv-arena textarea:focus-visible{outline:3px solid #A58D70;outline-offset:3px}
+
+.sv-arena .card{background:#FFFDF8;border:2px solid #29251F;border-radius:16px;box-shadow:0 4px 0 #D2BEA0,0 7px 0 #29251F}
+.sv-arena .pill{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 12px;border-radius:999px;border:2px solid #29251F;font-size:12px;font-weight:800;white-space:nowrap;background:#FFFDF8}
+.sv-arena .in{width:100%;min-height:50px;padding:0 14px;border:2px solid #29251F;border-radius:10px;background:#FFFDF8;font:600 16px Inter,sans-serif;box-shadow:inset 0 3px 0 #EADFCC;color:#29251F}
+
+.sv-arena .choice{display:flex;flex-direction:column;gap:6px;padding:16px;border:2px solid #29251F;border-radius:14px;background:#FFFDF8;cursor:pointer;text-align:left;font:inherit;color:#29251F;box-shadow:0 3px 0 #D2BEA0;transition:transform 150ms ease,box-shadow 150ms ease}
+.sv-arena .choice:hover{transform:translateY(-2px);box-shadow:0 5px 0 #D2BEA0}
+.sv-arena .choice.on{background:var(--accl);box-shadow:0 4px 0 #29251F}
+
+.sv-arena .opt{display:flex;align-items:flex-start;gap:14px;padding:16px 18px;border:2px solid #29251F;border-radius:14px;background:#FFFDF8;cursor:pointer;box-shadow:0 3px 0 #D2BEA0;font-size:16px;font-weight:600;line-height:1.45;width:100%;text-align:left}
+.sv-arena .opt:hover{background:#F8F3E9}
+.sv-arena .opt.on{background:var(--accl);box-shadow:0 4px 0 #29251F}
+.sv-arena .key{width:32px;height:32px;flex:none;border-radius:9px;border:2px solid #29251F;display:flex;align-items:center;justify-content:center;font:700 14px "JetBrains Mono",monospace;background:#FFFDF8}
+.sv-arena .opt.on .key{background:#29251F;color:#FFFDF8}
+
+.sv-arena .qd{width:34px;height:34px;flex:none;border-radius:9px;border:2px solid #29251F;font:700 12px "JetBrains Mono",monospace;display:flex;align-items:center;justify-content:center;cursor:pointer;background:#FFFDF8;color:#29251F}
+
+.sv-arena .scrim{position:fixed;inset:0;background:rgba(41,37,31,.55);display:flex;align-items:center;justify-content:center;padding:16px;z-index:50}
+.sv-arena .modal{width:100%;max-width:440px;padding:32px;display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center}
+.sv-arena .tile{width:72px;height:72px;border-radius:20px;border:2px solid #29251F;display:flex;align-items:center;justify-content:center;font-size:32px;font-weight:900;box-shadow:0 5px 0 #29251F}
+
+@media (max-width:760px){
+  .sv-arena .two{grid-template-columns:1fr !important}
+  .sv-arena .hide-m{display:none !important}
+}
+
+/* motion — from the design's shared motion sheet */
+@keyframes svPop{0%{opacity:0;scale:.82}70%{opacity:1;scale:1.04}100%{opacity:1;scale:1}}
+@keyframes svSlideL{from{opacity:0;translate:-28px 0}to{opacity:1;translate:0 0}}
+@keyframes svShake{0%,100%{translate:0 0}20%{translate:-6px 0}40%{translate:6px 0}60%{translate:-4px 0}80%{translate:3px 0}}
+
+@media (prefers-reduced-motion:no-preference){
+  .sv-arena .choice{animation:svPop .5s both}
+  .sv-arena .choice:nth-child(2){animation-delay:.33s}
+  .sv-arena .choice:nth-child(3){animation-delay:.41s}
+  .sv-arena .opt{animation:svSlideL .5s both}
+  .sv-arena .opt:nth-child(2){animation-delay:.38s}
+  .sv-arena .opt:nth-child(3){animation-delay:.46s}
+  .sv-arena .opt:nth-child(4){animation-delay:.54s}
+  .sv-arena .tile{animation:svPop .6s .1s both}
+  .sv-arena .qd{animation:svPop .35s both}
+  .sv-arena .modal .tile{animation:svShake .5s .3s both}
+}

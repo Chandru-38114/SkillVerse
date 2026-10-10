@@ -1,99 +1,117 @@
 import { useState, useEffect, useRef } from 'react'
-import BackButton from "../components/BackButton";
 import { Link, useSearchParams } from 'react-router-dom'
 import { api } from '../api'
-import SkillBadge from '../components/skillbadge'
-import { Compass, Swords, Target, Route, ArrowRight, ShieldCheck, Play, Maximize, AlertTriangle, ChevronRight, ChevronLeft, Clock, Code2, ShieldAlert } from 'lucide-react'
-import { motion, AnimatePresence } from 'framer-motion'
+import './arena.css'
 
 const STEPS = { PICK: 'pick', RULES: 'rules', QUIZ: 'quiz', RESULT: 'result', TERMINATED: 'terminated' }
-const MAX_VIOLATIONS = 3;
+const MAX_VIOLATIONS = 3
 
+const RULES = [
+  'Stay fullscreen — leaving it counts as a violation.',
+  'Do not switch tabs or windows.',
+  'Copying, pasting and right-click are disabled outside the code editor.',
+  '3 violations end the exam and submit it automatically.',
+  'The timer keeps running — the attempt cannot be restarted with new questions.',
+]
+
+const KIND_LABEL = {
+  mcq: 'Multiple choice',
+  output: 'Code tracing',
+  debug: 'Debugging',
+  coding: 'Problem solving',
+}
+
+const LEVELS = [
+  { id: 'beginner', icon: '🌱', label: 'Beginner' },
+  { id: 'intermediate', icon: '⚡', label: 'Intermediate' },
+  { id: 'expert', icon: '🔥', label: 'Expert' },
+]
+
+/* ── Code editor ─────────────────────────────────────────────────────────────
+   Behaviour is unchanged from the previous Arena: Tab inserts four spaces,
+   copy/cut remember what left THIS editor, and a paste whose contents did not
+   come from here is refused and counted as a violation. */
 function LocalCompiler({ code, onChange, language, onViolation }) {
-  const [output, setOutput] = useState('');
-  const [error, setError] = useState('');
-  const [isRunning, setIsRunning] = useState(false);
-  const lastEditorTextRef = useRef('');
+  const [output, setOutput] = useState('')
+  const [error, setError] = useState('')
+  const [isRunning, setIsRunning] = useState(false)
+  const lastEditorTextRef = useRef('')
 
   const handleRun = async () => {
-    setIsRunning(true);
-    setError('');
-    setOutput('');
+    setIsRunning(true)
+    setError('')
+    setOutput('')
     try {
-      const res = await api.runArenaCode(code);
-      if (res.error) setError(res.error);
-      setOutput(res.output || '');
+      const res = await api.runArenaCode(code)
+      if (res.error) setError(res.error)
+      setOutput(res.output || '')
     } catch (err) {
-      setError(err.message || 'Execution failed');
+      setError(err.message || 'Execution failed')
     } finally {
-      setIsRunning(false);
+      setIsRunning(false)
     }
-  };
+  }
 
   const handleKeyDown = (e) => {
     if (e.key === 'Tab') {
-      e.preventDefault();
-      const start = e.target.selectionStart;
-      const end = e.target.selectionEnd;
-      const newCode = code.substring(0, start) + '    ' + code.substring(end);
-      onChange(newCode);
-      setTimeout(() => {
-        e.target.selectionStart = e.target.selectionEnd = start + 4;
-      }, 0);
+      e.preventDefault()
+      const start = e.target.selectionStart
+      const end = e.target.selectionEnd
+      onChange(code.substring(0, start) + '    ' + code.substring(end))
+      setTimeout(() => { e.target.selectionStart = e.target.selectionEnd = start + 4 }, 0)
     }
-  };
+  }
 
-  // Remember exactly what was copied/cut from THIS editor, so paste can tell
-  // "pasted my own code back" apart from "pasted something from outside".
   const captureEditorText = (e) => {
-    const ta = e.target;
-    lastEditorTextRef.current = code.substring(ta.selectionStart, ta.selectionEnd);
-  };
+    const ta = e.target
+    lastEditorTextRef.current = code.substring(ta.selectionStart, ta.selectionEnd)
+  }
 
   const handlePaste = (e) => {
-    const clipboardText = e.clipboardData ? e.clipboardData.getData('text') : '';
+    const clipboardText = e.clipboardData ? e.clipboardData.getData('text') : ''
     if (clipboardText !== lastEditorTextRef.current) {
-      e.preventDefault();
-      onViolation?.('Pasting external code is not allowed.');
+      e.preventDefault()
+      onViolation?.('Pasting external code is not allowed.')
     }
-  };
+  }
+
+  const isPython = !language || language.toLowerCase() === 'python'
 
   return (
-    <div className="flex flex-col border border-line rounded-xl overflow-hidden shadow-sm bg-[#1e1e1e]">
-       <div className="bg-[#2d2d2d] border-b border-[#404040] px-4 py-3 flex items-center justify-between">
-         <div className="flex items-center gap-2">
-           <Code2 className="w-4 h-4 text-[#d4d4d4]" />
-           <span className="text-xs font-bold text-[#d4d4d4] uppercase tracking-wider">
-             {language === 'Python' || language.toLowerCase() === 'python' ? 'Python 3' : `${language} (Run supports Python 3)`}
-           </span>
-         </div>
-         <button onClick={handleRun} disabled={isRunning || !code.trim()} className="bg-brand hover:bg-brand/90 text-white text-xs font-bold px-4 py-1.5 rounded transition-colors disabled:opacity-50 flex items-center gap-1.5">
-           <Play className="w-3 h-3 fill-current" />
-           {isRunning ? 'Running...' : 'Run Code'}
-         </button>
-       </div>
-       <textarea
-         value={code}
-         onChange={e => onChange(e.target.value)}
-         onKeyDown={handleKeyDown}
-         onCopy={captureEditorText}
-         onCut={captureEditorText}
-         onPaste={handlePaste}
-         className="w-full h-[300px] p-4 bg-[#1e1e1e] text-[#d4d4d4] font-mono text-sm resize-y focus:outline-none"
-         spellCheck="false"
-         placeholder="Write your code here..."
-       />
-       <div className="bg-[#1e1e1e] border-t border-[#404040] flex flex-col h-[180px]">
-         <div className="bg-[#2d2d2d] px-4 py-2 border-b border-[#404040]">
-           <span className="text-[10px] font-bold text-[#858585] uppercase tracking-wider">Console Output</span>
-         </div>
-         <div className="p-4 flex-1 overflow-y-auto font-mono text-sm text-[#d4d4d4]">
-           {isRunning && !error && !output && <span className="text-[#858585] italic">Executing...</span>}
-           {error && <div className="text-red-400 whitespace-pre-wrap">{error}</div>}
-           {output && <div className="whitespace-pre-wrap">{output}</div>}
-           {!isRunning && !error && !output && <span className="text-[#858585] italic text-xs">Run your code to see output...</span>}
-         </div>
-       </div>
+    <div style={{ border: '2px solid #29251F', borderRadius: 14, overflow: 'hidden', boxShadow: '0 4px 0 #29251F' }}>
+      <div style={{ background: '#3A352D', padding: '10px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #29251F' }}>
+        <span className="mono" style={{ color: '#F8F3E9', fontSize: 12, fontWeight: 700 }}>
+          {isPython ? 'PYTHON 3' : `${language.toUpperCase()} · RUN SUPPORTS PYTHON 3`}
+        </span>
+        <button
+          type="button"
+          onClick={handleRun}
+          aria-disabled={isRunning || !code.trim()}
+          disabled={isRunning || !code.trim()}
+          className="btn btn-p"
+          style={{ minHeight: 36, padding: '0 14px', fontSize: 13, boxShadow: '0 3px 0 #29251F' }}
+        >
+          ▶ {isRunning ? 'Running…' : 'Run Code'}
+        </button>
+      </div>
+      <textarea
+        value={code}
+        onChange={e => onChange(e.target.value)}
+        onKeyDown={handleKeyDown}
+        onCopy={captureEditorText}
+        onCut={captureEditorText}
+        onPaste={handlePaste}
+        spellCheck="false"
+        placeholder="Write your code here…"
+        className="mono"
+        style={{ width: '100%', minHeight: 200, background: '#29251F', color: '#F8F3E9', padding: 16, fontSize: 14, lineHeight: 1.7, border: 'none', resize: 'vertical', display: 'block' }}
+      />
+      <div style={{ background: '#1F1C17', borderTop: '2px dashed #6E6455', padding: '12px 16px', minHeight: 90 }}>
+        <span className="mono" style={{ color: '#B9AE9C', fontSize: 11, fontWeight: 700 }}>CONSOLE OUTPUT</span>
+        <pre className="mono" style={{ color: error ? '#FF9B86' : '#D6F3EA', fontSize: 14, marginTop: 8, whiteSpace: 'pre-wrap' }}>
+          {isRunning && !error && !output ? 'Executing…' : (error || output || 'Run your code to see output…')}
+        </pre>
+      </div>
     </div>
   )
 }
@@ -114,139 +132,138 @@ export default function Assessment() {
   const [resumed, setResumed] = useState(false)
   const [rulesAccepted, setRulesAccepted] = useState(false)
 
-  // Security / Anti-cheat
+  // Security / anti-cheat
   const [violations, setViolations] = useState(0)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [showWarning, setShowWarning] = useState(null) // { count, message }
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false)
   const lastViolation = useRef(0)
 
-  // Timer — always seeded from the server's seconds_remaining, never a hardcoded value,
-  // so a resumed attempt only gets the time actually left.
-  const DEFAULT_TIME = 45 * 60; // fallback only, used if the server ever omits seconds_remaining
-  const [timeLeft, setTimeLeft] = useState(DEFAULT_TIME);
+  // Timer — always seeded from the server's seconds_remaining, never a hardcoded
+  // value, so a resumed attempt only gets the time actually left.
+  const DEFAULT_TIME = 45 * 60
+  const [timeLeft, setTimeLeft] = useState(DEFAULT_TIME)
 
-  // Called directly as the FIRST statement of a click handler (no await before it) so the
-  // browser still sees it as part of the user gesture. Declared non-async on purpose.
+  // Called as the FIRST statement of a click handler (no await before it) so the
+  // browser still counts it as part of the user gesture. Non-async on purpose.
   const requestFullscreenSync = () => {
     try {
-      const el = document.documentElement;
-      const p = el.requestFullscreen ? el.requestFullscreen() : null;
+      const el = document.documentElement
+      const p = el.requestFullscreen ? el.requestFullscreen() : null
       if (p && typeof p.catch === 'function') {
-        p.catch(err => console.warn("Fullscreen request blocked:", err));
+        p.catch(err => console.warn('Fullscreen request blocked:', err))
       }
     } catch (err) {
-      console.warn("Fullscreen request blocked:", err);
+      console.warn('Fullscreen request blocked:', err)
     }
-  };
+  }
 
   const recordViolation = (msg) => {
-    const now = Date.now();
+    const now = Date.now()
     if (now - lastViolation.current > 2000) {
-      lastViolation.current = now;
+      lastViolation.current = now
       setViolations(v => {
-        const newV = v + 1;
+        const newV = v + 1
         if (newV >= MAX_VIOLATIONS) {
-          submitQuiz(true, newV); // Terminate and auto-submit
-          return newV;
+          submitQuiz(true, newV) // terminate and auto-submit
+          return newV
         }
-        setShowWarning({ count: newV, message: msg });
-        return newV;
-      });
+        setShowWarning({ count: newV, message: msg })
+        return newV
+      })
     }
-  };
+  }
 
   useEffect(() => {
     if (step === STEPS.QUIZ) {
-      const handleBeforeUnload = (e) => {
-        e.preventDefault();
-        e.returnValue = '';
-      };
+      const handleBeforeUnload = (e) => { e.preventDefault(); e.returnValue = '' }
 
       const handleVisibilityBlur = () => {
         if (document.visibilityState === 'hidden' || !document.hasFocus()) {
-          recordViolation("You left the Skill Arena window. Return immediately.");
+          recordViolation('You left the Skill Arena window. Return immediately.')
         }
-      };
+      }
 
       const handleFullscreenChange = () => {
         if (!document.fullscreenElement) {
-          setIsFullscreen(false);
-          recordViolation("Please return to Skill Arena fullscreen mode.");
+          setIsFullscreen(false)
+          recordViolation('Please return to Skill Arena fullscreen mode.')
         } else {
-          setIsFullscreen(true);
+          setIsFullscreen(true)
         }
-      };
+      }
 
       const isInsideEditor = (target) =>
-        !!(target && target.closest && (target.closest('textarea') || target.closest('input')));
+        !!(target && target.closest && (target.closest('textarea') || target.closest('input')))
 
       const handleKeyDown = (e) => {
-        const key = e.key.toLowerCase();
-        const mod = e.ctrlKey || e.metaKey;
+        const key = e.key.toLowerCase()
+        const mod = e.ctrlKey || e.metaKey
 
         // Devtools shortcuts: always blocked, and counted as a violation.
         if (key === 'f12' || (mod && e.shiftKey && ['i', 'j', 'c'].includes(key))) {
-          e.preventDefault();
-          recordViolation("Developer tools are disabled during the Skill Arena.");
-          return;
+          e.preventDefault()
+          recordViolation('Developer tools are disabled during the Skill Arena.')
+          return
         }
 
         // Copy/cut/paste/select-all/print/save/view-source: blocked outside the editor only.
         if (!isInsideEditor(e.target) && mod && ['c', 'x', 'v', 'a', 'p', 's', 'u'].includes(key)) {
-          e.preventDefault();
+          e.preventDefault()
         }
-      };
+      }
 
-      window.addEventListener('blur', handleVisibilityBlur);
-      document.addEventListener('visibilitychange', handleVisibilityBlur);
-      document.addEventListener('fullscreenchange', handleFullscreenChange);
-      window.addEventListener('beforeunload', handleBeforeUnload);
-      document.addEventListener('keydown', handleKeyDown);
+      window.addEventListener('blur', handleVisibilityBlur)
+      document.addEventListener('visibilitychange', handleVisibilityBlur)
+      document.addEventListener('fullscreenchange', handleFullscreenChange)
+      window.addEventListener('beforeunload', handleBeforeUnload)
+      document.addEventListener('keydown', handleKeyDown)
+
+      // requestFullscreen resolves asynchronously, so handleStartExam sets
+      // isFullscreen optimistically. Verify against reality shortly after, so a
+      // refused request still raises the "Fullscreen is required" gate.
+      const fsCheck = setTimeout(() => setIsFullscreen(!!document.fullscreenElement), 1200)
 
       return () => {
-        window.removeEventListener('blur', handleVisibilityBlur);
-        document.removeEventListener('visibilitychange', handleVisibilityBlur);
-        document.removeEventListener('fullscreenchange', handleFullscreenChange);
-        window.removeEventListener('beforeunload', handleBeforeUnload);
-        document.removeEventListener('keydown', handleKeyDown);
-      };
+        clearTimeout(fsCheck)
+        window.removeEventListener('blur', handleVisibilityBlur)
+        document.removeEventListener('visibilitychange', handleVisibilityBlur)
+        document.removeEventListener('fullscreenchange', handleFullscreenChange)
+        window.removeEventListener('beforeunload', handleBeforeUnload)
+        document.removeEventListener('keydown', handleKeyDown)
+      }
     }
-  }, [step]);
+  }, [step])
 
-  const submitRef = useRef(submitQuiz);
-  useEffect(() => {
-    submitRef.current = submitQuiz;
-  });
+  const submitRef = useRef(submitQuiz)
+  useEffect(() => { submitRef.current = submitQuiz })
 
   useEffect(() => {
-    let timer;
+    let timer
     if (step === STEPS.QUIZ && !loading) {
       timer = setInterval(() => {
         setTimeLeft(t => {
           if (t <= 1) {
-            clearInterval(timer);
-            setTimeout(() => submitRef.current(), 0);
-            return 0;
+            clearInterval(timer)
+            setTimeout(() => submitRef.current(), 0)
+            return 0
           }
-          return t - 1;
-        });
-      }, 1000);
+          return t - 1
+        })
+      }, 1000)
     }
-    return () => {
-      if (timer) clearInterval(timer);
-    };
-  }, [step, loading]);
+    return () => { if (timer) clearInterval(timer) }
+  }, [step, loading])
 
   const formatTime = (seconds) => {
-    const m = Math.floor(seconds / 60);
-    const s = seconds % 60;
-    return `${m}:${s < 10 ? '0' : ''}${s}`;
-  };
+    const m = Math.floor(seconds / 60)
+    const s = seconds % 60
+    return `${m}:${s < 10 ? '0' : ''}${s}`
+  }
 
   // Phase 1: fetch the questions and show the rules screen. Fullscreen is NOT
-  // requested here — by the time generation finishes (10-20s) the click gesture
-  // that triggered this has expired and requestFullscreen() would be rejected.
+  // requested here — by the time generation finishes the click gesture that
+  // triggered this has expired and requestFullscreen() would be rejected.
   async function executeStartQuiz(skillToStart) {
     if (!skillToStart.trim()) return
     setLoading(true)
@@ -281,26 +298,23 @@ export default function Assessment() {
   // Phase 2: the rules screen's Start button. requestFullscreenSync() runs as the
   // very first statement, synchronously, still inside the click gesture.
   function handleStartExam() {
-    requestFullscreenSync();
-    setCurrentQuestionIndex(0);
-    setStep(STEPS.QUIZ);
+    requestFullscreenSync()
+    setIsFullscreen(true) // optimistic — the effect below verifies against reality
+    setCurrentQuestionIndex(0)
+    setStep(STEPS.QUIZ)
   }
 
   useEffect(() => {
     const s = searchParams.get('skill')
     const r = searchParams.get('role')
     const auto = searchParams.get('autoStart') === 'true'
-
     if (s) setSkillName(s)
     if (r) setRole(r)
-
-    if (s && auto) {
-       executeStartQuiz(s)
-    }
+    if (s && auto) executeStartQuiz(s)
   }, [searchParams])
 
   async function submitQuiz(isTermination = false, violationsOverride = null) {
-    if (loading) return;
+    if (loading) return
     setLoading(true)
     setError('')
     setShowSubmitConfirm(false)
@@ -315,13 +329,9 @@ export default function Assessment() {
       }
       const res = await api.submitAssessment(payload)
       setResult(res)
-      if (isTermination) {
-        setStep(STEPS.TERMINATED)
-      } else {
-        setStep(STEPS.RESULT)
-      }
+      setStep(isTermination ? STEPS.TERMINATED : STEPS.RESULT)
       if (document.fullscreenElement) {
-        document.exitFullscreen().catch(console.error);
+        document.exitFullscreen().catch(console.error)
       }
     } catch (err) {
       setError(err.message)
@@ -330,520 +340,398 @@ export default function Assessment() {
     }
   }
 
-  const answeredCount = Object.keys(answers).length
+  const answeredCount = Object.keys(answers).filter(k => {
+    const v = answers[k]
+    return v !== undefined && v !== null && String(v).trim() !== ''
+  }).length
   const totalCount = questions.length
   const progress = totalCount > 0 ? Math.round(((currentQuestionIndex + 1) / totalCount) * 100) : 0
 
-  const handleNext = () => {
-    if (currentQuestionIndex < totalCount - 1) {
-      setCurrentQuestionIndex(i => i + 1)
-    }
-  }
+  const handleNext = () => { if (currentQuestionIndex < totalCount - 1) setCurrentQuestionIndex(i => i + 1) }
+  const handlePrev = () => { if (currentQuestionIndex > 0) setCurrentQuestionIndex(i => i - 1) }
 
-  const handlePrev = () => {
-    if (currentQuestionIndex > 0) {
-      setCurrentQuestionIndex(i => i - 1)
-    }
-  }
+  const currentQuestion = questions[currentQuestionIndex]
+  const qType = currentQuestion ? (currentQuestion.type || 'mcq').toLowerCase() : 'mcq'
+  const isCode = qType === 'coding'
+  const isLast = currentQuestionIndex === totalCount - 1
+  const lowTime = timeLeft <= 60
 
-  const currentQuestion = questions[currentQuestionIndex];
-  const qType = currentQuestion ? (currentQuestion.type || 'mcq').toLowerCase() : 'mcq';
+  const setAnswer = (qid, value) => setAnswers(a => ({ ...a, [qid]: value }))
+
+  const ErrorBanner = () => error ? (
+    <div style={{ padding: '12px 14px', border: '2px solid #9A2B1E', borderRadius: 12, background: '#F6DDD8', color: '#9A2B1E', fontWeight: 800 }}>
+      {error}
+    </div>
+  ) : null
 
   return (
-    <div className="max-w-2xl mx-auto px-4 sm:px-6 py-8 sm:py-12 animate-fade-in">
-      {/* ✨ Step: Pick skill ✨ */}
+    <div className="sv-arena">
+
+      {/* ============ PICK ============ */}
       {step === STEPS.PICK && (
-        <div className="animate-slide-up">
-          <div className="flex items-center gap-2 mb-3">
-             <div className="w-8 h-8 rounded-full bg-brand/10 text-brandInk flex items-center justify-center shrink-0 border border-brand/20">
-                <Swords className="w-4 h-4" />
-             </div>
-             <p className="text-[10px] font-bold text-brandInk uppercase tracking-wider">Skill Arena</p>
-          </div>
-          <h1 className="font-display text-4xl mb-2 text-ink">Enter the Skill Arena</h1>
-          <p className="text-clay text-sm mb-8">
-            Prove your mastery. You will enter a focused, fullscreen environment.
-          </p>
-
-          {typeof window !== 'undefined' && window.innerWidth < 768 && (
-            <p className="text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-6">
-              The Skill Arena works best on a laptop or desktop.
-            </p>
-          )}
-
-          <form onSubmit={startQuiz} className="space-y-6">
-            <div>
-              <label className="field-label" htmlFor="skill-name">Skill name</label>
-              <input
-                id="skill-name"
-                className="input"
-                placeholder="e.g. Python, JavaScript, UI Design"
-                value={skillName}
-                onChange={(e) => setSkillName(e.target.value)}
-                autoFocus
-              />
+        <div className="two" style={{ maxWidth: 1120, margin: '0 auto', padding: '48px clamp(16px, 3vw, 32px) 80px', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 360px', gap: 40, alignItems: 'start' }}>
+          <form className="card" onSubmit={startQuiz} style={{ padding: 32, display: 'flex', flexDirection: 'column', gap: 26 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <span className="pill" style={{ alignSelf: 'flex-start', background: 'var(--accl)' }}>⚔ SKILL ARENA</span>
+              <h1 style={{ margin: 0, fontSize: 44, fontWeight: 900, lineHeight: 1.02, letterSpacing: '-1px' }}>Enter the Skill Arena</h1>
+              <p className="muted" style={{ margin: 0, fontSize: 17 }}>Prove your mastery. You will enter a focused, fullscreen environment.</p>
             </div>
 
-            <div>
-              <p className="field-label mb-3">Difficulty</p>
-              <div className="grid grid-cols-3 gap-3 mb-2">
-                {['beginner', 'intermediate', 'expert'].map((lvl) => (
-                  <RoleOption
-                    key={lvl}
-                    label={lvl.charAt(0).toUpperCase() + lvl.slice(1)}
-                    sub=""
-                    value={lvl}
-                    role={level}
-                    setRole={setLevel}
-                    icon={lvl === 'beginner' ? '🌱' : lvl === 'expert' ? '🔥' : '⚡'}
-                  />
+            <ErrorBanner />
+
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <span style={{ fontWeight: 700, fontSize: 14 }}>Skill name</span>
+              <input className="in" value={skillName} onChange={e => setSkillName(e.target.value)} placeholder="e.g. Python, Java, DSA, Web Development" />
+            </label>
+
+            <fieldset style={{ border: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <legend style={{ fontWeight: 700, fontSize: 14, padding: '0 0 10px' }}>Difficulty</legend>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+                {LEVELS.map(l => (
+                  <button key={l.id} type="button" onClick={() => setLevel(l.id)} aria-pressed={level === l.id} className={`choice${level === l.id ? ' on' : ''}`}>
+                    <span style={{ fontSize: 22 }}>{l.icon}</span><strong>{l.label}</strong>
+                  </button>
                 ))}
               </div>
-              <p className="text-xs text-clay mb-6">20 questions plus 2 problem-solving challenges. 45 minutes.</p>
-            </div>
+            </fieldset>
 
-            <div>
-              <p className="field-label mb-3">Arena Goal</p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <RoleOption
-                  label="I want to teach it"
-                  sub="Get a verified teaching badge"
-                  value="teaching"
-                  role={role}
-                  setRole={setRole}
-                  icon="🎓"
-                />
-                <RoleOption
-                  label="I'm learning it"
-                  sub="See where I stand as a learner"
-                  value="learning"
-                  role={role}
-                  setRole={setRole}
-                  icon="📚"
-                />
-              </div>
-            </div>
-
-            {error && <p className="alert-error">{error}</p>}
-
-            <button disabled={loading || !skillName.trim()} className="btn-primary w-full py-3 flex justify-center items-center gap-2 text-sm">
-              {loading ? 'Generating your questions…' : (
-                 <>Enter Arena <ArrowRight className="w-4 h-4" /></>
-              )}
-            </button>
-          </form>
-        </div>
-      )}
-
-      {/* ── Step: Rules ── */}
-      {step === STEPS.RULES && (
-        <div className="animate-slide-up">
-          <div className="flex items-center gap-2 mb-3">
-             <div className="w-8 h-8 rounded-full bg-brand/10 text-brandInk flex items-center justify-center shrink-0 border border-brand/20">
-                <ShieldAlert className="w-4 h-4" />
-             </div>
-             <p className="text-[10px] font-bold text-brandInk uppercase tracking-wider">Before you begin</p>
-          </div>
-          <h1 className="font-display text-3xl mb-2 text-ink">Arena Rules</h1>
-
-          {resumed && (
-            <p className="text-xs font-semibold text-brandInk bg-brand/10 border border-brand/20 rounded-lg px-3 py-2 mb-4">
-              Resuming your attempt — the timer kept running while you were away.
-            </p>
-          )}
-
-          <ul className="space-y-3 mb-6">
-            {[
-              "Stay fullscreen — leaving it counts as a violation.",
-              "Do not switch tabs or windows.",
-              "Copying, pasting and right-click are disabled outside the code editor.",
-              "3 violations end the exam and submit it automatically.",
-              "The timer keeps running — the attempt cannot be restarted with new questions.",
-            ].map((rule, i) => (
-              <li key={i} className="flex items-start gap-3 text-sm text-ink/80 bg-surface border border-line rounded-xl px-4 py-3">
-                <ShieldAlert className="w-4 h-4 text-brandInk shrink-0 mt-0.5" />
-                {rule}
-              </li>
-            ))}
-          </ul>
-
-          <label className="flex items-start gap-3 text-sm text-ink mb-6 cursor-pointer">
-            <input
-              type="checkbox"
-              className="mt-1 accent-brand"
-              checked={rulesAccepted}
-              onChange={(e) => setRulesAccepted(e.target.checked)}
-            />
-            I understand and agree to these rules.
-          </label>
-
-          {error && <p className="alert-error mb-4">{error}</p>}
-
-          <button
-            onClick={handleStartExam}
-            disabled={!rulesAccepted}
-            className="btn-primary w-full py-3 flex justify-center items-center gap-2 text-sm"
-          >
-            <Maximize className="w-4 h-4" /> Start Exam (Fullscreen)
-          </button>
-        </div>
-      )}
-
-      {/* ── Step: Quiz ── */}
-      {step === STEPS.QUIZ && questions.length > 0 && (
-        <div
-          className="fixed inset-0 z-50 bg-[#f8f9fc] flex flex-col overflow-hidden"
-          onCopy={e => { if(!e.target.closest('textarea')) e.preventDefault() }}
-          onCut={e => { if(!e.target.closest('textarea')) e.preventDefault() }}
-          onPaste={e => { if(!e.target.closest('textarea')) e.preventDefault() }}
-          onContextMenu={e => { if(!e.target.closest('textarea') && !e.target.closest('input')) e.preventDefault() }}
-        >
-          {step === STEPS.QUIZ && !isFullscreen && (
-            <div className="fixed inset-0 z-[90] bg-white/95 backdrop-blur-md flex items-center justify-center p-4">
-              <div className="bg-white rounded-2xl p-8 max-w-md w-full shadow-2xl border border-line text-center">
-                <div className="w-16 h-16 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4 border-4 border-red-100">
-                  <Maximize className="w-8 h-8" />
-                </div>
-                <h3 className="font-display font-bold text-2xl mb-2 text-ink">Fullscreen is required</h3>
-                <p className="text-clay font-medium mb-6">The Skill Arena can only be answered in fullscreen mode.</p>
-                <button onClick={requestFullscreenSync} className="btn-primary w-full py-3 justify-center text-lg shadow-md">
-                  Click to continue
+            <fieldset style={{ border: 'none', margin: 0, padding: 0 }}>
+              <legend style={{ fontWeight: 700, fontSize: 14, padding: '0 0 10px' }}>Arena goal</legend>
+              <div className="two" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <button type="button" onClick={() => setRole('teaching')} aria-pressed={role === 'teaching'} className={`choice${role === 'teaching' ? ' on' : ''}`}>
+                  <span style={{ fontSize: 22 }}>🎓</span><strong>I want to teach it</strong>
+                  <span className="muted" style={{ fontSize: 13 }}>Get a verified teaching badge</span>
+                </button>
+                <button type="button" onClick={() => setRole('learning')} aria-pressed={role === 'learning'} className={`choice${role === 'learning' ? ' on' : ''}`}>
+                  <span style={{ fontSize: 22 }}>📚</span><strong>I’m learning it</strong>
+                  <span className="muted" style={{ fontSize: 13 }}>See where I stand as a learner</span>
                 </button>
               </div>
-            </div>
-          )}
-          {showWarning && (
-            <div className="fixed inset-0 z-[100] bg-ink/60 backdrop-blur-sm flex items-center justify-center p-4" style={{ userSelect: 'auto' }}>
-              <div className="bg-white rounded-2xl p-8 max-w-md w-full shadow-2xl border border-line animate-slide-up text-center">
-                <div className="w-16 h-16 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4 border-4 border-red-100">
-                  <AlertTriangle className="w-8 h-8" />
+            </fieldset>
+
+            <button type="submit" className="btn btn-p" aria-disabled={loading || !skillName.trim()} disabled={loading || !skillName.trim()} style={{ width: '100%' }}>
+              {loading
+                ? <><span className="mono" style={{ letterSpacing: 3 }}>▮▮▮</span> Generating your questions…</>
+                : <>Enter Arena →</>}
+            </button>
+          </form>
+
+          <aside style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+            <div className="card" style={{ padding: 24, background: '#29251F', color: '#FFFDF8', boxShadow: '0 4px 0 var(--accd), 0 7px 0 #29251F', display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <span style={{ fontSize: 12, fontWeight: 800, letterSpacing: '.1em', color: '#D9CBB2' }}>WHAT’S INSIDE</span>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <div style={{ border: '2px solid #FFFDF8', borderRadius: 12, padding: 12 }}>
+                  <div className="mono" style={{ fontSize: 30, fontWeight: 700 }}>20</div>
+                  <span style={{ fontSize: 13, color: '#D9CBB2', fontWeight: 700 }}>questions</span>
                 </div>
-                <h3 className="font-display font-bold text-2xl mb-2 text-ink">Violation {showWarning.count} of {MAX_VIOLATIONS}</h3>
-                <p className="text-clay font-medium mb-3 whitespace-pre-wrap">{showWarning.message}</p>
-                {showWarning.count === MAX_VIOLATIONS - 1 && (
-                  <p className="text-red-600 font-bold mb-3">One more violation will end your exam.</p>
-                )}
-                <button onClick={() => { setShowWarning(null); requestFullscreenSync(); }} className="btn-primary w-full py-3 justify-center text-lg shadow-md">
+                <div style={{ border: '2px solid #FFFDF8', borderRadius: 12, padding: 12 }}>
+                  <div className="mono" style={{ fontSize: 30, fontWeight: 700 }}>2</div>
+                  <span style={{ fontSize: 13, color: '#D9CBB2', fontWeight: 700 }}>coding tasks</span>
+                </div>
+                <div style={{ border: '2px solid #FFFDF8', borderRadius: 12, padding: 12, gridColumn: 'span 2', background: 'var(--acc)', color: '#29251F' }}>
+                  <div className="mono" style={{ fontSize: 30, fontWeight: 700 }}>45:00</div>
+                  <span style={{ fontSize: 13, fontWeight: 800 }}>minutes, one sitting</span>
+                </div>
+              </div>
+            </div>
+            <div className="card" style={{ padding: 22, background: '#FBEFC4', transform: 'rotate(-1deg)' }}>
+              <span className="eb" style={{ color: '#29251F' }}>TIP</span>
+              <p style={{ margin: '8px 0 0', fontWeight: 700, lineHeight: 1.5 }}>The Skill Arena works best on a laptop or desktop. Close other tabs before you start.</p>
+            </div>
+          </aside>
+        </div>
+      )}
+
+      {/* ============ RULES ============ */}
+      {step === STEPS.RULES && (
+        <div style={{ maxWidth: 680, margin: '0 auto', padding: '48px 16px 80px' }}>
+          <div className="card" style={{ padding: 32, display: 'flex', flexDirection: 'column', gap: 20 }}>
+            <span className="pill" style={{ alignSelf: 'flex-start', background: '#F6DDD8' }}>🛡 BEFORE YOU BEGIN</span>
+            <h1 style={{ margin: 0, fontSize: 38, fontWeight: 900 }}>Arena rules</h1>
+            {resumed && (
+              <div style={{ padding: '12px 14px', border: '2px solid #29251F', borderRadius: 12, background: '#FBEFC4', fontWeight: 600, fontSize: 14 }}>
+                Resuming your attempt — the timer kept running while you were away.
+              </div>
+            )}
+            <ErrorBanner />
+            <ol style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {RULES.map((r, i) => (
+                <li key={i} style={{ display: 'flex', gap: 14, alignItems: 'center', padding: '14px 16px', border: '2px solid #29251F', borderRadius: 12, background: '#F8F3E9', fontWeight: 600 }}>
+                  <span className="key" style={{ background: 'var(--accl)' }}>{i + 1}</span>{r}
+                </li>
+              ))}
+            </ol>
+            <label style={{ display: 'flex', gap: 12, alignItems: 'center', fontWeight: 700, cursor: 'pointer' }}>
+              <input type="checkbox" checked={rulesAccepted} onChange={e => setRulesAccepted(e.target.checked)} style={{ position: 'absolute', opacity: 0, width: 1, height: 1 }} />
+              <span aria-hidden="true" style={{ width: 26, height: 26, border: '2px solid #29251F', borderRadius: 7, background: rulesAccepted ? 'var(--acc)' : '#FFFDF8', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, boxShadow: '0 2px 0 #29251F' }}>
+                {rulesAccepted ? '✓' : ''}
+              </span>
+              I understand and agree to these rules.
+            </label>
+            <button type="button" onClick={handleStartExam} aria-disabled={!rulesAccepted} disabled={!rulesAccepted} className="btn btn-p" style={{ width: '100%' }}>
+              ⛶ Start Exam (Fullscreen)
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ============ QUIZ ============ */}
+      {step === STEPS.QUIZ && currentQuestion && (
+        <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', position: 'relative' }}>
+          <header style={{ background: '#FFFDF8', borderBottom: '2px solid #29251F', boxShadow: '0 4px 0 #D2BEA0', padding: '14px clamp(16px, 3vw, 32px)', display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <span className="eb" style={{ fontSize: 11 }}>⚔ SKILL ARENA</span>
+              <span style={{ fontSize: 20, fontWeight: 900 }}>{skillName}</span>
+            </div>
+            <div style={{ flex: 1, minWidth: 220, display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'center' }}>
+              <span style={{ fontWeight: 800, fontSize: 14 }}>Question {currentQuestionIndex + 1} of {totalCount}</span>
+              <div style={{ width: '100%', maxWidth: 360, height: 12, border: '2px solid #29251F', borderRadius: 999, background: '#F0E5D2', overflow: 'hidden' }}>
+                <span style={{ display: 'block', height: '100%', width: `${progress}%`, background: 'var(--acc)', transition: 'width 240ms ease' }} />
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+              {violations > 0 && (
+                <span className="pill" style={{ background: '#F6DDD8', color: '#9A2B1E', borderColor: '#9A2B1E', height: 36 }}>
+                  ⚠ {violations} / {MAX_VIOLATIONS} violations
+                </span>
+              )}
+              <span className="pill mono" style={{ height: 36, background: lowTime ? '#E2533A' : '#FFFDF8', color: lowTime ? '#FFFDF8' : '#29251F', borderColor: lowTime ? '#9A2B1E' : '#29251F' }}>
+                ◷ {formatTime(timeLeft)}
+              </span>
+            </div>
+          </header>
+
+          <main style={{ flex: 1, padding: '32px clamp(16px, 3vw, 32px)' }}>
+            <div className="card" style={{ maxWidth: 900, margin: '0 auto', padding: 'clamp(22px, 4vw, 40px)', display: 'flex', flexDirection: 'column', gap: 22 }}>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {currentQuestion.topic && <span className="pill">Topic: {currentQuestion.topic}</span>}
+                <span className="pill" style={{ background: 'var(--accl)' }}>{KIND_LABEL[qType] || qType}</span>
+              </div>
+
+              {!isCode && (
+                <>
+                  <h2 style={{ margin: 0, fontSize: 22, fontWeight: 700, lineHeight: 1.5 }}>{currentQuestion.question}</h2>
+                  {currentQuestion.code && (
+                    <pre className="mono" style={{ padding: '18px 20px', border: '2px solid #29251F', borderRadius: 12, background: '#29251F', color: '#F8F3E9', fontSize: 15, lineHeight: 1.6, overflowX: 'auto' }}>
+                      {currentQuestion.code}
+                    </pre>
+                  )}
+                  <div role="radiogroup" aria-label="Answer options" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    {(currentQuestion.options || []).map((opt, i) => {
+                      const selected = answers[currentQuestion.id] === i || answers[currentQuestion.id] === String(i)
+                      return (
+                        <button
+                          key={i}
+                          type="button"
+                          role="radio"
+                          aria-checked={selected}
+                          onClick={() => setAnswer(currentQuestion.id, i)}
+                          className={`opt${selected ? ' on' : ''}`}
+                        >
+                          <span className="key">{String.fromCharCode(65 + i)}</span>{opt}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </>
+              )}
+
+              {isCode && (
+                <>
+                  {currentQuestion.title && <h3 style={{ margin: 0, fontSize: 22, fontWeight: 900 }}>{currentQuestion.title}</h3>}
+                  <p style={{ margin: 0, fontSize: 17, lineHeight: 1.55 }}>{currentQuestion.question}</p>
+                  <div style={{ padding: '14px 16px', border: '2px solid #29251F', borderRadius: 12, background: '#F8F3E9', display: 'flex', flexDirection: 'column', gap: 6, fontSize: 14 }}>
+                    {currentQuestion.function_name && (
+                      <span><strong>Function name:</strong> <code className="mono">{currentQuestion.function_name}</code></span>
+                    )}
+                    {currentQuestion.example && (
+                      <span><strong>Example:</strong> <code className="mono">{currentQuestion.example}</code></span>
+                    )}
+                    <span className="muted" style={{ fontSize: 13 }}>
+                      {currentQuestion.test_count
+                        ? `Checked against ${currentQuestion.test_count} test cases. Partial credit is given for passing some but not all.`
+                        : 'Checked against hidden test cases. Partial credit is given for passing some but not all.'}
+                    </span>
+                  </div>
+                  <LocalCompiler
+                    code={answers[currentQuestion.id] ?? currentQuestion.starter_code ?? ''}
+                    onChange={v => setAnswer(currentQuestion.id, v)}
+                    language={skillName}
+                    onViolation={recordViolation}
+                  />
+                </>
+              )}
+            </div>
+          </main>
+
+          <footer style={{ background: '#FFFDF8', borderTop: '2px solid #29251F', padding: '14px clamp(16px, 3vw, 32px)', display: 'flex', alignItems: 'center', gap: 16 }}>
+            <button type="button" className="btn btn-s" onClick={handlePrev} aria-disabled={currentQuestionIndex === 0} disabled={currentQuestionIndex === 0}>← Previous</button>
+            <div className="hide-m" style={{ flex: 1, display: 'flex', gap: 6, justifyContent: 'center', flexWrap: 'wrap' }}>
+              {questions.map((q, i) => {
+                const isCurrent = i === currentQuestionIndex
+                const isAnswered = answers[q.id] !== undefined && String(answers[q.id]).trim() !== ''
+                return (
+                  <button
+                    key={q.id}
+                    type="button"
+                    className="qd"
+                    onClick={() => setCurrentQuestionIndex(i)}
+                    aria-label={`Question ${i + 1}${isAnswered ? ', answered' : ', not answered'}`}
+                    aria-current={isCurrent ? 'true' : undefined}
+                    style={isCurrent
+                      ? { background: '#29251F', color: '#FFFDF8' }
+                      : isAnswered ? { background: 'var(--accl)' } : undefined}
+                  >
+                    {i + 1}
+                  </button>
+                )
+              })}
+            </div>
+            {!isLast && <button type="button" className="btn btn-s" onClick={handleNext} style={{ marginLeft: 'auto' }}>Next →</button>}
+            {isLast && <button type="button" className="btn btn-p" onClick={() => setShowSubmitConfirm(true)} style={{ marginLeft: 'auto' }}>Submit Arena →</button>}
+          </footer>
+
+          {/* ---- violation warning ---- */}
+          {showWarning && (
+            <div className="scrim">
+              <div className="card modal" role="alertdialog" aria-labelledby="sv-warn">
+                <span className="tile" style={{ background: '#F6DDD8', color: '#9A2B1E' }}>!</span>
+                <h3 id="sv-warn" style={{ margin: 0, fontSize: 26, fontWeight: 900 }}>Violation {showWarning.count} of {MAX_VIOLATIONS}</h3>
+                <p className="muted" style={{ margin: 0, fontSize: 16 }}>{showWarning.message}</p>
+                <div style={{ width: '100%', display: 'flex', gap: 6 }}>
+                  {Array.from({ length: MAX_VIOLATIONS }).map((_, i) => (
+                    <span key={i} style={{ flex: 1, height: 10, borderRadius: 5, border: '2px solid #29251F', background: i < showWarning.count ? '#E2533A' : '#FFFDF8' }} />
+                  ))}
+                </div>
+                <div style={{ width: '100%', padding: '10px 12px', border: '2px solid #9A2B1E', borderRadius: 10, background: '#F6DDD8', color: '#9A2B1E', fontWeight: 800 }}>
+                  {MAX_VIOLATIONS - showWarning.count === 1
+                    ? 'One more violation will end your exam.'
+                    : `${MAX_VIOLATIONS - showWarning.count} more violations will end your exam.`}
+                </div>
+                <button type="button" className="btn btn-p" style={{ width: '100%' }} onClick={() => { setShowWarning(null); if (!document.fullscreenElement) requestFullscreenSync() }}>
                   Acknowledge and Continue
                 </button>
               </div>
             </div>
           )}
 
-          {showSubmitConfirm && (
-            <div className="fixed inset-0 z-[100] bg-ink/60 backdrop-blur-sm flex items-center justify-center p-4">
-              <div className="bg-white rounded-2xl p-8 max-w-sm w-full shadow-2xl border border-line animate-slide-up text-center">
-                <h3 className="font-display font-bold text-2xl mb-3 text-ink">Submit Arena?</h3>
-                <p className="text-clay mb-2 font-medium">
-                  You answered {answeredCount} of {totalCount} questions.
-                </p>
-                {answeredCount < totalCount && (
-                  <p className="text-red-500 font-bold mb-4 bg-red-50 py-2 rounded-lg border border-red-100">
-                    {totalCount - answeredCount} {totalCount - answeredCount === 1 ? 'question' : 'questions'} remaining!
-                  </p>
-                )}
-                <p className="text-xs text-clay mb-6">Once submitted, you cannot modify your answers.</p>
-                <div className="flex gap-3">
-                   <button onClick={() => setShowSubmitConfirm(false)} className="btn-secondary flex-1 py-3 justify-center font-bold">Cancel</button>
-                   <button onClick={() => submitQuiz()} disabled={loading} className="btn-primary flex-1 py-3 justify-center font-bold shadow-md">Submit</button>
-                </div>
+          {/* ---- fullscreen required ---- */}
+          {!showWarning && !isFullscreen && (
+            <div className="scrim" style={{ background: 'rgba(248,243,233,.94)' }}>
+              <div className="card modal" role="alertdialog" aria-labelledby="sv-fs">
+                <span className="tile" style={{ background: 'var(--accl)' }}>⛶</span>
+                <h3 id="sv-fs" style={{ margin: 0, fontSize: 26, fontWeight: 900 }}>Fullscreen is required</h3>
+                <p className="muted" style={{ margin: 0, fontSize: 16 }}>The Skill Arena can only be answered in fullscreen mode.</p>
+                <button type="button" className="btn btn-p" style={{ width: '100%' }} onClick={requestFullscreenSync}>Click to continue</button>
               </div>
             </div>
           )}
 
-          {/* Header */}
-          <header className="bg-white border-b border-line px-4 sm:px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between shrink-0 shadow-sm z-10 gap-4">
-            <div className="flex flex-col">
-              <div className="flex items-center gap-2 text-brandInk">
-                <Swords className="w-4 h-4" />
-                <span className="text-xs font-bold uppercase tracking-wider">Skill Arena</span>
-              </div>
-              <h1 className="text-lg font-display text-ink mt-0.5">{skillName}</h1>
-            </div>
-            
-            <div className="flex flex-col items-center">
-              <span className="text-sm font-bold text-ink mb-1.5">Question {currentQuestionIndex + 1} of {totalCount}</span>
-              <div className="w-48 h-1.5 bg-line/50 rounded-full overflow-hidden">
-                <div className="h-full bg-brand rounded-full transition-all duration-500 ease-out" style={{ width: `${progress}%` }} />
-              </div>
-            </div>
-            
-            <div className="flex items-center gap-4">
-              {violations > 0 && (
-                <div className="flex items-center gap-1.5 text-xs font-bold text-red-600 bg-red-50 border border-red-100 px-3 py-1.5 rounded-full shadow-sm">
-                  <AlertTriangle className="w-3.5 h-3.5" /> {violations} / {MAX_VIOLATIONS} Violations
-                </div>
-              )}
-              <div className={`flex items-center gap-2 px-5 py-2 rounded-full border shadow-sm font-mono text-base font-bold transition-colors ${timeLeft < 300 ? 'bg-red-50 text-red-600 border-red-200' : 'bg-white text-ink border-line'}`}>
-                <Clock className="w-4 h-4" />
-                {formatTime(timeLeft)}
-              </div>
-            </div>
-          </header>
-
-          {/* Main Content Area */}
-          <div className="flex-1 overflow-y-auto p-4 md:p-8 relative scroll-smooth">
-            <div className="max-w-4xl mx-auto w-full">
-              <AnimatePresence mode="wait">
-                <motion.div 
-                  key={currentQuestionIndex}
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -20 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  <div className="bg-white rounded-2xl p-6 md:p-10 border border-line shadow-sm mb-6">
-                    <div className="flex items-center gap-2 mb-6">
-                      <span className="text-xs font-bold uppercase tracking-wider text-ink/50 bg-ink/5 px-2.5 py-1 rounded-full">Topic: {currentQuestion.topic}</span>
-                      <span className="text-xs font-bold uppercase tracking-wider text-brandInk bg-brand/10 px-2.5 py-1 rounded-full">
-                        {qType === 'coding' ? `problem solving · ${currentQuestion.marks || 5} marks` : qType.replace('_', ' ')}
-                      </span>
-                    </div>
-
-                    {qType === 'coding' && currentQuestion.title && (
-                      <h3 className="text-lg font-bold text-ink mb-2">{currentQuestion.title}</h3>
-                    )}
-
-                    <h2 className="text-xl font-medium text-ink leading-relaxed mb-8 whitespace-pre-wrap select-none">
-                      {currentQuestion.question}
-                    </h2>
-
-                    {(qType === 'mcq' || qType === 'output') ? (
-                      <div className="space-y-3">
-                        {currentQuestion.options?.map((opt) => {
-                          const qId = currentQuestion.id;
-                          const isSelected = answers[qId] === opt;
-                          return (
-                            <label
-                              key={opt}
-                              className={`flex items-start gap-3 text-sm cursor-pointer px-5 py-4 rounded-xl border-2 transition-all duration-150
-                                ${isSelected ? 'border-brand bg-brand/5 text-brandInk shadow-sm' : 'border-line hover:border-ink/20 hover:bg-paper'}`}
-                            >
-                              <input
-                                type="radio"
-                                name={qId}
-                                className="accent-brand mt-0.5"
-                                checked={isSelected}
-                                onChange={() => setAnswers((a) => ({ ...a, [qId]: opt }))}
-                              />
-                              <span className={isSelected ? 'font-medium' : ''}>{opt}</span>
-                            </label>
-                          )
-                        })}
-                      </div>
-                    ) : qType === 'problem_solving' ? (
-                      <div className="space-y-4">
-                        <textarea 
-                          className="w-full min-h-[250px] p-5 bg-paper border border-line rounded-xl focus:border-brand focus:ring-2 focus:ring-brand/20 transition-all resize-y text-ink placeholder:text-clay font-mono text-sm shadow-inner"
-                          placeholder="Describe your solution approach or write code here..."
-                          value={answers[currentQuestion.id] || ''}
-                          onChange={e => setAnswers(a => ({...a, [currentQuestion.id]: e.target.value}))}
-                        />
-                      </div>
-                    ) : qType === 'coding' ? (
-                      <div className="space-y-4">
-                        <div className="bg-paper border border-line rounded-xl p-4 text-sm text-ink/80 space-y-1.5">
-                          <p><span className="font-bold text-ink">Function name:</span> <code className="font-mono bg-ink/5 px-1.5 py-0.5 rounded">{currentQuestion.function_name}</code></p>
-                          {currentQuestion.example && (
-                            <p>
-                              <span className="font-bold text-ink">Example:</span>{' '}
-                              <code className="font-mono bg-ink/5 px-1.5 py-0.5 rounded">
-                                {currentQuestion.function_name}({(currentQuestion.example.args || []).map(a => JSON.stringify(a)).join(', ')}) should return {JSON.stringify(currentQuestion.example.expected)}
-                              </code>
-                            </p>
-                          )}
-                          <p className="text-xs text-clay">
-                            Checked against {currentQuestion.test_count || 5} test cases. Partial credit is given for passing some but not all.
-                          </p>
-                        </div>
-                        <LocalCompiler
-                          code={answers[currentQuestion.id] || ''}
-                          onChange={code => setAnswers(a => ({...a, [currentQuestion.id]: code}))}
-                          language="Python"
-                          onViolation={recordViolation}
-                        />
-                      </div>
-                    ) : null}
-                  </div>
-                </motion.div>
-              </AnimatePresence>
-            </div>
-          </div>
-
-          {/* Footer Navigation */}
-          <footer className="bg-white border-t border-line px-4 sm:px-6 py-4 shrink-0 z-10 relative">
-            <div className="max-w-4xl mx-auto w-full flex items-center justify-between">
-              <button 
-                onClick={handlePrev} 
-                disabled={currentQuestionIndex === 0}
-                className="btn-secondary px-5 py-2.5 flex items-center gap-2 disabled:opacity-50 font-bold"
-              >
-                <ChevronLeft className="w-4 h-4" /> Previous
-              </button>
-              
-              <div className="flex items-center gap-1.5 overflow-x-auto px-4 max-w-[200px] sm:max-w-sm hidden md:flex scrollbar-hide mask-edges">
-                {questions.map((q, i) => (
-                  <button 
-                    key={i} 
-                    onClick={() => setCurrentQuestionIndex(i)}
-                    className={`w-8 h-8 rounded-full text-xs font-bold shrink-0 transition-colors flex items-center justify-center ${
-                      i === currentQuestionIndex ? 'bg-brand text-white border border-brand ring-2 ring-brand/30 shadow-sm' :
-                      answers[q.id] ? 'bg-brand/10 text-brandInk border border-brand/20' : 
-                      'bg-paper text-clay border border-line hover:bg-lift'
-                    }`}
-                  >
-                    {i + 1}
-                  </button>
-                ))}
-              </div>
-
-              {currentQuestionIndex < totalCount - 1 ? (
-                <button 
-                  onClick={handleNext} 
-                  className="btn-secondary px-6 py-2.5 flex items-center gap-2 bg-ink/5 hover:bg-ink/10 text-ink border-none font-bold"
-                >
-                  Next <ChevronRight className="w-4 h-4" />
-                </button>
-              ) : (
-                <button 
-                  onClick={() => setShowSubmitConfirm(true)}
-                  className="btn-primary px-8 py-2.5 flex items-center gap-2 shadow-md font-bold"
-                >
-                  Submit Arena <ArrowRight className="w-4 h-4" />
-                </button>
-              )}
-            </div>
-          </footer>
-        </div>
-      )}
-
-      {/* ── Step: Terminated ── */}
-      {step === STEPS.TERMINATED && (
-        <div className="fixed inset-0 z-50 bg-[#f8f9fc] flex items-center justify-center p-4">
-           <div className="bg-white rounded-2xl p-8 max-w-lg w-full shadow-xl border border-line text-center animate-slide-up">
-              <div className="w-20 h-20 bg-red-600 text-white rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg shadow-red-600/20">
-                <ShieldAlert className="w-10 h-10" />
-              </div>
-              <h1 className="font-display text-3xl mb-3 text-ink">Skill Arena Terminated</h1>
-              <p className="text-clay mb-4 text-sm font-medium leading-relaxed">
-                 Your Skill Arena was closed because the maximum number of security violations ({MAX_VIOLATIONS}) was reached.
-                 Your attempt has been recorded and submitted.
-              </p>
-              {result && result.violations > 0 && (
-                <p className="text-xs text-red-600 font-bold mb-6 bg-red-50 inline-block px-3 py-1 rounded-full border border-red-100">
-                  {result.violations} security violation{result.violations === 1 ? '' : 's'} were recorded during this attempt
+          {/* ---- submit confirmation ---- */}
+          {showSubmitConfirm && (
+            <div className="scrim">
+              <div className="card modal" role="dialog" aria-labelledby="sv-confirm">
+                <h3 id="sv-confirm" style={{ margin: 0, fontSize: 26, fontWeight: 900 }}>Submit Arena?</h3>
+                <p style={{ margin: 0, fontSize: 16, fontWeight: 600 }}>
+                  You answered <span className="mono" style={{ fontWeight: 700 }}>{answeredCount}</span> of <span className="mono" style={{ fontWeight: 700 }}>{totalCount}</span> questions.
                 </p>
-              )}
-              <button onClick={() => setStep(STEPS.RESULT)} disabled={loading} className="btn-primary w-full py-3 justify-center shadow-md">
-                 {loading ? 'Processing...' : 'View Result'}
-              </button>
-           </div>
+                {answeredCount < totalCount && (
+                  <div style={{ width: '100%', padding: '10px 12px', border: '2px solid #9A2B1E', borderRadius: 10, background: '#F6DDD8', color: '#9A2B1E', fontWeight: 800 }}>
+                    {totalCount - answeredCount} question{totalCount - answeredCount === 1 ? '' : 's'} remaining!
+                  </div>
+                )}
+                <span className="muted" style={{ fontSize: 13 }}>Once submitted, you cannot modify your answers.</span>
+                <div style={{ display: 'flex', gap: 12, width: '100%' }}>
+                  <button type="button" className="btn btn-s" style={{ flex: 1 }} onClick={() => setShowSubmitConfirm(false)}>Cancel</button>
+                  <button type="button" className="btn btn-p" style={{ flex: 1 }} aria-disabled={loading} disabled={loading} onClick={() => submitQuiz(false)}>
+                    {loading ? 'Submitting…' : 'Submit'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
-      {/* ── Step: Result ── */}
+      {/* ============ TERMINATED ============ */}
+      {step === STEPS.TERMINATED && (
+        <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, backgroundImage: 'repeating-linear-gradient(-45deg, #F8F3E9 0 22px, #F2E9DA 22px 44px)' }}>
+          <div className="card modal" style={{ maxWidth: 520, boxShadow: '0 4px 0 #9A2B1E, 0 7px 0 #29251F' }}>
+            <span className="tile" style={{ background: '#E2533A', color: '#FFFDF8' }}>🛡</span>
+            <h1 style={{ margin: 0, fontSize: 32, fontWeight: 900 }}>Skill Arena terminated</h1>
+            <p className="muted" style={{ margin: 0, fontSize: 16, lineHeight: 1.55 }}>
+              Your Skill Arena was closed because the maximum number of security violations ({MAX_VIOLATIONS}) was reached. Your attempt has been recorded and submitted.
+            </p>
+            <span className="pill" style={{ background: '#F6DDD8', color: '#9A2B1E', borderColor: '#9A2B1E' }}>
+              {MAX_VIOLATIONS} security violations were recorded during this attempt
+            </span>
+            <button type="button" className="btn btn-p" style={{ width: '100%' }} onClick={() => setStep(STEPS.RESULT)} aria-disabled={!result} disabled={!result}>
+              View Result
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ============ RESULT ============ */}
       {step === STEPS.RESULT && result && (
-        <div className="animate-slide-up max-w-lg mx-auto">
-          <div className="flex justify-center mb-4">
-             <div className="w-12 h-12 bg-gold/10 text-gold rounded-full flex items-center justify-center border border-gold/20 shadow-sm relative">
-                <div className="absolute inset-0 border border-gold/30 rounded-full animate-ping opacity-20" />
-                <ShieldCheck className="w-6 h-6" />
-             </div>
-          </div>
-          
-          <div className="text-center mb-8">
-             <p className="text-[10px] font-bold text-gold uppercase tracking-wider mb-2">Arena Complete</p>
-             <h1 className="font-display text-4xl text-ink mb-1">{skillName}</h1>
-             <p className="text-clay text-sm">Your assessment is verified.</p>
-             {result.violations > 0 && (
-               <p className="text-xs text-red-600 font-bold mt-2 bg-red-50 inline-block px-3 py-1 rounded-full border border-red-100">
-                 {result.violations} security violation{result.violations === 1 ? '' : 's'} were recorded during this attempt
-               </p>
-             )}
+        <div style={{ maxWidth: 960, margin: '0 auto', padding: '48px clamp(16px, 3vw, 32px) 80px', display: 'flex', flexDirection: 'column', gap: 28 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, textAlign: 'center' }}>
+            <span className="pill" style={{ background: '#D6F3EA' }}>✓ ARENA COMPLETE</span>
+            <h1 style={{ margin: 0, fontSize: 48, fontWeight: 900 }}>{skillName}</h1>
+            <span className="muted">Your assessment is verified.</span>
+            {result.violations > 0 && (
+              <span className="pill" style={{ background: '#F6DDD8', color: '#9A2B1E', borderColor: '#9A2B1E' }}>
+                {result.violations} security violation{result.violations === 1 ? ' was' : 's were'} recorded during this attempt
+              </span>
+            )}
           </div>
 
-          {/* Score hero */}
-          <div className="bg-surface border border-line rounded-2xl p-6 mb-6 text-center shadow-sm relative overflow-hidden">
-             <div className="absolute left-0 top-0 bottom-0 w-1 bg-gold/50" />
-             <p className="font-display text-6xl text-ink mb-3">{result.score}<span className="text-2xl text-clay">%</span></p>
-             <div className="flex items-center justify-center gap-3 mb-1">
-               <SkillBadge badge={result.badge} />
-               <span className="font-semibold text-sm text-ink">{result.level}</span>
-             </div>
-             {result.badge && (
-               <p className="text-xs font-bold text-brandInk bg-brand/10 inline-block px-3 py-1 rounded-full mt-3">+50 XP Earned</p>
-             )}
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-            {/* Next Move (Weak Topics) */}
-            <div className="bg-surface border border-line rounded-xl p-5 shadow-sm">
-              <p className="text-[10px] font-bold text-clay uppercase tracking-wider mb-3 flex items-center gap-1.5">
-                <Target className="w-3.5 h-3.5" /> Next Move
+          <div className="card two" style={{ padding: 32, display: 'grid', gridTemplateColumns: 'auto 1fr', gap: 32, alignItems: 'center' }}>
+            <div style={{ width: 180, height: 180, borderRadius: 999, border: '2px solid #29251F', background: `conic-gradient(var(--acc) 0 ${Math.round(result.score)}%, #F0E5D2 ${Math.round(result.score)}% 100%)`, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 5px 0 #29251F' }}>
+              <div style={{ width: 128, height: 128, borderRadius: 999, border: '2px solid #29251F', background: '#FFFDF8', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <span className="mono" style={{ fontSize: 40, fontWeight: 700 }}>{Math.round(result.score)}<span style={{ fontSize: 20 }}>%</span></span>
+              </div>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+                {result.badge && <span className="pill" style={{ background: '#FBEFC4', height: 36, fontSize: 14 }}>🥇 {result.badge} badge</span>}
+                {result.level && <span className="pill" style={{ height: 36, fontSize: 14 }}>{result.level}</span>}
+              </div>
+              <p className="muted" style={{ margin: 0, fontSize: 16, lineHeight: 1.55 }}>
+                Your score, level and badge are now on your profile. Peers searching for {skillName} can see your verified badge.
               </p>
-              {result.weak_topics.length > 0 ? (
-                <div>
-                   <p className="text-sm font-semibold text-ink mb-2">Focus on {result.weak_topics[0]}</p>
-                   <p className="text-xs text-clay">Master this to level up your overall {skillName} skill.</p>
-                </div>
+            </div>
+          </div>
+
+          <div className="two" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+            <div className="card" style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <span className="eb">◎ NEXT MOVE</span>
+              {result.weak_topics?.length > 0 ? (
+                <>
+                  <strong style={{ fontSize: 20 }}>Focus on {result.weak_topics[0]}</strong>
+                  <span className="muted">Master this to level up your overall {skillName} skill.</span>
+                </>
               ) : (
-                <div>
-                   <p className="text-sm font-semibold text-ink mb-2">Help Others</p>
-                   <p className="text-xs text-clay">You have high mastery. Find someone to tutor.</p>
-                </div>
+                <>
+                  <strong style={{ fontSize: 20 }}>You’re solid across the board</strong>
+                  <span className="muted">Consider teaching this skill to someone else.</span>
+                </>
               )}
             </div>
-
-            {/* Study Plan */}
-            <div className="bg-surface border border-line rounded-xl p-5 shadow-sm">
-              <p className="text-[10px] font-bold text-clay uppercase tracking-wider mb-3 flex items-center gap-1.5">
-                <Route className="w-3.5 h-3.5" /> Path Ahead
-              </p>
-              <ul className="space-y-1.5">
-                {result.study_plan.slice(0, 3).map((line, i) => (
-                  <li key={i} className="flex items-start gap-2 text-xs text-ink/70">
-                    <span className="text-brandInk/50 font-bold mt-0.5">•</span>
-                    <span className="line-clamp-2">{line}</span>
-                  </li>
-                ))}
+            <div className="card" style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <span className="eb">↗ PATH AHEAD</span>
+              <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 8, fontWeight: 600 }}>
+                {(result.study_plan || []).map((s, i) => <li key={i}>• {s}</li>)}
               </ul>
             </div>
           </div>
 
-          <div className="flex flex-col gap-3">
-            <Link 
-              to={result.weak_topics.length > 0 ? `/dashboard?weakTopic=${encodeURIComponent(result.weak_topics[0])}` : `/dashboard`} 
-              className="btn-primary w-full justify-center py-3.5 font-semibold text-sm gap-2"
-            >
-              Continue your Skill Journey <Play className="w-4 h-4 fill-current" />
-            </Link>
-            <Link to="/marketplace" className="text-center text-xs font-semibold text-brandInk hover:underline py-2">
-              or find a partner in the Marketplace
-            </Link>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
+            <Link to="/gamification" className="btn btn-p" style={{ minWidth: 320 }}>Continue your Skill Journey ▶</Link>
+            <Link to="/marketplace" style={{ fontWeight: 800, fontSize: 14 }}>or find a partner in the Marketplace</Link>
           </div>
         </div>
       )}
     </div>
-  )
-}
-
-function RoleOption({ label, sub, value, role, setRole, icon }) {
-  const active = role === value
-  return (
-    <button
-      type="button"
-      onClick={() => setRole(value)}
-      className={`text-left px-4 py-3 rounded-xl border-2 transition-all duration-150
-        ${active
-          ? 'border-brand bg-brand/5'
-          : 'border-line bg-white hover:border-ink/20'
-        }`}
-    >
-      <div className="flex items-center gap-2 mb-1">
-        <span>{icon}</span>
-        <span className={`text-sm font-medium ${active ? 'text-brandInk' : 'text-ink'}`}>{label}</span>
-      </div>
-      <p className="text-xs text-ink/40">{sub}</p>
-    </button>
   )
 }
