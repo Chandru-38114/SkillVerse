@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Fraunces:ital,opsz,wght@1,9..144,600&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -15,45 +15,45 @@
 ──────────────────────────────────────────────────── */
 @layer base {
   :root {
-    /* SkillVerse 2.0 - Light-First Environment (Modern SaaS) */
-    --color-paper:      246 248 250;   /* #F6F8FA Soft Mist */
-    --color-surface:    255 255 255;   /* #FFFFFF */
-    --color-lift:       238 243 247;   /* #EEF3F7 Cool Blue Mist */
-    --color-ink:        38  53  72;    /* #263548 Deep Slate */
-    --color-clay:       104 119 137;   /* #687789 Muted Slate */
-    --color-line:       221 228 234;   /* #DDE4EA */
-    
-    /* Brand - Soft Slate Blue / Muted Teal */
-    --color-brand:      91  111 166;   /* #5B6FA6 Soft Slate Blue */
-    --color-brand2:     95  168 160;   /* #5FA8A0 Muted Teal */
-    --color-brandLight: 236 242 249;   /* Pale slate blue */
-    --color-accent:     95  168 160;   /* Muted Teal */
-    
+    /* SkillVerse V2 - warm paper, ink and hard-shadow design */
+    --color-paper:      248 243 233;   /* #F8F3E9 warm paper */
+    --color-surface:    255 253 248;   /* #FFFDF8 */
+    --color-lift:       240 229 210;   /* #F0E5D2 */
+    --color-ink:         41  37  31;   /* #29251F */
+    --color-clay:       110 100  85;   /* #6E6455 */
+    --color-line:       210 190 160;   /* #D2BEA0 sand */
+
+    /* Brand - accent orange / mint */
+    --color-brand:      255 138  61;   /* #FF8A3D accent orange */
+    --color-brand2:     108 207 176;   /* #6CCFB0 mint */
+    --color-brandLight: 255 227 207;   /* #FFE3CF */
+    --color-accent:     255 138  61;
+
     /* Gold/Accent */
-    --color-gold:       214 184 120;   /* #D6B878 Warm Champagne */
-    --color-goldLight:  252 248 240;   /* Pale Champagne */
-    
+    --color-gold:       251 239 196;   /* #FBEFC4 butter */
+    --color-goldLight:  249 245 232;
+
     /* Chat bubbles */
-    --color-bubbleMe:   91  111 166;
-    --color-bubbleThem: 238 243 247;
+    --color-bubbleMe:   255 138  61;
+    --color-bubbleThem: 255 253 248;
   }
 
   /* Force light theme variables on .dark since we are ignoring forced dark mode */
   .dark {
-    --color-paper:      246 248 250;
-    --color-surface:    255 255 255;
-    --color-lift:       238 243 247;
-    --color-ink:        38  53  72;
-    --color-clay:       104 119 137;
-    --color-line:       221 228 234;
-    --color-brand:      91  111 166;
-    --color-brand2:     95  168 160;
-    --color-brandLight: 236 242 249;
-    --color-accent:     95  168 160;
-    --color-gold:       214 184 120;
-    --color-goldLight:  252 248 240;
-    --color-bubbleMe:   91  111 166;
-    --color-bubbleThem: 238 243 247;
+    --color-paper:      248 243 233;
+    --color-surface:    255 253 248;
+    --color-lift:       240 229 210;
+    --color-ink:         41  37  31;
+    --color-clay:       110 100  85;
+    --color-line:       210 190 160;
+    --color-brand:      255 138  61;
+    --color-brand2:     108 207 176;
+    --color-brandLight: 255 227 207;
+    --color-accent:     255 138  61;
+    --color-gold:       251 239 196;
+    --color-goldLight:  249 245 232;
+    --color-bubbleMe:   255 138  61;
+    --color-bubbleThem: 255 253 248;
   }
 }
 
@@ -76,25 +76,30 @@ input, textarea, select {
 
 /* Cards & Panels */
 .card {
-  @apply bg-surface rounded-xl shadow-sm border border-line p-6 md:p-8 transition-all duration-300;
+  @apply bg-surface border-2 border-ink rounded-sk-lg shadow-hard-2 p-6 md:p-8 transition-shadow duration-200;
 }
 
 .card-hover {
-  @apply card hover:shadow-md hover:-translate-y-1 hover:border-line hover:bg-surface;
+  @apply card hover:shadow-hard-press;
 }
 
 /* Section Panel for open layout without rigid card borders */
 .section-panel {
-  @apply bg-surface rounded-2xl border border-line shadow-sm p-6 md:p-8 relative overflow-hidden;
+  @apply bg-surface border-2 border-ink rounded-sk-lg shadow-hard-1 p-6 md:p-8 relative overflow-hidden;
 }
 
 /* Buttons */
 .btn-primary {
-  @apply bg-ink text-white px-6 py-2.5 rounded-lg font-medium text-sm tracking-wide
-         min-h-[40px] md:min-h-[36px]
-         hover:bg-ink/90 hover:shadow-sm transition-all duration-200
+  @apply bg-brand text-ink px-6 py-2.5 rounded-sk border-2 border-ink font-extrabold text-sm tracking-wide
+         min-h-[48px] md:min-h-[52px]
+         transition-shadow duration-200
          disabled:opacity-40 disabled:cursor-not-allowed
          inline-flex items-center justify-center gap-2;
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, .45), 0 4px 0 #C4581A, 0 7px 0 rgb(var(--color-ink));
+}
+
+.btn-primary:hover:not(:disabled) {
+  box-shadow: 0 2px 0 #C4581A, 0 4px 0 rgb(var(--color-ink));
 }
 
 .btn-brand {
@@ -102,25 +107,37 @@ input, textarea, select {
 }
 
 .btn-secondary {
-  @apply bg-surface text-ink px-6 py-2.5 rounded-lg font-medium text-sm border border-line
-         min-h-[40px] md:min-h-[36px]
-         hover:bg-lift hover:border-line hover:shadow-sm transition-all duration-200
+  @apply bg-surface text-ink px-6 py-2.5 rounded-sk border-2 border-ink font-extrabold text-sm
+         min-h-[48px] md:min-h-[52px]
+         shadow-hard-1
+         transition-shadow duration-200
+         disabled:opacity-40 disabled:cursor-not-allowed
          inline-flex items-center justify-center gap-2;
 }
 
+.btn-secondary:hover:not(:disabled) {
+  box-shadow: none;
+}
+
 .btn-ghost {
-  @apply text-clay px-4 py-2.5 rounded-xl text-sm font-semibold
+  /* Brand stays a fill, never ghost-button text, to hold 4.5:1 contrast on paper. */
+  @apply text-clay px-4 py-2.5 rounded-sk text-sm font-semibold
          min-h-[44px] md:min-h-0
-         hover:text-brand hover:bg-brand/10 transition-all duration-200;
+         hover:text-ink hover:bg-brand/10 transition-all duration-200;
 }
 
 /* Inputs */
 .input {
-  @apply w-full border border-line/20 rounded-xl px-4 py-3 bg-paper/50 text-ink text-base md:text-sm
-         min-h-[48px] md:min-h-[44px]
+  @apply w-full bg-surface border-2 border-ink rounded-sk-md px-4 py-3 text-ink text-base md:text-sm
+         min-h-[48px]
          placeholder:text-clay/60
-         focus:outline-none focus:ring-2 focus:ring-brand/50 focus:border-brand
-         transition-all duration-200 shadow-inner;
+         focus:outline-none
+         transition-all duration-200;
+}
+
+.input:focus-visible {
+  outline: 3px solid rgb(var(--color-brand));
+  outline-offset: 2px;
 }
 
 textarea.input {
@@ -130,6 +147,19 @@ textarea.input {
 /* Disabled input look */
 .input:disabled {
   @apply bg-lift opacity-70 cursor-not-allowed;
+}
+
+/* Pills and eyebrow labels */
+.pill {
+  @apply inline-flex items-center justify-center h-[30px] px-3 rounded-full border-2 border-current text-xs font-extrabold;
+}
+
+.eb {
+  @apply text-xs font-extrabold uppercase tracking-[0.18em];
+}
+
+.serif {
+  @apply font-display italic font-semibold;
 }
 
 /* Labels */

@@ -37,18 +37,26 @@ export default {
         },
       },
       fontFamily: {
-        display:   ["'Inter'", "sans-serif"],
-        body:      ["'Inter'", "sans-serif"],
+        display:   ["Fraunces", "Georgia", "serif"],
+        body:      ["Inter", "system-ui", "sans-serif"],
         mono:      ["'JetBrains Mono'", "monospace"],
-        cormorant: ["'Inter'", "sans-serif"],
+        // Legacy alias - points at the same stack as display so nothing breaks.
+        cormorant: ["Fraunces", "Georgia", "serif"],
       },
       borderRadius: {
-        sk: "10px",
+        sk:    "10px", /* buttons */
+        'sk-md': "12px", /* inputs, small panels */
+        'sk-lg': "16px", /* cards */
       },
       boxShadow: {
-        'elev-1': '0 1px 3px 0 rgb(0 0 0 / 0.12), 0 1px 2px -1px rgb(0 0 0 / 0.08)',
-        'elev-2': '0 4px 6px -1px rgb(0 0 0 / 0.15), 0 2px 4px -2px rgb(0 0 0 / 0.10)',
-        'elev-3': '0 10px 15px -3px rgb(0 0 0 / 0.20), 0 4px 6px -4px rgb(0 0 0 / 0.12)',
+        'hard-1':     '0 3px 0 rgb(var(--color-line))',
+        'hard-2':     '0 4px 0 rgb(var(--color-line)), 0 7px 0 rgb(var(--color-ink))',
+        'hard-3':     '0 5px 0 rgb(var(--color-ink))',
+        'hard-press': '0 2px 0 rgb(var(--color-line)), 0 4px 0 rgb(var(--color-ink))',
+        // Aliases kept for backward compat
+        'elev-1': '0 3px 0 rgb(var(--color-line))',
+        'elev-2': '0 4px 0 rgb(var(--color-line)), 0 7px 0 rgb(var(--color-ink))',
+        'elev-3': '0 5px 0 rgb(var(--color-ink))',
       },
     },
   },
