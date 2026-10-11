@@ -9,6 +9,7 @@ export function initLanding(gsap, ScrollTrigger, Lenis) {
     try { ScrollTrigger.getAll().forEach(function(t){ t.kill(); }); } catch(e){}
     try { if (_lenis) _lenis.destroy(); } catch(e){}
     try { gsap.globalTimeline.clear(); } catch(e){}
+    try { if (typeof mm !== 'undefined' && mm && mm.revert) mm.revert(); } catch(e){}
     try { document.body.classList.remove('is-dark'); } catch(e){}
     try { var p = document.querySelector('.pre'); if (p) p.remove(); } catch(e){}
   }
@@ -112,15 +113,6 @@ export function initLanding(gsap, ScrollTrigger, Lenis) {
   gsap.timeline({scrollTrigger:{trigger:'#manifesto',start:'top top',end:'+=140%',pin:true,scrub:1}})
     .to(W,{opacity:1,stagger:.1,ease:'none'});
 
-  /* marquee: auto-scroll + velocity */
-  $$('.mq-row').forEach(function(row){
-    row.innerHTML += row.innerHTML;
-    var dir=+row.dataset.dir, x=0, w=row.scrollWidth/2, vel=0;
-    ScrollTrigger.create({start:0,end:'max',onUpdate:function(s){ vel=s.getVelocity()/300; }});
-    addTicker(function(){ if(!_alive.v) return; x += dir*(1.1+Math.min(Math.abs(vel),18))*(vel<0?-1:1); vel*=0.92; if(x<=-w) x+=w; if(x>0) x-=w; row.style.transform='translate3d('+x+'px,0,0) skewX('+gsap.utils.clamp(-8,8,-vel*0.6)+'deg)'; });
-    on(window, 'resize', function(){ w=row.scrollWidth/2; });
-  });
-
   /* journey: horizontal pin */
   var jt=$('#jtrack');
   function jDist(){ return Math.max(0, jt.scrollWidth - window.innerWidth + 40); }
@@ -192,7 +184,9 @@ export function initLanding(gsap, ScrollTrigger, Lenis) {
 
   /* cursor + magnetic buttons (desktop only) */
   mm.add('(hover:hover) and (pointer:fine)',function(){
-    var cur=$('#cur'), xTo=gsap.quickTo(cur,'x',{duration:.35,ease:'power3'}), yTo=gsap.quickTo(cur,'y',{duration:.35,ease:'power3'});
+    var cur=$('#cur');
+    if(!cur) return;
+    var xTo=gsap.quickTo(cur,'x',{duration:.35,ease:'power3'}), yTo=gsap.quickTo(cur,'y',{duration:.35,ease:'power3'});
     function mv(e){ xTo(e.clientX); yTo(e.clientY); }
     on(window, 'pointermove', mv);
     $$('a,button,.card').forEach(function(el){ el.addEventListener('pointerenter',function(){ cur.classList.add('big'); }); el.addEventListener('pointerleave',function(){ cur.classList.remove('big'); }); });

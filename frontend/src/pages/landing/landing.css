@@ -88,11 +88,18 @@ body.sv-landing .words .hi{color:var(--accd)}
 body.sv-landing .chip{position:absolute;padding:12px 16px;border:2px solid var(--ink);border-radius:12px;font-weight:900;box-shadow:0 4px 0 var(--ink);color:var(--ink);will-change:transform;font-size:15px}
 
 /* marquee */
-body.sv-landing .mq{overflow:hidden;border-block:2px solid var(--ink);background:var(--acc);color:var(--ink);padding-block:18px;white-space:nowrap}
-body.sv-landing .mq.alt{background:var(--ink);color:var(--surface);border-color:var(--ink)}
-body.sv-landing .mq-row{display:inline-flex;gap:36px;font-size:clamp(34px,6vw,84px);font-weight:900;letter-spacing:-.03em;will-change:transform;padding-right:36px}
-body.sv-landing .mq-row span{display:inline-flex;align-items:center;gap:36px}
-body.sv-landing .mq-row span::after{content:"✦";font-size:.5em;color:currentColor;opacity:.7}
+
+
+
+
+
+
+
+/* static skill band — replaces the scrolling ticker */
+body.sv-landing .mq{border-block:2px solid var(--ink);background:var(--acc);color:var(--ink);padding:clamp(18px,3vw,30px) var(--gut)}
+body.sv-landing .mq-static{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:clamp(14px,2.5vw,32px);font-size:clamp(20px,3.2vw,44px);font-weight:900;letter-spacing:-.03em;line-height:1.1;text-align:center}
+body.sv-landing .mq-static span{display:inline-flex;align-items:center;gap:clamp(14px,2.5vw,32px)}
+body.sv-landing .mq-static span:not(:last-child)::after{content:"\2726";font-size:.5em;opacity:.7}
 
 /* journey (horizontal) */
 body.sv-landing #journey{overflow:hidden;background:transparent}
