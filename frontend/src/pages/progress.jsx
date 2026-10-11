@@ -1,269 +1,309 @@
-import React, { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { CheckCircle, ArrowRight, Award, History, TrendingUp, Clock, BookOpen } from "lucide-react";
-import { api } from "../api";
+import { useState, useEffect } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import { api } from '../api'
+import './progress.css'
 
-const getStageProgressWidth = (stage) => {
-  switch (stage) {
-    case "Discovered": return "10%";
-    case "Baseline Established": return "25%";
-    case "Practicing": return "50%";
-    case "Developing": return "75%";
-    case "Mastery": return "100%";
-    default: return "0%";
-  }
-};
+const STAGES = ['Discovered', 'Baseline Established', 'Practicing', 'Developing', 'Mastery']
+const STAGE_SHORT = ['DISCOVERED', 'BASELINE', 'PRACTICING', 'DEVELOPING', 'MASTERY']
+
+const STAGE_WIDTH = {
+  'Discovered': '10%',
+  'Baseline Established': '25%',
+  'Practicing': '50%',
+  'Developing': '75%',
+  'Mastery': '100%',
+}
+
+const BADGE_FILL = { Gold: 'var(--acc)', Silver: '#D6F3EA', Bronze: '#FBEFC4' }
 
 export default function Progress() {
-  const [progressData, setProgressData] = useState([]);
-  const [historyData, setHistoryData] = useState([]);
-  const [certificates, setCertificates] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [showLoading, setShowLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [generating, setGenerating] = useState(false);
-  const navigate = useNavigate();
+  const navigate = useNavigate()
+  const [progressData, setProgressData] = useState([])
+  const [historyData, setHistoryData] = useState([])
+  const [certificates, setCertificates] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [showLoading, setShowLoading] = useState(false)
+  const [error, setError] = useState(null)
+  const [generating, setGenerating] = useState(false)
 
   useEffect(() => {
-    let isMounted = true;
-    const timer = setTimeout(() => {
-      if (isMounted) setShowLoading(true);
-    }, 150);
+    let mounted = true
+    const timer = setTimeout(() => { if (mounted) setShowLoading(true) }, 150)
 
     async function loadData() {
       try {
-        const pData = await api.getMyProgress();
-        const hData = await api.getProgressHistory();
-        const cData = await api.getMyCertificates();
-        if (isMounted) {
-          setProgressData(pData || []);
-          setHistoryData(hData || []);
-          setCertificates(cData || []);
-        }
+        const pData = await api.getMyProgress()
+        const hData = await api.getProgressHistory()
+        const cData = await api.getMyCertificates()
+        if (!mounted) return
+        setProgressData(pData || [])
+        setHistoryData(hData || [])
+        setCertificates(cData || [])
       } catch (err) {
-        if (isMounted) setError(err.message);
+        if (mounted) setError(err.message || 'Could not load your progress.')
       } finally {
-        if (isMounted) {
-          clearTimeout(timer);
-          setLoading(false);
-          setShowLoading(false);
-        }
+        if (mounted) { clearTimeout(timer); setLoading(false); setShowLoading(false) }
       }
     }
-    loadData();
-    return () => {
-      isMounted = false;
-      clearTimeout(timer);
-    };
-  }, []);
+    loadData()
+    return () => { mounted = false; clearTimeout(timer) }
+  }, [])
 
   const handleGenerateCertificate = async (skillName) => {
+    setGenerating(true)
     try {
-      setGenerating(true);
-      const newCert = await api.generateCertificate(skillName);
-      setCertificates([...certificates, newCert]);
-      // Remove alert for smoother UX, rely on navigation
-      navigate(`/certificate/${newCert.certificate_id}`);
+      const newCert = await api.generateCertificate(skillName)
+      navigate(`/certificate/${newCert.certificate_id}`)
     } catch (err) {
-      alert("Failed to generate certificate: " + err.message);
+      setError(err.message || 'Could not generate the certificate.')
     } finally {
-      setGenerating(false);
+      setGenerating(false)
     }
-  };
-
-  if (loading) {
-    return showLoading ? <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-12"><div className="skeleton h-32 w-full mb-6"></div><div className="grid md:grid-cols-2 gap-6"><div className="skeleton h-64 w-full"></div></div></div> : null;
   }
-  if (error) return <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-12"><div className="alert-error">{error}</div></div>;
 
-  const totalSessions = progressData.reduce((sum, skill) => sum + (skill.sessions_completed || 0), 0);
-  const totalLearningMinutes = progressData.reduce((sum, skill) => sum + (skill.total_learning_minutes || 0), 0);
-  
-  const isEmptyState = progressData.length === 0;
+  const totalSessions = progressData.reduce((sum, s) => sum + (s.sessions_completed || 0), 0)
+  const totalLearningMinutes = progressData.reduce((sum, s) => sum + (s.total_learning_minutes || 0), 0)
+  const totalHours = Math.round((totalLearningMinutes / 60) * 10) / 10
+  const isEmptyState = progressData.length === 0
+
+  // Sessions per week over the last 8 weeks, counted from the history entries'
+  // own timestamps. No invented numbers — if there is no history, the bars are empty.
+  const weeks = (() => {
+    const now = new Date()
+    const buckets = Array.from({ length: 8 }, (_, i) => {
+      const end = new Date(now); end.setDate(now.getDate() - i * 7)
+      const start = new Date(end); start.setDate(end.getDate() - 7)
+      return { start, end, n: 0 }
+    }).reverse()
+    historyData.forEach(h => {
+      const d = h.created_at ? new Date(h.created_at) : null
+      if (!d || isNaN(d)) return
+      const b = buckets.find(b => d > b.start && d <= b.end)
+      if (b) b.n += 1
+    })
+    const max = Math.max(1, ...buckets.map(b => b.n))
+    return buckets.map(b => ({ ...b, pct: Math.round((b.n / max) * 100) }))
+  })()
+
+  if (loading && showLoading) {
+    return (
+      <div className="sv-prog">
+        <div style={{ maxWidth: 1180, margin: '0 auto', padding: '40px clamp(16px, 3vw, 32px) 0', display: 'flex', flexDirection: 'column', gap: 28 }}>
+          <div className="sk" style={{ height: 120 }} />
+          <div className="sk" style={{ height: 340 }} />
+          <div className="grid2"><div className="sk" style={{ height: 260 }} /><div className="sk" style={{ height: 260 }} /></div>
+        </div>
+      </div>
+    )
+  }
 
   return (
-    <div className="page pb-12 animate-fade-in stagger-1">
-      <div className="mb-6">
-        <Link to="/dashboard" className="text-sm font-semibold text-brandInk hover:underline flex items-center gap-1">
-          ← Back to Skill Journey
-        </Link>
-      </div>
-      
-      {isEmptyState ? (
-        /* B7: Empty State */
-        <div className="card p-8 sm:p-12 text-center bg-brand/5 border border-brand/20 shadow-sm max-w-4xl mx-auto animate-slide-up stagger-2">
-          <div className="w-16 h-16 bg-brand/10 text-brandInk rounded-full flex items-center justify-center mx-auto mb-4">
-            <Compass className="w-8 h-8" />
+    <div className="sv-prog">
+      <div style={{ maxWidth: 1180, margin: '0 auto', padding: '40px clamp(16px, 3vw, 32px) 0', display: 'flex', flexDirection: 'column', gap: 36 }}>
+
+        {/* ---- header ---- */}
+        <header style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <span className="eb">MY PROGRESS</span>
+          <h1 style={{ margin: 0, fontSize: 'clamp(34px, 4.4vw, 54px)', fontWeight: 900, lineHeight: 1.03, letterSpacing: '-1.2px' }}>
+            Track how your skills grow
+          </h1>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 4 }}>
+            <span className="pill" style={{ height: 32, background: 'var(--accl)' }}>{progressData.length} skills</span>
+            <span className="pill" style={{ height: 32 }}>{totalSessions} sessions completed</span>
+            <span className="pill" style={{ height: 32 }}>{totalHours} hours learning</span>
           </div>
-          <h2 className="text-2xl font-bold text-ink mb-3">YOUR SKILL JOURNEY IS WAITING</h2>
-          <p className="text-clay mb-6 max-w-md mx-auto">Assess a skill, connect with another learner, and start building progress.</p>
-          <Link to="/assessment" className="btn-primary inline-flex text-base py-3 px-8 shadow-sm">
-            Assess a skill
-          </Link>
-        </div>
-      ) : (
-        <div className="max-w-6xl mx-auto lg:grid lg:grid-cols-3 lg:gap-8 lg:items-start space-y-8 lg:space-y-0">
-          
-          <div className="lg:col-span-2 space-y-8">
-            {/* B1: Page Header */}
-            <div className="animate-slide-up stagger-2">
-              <h1 className="text-3xl md:text-4xl font-bold text-ink mb-2">My Progress</h1>
-              <p className="text-clay font-medium text-lg mb-5">Track how your skills are growing.</p>
-              
-              <div className="flex flex-wrap gap-5 bg-brand/5 border border-brand/10 p-4 rounded-2xl shadow-sm">
-                <div>
-                  <p className="text-xs font-bold text-brandInk uppercase tracking-wider mb-1">Active Skills</p>
-                  <p className="text-2xl font-bold text-ink">{progressData.length}</p>
-                </div>
-                <div className="w-px bg-brand/20"></div>
-                <div>
-                  <p className="text-xs font-bold text-brandInk uppercase tracking-wider mb-1">Sessions Completed</p>
-                  <p className="text-2xl font-bold text-ink">{totalSessions}</p>
-                </div>
-                <div className="w-px bg-brand/20"></div>
-                <div>
-                  <p className="text-xs font-bold text-brandInk uppercase tracking-wider mb-1">Learning Time</p>
-                  <p className="text-2xl font-bold text-ink">{Math.floor(totalLearningMinutes / 60)}h {totalLearningMinutes % 60}m</p>
-                </div>
-              </div>
+        </header>
+
+        {error && (
+          <div style={{ padding: '12px 14px', border: '2px solid #9A2B1E', borderRadius: 12, background: '#F6DDD8', color: '#9A2B1E', fontWeight: 800 }}>{error}</div>
+        )}
+
+        {/* ---- empty ---- */}
+        {isEmptyState && (
+          <div className="card" style={{ padding: '56px 32px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, textAlign: 'center', borderStyle: 'dashed', boxShadow: 'none' }}>
+            <div style={{ display: 'flex', gap: 10 }} aria-hidden="true">
+              {[0, 1, 2, 3, 4].map(n => (
+                <span key={n} style={{ width: 36, height: 36, borderRadius: 999, border: '2px dashed #29251F', display: 'inline-block', background: n === 0 ? 'var(--accl)' : 'transparent', borderStyle: n === 0 ? 'solid' : 'dashed' }} />
+              ))}
             </div>
-
-            {/* B2: Skill Progress */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              {progressData.map((skill, idx) => {
-                const certForSkill = certificates.find(c => c.skill_name === skill.skill_name && c.badge === skill.badge);
-                const isEligible = skill.stage === "Mastery";
-                const whatHappened = skill.what_happened || "";
-                const nextMilestone = skill.next_milestone || "Keep learning and practicing to grow this skill.";
-                const staggerClass = `stagger-${Math.min(idx + 3, 5)}`;
-                
-                return (
-                  <div key={skill.id} className={`card-hover p-5 flex flex-col justify-between shadow-sm animate-slide-up ${staggerClass}`}>
-                    <div>
-                      <div className="flex justify-between items-start mb-3">
-                        <div>
-                          <p className="text-[10px] font-bold text-brandInk uppercase tracking-wider mb-0.5">{skill.role === "learning" ? "Learning" : "Teaching"}</p>
-                          <h2 className="text-xl font-bold text-ink leading-tight">{skill.skill_name}</h2>
-                        </div>
-                        <span className="text-sm font-bold text-brandInk bg-brand/10 px-2.5 py-1.5 rounded-md">
-                          {skill.stage}
-                        </span>
-                      </div>
-                      
-                      <div className="flex items-center gap-2 mb-4">
-                        <span className="text-sm text-clay font-medium capitalize">{skill.level}</span>
-                        {skill.badge && (
-                          <span className="inline-flex items-center gap-1 bg-goldLight text-gold px-1.5 py-0.5 rounded text-[10px] font-bold border border-gold/20">
-                            <Award className="w-3 h-3" /> {skill.badge}
-                          </span>
-                        )}
-                      </div>
-                      
-                      {/* Visual Progress Line */}
-                      <div className="w-full bg-brand/10 h-1.5 rounded-full overflow-hidden mb-5">
-                        <div 
-                          className="bg-brand h-full rounded-full transition-all duration-1000 ease-out" 
-                          style={{ width: getStageProgressWidth(skill.stage) }}
-                        ></div>
-                      </div>
-
-                      {/* B3: Narrative Progress */}
-                      <div className="mb-5 min-h-[60px]">
-                        <p className="text-sm font-medium text-ink/90 mb-1">{whatHappened}</p>
-                        <p className="text-xs font-semibold text-brand2/90">{nextMilestone}</p>
-                      </div>
-
-                      <div className="flex justify-between text-xs text-clay font-medium mb-6 pt-4 border-t border-line/40">
-                        <div className="flex items-center gap-1.5">
-                          <BookOpen className="w-4 h-4 text-brandInk/70" /> {skill.sessions_completed || 0} sessions
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          <Clock className="w-4 h-4 text-brandInk/70" /> {Math.floor(skill.total_learning_minutes / 60)}h {skill.total_learning_minutes % 60}m
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* B4 & B6: Next Action / Certificate */}
-                    <div className="pt-2">
-                      {certForSkill ? (
-                        <Link 
-                          to={`/certificate/${certForSkill.certificate_id}`}
-                          className="btn-secondary w-full justify-center flex items-center gap-2"
-                        >
-                          <Award className="w-4 h-4" /> View Certificate
-                        </Link>
-                      ) : isEligible ? (
-                        <button 
-                          onClick={() => handleGenerateCertificate(skill.skill_name)}
-                          disabled={generating}
-                          className="btn-brand w-full justify-center shadow-sm"
-                        >
-                          {generating ? "Generating..." : "Generate Certificate"}
-                        </button>
-                      ) : skill.progress_percentage === 0 ? (
-                        <Link to="/assessment" className="btn-brand w-full justify-center shadow-sm">
-                          Take assessment
-                        </Link>
-                      ) : (
-                        <Link to="/marketplace" className="btn-secondary w-full justify-center bg-surface border-brand/30 text-brandInk hover:bg-brand/5">
-                          Continue learning
-                        </Link>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+            <h3 style={{ margin: '8px 0 0', fontSize: 26, fontWeight: 900 }}>Your skill journey is waiting</h3>
+            <p className="muted" style={{ margin: 0, maxWidth: 440, fontSize: 16, lineHeight: 1.55 }}>
+              Take a Skill Challenge to establish your baseline, and your map will start filling in.
+            </p>
+            <Link to="/assessment" className="btn btn-p" style={{ marginTop: 6 }}>Take a Skill Challenge</Link>
           </div>
+        )}
 
-          <div className="lg:col-span-1 space-y-8">
-            {/* B5: Learning History */}
-            <div>
-              <h2 className="text-xl font-bold text-ink mb-4 flex items-center gap-2">
-                <History className="w-5 h-5 text-brandInk" /> Learning History
-              </h2>
-              
-              <div className="bg-surface rounded-2xl shadow-sm border border-line overflow-hidden">
-                {historyData.map((hist, index) => (
-                  <div key={hist.id} className={`p-4 flex flex-col gap-3 ${index !== historyData.length - 1 ? 'border-b border-line' : ''}`}>
-                    <div>
-                      <div className="flex flex-wrap items-center gap-2 mb-1.5">
-                        <span className="font-bold text-ink text-base line-clamp-1">{hist.session?.skill || "Skill"}</span>
-                        <span className="bg-line/50 text-clay text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded">Completed</span>
-                      </div>
-                      <p className="text-xs text-clay font-medium mb-2">{new Date(hist.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</p>
-                      <p className="text-sm font-medium text-ink/80 mb-1 line-clamp-2">
-                        Topics: <span className="font-normal text-clay">{hist.topics_completed || hist.topics_discussed || "General Practice"}</span>
-                      </p>
-                    </div>
-                    {hist.semantic_summary && (
-                      <div className="bg-paper/50 p-2.5 rounded border border-line text-xs font-medium text-ink/80 leading-relaxed mb-1">
-                        <span className="font-bold text-clay block mb-0.5">What You Worked On</span>
-                        {hist.semantic_summary}
-                      </div>
-                    )}
-                    <div className="flex items-center justify-between bg-brand/5 p-3 rounded-lg border border-brand/10">
-                      <div className="flex items-center gap-1.5 text-sm font-bold text-brandInk">
-                        <TrendingUp className="w-4 h-4" /> 
-                        +{hist.progress_percentage_after - hist.progress_percentage_before}%
-                      </div>
-                      <p className="text-xs font-medium text-clay">
-                        {hist.progress_percentage_before}% → {hist.progress_percentage_after}%
-                      </p>
-                    </div>
-                  </div>
+        {!isEmptyState && (
+          <>
+            {/* ---- skill map ---- */}
+            <section style={{ display: 'flex', flexDirection: 'column', gap: 16 }} aria-labelledby="sv-map">
+              <h2 id="sv-map" style={{ margin: 0, fontSize: 26, fontWeight: 900 }}>Skill map</h2>
+              <div className="map" role="table" aria-label="Skill stages">
+                <div className="hd" />
+                {STAGE_SHORT.map((s, i) => (
+                  <div key={s} className="hd"><span>{s}</span><span style={{ display: 'none' }}>{i + 1}</span></div>
                 ))}
-                {historyData.length === 0 && (
-                  <div className="p-8 text-center">
-                    <p className="text-clay font-medium">No completed sessions in your history.</p>
-                  </div>
-                )}
+                {progressData.map(skill => {
+                  const reached = STAGES.indexOf(skill.stage)
+                  return (
+                    <div key={skill.id} style={{ display: 'contents' }}>
+                      <div className="nm">{skill.skill_name}</div>
+                      {STAGES.map((st, i) => (
+                        <div key={st}>
+                          {i === reached
+                            ? <span className="tok" aria-label={`${skill.skill_name}: ${st}`}>★</span>
+                            : <span className="seg" style={{ background: i < reached ? 'var(--acc)' : '#F0E5D2' }} />}
+                        </div>
+                      ))}
+                    </div>
+                  )
+                })}
               </div>
-            </div>
-          </div>
+            </section>
 
-        </div>
-      )}
+            <div className="grid2">
+              {/* ---- left: skills + history ---- */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 36, minWidth: 0 }}>
+                <section style={{ display: 'flex', flexDirection: 'column', gap: 16 }} aria-labelledby="sv-skills">
+                  <h2 id="sv-skills" style={{ margin: 0, fontSize: 26, fontWeight: 900 }}>Your skills</h2>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                    {progressData.map(skill => {
+                      const certForSkill = certificates.find(c => c.skill_name === skill.skill_name && c.badge === skill.badge)
+                      const isEligible = skill.stage === 'Mastery'
+                      return (
+                        <div key={skill.id} className="card" style={{ padding: 22, display: 'flex', flexDirection: 'column', gap: 14 }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0 }}>
+                              <span style={{ fontSize: 20, fontWeight: 900 }}>{skill.skill_name}</span>
+                              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                                <span className="pill">{skill.role === 'teaching' ? 'Teaching' : 'Learning'}</span>
+                                <span className="pill" style={{ background: 'var(--accl)' }}>{skill.stage}</span>
+                                {skill.badge && <span className="pill" style={{ background: BADGE_FILL[skill.badge] || '#FBEFC4' }}>★ {skill.badge}</span>}
+                              </div>
+                            </div>
+                            {skill.latest_score != null && (
+                              <span className="mono" style={{ fontSize: 26, fontWeight: 700 }}>{Math.round(skill.latest_score)}%</span>
+                            )}
+                          </div>
+
+                          <div style={{ height: 14, borderRadius: 999, border: '2px solid #29251F', background: '#F0E5D2', overflow: 'hidden' }}>
+                            <span style={{ display: 'block', height: '100%', width: STAGE_WIDTH[skill.stage] || '0%', background: 'var(--acc)', borderRight: '2px solid #29251F' }} />
+                          </div>
+
+                          {skill.what_happened && <p className="muted" style={{ margin: 0, fontSize: 15, lineHeight: 1.55 }}>{skill.what_happened}</p>}
+                          <p style={{ margin: 0, fontSize: 15, lineHeight: 1.55, fontWeight: 600 }}>
+                            <span className="eb" style={{ marginRight: 8 }}>NEXT</span>
+                            {skill.next_milestone || 'Keep learning and practicing to grow this skill.'}
+                          </p>
+
+                          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                            {certForSkill ? (
+                              <Link to={`/certificate/${certForSkill.certificate_id}`} className="btn btn-s">View certificate</Link>
+                            ) : isEligible ? (
+                              <button
+                                type="button"
+                                className="btn btn-p"
+                                aria-disabled={generating}
+                                disabled={generating}
+                                onClick={() => handleGenerateCertificate(skill.skill_name)}
+                              >
+                                {generating ? 'Generating…' : 'Generate certificate'}
+                              </button>
+                            ) : (
+                              <span className="btn btn-g" aria-disabled="true">Certificate at Mastery</span>
+                            )}
+                            <Link to={`/marketplace?q=${encodeURIComponent(skill.skill_name)}`} className="btn btn-s">Find a partner</Link>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </section>
+
+                <section style={{ display: 'flex', flexDirection: 'column', gap: 16 }} aria-labelledby="sv-hist">
+                  <h2 id="sv-hist" style={{ margin: 0, fontSize: 26, fontWeight: 900 }}>Learning history</h2>
+                  {historyData.length === 0 ? (
+                    <div className="card" style={{ padding: 24, borderStyle: 'dashed', boxShadow: 'none' }}>
+                      <span className="muted">No completed sessions yet. Your history fills in as you learn.</span>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                      {historyData.map(h => {
+                        const before = h.progress_percentage_before
+                        const after = h.progress_percentage_after
+                        const improved = after != null && before != null && after > before
+                        return (
+                          <div key={h.id} className="card" style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                              <span style={{ fontWeight: 900, fontSize: 16 }}>
+                                {h.session?.skill_name || h.skill_name || 'Session'}
+                              </span>
+                              <span className="mono muted" style={{ fontSize: 13 }}>
+                                {h.created_at ? new Date(h.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : ''}
+                              </span>
+                            </div>
+                            {(before != null && after != null) && (
+                              <span className="pill" style={{ alignSelf: 'flex-start', background: improved ? 'var(--accl)' : '#FFFDF8' }}>
+                                {improved ? '↑ ' : ''}{before}% → {after}%
+                              </span>
+                            )}
+                            {h.topics_discussed && (
+                              <span style={{ fontSize: 14, fontWeight: 600 }}>
+                                <span className="eb" style={{ marginRight: 8 }}>TOPICS</span>{h.topics_discussed}
+                              </span>
+                            )}
+                            {h.semantic_summary && (
+                              <p className="muted" style={{ margin: 0, fontSize: 15, lineHeight: 1.55, padding: '10px 12px', border: '2px solid #E2D3BB', borderRadius: 10, background: '#F8F3E9' }}>
+                                {h.semantic_summary}
+                              </p>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                </section>
+              </div>
+
+              {/* ---- right: learning time ---- */}
+              <aside style={{ display: 'flex', flexDirection: 'column', gap: 20, minWidth: 0 }}>
+                <section className="card" style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 18 }} aria-labelledby="sv-time">
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <h2 id="sv-time" style={{ margin: 0, fontSize: 20, fontWeight: 900 }}>Learning time</h2>
+                    <span className="eb">LAST 8 WEEKS</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8 }}>
+                    <span className="mono" style={{ fontSize: 44, fontWeight: 700, lineHeight: .9 }}>{totalHours}</span>
+                    <span style={{ fontSize: 16, fontWeight: 800, paddingBottom: 4 }}>hours</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6, height: 120 }}>
+                    {weeks.map((w, i) => (
+                      <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', alignItems: 'center', gap: 6, height: '100%' }}>
+                        <div
+                          title={`${w.n} session${w.n === 1 ? '' : 's'}`}
+                          style={{ width: '100%', height: `${Math.max(6, w.pct)}%`, border: '2px solid #29251F', borderRadius: 6, background: w.n > 0 ? 'var(--acc)' : '#F0E5D2' }}
+                        />
+                        <span className="mono" style={{ fontSize: 10, color: '#6E6455' }}>{w.n}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <span className="muted" style={{ fontSize: 13, lineHeight: 1.5 }}>
+                    Sessions completed per week, counted from your learning history.
+                  </span>
+                </section>
+
+                <section className="card" style={{ padding: 20, background: '#FBEFC4', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <span className="eb" style={{ color: '#29251F' }}>★ KEEP GOING</span>
+                  <p style={{ margin: 0, fontWeight: 700, lineHeight: 1.5, fontSize: 15 }}>
+                    Reach Mastery in a skill and SkillVerse issues a certificate anyone can verify.
+                  </p>
+                </section>
+              </aside>
+            </div>
+          </>
+        )}
+      </div>
     </div>
-  );
+  )
 }
