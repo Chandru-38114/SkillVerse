@@ -6,27 +6,29 @@ import Compiler from '../components/Compiler'
 import Whiteboard from '../components/Whiteboard'
 import Materials from '../components/Materials'
 import Notes from '../components/Notes'
-import { Code2, PenLine, FileText, FolderOpen, ChevronDown, ChevronUp, Info, Hand, CheckCircle2, Play, BookOpen, User, Calendar, X, AlertCircle } from 'lucide-react'
+import ErrorBoundary from '../components/ErrorBoundary'
+import './session_room.css'
 
-const TABS = [
-  { id: 'Code',       label: 'Code',   Icon: Code2 },
-  { id: 'Whiteboard', label: 'Board',  Icon: PenLine },
-  { id: 'Notes',      label: 'Notes',  Icon: FileText },
-  { id: 'Materials',  label: 'Files',  Icon: FolderOpen },
+const TOOLS = [
+  { id: 'code', label: 'Code', ic: '⌨' },
+  { id: 'board', label: 'Board', ic: '✎' },
+  { id: 'split', label: 'Board + Code', ic: '◫' },
+  { id: 'notes', label: 'Notes', ic: '☰' },
+  { id: 'files', label: 'Files', ic: '⇪' },
 ]
 
 function SessionRoomComponent() {
   const { sessionId } = useParams()
   const user = getSessionUser()
   const navigate = useNavigate()
-  
+
   const [session, setSession] = useState(null)
   const [req, setReq] = useState(null)
   const [error, setError] = useState(null)
-  const [activeTab, setActiveTab] = useState('Code')
-  const [infoOpen, setInfoOpen] = useState(false)
+  const [tool, setTool] = useState('split')
   const [timeLeft, setTimeLeft] = useState(null)
   const [completing, setCompleting] = useState(false)
+  const [confirmOpen, setConfirmOpen] = useState(false)
   const [notesData, setNotesData] = useState({
     topics_discussed: "",
     topics_completed: "",
@@ -34,8 +36,6 @@ function SessionRoomComponent() {
   })
   const [isCompleted, setIsCompleted] = useState(false)
   const [notesLoaded, setNotesLoaded] = useState(false)
-  const [showCompleteConfirm, setShowCompleteConfirm] = useState(false)
-  const [errorToast, setErrorToast] = useState('')
 
   useEffect(() => {
     async function load() {
@@ -44,7 +44,7 @@ function SessionRoomComponent() {
         setSession(s)
         setReq(s.request)
         setIsCompleted(s.status === 'completed')
-        
+
         try {
           const res = await api.getSessionProgress(sessionId)
           setNotesData({
@@ -82,14 +82,21 @@ function SessionRoomComponent() {
   }, [session])
 
   if (error) return (
-    <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-paper h-[100dvh]">
-      <div className="w-16 h-16 bg-red-500/10 text-red-500 rounded-full flex items-center justify-center mb-4"><Info className="w-8 h-8" /></div>
-      <h2 className="text-xl font-bold mb-2">Session Error</h2>
-      <p className="text-clay mb-6">{error}</p>
-      <Link to="/sessions" className="btn-primary">Return to Dashboard</Link>
+    <div className="sv-room" style={{ alignItems: 'center', justifyContent: 'center', padding: 32 }}>
+      <div className="card" style={{ maxWidth: 440, padding: 30, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14, textAlign: 'center' }}>
+        <span style={{ width: 72, height: 72, borderRadius: 20, border: '2px solid #29251F', background: '#F6DDD8', color: '#9A2B1E', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, fontWeight: 900, boxShadow: '0 5px 0 #29251F' }}>!</span>
+        <h2 style={{ margin: 0, fontSize: 24, fontWeight: 900 }}>Session error</h2>
+        <p className="muted" style={{ margin: 0, fontSize: 15, lineHeight: 1.55 }}>{error}</p>
+        <Link to="/sessions" className="btn btn-p" style={{ minHeight: 48 }}>Back to sessions</Link>
+      </div>
     </div>
   )
-  if (!session) return <div className="flex-1 flex items-center justify-center h-[100dvh] text-clay">Loading session...</div>
+
+  if (!session) return (
+    <div className="sv-room" style={{ alignItems: 'center', justifyContent: 'center' }}>
+      <p className="muted" style={{ fontWeight: 700 }}>Loading session…</p>
+    </div>
+  )
 
   const isTutor = user.id === session.tutor_id
   const peerName = isTutor ? session.learner_name : session.tutor_name
@@ -116,13 +123,12 @@ function SessionRoomComponent() {
   }
 
   const handleComplete = async () => {
-    setShowCompleteConfirm(false)
     setCompleting(true)
-    setErrorToast('')
     try {
       await api.saveSessionNotes(sessionId, notesData)
-      const res = await api.completeSessionProgress(sessionId)
+      await api.completeSessionProgress(sessionId)
       setIsCompleted(true)
+      setConfirmOpen(false)
       if (session?.request_id) {
         navigate(`/quest-review/${sessionId}`)
       } else if (req?.id) {
@@ -131,211 +137,176 @@ function SessionRoomComponent() {
         navigate('/dashboard')
       }
     } catch (err) {
-      setErrorToast("Failed to complete session: " + (err.message || 'Unknown error'))
+      setError("Failed to complete session: " + err.message)
       setCompleting(false)
+      setConfirmOpen(false)
     }
   }
 
+  const lowTime = !!timeLeft && Number(String(timeLeft).split(':')[0]) < 5
+  const whenLabel = session.scheduled_start
+    ? `${formatDate(session.scheduled_start)} · ${formatTime(session.scheduled_start)} – ${formatTime(session.scheduled_end)}`
+    : `Today · ${session.start_time || 'Now'}`
+
+  const show = {
+    code: tool === 'code' || tool === 'split',
+    board: tool === 'board' || tool === 'split',
+    notes: tool === 'notes',
+    files: tool === 'files',
+  }
+
   return (
-    <div className="flex flex-col bg-paper h-[100dvh] w-full overflow-hidden text-ink">
-      {/* 🚀 Header 🚀 */}
-      <header className="flex-none bg-surface border-b border-line px-4 sm:px-6 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0 z-20 shadow-sm">
-        <div className="flex items-center gap-4">
-          <div className="font-display font-bold text-ink">Learning Arena</div>
-          <div className="h-6 w-px bg-line" />
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-brand/5 rounded-lg border border-brand/10">
-            <span className="text-brandInk font-semibold text-sm">{session.skill_name || session.skill}</span>
-            <span className="text-clay text-xs">with {peerName}</span>
+    <div className="sv-room">
+      {/* ── header ── */}
+      <header style={{ flex: 'none', background: '#FFFDF8', borderBottom: '2px solid #29251F', boxShadow: '0 4px 0 #D2BEA0', padding: '12px 20px', display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap', position: 'relative', zIndex: 2 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ width: 34, height: 34, borderRadius: 9, border: '2px solid #29251F', background: 'var(--acc)', boxShadow: '0 2px 0 #29251F', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900 }}>⚑</span>
+          <div>
+            <div className="eb">LEARNING ARENA</div>
+            <strong style={{ fontSize: 17, textTransform: 'capitalize' }}>
+              {session.skill_name || session.skill} <span className="muted" style={{ fontWeight: 700, textTransform: 'none' }}>with {peerName}</span>
+            </strong>
           </div>
         </div>
 
-        {/* Center: Time */}
-        <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-               <Calendar className="w-4 h-4 text-clay" />
-               <span className="text-sm font-medium text-ink">Today • {session.start_time || 'Now'}</span>
-            </div>
-            {timeLeft && !isCompleted && (
-               <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-clay/10 text-clay font-medium text-xs">
-                 <span>Ends in</span>
-                 <span className="font-mono tracking-wider">{timeLeft}</span>
-               </div>
-            )}
+        <span className="pill" style={{ background: isTutor ? '#D6F3EA' : '#E6DDF6' }}>{isTutor ? 'Teaching' : 'Learning'}</span>
+
+        <div style={{ margin: '0 auto', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <span className="pill mono" style={{ height: 36 }}>{whenLabel}</span>
+          {timeLeft && !isCompleted && (
+            <span className="pill mono" style={{ height: 36, fontSize: 13, ...(lowTime ? { background: '#E2533A', color: '#FFFDF8' } : { background: '#FFFDF8' }) }}>
+              ◷ Ends in {timeLeft}
+            </span>
+          )}
         </div>
 
-        {/* Right controls */}
-        <div className="flex items-center gap-2">
-           <button onClick={handleLeave} className="btn-secondary text-xs px-4 py-2 hover:bg-line/50 transition-colors">
-             Leave Session
-           </button>
-           {!isCompleted && (
-             <button onClick={() => setShowCompleteConfirm(true)} disabled={completing} className="btn-primary text-xs px-4 py-2 flex items-center gap-1.5 shadow-sm">
-               <CheckCircle2 className="w-4 h-4" />
-               Complete Session
-             </button>
-           )}
-        </div>
+        <button type="button" className="btn btn-s" onClick={handleLeave}>Leave</button>
+        {!isCompleted && (
+          <button type="button" className="btn btn-p" disabled={completing} onClick={() => setConfirmOpen(true)}>
+            ✓ Complete Session
+          </button>
+        )}
       </header>
 
-      {/* 🚀 Main Body 🚀 */}
-      <div className="flex-1 flex overflow-hidden min-h-0 relative">
-        
-        {/* Left Navigation */}
-        <div className="w-20 shrink-0 bg-surface border-r border-line flex flex-col items-center py-4 gap-4 z-10 hidden sm:flex shadow-[2px_0_10px_-4px_rgba(0,0,0,0.05)]">
-           {TABS.map(({ id, label, Icon }) => (
-              <a 
-                href={`#section-${id}`} 
-                key={id}
-                onClick={(e) => {
-                  e.preventDefault()
-                  setActiveTab(id)
-                  document.getElementById(`section-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-                }}
-                className={`flex flex-col items-center justify-center gap-1.5 p-2 w-14 rounded-xl transition-all ${
-                  activeTab === id ? 'bg-lift text-brandInk shadow-sm border border-line' : 'text-clay hover:text-ink hover:bg-lift/50'
-                }`}
-              >
-                 <Icon className="w-5 h-5" />
-                 <span className="text-[10px] font-semibold tracking-wide">{label}</span>
-              </a>
-           ))}
-        </div>
+      {/* ── body: workspace + video sidebar (the sidebar is VideoChat's own) ── */}
+      <div className="body" style={{ flex: 1, display: 'flex', minHeight: 0 }}>
+        <VideoChat sessionId={session.id} onLeave={handleLeave}>
+          <main style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 14, padding: '18px 20px', minHeight: 0 }}>
 
-        <VideoChat 
-           sessionId={session.id} 
-           onLeave={handleLeave} 
-        >
-          {/* 🚀 Workspace 🚀 */}
-          <div className="flex-1 flex flex-col overflow-y-auto bg-paper p-4 lg:p-6 gap-6 scroll-smooth">
-            
-            {/* Today's Quest Area */}
             {session.notes && (
-              <div className="bg-surface rounded-xl p-4 lg:p-5 border border-line shadow-sm flex items-start gap-4 shrink-0 mx-auto max-w-5xl w-full">
-                 <div className="p-2 bg-brand/10 rounded-lg shrink-0 mt-0.5">
-                   <BookOpen className="w-5 h-5 text-brandInk" />
-                 </div>
-                 <div>
-                   <p className="text-xs font-bold text-clay uppercase tracking-wider mb-1">Today's Quest</p>
-                   <p className="text-sm font-medium text-ink leading-relaxed">{session.notes}</p>
-                 </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', border: '2px solid #29251F', borderRadius: 12, background: '#FBEFC4', flexWrap: 'wrap', flex: 'none' }}>
+                <span className="eb" style={{ color: '#29251F' }}>TODAY’S QUEST</span>
+                <span style={{ fontWeight: 700, fontSize: 14 }}>{session.notes}</span>
               </div>
             )}
 
-            <div className="mx-auto max-w-5xl w-full flex flex-col gap-6">
-               
-               {/* Whiteboard + Compiler row */}
-               <div id="section-Code" className="flex flex-col xl:flex-row gap-6 h-[800px] xl:h-[600px] shrink-0">
-                  {/* Whiteboard */}
-                  <div id="section-Whiteboard" className="flex-1 bg-surface border border-line rounded-2xl shadow-sm overflow-hidden flex flex-col relative group h-full">
-                     <div className="absolute top-4 left-4 z-20 bg-white/90 backdrop-blur-sm px-3 py-1.5 rounded-lg border border-line shadow-sm flex items-center gap-2 pointer-events-none transition-opacity group-hover:opacity-30">
-                        <PenLine className="w-4 h-4 text-brandInk" />
-                        <span className="text-xs font-bold text-ink tracking-wide">Whiteboard</span>
-                     </div>
-                     <div className="absolute inset-0 z-10">
-                         <Whiteboard sessionId={session.id} />
-                     </div>
-                  </div>
+            <div className="tools" role="tablist" aria-label="Session tools" style={{ display: 'flex', alignItems: 'center', gap: 6, padding: 5, border: '2px solid #29251F', borderRadius: 14, background: '#F0E5D2', boxShadow: 'inset 0 3px 0 #E2D3BB', flex: 'none' }}>
+              {TOOLS.map(t => (
+                <button
+                  key={t.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={tool === t.id}
+                  className={`ttab${tool === t.id ? ' on' : ''}`}
+                  onClick={() => setTool(t.id)}
+                >
+                  <span aria-hidden="true">{t.ic}</span>{t.label}
+                </button>
+              ))}
+              <span className="muted" style={{ marginLeft: 'auto', fontSize: 12, fontWeight: 700, paddingRight: 8 }}>Tools stay live when you switch</span>
+            </div>
 
-                  {/* Compiler */}
-                  <div className="flex-1 bg-surface border border-line rounded-2xl shadow-sm overflow-hidden flex flex-col relative group h-full">
-                     <div className="absolute top-4 left-4 z-20 bg-white/90 backdrop-blur-sm px-3 py-1.5 rounded-lg border border-line shadow-sm flex items-center gap-2 pointer-events-none transition-opacity group-hover:opacity-30">
-                        <Code2 className="w-4 h-4 text-brandInk" />
-                        <span className="text-xs font-bold text-ink tracking-wide">Compiler</span>
-                     </div>
-                     <div className="absolute inset-0 z-10 pt-16 xl:pt-14 bg-surface">
-                        <Compiler sessionId={session.id} />
-                     </div>
-                  </div>
-               </div>
+            {/* Every tool stays mounted; only the inactive ones are hidden, so the
+                whiteboard drawing and the compiler's shared socket survive a switch. */}
+            <div style={{ flex: 1, minHeight: 0, display: 'flex', gap: 14 }}>
 
-               {/* Notes + Materials row */}
-               <div id="section-Notes" className="flex flex-col xl:flex-row gap-6 h-[500px] shrink-0">
-                  
-                  {/* Notes */}
-                  <div className="flex-1 bg-surface border border-line rounded-2xl shadow-sm overflow-hidden flex flex-col h-full">
-                     <div className="px-5 py-4 border-b border-line flex items-center gap-3 bg-surface shrink-0">
-                        <div className="p-1.5 bg-lift rounded-md border border-line text-ink">
-                           <FileText className="w-4 h-4" />
-                        </div>
-                        <span className="text-sm font-bold text-ink">Session Notes</span>
-                     </div>
-                     <div className="flex-1 overflow-y-auto relative p-2 bg-surface">
-                        {notesLoaded && <Notes session={session} data={notesData} onChange={setNotesData} isCompleted={isCompleted} />}
-                     </div>
-                  </div>
+              <section
+                className={`pane${show.board ? '' : ' off'}`}
+                aria-label="Whiteboard"
+                aria-hidden={!show.board}
+                style={{ position: 'relative', overflow: 'hidden', background: '#FFFDF8', backgroundImage: 'radial-gradient(#E2D3BB 1.3px, transparent 1.3px)', backgroundSize: '20px 20px', border: '2px solid #29251F', borderRadius: 16, boxShadow: '0 4px 0 #D2BEA0, 0 7px 0 #29251F' }}
+              >
+                <div style={{ position: 'absolute', inset: 0 }}>
+                  <Whiteboard sessionId={session.id} />
+                </div>
+                <span className="pill" style={{ position: 'absolute', left: 14, bottom: 14, background: '#D6F3EA', zIndex: 3, pointerEvents: 'none' }}>
+                  ● Synced with {(peerName || '').split(' ')[0]}
+                </span>
+              </section>
 
-                  {/* Materials */}
-                  <div id="section-Materials" className="flex-1 bg-surface border border-line rounded-2xl shadow-sm overflow-hidden flex flex-col h-full">
-                     <div className="px-5 py-4 border-b border-line flex items-center gap-3 bg-surface shrink-0">
-                        <div className="p-1.5 bg-lift rounded-md border border-line text-ink">
-                           <FolderOpen className="w-4 h-4" />
-                        </div>
-                        <span className="text-sm font-bold text-ink">Materials</span>
-                     </div>
-                     <div className="flex-1 overflow-y-auto relative p-2 bg-surface">
-                        <Materials session={session} />
-                     </div>
-                  </div>
-               </div>
+              <section
+                className={`pane${show.code ? '' : ' off'}`}
+                aria-label="Code compiler"
+                aria-hidden={!show.code}
+                style={{ flexDirection: 'column', border: '2px solid #29251F', borderRadius: 16, overflow: 'hidden', boxShadow: '0 4px 0 #29251F', background: '#29251F' }}
+              >
+                <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+                  <Compiler sessionId={session.id} />
+                </div>
+              </section>
 
-               {/* Bottom Spacer */}
-               <div className="h-12 shrink-0"></div>
+              <section
+                className={`pane${show.notes ? '' : ' off'}`}
+                aria-label="Session notes"
+                aria-hidden={!show.notes}
+                style={{ flexDirection: 'column', gap: 14, padding: 20, overflow: 'auto', background: '#FFFDF8', border: '2px solid #29251F', borderRadius: 16, boxShadow: '0 4px 0 #D2BEA0, 0 7px 0 #29251F' }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                  <h2 style={{ margin: 0, fontSize: 22, fontWeight: 900 }}>Session notes</h2>
+                  <span className="pill" style={{ background: '#D6F3EA' }}>Saved with Complete</span>
+                </div>
+                {notesLoaded && (
+                  <Notes session={session} data={notesData} onChange={setNotesData} isCompleted={isCompleted} />
+                )}
+                <div style={{ marginTop: 'auto', padding: 14, border: '2px solid #29251F', borderRadius: 12, background: '#F8F3E9', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <span className="eb" style={{ color: '#29251F' }}>BEFORE YOU FINISH</span>
+                  <span style={{ fontSize: 13, fontWeight: 600, lineHeight: 1.5 }}>
+                    Fill in your notes, then press <strong>Complete Session</strong>. Your skill progress updates and you’ll get an AI recap.
+                  </span>
+                </div>
+              </section>
+
+              <section
+                className={`pane${show.files ? '' : ' off'}`}
+                aria-label="Materials"
+                aria-hidden={!show.files}
+                style={{ flexDirection: 'column', overflow: 'auto', background: '#FFFDF8', border: '2px solid #29251F', borderRadius: 16, boxShadow: '0 4px 0 #D2BEA0, 0 7px 0 #29251F' }}
+              >
+                <Materials session={session} />
+              </section>
 
             </div>
-          </div>
+          </main>
         </VideoChat>
       </div>
 
-      {/* Complete session confirmation modal */}
-      {showCompleteConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 backdrop-blur-sm p-4 animate-fade-in">
-          <div className="bg-lift border border-line rounded-2xl w-full max-w-sm shadow-elev-3 overflow-hidden">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-line">
-              <h3 className="font-bold text-ink">Complete Session</h3>
-              <button
-                onClick={() => setShowCompleteConfirm(false)}
-                className="p-1 text-clay hover:text-ink rounded-full min-w-[36px] min-h-[36px] flex items-center justify-center"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <p className="px-5 py-4 text-sm text-ink/80 leading-relaxed">
-              Are you sure you want to complete this session? This will update your skill progress and cannot be undone.
+      {/* ── complete confirm ── */}
+      {confirmOpen && (
+        <div style={{ position: 'absolute', inset: 0, background: 'rgba(41,37,31,.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, zIndex: 10 }}>
+          <div className="card" role="alertdialog" aria-labelledby="sv-cm" style={{ maxWidth: 460, width: '100%', padding: 30, display: 'flex', flexDirection: 'column', gap: 14, textAlign: 'center', alignItems: 'center' }}>
+            <span style={{ width: 72, height: 72, borderRadius: 20, border: '2px solid #29251F', background: '#D6F3EA', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, fontWeight: 900, boxShadow: '0 5px 0 #29251F' }}>✓</span>
+            <h3 id="sv-cm" style={{ margin: 0, fontSize: 24, fontWeight: 900 }}>Complete this session?</h3>
+            <p className="muted" style={{ margin: 0, fontSize: 15, lineHeight: 1.55 }}>
+              Your notes will be saved and your <strong style={{ color: '#29251F', textTransform: 'capitalize' }}>{session.skill_name || session.skill} progress</strong> will update. This can’t be undone.
             </p>
-            <div className="px-5 py-3 border-t border-line flex gap-3 justify-end bg-surface">
-              <button
-                onClick={() => setShowCompleteConfirm(false)}
-                className="btn-secondary text-xs px-3 py-1.5"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleComplete}
-                disabled={completing}
-                className="btn-primary text-xs px-3 py-1.5 flex items-center gap-1.5"
-              >
-                <CheckCircle2 className="w-4 h-4" />
-                {completing ? 'Completing...' : 'Complete Session'}
+            {!notesData.learning_notes.trim() && (
+              <div style={{ width: '100%', padding: '10px 12px', border: '2px solid #29251F', borderRadius: 10, background: '#FBEFC4', fontWeight: 700, fontSize: 13, textAlign: 'left' }}>
+                ⚠ “My Learning Notes” is empty — add a line before finishing?
+              </div>
+            )}
+            <div style={{ display: 'flex', gap: 12, width: '100%' }}>
+              <button type="button" className="btn btn-s" style={{ flex: 1, minHeight: 50 }} onClick={() => setConfirmOpen(false)}>Keep working</button>
+              <button type="button" className="btn btn-p" style={{ flex: 1, minHeight: 50 }} disabled={completing} onClick={handleComplete}>
+                {completing ? 'Completing…' : 'Complete'}
               </button>
             </div>
           </div>
-        </div>
-      )}
-
-      {/* Error Toast */}
-      {errorToast && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-coral text-white text-xs font-semibold px-4 py-2.5 rounded-xl shadow-elev-3 flex items-center gap-2 animate-fade-in">
-          <AlertCircle className="w-4 h-4 shrink-0" />
-          <span>{errorToast}</span>
-          <button onClick={() => setErrorToast('')} className="ml-2 hover:opacity-80">
-            <X className="w-3.5 h-3.5" />
-          </button>
         </div>
       )}
     </div>
   )
 }
 
-import ErrorBoundary from '../components/ErrorBoundary';
-export default function SessionRoom() { return <ErrorBoundary><SessionRoomComponent /></ErrorBoundary>; }
-
+export default function SessionRoom() {
+  return <ErrorBoundary><SessionRoomComponent /></ErrorBoundary>
+}

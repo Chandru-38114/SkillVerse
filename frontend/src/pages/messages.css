@@ -1,0 +1,100 @@
+/* Connect (Messages) — component styles from the MessagesV2 design.
+   Scoped under .sv-msg so the design's .card / .btn / .in / .av cannot collide
+   with the app's classes of the same name. The chat sub-components
+   (MessageBubble, SessionCard, ScheduleModal, PendingRequestCard) all render
+   inside .sv-msg, so their classes are covered by this file too. */
+
+.sv-msg{
+  --acc:#FF8A3D; --accd:#C4581A; --accl:#FFE3CF;
+  font-family:Inter,system-ui,sans-serif;color:#29251F;background:#F8F3E9;
+  min-height:100vh;position:relative;
+}
+.sv-msg *{box-sizing:border-box}
+.sv-msg a{color:#29251F}
+
+.sv-msg .muted{color:#6E6455}
+.sv-msg .eb{font-size:11px;font-weight:800;letter-spacing:.1em;color:#6E6455}
+.sv-msg .mono{font-family:"JetBrains Mono",ui-monospace,Menlo,monospace}
+
+.sv-msg .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:42px;padding:0 16px;border:2px solid #29251F;border-radius:10px;font:800 14px Inter,sans-serif;color:#29251F;text-decoration:none;cursor:pointer;transition:transform 180ms ease,box-shadow 180ms ease;white-space:nowrap}
+.sv-msg .btn-p{background:var(--acc);box-shadow:inset 0 2px 0 rgba(255,255,255,.45),0 3px 0 var(--accd),0 5px 0 #29251F}
+.sv-msg .btn-p:hover:not(:disabled){transform:translateY(2px);box-shadow:0 1px 0 var(--accd),0 3px 0 #29251F}
+.sv-msg .btn-s{background:#FFFDF8;box-shadow:0 3px 0 #D2BEA0,0 5px 0 #29251F}
+.sv-msg .btn-s:hover:not(:disabled){background:#F0E5D2;transform:translateY(2px);box-shadow:0 1px 0 #D2BEA0,0 3px 0 #29251F}
+.sv-msg .btn:disabled{opacity:.5;cursor:not-allowed}
+.sv-msg .btn:focus-visible,.sv-msg a:focus-visible,.sv-msg button:focus-visible{outline:3px solid #A58D70;outline-offset:3px}
+
+.sv-msg .card{background:#FFFDF8;border:2px solid #29251F;border-radius:16px;box-shadow:0 4px 0 #D2BEA0,0 7px 0 #29251F}
+
+.sv-msg .icb{width:40px;height:40px;flex:none;border-radius:10px;border:2px solid #29251F;background:#FFFDF8;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 0 #29251F;padding:0;color:#29251F}
+.sv-msg .icb:hover{background:#F0E5D2}
+.sv-msg .icb.on{background:#29251F;color:#FFFDF8}
+.sv-msg .icb.plain{border:none;box-shadow:none;background:transparent}
+.sv-msg .icb.plain:hover{background:#F0E5D2}
+
+.sv-msg .av{flex:none;border-radius:999px;border:2px solid #29251F;display:flex;align-items:center;justify-content:center;font-weight:900;position:relative;background-size:cover;background-position:center}
+
+.sv-msg .conv{display:flex;gap:12px;align-items:center;padding:12px;border:2px solid transparent;border-radius:14px;cursor:pointer;text-align:left;background:transparent;font:inherit;color:inherit;width:100%}
+.sv-msg .conv:hover{background:#F0E5D2}
+.sv-msg .conv.on{background:#FFFDF8;border-color:#29251F;box-shadow:0 3px 0 #29251F}
+
+.sv-msg .unread{position:absolute;top:-6px;right:-8px;min-width:22px;height:22px;padding:0 5px;border-radius:999px;border:2px solid #29251F;background:var(--acc);font:700 11px "JetBrains Mono",ui-monospace,monospace;display:flex;align-items:center;justify-content:center}
+.sv-msg .dot{position:absolute;bottom:-1px;right:-1px;width:13px;height:13px;border-radius:999px;border:2px solid #29251F;background:#6CCFB0}
+
+/* message bubbles */
+.sv-msg .b{max-width:72%;padding:10px 14px;border:2px solid #29251F;font-size:15px;line-height:1.5;font-weight:500}
+.sv-msg .b-me{align-self:flex-end;background:var(--acc);border-radius:16px 16px 4px 16px;box-shadow:0 3px 0 #29251F}
+.sv-msg .b-them{align-self:flex-start;background:#FFFDF8;border-radius:16px 16px 16px 4px;box-shadow:0 3px 0 #D2BEA0}
+.sv-msg .b-gone{background:transparent;border-style:dashed;box-shadow:none;color:#6E6455;font-style:italic;font-size:13px}
+.sv-msg .meta{display:flex;justify-content:flex-end;gap:6px;font-size:11px;font-weight:700;margin-top:4px;color:#6E6455}
+.sv-msg .b-me .meta{color:#5A3A1E}
+.sv-msg .quote{display:block;margin-bottom:6px;padding:6px 10px;border-left:4px solid #29251F;border-radius:6px;background:rgba(255,253,248,.6);font-size:12px;width:100%;text-align:left;cursor:pointer;border-top:none;border-right:none;border-bottom:none;font-family:inherit;color:inherit}
+.sv-msg .react{display:inline-flex;align-items:center;gap:4px;height:26px;padding:0 8px;border-radius:999px;border:2px solid #29251F;background:#FFFDF8;font-size:12px;font-weight:800;box-shadow:0 2px 0 #29251F;cursor:pointer;font-family:inherit;color:#29251F}
+.sv-msg .react.mine{background:var(--accl)}
+.sv-msg .day{align-self:center;padding:4px 12px;border:2px solid #29251F;border-radius:999px;background:#F0E5D2;font-size:12px;font-weight:800}
+
+.sv-msg .in{width:100%;border:2px solid #29251F;border-radius:12px;background:#FFFDF8;font:600 15px Inter,sans-serif;box-shadow:inset 0 3px 0 #EADFCC;color:#29251F;padding:12px 14px}
+.sv-msg .in::placeholder{color:#9A8F7E}
+
+/* context menu on a bubble */
+.sv-msg .mnu{position:absolute;z-index:30;min-width:180px;padding:6px;border:2px solid #29251F;border-radius:12px;background:#FFFDF8;box-shadow:0 4px 0 #29251F;display:flex;flex-direction:column;gap:2px}
+.sv-msg .mnu button{display:flex;align-items:center;gap:10px;width:100%;padding:8px 10px;border:none;border-radius:8px;background:transparent;font:700 13px Inter,sans-serif;color:#29251F;cursor:pointer;text-align:left}
+.sv-msg .mnu button:hover{background:#F0E5D2}
+.sv-msg .mnu button.danger{color:#9A2B1E}
+.sv-msg .mnu button.danger:hover{background:#F6DDD8}
+.sv-msg .mnu hr{border:none;border-top:2px dashed #E2D3BB;margin:4px 0}
+
+.sv-msg .epop{position:absolute;z-index:30;display:flex;flex-wrap:wrap;gap:2px;width:220px;padding:8px;border:2px solid #29251F;border-radius:12px;background:#FFFDF8;box-shadow:0 4px 0 #29251F}
+.sv-msg .epop button{min-width:34px;min-height:34px;border:none;background:transparent;font-size:18px;cursor:pointer;border-radius:8px}
+.sv-msg .epop button:hover{background:#F0E5D2}
+
+/* the chat pane's back arrow only exists on narrow screens, where the
+   sidebar and the chat swap places instead of sitting side by side */
+.sv-msg .backbtn{display:none}
+
+@media (max-width:900px){
+  .sv-msg .backbtn{display:flex}
+  .sv-msg .shell{height:calc(100dvh - 150px) !important}
+  .sv-msg .side{width:100% !important;border-right:none !important}
+  .sv-msg .side.hide,.sv-msg .pane.hide{display:none !important}
+}
+
+@keyframes svPopM2{0%{opacity:0;scale:.82}70%{opacity:1;scale:1.04}100%{opacity:1;scale:1}}
+@keyframes svSlideLM2{from{opacity:0;transform:translateX(-14px)}to{opacity:1;transform:translateX(0)}}
+@keyframes svFadeM2{from{opacity:0}to{opacity:1}}
+@keyframes svPulseM2{0%,100%{opacity:1}50%{opacity:.35}}
+
+@media (prefers-reduced-motion:no-preference){
+  .sv-msg .b{animation:svPopM2 .45s both}
+  .sv-msg .b-me{transform-origin:100% 100%}
+  .sv-msg .b-them{transform-origin:0 100%}
+  .sv-msg .dot{animation:svPulseM2 2s infinite}
+  .sv-msg .unread{animation:svPulseM2 2s infinite}
+  .sv-msg .day{animation:svFadeM2 .6s both}
+  .sv-msg .conv{animation:svSlideLM2 .45s both}
+  .sv-msg .conv:nth-of-type(1){animation-delay:.17s}
+  .sv-msg .conv:nth-of-type(2){animation-delay:.24s}
+  .sv-msg .conv:nth-of-type(3){animation-delay:.31s}
+  .sv-msg .conv:nth-of-type(4){animation-delay:.38s}
+  .sv-msg .conv:nth-of-type(5){animation-delay:.45s}
+}

@@ -1,5 +1,4 @@
 import React, { useState } from 'react'
-import Avatar from '../ui/Avatar'
 
 export default function PendingRequestCard({ req, onAccept, onDecline }) {
   const [submitting, setSubmitting] = useState(false)
@@ -25,44 +24,49 @@ export default function PendingRequestCard({ req, onAccept, onDecline }) {
   }
 
   return (
-    <div className="p-4 bg-brandLight/20 rounded-2xl shadow-elev-1 relative overflow-hidden mb-3 mx-2 sm:mx-0">
-      {/* Decorative indicator */}
-      <div className="absolute left-0 top-0 bottom-0 w-1 bg-brand"></div>
-      
-      <div className="flex items-start gap-3">
-        <Avatar url={req.from_user_avatar} name={req.from_user_name} size="md" className="shrink-0 shadow-sm" />
-        
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-ink truncate">
-            {req.from_user_name}
-          </p>
-          <p className="text-xs text-clay truncate mt-0.5">
-            Wants to learn <span className="font-medium text-ink">{req.skill_name}</span>
-          </p>
-          
-          {req.message && (
-            <div className="mt-2 text-xs text-ink/80 italic bg-lift/50 p-2.5 rounded-xl border border-line/40">
-              "{req.message}"
-            </div>
-          )}
-          
-          <div className="flex items-center gap-2 mt-3">
-            <button 
-              onClick={handleAccept} 
-              disabled={submitting}
-              className="btn-primary flex-1 py-2 text-xs min-h-[36px]"
-            >
-              Accept
-            </button>
-            <button 
-              onClick={handleDecline}
-              disabled={submitting} 
-              className="btn-ghost flex-1 py-2 text-xs min-h-[36px] bg-lift/50 hover:bg-line/50"
-            >
-              Decline
-            </button>
+    <div style={{
+      padding: 12,
+      border: '2px solid #29251F', borderLeftWidth: 8, borderLeftColor: '#F5C542',
+      borderRadius: 14, background: '#FBEFC4',
+      display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 8,
+    }}>
+      <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+        <span className="av" style={{ width: 40, height: 40, fontSize: 16, background: req.from_user_avatar ? `#FFFDF8 url(${req.from_user_avatar})` : '#E6DDF6' }}>
+          {req.from_user_avatar ? '' : (req.from_user_name || '?')[0]}
+        </span>
+        <div style={{ minWidth: 0 }}>
+          <strong style={{ fontSize: 14 }}>{req.from_user_name}</strong>
+          <div style={{ fontSize: 12, fontWeight: 600 }}>
+            Wants to learn <strong>{req.skill_name}</strong>
           </div>
         </div>
+      </div>
+
+      {req.message && (
+        <div style={{ fontSize: 13, fontWeight: 600, padding: '8px 10px', border: '2px solid #29251F', borderRadius: '4px 10px 10px 10px', background: '#FFFDF8' }}>
+          {req.message}
+        </div>
+      )}
+
+      <div style={{ display: 'flex', gap: 8 }}>
+        <button
+          type="button"
+          className="btn btn-p"
+          style={{ flex: 1, minHeight: 36, fontSize: 13, padding: '0 10px' }}
+          disabled={submitting}
+          onClick={handleAccept}
+        >
+          Accept
+        </button>
+        <button
+          type="button"
+          className="btn btn-s"
+          style={{ flex: 1, minHeight: 36, fontSize: 13, padding: '0 10px' }}
+          disabled={submitting}
+          onClick={handleDecline}
+        >
+          Decline
+        </button>
       </div>
     </div>
   )

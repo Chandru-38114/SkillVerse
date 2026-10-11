@@ -1,8 +1,6 @@
 import React, { useState } from 'react'
 import { createIstToUtcDate, getTodayIstYMD } from '../../utils/dateTime'
 import { api } from '../../api'
-import { X, FileText } from 'lucide-react'
-import DateTimePicker from '../DateTimePicker'
 
 export default function ScheduleModal({ requestId, onClose, onScheduled }) {
   const [date, setDate] = useState('')
@@ -39,49 +37,62 @@ export default function ScheduleModal({ requestId, onClose, onScheduled }) {
     }
   }
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-ink/60 backdrop-blur-sm">
-      <div className="bg-surface rounded-t-2xl sm:rounded-2xl shadow-elev-3 w-full max-w-md max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between px-6 py-5 border-b border-line/40 bg-surface">
-          <h3 className="font-display font-bold text-lg text-ink">Schedule Session</h3>
-          <button onClick={onClose} className="p-1.5 text-clay hover:bg-line/50 hover:text-ink rounded-full transition-colors"><X className="w-5 h-5" /></button>
-        </div>
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
-          <DateTimePicker 
-            date={date}
-            startTime={startTime}
-            endTime={endTime}
-            onDateChange={setDate}
-            onStartTimeChange={setStartTime}
-            onEndTimeChange={setEndTime}
-            minDate={today}
-          />
+  const labelStyle = { display: 'flex', flexDirection: 'column', gap: 6, fontWeight: 700, fontSize: 14 }
 
-          <div>
-            <label className="text-sm font-semibold text-ink flex items-center gap-2 mb-2">
-              <FileText className="w-4 h-4 text-clay" />
-              Notes (Optional)
+  return (
+    <div style={{ position: 'absolute', inset: 0, background: 'rgba(41,37,31,.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, zIndex: 5 }}>
+      <form className="card" role="dialog" aria-labelledby="sv-sched" style={{ width: '100%', maxWidth: 440, overflow: 'hidden', maxHeight: '100%', overflowY: 'auto' }} onSubmit={handleSubmit}>
+        <div style={{ padding: '18px 22px', borderBottom: '2px solid #29251F', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--accl)' }}>
+          <h3 id="sv-sched" style={{ margin: 0, fontSize: 20, fontWeight: 900 }}>Schedule session</h3>
+          <button type="button" className="icb" aria-label="Close" style={{ width: 34, height: 34 }} onClick={onClose}>✕</button>
+        </div>
+
+        <div style={{ padding: 22, display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <label style={labelStyle}>
+            Date
+            <input className="in" type="date" min={today} value={date} onChange={e => setDate(e.target.value)} required />
+          </label>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <label style={labelStyle}>
+              Start
+              <input className="in" type="time" value={startTime} onChange={e => setStartTime(e.target.value)} required />
             </label>
-            <input type="text" className="input" placeholder="Agenda or topics to discuss" value={notes} onChange={e => setNotes(e.target.value)} />
+            <label style={labelStyle}>
+              End
+              <input className="in" type="time" value={endTime} onChange={e => setEndTime(e.target.value)} required />
+            </label>
           </div>
 
-          {error && <div className="text-sm text-red-500 bg-red-500/10 p-3 rounded-xl border border-red-500/20">{error}</div>}
+          <label style={labelStyle}>
+            Notes
+            <input className="in" placeholder="Agenda or topics to discuss" value={notes} onChange={e => setNotes(e.target.value)} />
+          </label>
 
-          {date && startTime && endTime && !error && (
-            <div className="p-4 bg-brand/5 border border-brand/20 rounded-xl mt-4">
-               <p className="text-[10px] font-bold uppercase tracking-wider text-brandInk mb-1">Session Summary</p>
-               <p className="text-sm text-ink font-medium">
-                 {new Date(date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} • {startTime} to {endTime} <span className="text-clay font-normal ml-1">IST</span>
-               </p>
+          {error && (
+            <div style={{ padding: '10px 14px', border: '2px solid #9A2B1E', borderRadius: 12, background: '#F6DDD8', color: '#9A2B1E', fontWeight: 700, fontSize: 13 }}>
+              {error}
             </div>
           )}
 
-          <div className="flex gap-3 pt-4 border-t border-line/40">
-            <button type="button" onClick={onClose} className="btn-secondary flex-1">Cancel</button>
-            <button type="submit" disabled={submitting || !date || !startTime || !endTime} className="btn-primary flex-1">{submitting ? 'Scheduling...' : 'Schedule'}</button>
+          {date && startTime && endTime && !error && (
+            <div style={{ padding: '12px 14px', border: '2px solid #29251F', borderRadius: 12, background: '#D6F3EA' }}>
+              <span className="eb" style={{ color: '#29251F' }}>SESSION SUMMARY</span>
+              <div style={{ fontWeight: 800, marginTop: 4 }}>
+                {new Date(date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} • {startTime} to {endTime}{' '}
+                <span className="muted" style={{ fontWeight: 600 }}>IST</span>
+              </div>
+            </div>
+          )}
+
+          <div style={{ display: 'flex', gap: 12 }}>
+            <button type="button" className="btn btn-s" style={{ flex: 1, minHeight: 48 }} onClick={onClose}>Cancel</button>
+            <button type="submit" className="btn btn-p" style={{ flex: 1, minHeight: 48 }} disabled={submitting || !date || !startTime || !endTime}>
+              {submitting ? 'Scheduling…' : 'Schedule'}
+            </button>
           </div>
-        </form>
-      </div>
+        </div>
+      </form>
     </div>
   )
 }

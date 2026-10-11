@@ -1,13 +1,14 @@
-﻿import { FileText, File, ArrowLeft, Trash2, Download } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { api, getSessionUser, BASE_URL } from '../api';
+
+const BADGE_BG = ['#E6DDF6', '#D6F3EA', '#FBEFC4', '#FFE3CF'];
 
 export default function Materials({ session, onBack }) {
   const user = getSessionUser();
   const [materials, setMaterials] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  
+
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef(null);
 
@@ -33,13 +34,13 @@ export default function Materials({ session, onBack }) {
     if (!file) return;
 
     if (file.size > 10 * 1024 * 1024) {
-      alert("File is too large (max 10MB)");
+      setError("File is too large (max 10MB)");
       return;
     }
 
     setUploading(true);
     setError('');
-    
+
     try {
       await api.uploadMaterial(session.id, file);
       await loadMaterials();
@@ -54,7 +55,7 @@ export default function Materials({ session, onBack }) {
   };
 
   const handleDelete = async (id) => {
-    if (!confirm("Delete this material?")) return;
+    if (!window.confirm("Delete this material?")) return;
     try {
       await api.deleteMaterial(id);
       await loadMaterials();
@@ -80,108 +81,82 @@ export default function Materials({ session, onBack }) {
       a.click();
       window.URL.revokeObjectURL(url);
     } catch (err) {
-      alert("Failed to download file");
+      setError("Failed to download file");
     }
   };
 
-  if (loading) return <div className="p-8 text-center text-clay">Loading materials...</div>;
+  if (loading) return (
+    <div style={{ padding: 20 }}>
+      <p className="muted" style={{ fontWeight: 700 }}>Loading materials…</p>
+    </div>
+  );
 
   return (
-    <div className="flex-1 p-4 sm:p-6 flex flex-col h-full bg-paper overflow-y-auto">
-      <div className="max-w-4xl mx-auto w-full">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-line">
-          <div>
-            <div className="flex items-center gap-3">
-              {onBack && (<button onClick={onBack} className="p-2 hover:bg-line/50 rounded-full transition-colors text-clay hover:text-ink"><ArrowLeft className="w-5 h-5" /></button>)}
-              <h2 className="text-xl font-display font-bold text-ink">Learning Materials</h2>
-            </div>
-            <p className="text-sm text-clay mt-1">Shared resources for this session</p>
-          </div>
-        </div>
-
-        {error && (
-          <div className="mb-6 p-4 bg-red-500/10 text-red-500 rounded-xl border border-red-500/20 text-sm font-medium">
-            {error}
-          </div>
+    <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        {onBack && (
+          <button type="button" className="btn btn-s" style={{ minHeight: 36 }} onClick={onBack}>← Back</button>
         )}
-
-        {isTutor && (
-          <div 
-            className="mb-8 border-2 border-dashed border-line hover:border-brand/50 rounded-2xl p-8 text-center bg-lift/30 transition-colors cursor-pointer group"
-            onClick={() => !uploading && fileInputRef.current?.click()}
-          >
-            <input 
-              type="file" 
-              ref={fileInputRef} 
-              onChange={handleFileSelect} 
-              className="hidden" 
-              accept=".pdf,.txt,.doc,.docx"
-            />
-            <div className="w-12 h-12 bg-surface border border-line group-hover:border-brand/30 rounded-full flex items-center justify-center mx-auto mb-3 transition-colors">
-              <FileText className="w-6 h-6 text-brandInk" />
-            </div>
-            <h3 className="text-sm font-bold text-ink mb-1">Click to upload material</h3>
-            <p className="text-xs text-clay mb-4">Supported formats: PDF, DOC, DOCX, TXT (Max 5MB)</p>
-            <button disabled={uploading} className="btn-primary pointer-events-none">
-              {uploading ? 'Uploading...' : 'Browse Files'}
-            </button>
-          </div>
-        )}
-
-        <div className="space-y-3">
-          <h3 className="text-[10px] font-bold text-clay uppercase tracking-wider mb-2">Session Files</h3>
-          {materials.length === 0 ? (
-            <div className="text-center py-12 bg-lift border border-line rounded-2xl">
-              <div className="text-4xl mb-3">📄</div>
-              <h3 className="font-medium text-ink mb-1">No Materials Yet</h3>
-              <p className="text-sm text-clay">
-                {isTutor ? "Upload resources for your learner above." : "Your tutor hasn't uploaded any materials yet."}
-              </p>
-            </div>
-          ) : (
-            materials.map(mat => (
-              <div key={mat.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 bg-surface border border-line rounded-2xl hover:border-brand/30 transition-colors group shadow-sm hover:shadow">
-                <div className="flex items-start gap-4 w-full sm:w-auto overflow-hidden">
-                  <div className="w-10 h-10 bg-brand/10 border border-brand/20 text-brandInk rounded-xl flex items-center justify-center shrink-0">
-                    {mat.file_type.includes("pdf") ? <FileText className="w-5 h-5" /> : <File className="w-5 h-5" />}
-                  </div>
-                  <div className="min-w-0">
-                    <h3 className="font-semibold text-ink text-sm truncate">{mat.original_filename}</h3>
-                    <div className="flex flex-wrap items-center gap-1.5 mt-1 text-[10px] font-bold text-clay uppercase tracking-wider">
-                      <span>{(mat.file_size / 1024).toFixed(0)} KB</span>
-                      <span>•</span>
-                      <span>{new Date(mat.created_at).toLocaleDateString()}</span>
-                      <span>•</span>
-                      <span>{mat.uploaded_by === session.tutor_id ? 'Tutor' : 'Learner'}</span>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="flex items-center gap-2 shrink-0">
-                  <button 
-                    onClick={() => handleDownload(mat)}
-                    className="p-2 text-clay hover:text-ink hover:bg-line/50 rounded-lg transition-colors flex items-center gap-2"
-                    title="Download"
-                  >
-                    <Download className="w-4 h-4" />
-                    <span className="text-xs font-semibold sm:hidden">Download</span>
-                  </button>
-                  {user.id === mat.uploaded_by && (
-                    <button 
-                      onClick={() => handleDelete(mat.id)}
-                      className="p-2 text-red-500/70 hover:text-red-600 hover:bg-red-500/10 rounded-lg transition-colors flex items-center gap-2"
-                      title="Delete"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                      <span className="text-xs font-semibold sm:hidden">Delete</span>
-                    </button>
-                  )}
-                </div>
-              </div>
-            ))
-          )}
+        <div>
+          <h2 style={{ margin: 0, fontSize: 22, fontWeight: 900 }}>Learning materials</h2>
+          <span className="muted" style={{ fontSize: 14 }}>Shared resources for this session</span>
         </div>
       </div>
+
+      {error && (
+        <div style={{ padding: '10px 14px', border: '2px solid #9A2B1E', borderRadius: 12, background: '#F6DDD8', color: '#9A2B1E', fontWeight: 700, fontSize: 13 }}>
+          {error}
+        </div>
+      )}
+
+      {isTutor && (
+        <label style={{ padding: 26, border: '2px dashed #29251F', borderRadius: 14, background: '#F8F3E9', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, textAlign: 'center', cursor: uploading ? 'wait' : 'pointer' }}>
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileSelect}
+            style={{ display: 'none' }}
+            accept=".pdf,.txt,.doc,.docx"
+            disabled={uploading}
+          />
+          <span style={{ width: 52, height: 52, borderRadius: 14, border: '2px solid #29251F', background: 'var(--accl)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, boxShadow: '0 3px 0 #29251F' }}>⇪</span>
+          <strong>{uploading ? 'Uploading…' : 'Click to upload material'}</strong>
+          <span className="muted" style={{ fontSize: 13 }}>PDF, DOC, DOCX, TXT · max 5MB</span>
+        </label>
+      )}
+
+      <span className="eb">SESSION FILES</span>
+
+      {materials.length === 0 ? (
+        <div style={{ padding: '32px 20px', border: '2px dashed #29251F', borderRadius: 14, background: '#F8F3E9', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 28 }}>📄</span>
+          <strong>No materials yet</strong>
+          <span className="muted" style={{ fontSize: 13 }}>
+            {isTutor ? "Upload resources for your learner above." : "Your tutor hasn't uploaded any materials yet."}
+          </span>
+        </div>
+      ) : (
+        materials.map((mat, i) => {
+          const kind = (mat.original_filename.split('.').pop() || 'FILE').toUpperCase().slice(0, 4)
+          return (
+            <div key={mat.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 12, border: '2px solid #29251F', borderRadius: 12, background: '#FFFDF8', flexWrap: 'wrap' }}>
+              <span style={{ width: 40, height: 40, flex: 'none', borderRadius: 10, border: '2px solid #29251F', background: BADGE_BG[i % BADGE_BG.length], display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 900 }}>
+                {kind}
+              </span>
+              <div style={{ flex: 1, minWidth: 140 }}>
+                <strong style={{ fontSize: 14, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis' }}>{mat.original_filename}</strong>
+                <div className="mono muted" style={{ fontSize: 11 }}>
+                  {mat.uploaded_by === session.tutor_id ? 'Tutor' : 'Learner'} · {(mat.file_size / 1024).toFixed(0)} KB
+                </div>
+              </div>
+              <button type="button" className="btn btn-s" style={{ minHeight: 36 }} onClick={() => handleDownload(mat)}>Open</button>
+              {user.id === mat.uploaded_by && (
+                <button type="button" className="btn btn-s" style={{ minHeight: 36, color: '#9A2B1E' }} onClick={() => handleDelete(mat.id)}>Delete</button>
+              )}
+            </div>
+          )
+        })
+      )}
     </div>
   );
 }

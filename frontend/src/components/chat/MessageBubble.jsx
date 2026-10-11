@@ -1,10 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { formatTime } from '../../utils/dateTime'
 import { api } from '../../api'
-import {
-  Forward, Check, CheckCheck, Smile, MoreVertical, Trash, Trash2,
-  Pencil, Copy, CornerUpLeft, FileText, X
-} from 'lucide-react'
 import { REACTION_EMOJIS, getEmojiForKey } from '../../utils/emojis'
 
 function truncate(str, n = 60) {
@@ -12,65 +8,60 @@ function truncate(str, n = 60) {
   return str.length > n ? str.slice(0, n) + '...' : str
 }
 
+// a static waveform, as drawn in the design
+const WAVE = [8, 14, 20, 12, 18, 24, 10, 16, 22, 14, 8, 18, 12, 20, 16, 10, 14, 8]
+
 export function MessageRenderer({ content }) {
   const imgMatch = content.match(/^!\[(.*?)\]\((.*?)\)$/)
   if (imgMatch) {
     return (
-      <div className="mt-2 mb-1 overflow-hidden rounded-xl border border-line/50 shadow-sm bg-black/5 dark:bg-white/5">
-        <a href={imgMatch[2]} target="_blank" rel="noreferrer" className="block cursor-zoom-in">
-          <img src={imgMatch[2]} alt={imgMatch[1]} className="max-w-full h-auto max-h-64 w-full object-cover hover:opacity-95 transition-opacity" />
-        </a>
-      </div>
+      <a href={imgMatch[2]} target="_blank" rel="noreferrer" style={{ display: 'block', marginTop: 2, border: '2px solid #29251F', borderRadius: 10, overflow: 'hidden', cursor: 'zoom-in' }}>
+        <img src={imgMatch[2]} alt={imgMatch[1]} style={{ display: 'block', width: '100%', maxHeight: 260, objectFit: 'cover' }} />
+      </a>
     )
   }
   const fileMatch = content.match(/^\[(.*?)\]\((.*?)\)$/)
   if (fileMatch) {
     return (
-      <a href={fileMatch[2]} target="_blank" rel="noreferrer" className="flex items-center gap-3 mt-2 mb-1 px-4 py-3 bg-surface border border-line/40 rounded-xl hover:bg-lift transition-colors group shadow-sm w-fit max-w-full">
-        <div className="p-2 bg-brand/10 text-brandInk rounded-lg group-hover:bg-brand/20 transition-colors">
-          <FileText className="w-5 h-5 shrink-0" />
-        </div>
-        <span className="text-sm font-semibold text-ink truncate flex-1">{fileMatch[1]}</span>
+      <a href={fileMatch[2]} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', border: '2px solid #29251F', borderRadius: 10, background: '#F8F3E9', textDecoration: 'none' }}>
+        <span style={{ width: 36, height: 36, flex: 'none', borderRadius: 9, border: '2px solid #29251F', background: '#E6DDF6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 900 }}>FILE</span>
+        <strong style={{ fontSize: 14, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>{fileMatch[1]}</strong>
       </a>
     )
   }
-  return <p className="whitespace-pre-wrap break-words leading-relaxed">{content}</p>
+  return <span style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{content}</span>
 }
 
 export function ReplyPreview({ msg, onCancel }) {
   if (!msg) return null
   return (
-    <div className="flex items-start gap-3 px-4 py-3 bg-surface border-t border-line">
-      <CornerUpLeft className="w-4 h-4 text-brandInk mt-0.5 shrink-0" />
-      <div className="flex-1 min-w-0 border-l-2 border-brand pl-3">
-        <p className="text-[10px] font-bold text-brandInk uppercase tracking-wider mb-0.5">Replying to</p>
-        <p className="text-sm text-ink truncate">{truncate(msg.content || 'Attachment', 80)}</p>
-      </div>
-      <button onClick={onCancel} className="p-1.5 text-clay hover:text-ink hover:bg-line/50 rounded-full transition-colors shrink-0">
-        <X className="w-4 h-4" />
-      </button>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 16px', borderBottom: '2px dashed #29251F', background: 'var(--accl)' }}>
+      <span style={{ flex: 1, minWidth: 0, borderLeft: '4px solid #29251F', paddingLeft: 10 }}>
+        <span className="eb" style={{ color: '#29251F' }}>REPLYING TO</span>
+        <div style={{ fontSize: 14, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          {truncate(msg.content || 'Attachment', 80)}
+        </div>
+      </span>
+      <button type="button" className="icb" aria-label="Cancel reply" style={{ width: 32, height: 32 }} onClick={onCancel}>✕</button>
     </div>
   )
 }
 
-export function ReactionBubbles({ reactions, messageId, currentUserId, onToggle }) {
+export function ReactionBubbles({ reactions, messageId, currentUserId, onToggle, isMe }) {
   if (!reactions || Object.keys(reactions).length === 0) return null
   return (
-    <div className="flex flex-wrap gap-1 mt-1">
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: -4, justifyContent: isMe ? 'flex-end' : 'flex-start' }}>
       {Object.entries(reactions).map(([reactionKey, users]) => {
         const mine = users.includes(currentUserId)
         return (
           <button
             key={reactionKey}
+            type="button"
+            className={`react${mine ? ' mine' : ''}`}
             onClick={() => onToggle(messageId, reactionKey)}
-            className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-xs border transition-colors ${
-              mine
-                ? 'bg-brand/15 border-brand/30 text-brandInk font-semibold'
-                : 'bg-lift border-line text-clay hover:bg-brand/10 hover:border-brand/20 hover:text-brandInk'
-            }`}
           >
             <span>{getEmojiForKey(reactionKey)}</span>
-            <span className="font-semibold">{users.length}</span>
+            <span>{users.length}</span>
           </button>
         )
       })}
@@ -93,20 +84,26 @@ export function VoicePlayer({ meta, reqId }) {
     }
   }, [meta.audio_path, reqId])
 
-  return (
-    <div className="flex items-center gap-2 mt-1.5 px-3.5 py-2.5 bg-surface border border-line/40 rounded-full shadow-sm w-fit max-w-[280px]">
-      {error ? (
-        <div className="h-8 w-48 flex items-center justify-center text-[11px] text-red-500 font-bold tracking-wider uppercase bg-red-500/10 rounded-full border border-red-500/20">Unavailable</div>
-      ) : signedUrl ? (
-        <audio controls src={signedUrl} className="h-9 w-52 max-w-full" controlsList="nodownload noplaybackrate" />
-      ) : (
-        <div className="h-9 w-52 flex items-center justify-center gap-2">
-           <div className="w-6 h-6 rounded-full bg-line/60 animate-pulse"></div>
-           <div className="flex-1 h-2 rounded-full bg-line/60 animate-pulse"></div>
-        </div>
-      )}
-    </div>
-  )
+  if (error) {
+    return (
+      <span className="mono" style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, fontWeight: 700, color: '#9A2B1E' }}>
+        Voice message unavailable
+      </span>
+    )
+  }
+
+  if (!signedUrl) {
+    return (
+      <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <span style={{ width: 32, height: 32, flex: 'none', borderRadius: 999, border: '2px solid #29251F', background: '#FFFDF8', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12 }}>▶</span>
+        <span style={{ display: 'flex', gap: 3, alignItems: 'center' }}>
+          {WAVE.map((h, i) => <span key={i} style={{ width: 3, height: h, borderRadius: 2, background: '#29251F', opacity: .4 }} />)}
+        </span>
+      </span>
+    )
+  }
+
+  return <audio controls src={signedUrl} style={{ height: 36, maxWidth: 240 }} controlsList="nodownload noplaybackrate" />
 }
 
 export function FileAttachment({ meta, reqId }) {
@@ -124,34 +121,46 @@ export function FileAttachment({ meta, reqId }) {
     }
   }, [meta.file_path, reqId])
 
+  const name = meta.file_name || 'Attachment'
+  const kind = (name.split('.').pop() || 'FILE').toUpperCase().slice(0, 4)
+
   return (
-    <a href={signedUrl || '#'} target={signedUrl ? "_blank" : "_self"} rel="noreferrer" className={`flex items-center gap-3 mt-1.5 px-3.5 py-2.5 ${error ? 'bg-red-500/10 border-red-500/20' : 'bg-surface border-line/40 hover:bg-lift shadow-sm'} border rounded-xl transition-colors w-full max-w-[260px] ${(!signedUrl && !error) ? 'opacity-50 pointer-events-none' : ''} ${error ? 'pointer-events-none' : 'group'}`}>
-      <div className={`p-2 rounded-lg transition-colors ${error ? 'bg-red-500/20 text-red-500' : 'bg-brand/10 text-brandInk group-hover:bg-brand/20'}`}>
-        <FileText className="w-5 h-5 shrink-0" />
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className={`text-sm font-semibold truncate ${error ? 'text-red-500' : 'text-ink'}`}>{error ? 'Unavailable' : (meta.file_name || 'Attachment')}</p>
-        {!error && meta.size_bytes && <p className="text-[10px] text-clay uppercase tracking-wider font-bold">{(meta.size_bytes / 1024).toFixed(1)} KB</p>}
-      </div>
+    <a
+      href={signedUrl || undefined}
+      target={signedUrl ? '_blank' : undefined}
+      rel="noreferrer"
+      style={{
+        display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px',
+        border: '2px solid #29251F', borderRadius: 10,
+        background: error ? '#F6DDD8' : '#F8F3E9',
+        textDecoration: 'none',
+        pointerEvents: signedUrl ? 'auto' : 'none',
+        opacity: (!signedUrl && !error) ? .55 : 1,
+      }}
+    >
+      <span style={{ width: 36, height: 36, flex: 'none', borderRadius: 9, border: '2px solid #29251F', background: error ? '#FFFDF8' : '#E6DDF6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 900 }}>
+        {error ? '!' : kind}
+      </span>
+      <span style={{ minWidth: 0 }}>
+        <strong style={{ fontSize: 14, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: error ? '#9A2B1E' : '#29251F' }}>
+          {error ? 'Unavailable' : name}
+        </strong>
+        {!error && meta.size_bytes && (
+          <span className="mono" style={{ fontSize: 11, color: '#6E6455' }}>{(meta.size_bytes / 1024).toFixed(1)} KB</span>
+        )}
+      </span>
     </a>
   )
 }
 
-export function MenuItem({ icon, label, onClick, danger }) {
-  return (
-    <button
-      onClick={onClick}
-      className={danger ? 'dropdown-item-danger' : 'dropdown-item'}
-    >
-      {icon}
-      {label}
-    </button>
-  )
-}
-
-export default function MessageBubble({ m, reqId, isMe, isConsecutive, currentUserId, allMessages, onReply, onCopy, onEdit, onDeleteForEveryone, onDeleteForMe, onToggleReaction, onForward, onScrollToRef, msgRef }) {
+export default function MessageBubble({
+  m, reqId, isMe, isConsecutive, isMatch, currentUserId, allMessages,
+  onReply, onCopy, onEdit, onDeleteForEveryone, onDeleteForMe,
+  onToggleReaction, onForward, onScrollToRef, msgRef,
+}) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [emojiBarOpen, setEmojiBarOpen] = useState(false)
+  const [hover, setHover] = useState(false)
   const menuRef = useRef(null)
   const meta = m.metadata || {}
   const isDeleted = meta.deleted_for_everyone
@@ -160,6 +169,7 @@ export default function MessageBubble({ m, reqId, isMe, isConsecutive, currentUs
   const replyToId = meta.reply_to_id
   const replyPreview = meta.reply_preview
   const reactions = meta.reactions || {}
+  const isAttachment = meta.type === 'voice' || meta.type === 'file'
 
   useEffect(() => {
     if (!menuOpen) return
@@ -174,125 +184,115 @@ export default function MessageBubble({ m, reqId, isMe, isConsecutive, currentUs
     if (replyToId && onScrollToRef) onScrollToRef(replyToId)
   }
 
+  const toolsVisible = hover || menuOpen || emojiBarOpen
+
   return (
-    <div ref={msgRef} className={`flex ${isMe ? 'justify-end' : 'justify-start'} ${isConsecutive ? 'mt-0.5' : 'mt-3'} group`}>
-      <div className={`max-w-[85%] md:max-w-[75%] relative`}>
-        {/* Forwarded indicator */}
-        {isForwarded && (
-          <p className={`text-[10px] font-medium mb-0.5 flex items-center gap-1 ${isMe ? 'text-right justify-end text-brandInk/70' : 'text-clay'}`}>
-            <Forward className="w-3 h-3" /> Forwarded
-          </p>
-        )}
+    <div
+      ref={msgRef}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      style={{
+        alignSelf: isMe ? 'flex-end' : 'flex-start',
+        maxWidth: '72%',
+        minWidth: 0,
+        position: 'relative',
+        marginTop: isConsecutive ? -4 : 0,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 4,
+        ...(isMatch ? { outline: '3px solid var(--acc)', outlineOffset: 4, borderRadius: 16 } : {}),
+      }}
+    >
+      {isForwarded && (
+        <span className="eb" style={{ alignSelf: isMe ? 'flex-end' : 'flex-start' }}>↪ FORWARDED</span>
+      )}
 
-        {/* Reply quote */}
-        {replyToId && replyPreview && (
-          <button
-            onClick={handleScrollToReply}
-            className="reply-quote"
-          >
-            <p className="text-[10px] text-brandInk font-semibold">↳ Replied to</p>
-            <p className="text-[11px] text-clay truncate">{truncate(replyPreview, 55)}</p>
-          </button>
-        )}
-
-        {/* Bubble */}
-        <div
-          className={`relative px-3 py-2 text-sm leading-relaxed ${
-            isMe
-              ? 'bubble-me'
-              : 'bubble-them'
-          }`}
-        >
-          {isDeleted ? (
-            <p className="text-xs italic opacity-50">
-              {isMe ? 'You deleted this message' : 'This message was deleted'}
-            </p>
-          ) : (
-            <>
-              {meta.type === 'voice' && <VoicePlayer meta={meta} reqId={reqId} />}
-              {meta.type === 'file' && <FileAttachment meta={meta} reqId={reqId} />}
-              {m.content && <MessageRenderer content={m.content} />}
-              <div className={`flex items-center justify-end gap-1 mt-0.5 ${isMe ? 'text-white/70' : 'text-clay'}`}>
-                {isEdited && <span className="text-[9px] italic">edited</span>}
-                {m.created_at && (
-                  <span className="text-[9px]">{formatTime(m.created_at)}</span>
-                )}
-                {isMe && (
-                  m.is_read
-                    ? <CheckCheck className="w-3 h-3" />
-                    : <Check className="w-3 h-3" />
-                )}
-              </div>
-            </>
-          )}
-        </div>
-
-        {/* Reactions */}
-        {!isDeleted && (
-          <ReactionBubbles
-            reactions={reactions}
-            messageId={m.id}
-            currentUserId={currentUserId}
-            onToggle={onToggleReaction}
-          />
-        )}
-
-          {/* Context menu button — appears on hover/focus */}
-          {!isDeleted && (
-            <div
-              ref={menuRef}
-              className={`absolute top-0 ${isMe ? 'right-full mr-1' : 'left-full ml-1'} opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity flex items-center gap-0.5 z-20`}
-            >
-              {/* Quick emoji react */}
-              <div className="relative">
-                <button
-                  onClick={() => setEmojiBarOpen(o => !o)}
-                  className="p-1 text-clay hover:text-brandInk hover:bg-brand/10 rounded-full min-w-[32px] min-h-[32px] flex items-center justify-center"
-                >
-                  <Smile className="w-4 h-4" />
-                </button>
-                {emojiBarOpen && (
-                  <div className={`absolute bottom-full mb-1 ${isMe ? 'right-0' : 'left-0'} emoji-popover`}>
-                    {REACTION_EMOJIS.map(em => (
-                      <button
-                        key={em.key}
-                        onClick={() => { onToggleReaction(m.id, em.key); setEmojiBarOpen(false) }}
-                        className="text-lg hover:scale-125 transition-transform p-0.5 min-w-[32px] min-h-[32px]"
-                      >
-                        {em.emoji}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-  
-              {/* More menu */}
-              <div className="relative">
-                <button
-                  onClick={() => setMenuOpen(o => !o)}
-                  className="p-1 text-clay hover:text-brandInk hover:bg-brand/10 rounded-full min-w-[32px] min-h-[32px] flex items-center justify-center"
-                >
-                  <MoreVertical className="w-4 h-4" />
-                </button>
-                {menuOpen && (
-                  <div className={`absolute top-0 ${isMe ? 'right-full mr-1' : 'left-full ml-1'} dropdown-menu`}>
-                    <MenuItem icon={<CornerUpLeft className="w-4 h-4" />} label="Reply" onClick={() => { onReply(m); setMenuOpen(false) }} />
-                    <MenuItem icon={<Copy className="w-4 h-4" />} label="Copy" onClick={() => { onCopy(m.content); setMenuOpen(false) }} />
-                    <MenuItem icon={<Forward className="w-4 h-4" />} label="Forward" onClick={() => { onForward(m); setMenuOpen(false) }} />
-                    <div className="border-t border-line/50 my-0.5" />
-                    <MenuItem icon={<Trash className="w-4 h-4" />} label="Delete for Me" onClick={() => { onDeleteForMe(m.id); setMenuOpen(false) }} />
-                    {isMe && !isDeleted && (
-                      <>
-                        <MenuItem icon={<Pencil className="w-4 h-4" />} label="Edit" onClick={() => { onEdit(m); setMenuOpen(false) }} />
-                        <MenuItem icon={<Trash2 className="w-4 h-4" />} label="Delete for Everyone" danger onClick={() => { onDeleteForEveryone(m.id); setMenuOpen(false) }} />
-                      </>
-                    )}
-                  </div>
-                )}
-              </div>
+      <div
+        className={`b ${isMe ? 'b-me' : 'b-them'}${isDeleted ? ' b-gone' : ''}`}
+        style={{ maxWidth: '100%', ...(isAttachment && !isDeleted ? { padding: 8 } : {}) }}
+      >
+        {isDeleted ? (
+          isMe ? 'You deleted this message' : 'This message was deleted'
+        ) : (
+          <>
+            {replyToId && replyPreview && (
+              <button type="button" className="quote" onClick={handleScrollToReply}>
+                <strong>↳ Replied to</strong><br />
+                {truncate(replyPreview, 55)}
+              </button>
+            )}
+            {meta.type === 'voice' && <VoicePlayer meta={meta} reqId={reqId} />}
+            {meta.type === 'file' && <FileAttachment meta={meta} reqId={reqId} />}
+            {m.content && <MessageRenderer content={m.content} />}
+            <div className="meta">
+              {isEdited && <span style={{ fontStyle: 'italic' }}>edited</span>}
+              {m.created_at && <span className="mono">{formatTime(m.created_at)}</span>}
+              {isMe && <span aria-label={m.is_read ? 'Read' : 'Sent'}>{m.is_read ? '✓✓' : '✓'}</span>}
             </div>
-          )}
-        </div>
+          </>
+        )}
       </div>
-    )
-  }
+
+      {!isDeleted && (
+        <ReactionBubbles
+          reactions={reactions}
+          messageId={m.id}
+          currentUserId={currentUserId}
+          onToggle={onToggleReaction}
+          isMe={isMe}
+        />
+      )}
+
+      {/* hover tools */}
+      {!isDeleted && (
+        <div
+          ref={menuRef}
+          style={{
+            position: 'absolute', top: 0,
+            ...(isMe ? { right: '100%', marginRight: 6 } : { left: '100%', marginLeft: 6 }),
+            display: 'flex', alignItems: 'center', gap: 4, zIndex: 20,
+            opacity: toolsVisible ? 1 : 0,
+            pointerEvents: toolsVisible ? 'auto' : 'none',
+            transition: 'opacity 150ms ease',
+          }}
+        >
+          <div style={{ position: 'relative' }}>
+            <button type="button" className="icb" aria-label="React" style={{ width: 32, height: 32, fontSize: 14 }} onClick={() => setEmojiBarOpen(o => !o)}>🙂</button>
+            {emojiBarOpen && (
+              <div className="epop" style={{ bottom: '100%', marginBottom: 6, ...(isMe ? { right: 0 } : { left: 0 }) }}>
+                {REACTION_EMOJIS.map(em => (
+                  <button
+                    key={em.key}
+                    type="button"
+                    onClick={() => { onToggleReaction(m.id, em.key); setEmojiBarOpen(false) }}
+                  >
+                    {em.emoji}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div style={{ position: 'relative' }}>
+            <button type="button" className="icb" aria-label="More actions" style={{ width: 32, height: 32, fontSize: 14 }} onClick={() => setMenuOpen(o => !o)}>⋮</button>
+            {menuOpen && (
+              <div className="mnu" style={{ top: 0, ...(isMe ? { right: '100%', marginRight: 6 } : { left: '100%', marginLeft: 6 }) }}>
+                <button type="button" onClick={() => { onReply(m); setMenuOpen(false) }}>↩ Reply</button>
+                <button type="button" onClick={() => { onCopy(m.content); setMenuOpen(false) }}>⧉ Copy</button>
+                <button type="button" onClick={() => { onForward(m); setMenuOpen(false) }}>↪ Forward</button>
+                <hr />
+                <button type="button" onClick={() => { onDeleteForMe(m.id); setMenuOpen(false) }}>🗑 Delete for me</button>
+                {isMe && (
+                  <>
+                    <button type="button" onClick={() => { onEdit(m); setMenuOpen(false) }}>✎ Edit</button>
+                    <button type="button" className="danger" onClick={() => { onDeleteForEveryone(m.id); setMenuOpen(false) }}>🗑 Delete for everyone</button>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}

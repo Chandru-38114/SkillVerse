@@ -1,31 +1,37 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react'
-import { formatTime, formatDateTime, createIstToUtcDate , getTodayIstYMD} from '../utils/dateTime'
-import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
-import { api, chatSocketUrl, getSessionUser, getAvatarUrl, BASE_URL } from '../api'
-import {
-  ArrowLeft, Paperclip, Calendar, Smile, Search, X, Send,
-  MoreVertical, Trash, Trash2, Pencil, Copy, CornerUpLeft, Forward,
-  MessageCircle, Hand, Check, CheckCheck, ChevronUp, ChevronDown, MoreHorizontal,
-  Mic, FileText, Square
-} from 'lucide-react'
-import BackButton from '../components/BackButton'
-import DateTimePicker from '../components/DateTimePicker'
-
-const RECONNECT_DELAY_MS = 2000
-const MAX_RECONNECT_DELAY_MS = 10000
-import { REACTION_EMOJIS, getEmojiForKey } from '../utils/emojis'
-import MessageBubble, { ReplyPreview } from '../components/chat/MessageBubble'
+import { formatTime, IST_TIMEZONE } from '../utils/dateTime'
+import { useNavigate, useSearchParams, Link } from 'react-router-dom'
+import { api, chatSocketUrl, getSessionUser } from '../api'
+import { REACTION_EMOJIS } from '../utils/emojis'
+import MessageBubble from '../components/chat/MessageBubble'
 import ScheduleModal from '../components/chat/ScheduleModal'
 import SessionCard from '../components/chat/SessionCard'
 import PendingRequestCard from '../components/connect/PendingRequestCard'
 import ReviewForm from '../components/connect/ReviewForm'
-import Avatar from '../components/ui/Avatar'
+import './messages.css'
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ Utilities Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+const RECONNECT_DELAY_MS = 2000
+const MAX_RECONNECT_DELAY_MS = 10000
+
+const AV_BG = ['#D6F3EA', '#FBEFC4', '#E6DDF6', '#FFE3CF']
+
+// ── Utilities ────────────────────────────────────────────────────────────────
 
 function truncate(str, n = 60) {
   if (!str) return ''
   return str.length > n ? str.slice(0, n) + '...' : str
+}
+
+const istDay = (d) => new Intl.DateTimeFormat('en-IN', { timeZone: IST_TIMEZONE, year: 'numeric', month: '2-digit', day: '2-digit' }).format(d)
+
+function dayLabel(iso) {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (isNaN(d)) return ''
+  const now = new Date()
+  if (istDay(d) === istDay(now)) return 'Today'
+  if (istDay(d) === istDay(new Date(now.getTime() - 86400000))) return 'Yesterday'
+  return new Intl.DateTimeFormat('en-IN', { timeZone: IST_TIMEZONE, weekday: 'short', day: 'numeric', month: 'short' }).format(d)
 }
 
 function Toast({ message, onDone }) {
@@ -34,96 +40,58 @@ function Toast({ message, onDone }) {
     return () => clearTimeout(t)
   }, [onDone])
   return (
-    <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 bg-lift border border-line text-ink text-xs font-semibold px-4 py-2 rounded-full shadow-elev-3 pointer-events-none">
+    <div role="status" style={{ position: 'fixed', left: '50%', transform: 'translateX(-50%)', bottom: 24, zIndex: 60, display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', border: '2px solid #29251F', borderRadius: 14, background: '#D6F3EA', boxShadow: '0 4px 0 #29251F', fontWeight: 700, fontSize: 14, pointerEvents: 'none' }}>
       {message}
     </div>
   )
 }
 
-// ─── Connection state badge ─────────────────────────────────────────────────
-
-function ConnectionBadge({ state }) {
-  const cfg = {
-    connecting:   { label: 'Connecting...',   dot: 'bg-amber-400 animate-pulse' },
-    live:         { label: 'Online',          dot: 'bg-emerald-500' },
-    reconnecting: { label: 'Reconnecting...',  dot: 'bg-orange-400 animate-pulse' },
-    offline:      { label: 'Offline',         dot: 'bg-ink/25' },
-  }[state] || { label: 'Connecting...', dot: 'bg-amber-400 animate-pulse' }
-
-  return (
-    <span className="flex items-center gap-1 text-[10px] text-ink/50 font-medium">
-      <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
-      {cfg.label}
-    </span>
-  )
-}
-
-// ─── Forward modal ──────────────────────────────────────────────────────────
+// ── Forward modal ────────────────────────────────────────────────────────────
 
 function ForwardModal({ message, inbox, currentRequestId, onClose, onForward }) {
   const [selected, setSelected] = useState(null)
   const others = inbox.filter(c => c.request_id !== currentRequestId)
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-ink/40 backdrop-blur-sm p-4">
-      <div className="bg-lift border border-line rounded-t-2xl sm:rounded-2xl w-full max-w-sm shadow-elev-3 overflow-hidden">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-line">
-          <h3 className="font-bold text-ink">Forward message</h3>
-          <button onClick={onClose} className="p-1 text-clay hover:text-ink rounded-full min-w-[36px] min-h-[36px] flex items-center justify-center"><X className="w-5 h-5" /></button>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(41,37,31,.55)', padding: 16 }}>
+      <div className="card" role="dialog" aria-labelledby="sv-fwd" style={{ width: '100%', maxWidth: 420, overflow: 'hidden' }}>
+        <div style={{ padding: '18px 22px', borderBottom: '2px solid #29251F', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--accl)' }}>
+          <h3 id="sv-fwd" style={{ margin: 0, fontSize: 20, fontWeight: 900 }}>Forward message</h3>
+          <button type="button" className="icb" aria-label="Close" style={{ width: 34, height: 34 }} onClick={onClose}>✕</button>
         </div>
-        <p className="px-5 py-3 text-xs text-clay italic border-b border-line/50">"{truncate(message?.content, 60)}"</p>
-        <div className="max-h-56 overflow-y-auto divide-y divide-line/50">
+        <div style={{ padding: '12px 22px', borderBottom: '2px dashed #E2D3BB', fontSize: 13, fontWeight: 600, color: '#6E6455' }}>
+          “{truncate(message?.content, 60)}”
+        </div>
+        <div style={{ maxHeight: 260, overflowY: 'auto', padding: 12, display: 'flex', flexDirection: 'column', gap: 6 }}>
           {others.length === 0 ? (
-            <p className="px-5 py-6 text-sm text-clay text-center">No other conversations</p>
-          ) : others.map(c => (
+            <p className="muted" style={{ textAlign: 'center', padding: '24px 0', fontWeight: 700, fontSize: 14 }}>No other conversations</p>
+          ) : others.map((c, i) => (
             <button
               key={c.request_id}
+              type="button"
+              className={`conv${selected === c.request_id ? ' on' : ''}`}
               onClick={() => setSelected(c.request_id)}
-              className={`flex items-center gap-3 w-full px-5 py-3 hover:bg-brand/5 transition-colors ${selected === c.request_id ? 'bg-brand/10 border-r-2 border-brand' : ''}`}
             >
-              <Avatar url={c.other_user_avatar} name={c.other_user_name} size="sm" className="shrink-0" />
-              <div className="text-left min-w-0">
-                <p className="font-semibold text-sm truncate text-ink">{c.other_user_name}</p>
-                <p className="text-xs text-clay truncate">{c.skill_name}</p>
-              </div>
-              {selected === c.request_id && <Check className="w-4 h-4 text-brandInk ml-auto shrink-0" />}
+              <span className="av" style={{ width: 40, height: 40, fontSize: 16, background: c.other_user_avatar ? `#FFFDF8 url(${c.other_user_avatar})` : AV_BG[i % AV_BG.length] }}>
+                {c.other_user_avatar ? '' : (c.other_user_name || '?')[0]}
+              </span>
+              <span style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <strong style={{ fontSize: 14 }}>{c.other_user_name}</strong>
+                <span className="muted" style={{ fontSize: 12, fontWeight: 700 }}>{c.skill_name}</span>
+              </span>
+              {selected === c.request_id && <span aria-hidden="true" style={{ fontWeight: 900 }}>✓</span>}
             </button>
           ))}
         </div>
-        <div className="px-5 py-4 border-t border-line">
+        <div style={{ padding: '16px 22px', borderTop: '2px solid #29251F' }}>
           <button
+            type="button"
+            className="btn btn-p"
+            style={{ width: '100%', minHeight: 48 }}
             disabled={!selected}
             onClick={() => { onForward(selected, message.content); onClose() }}
-            className="btn-primary w-full disabled:opacity-40"
           >
             Forward
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function ConfirmModal({ title, message, confirmText = 'Confirm', confirmVariant = 'danger', onConfirm, onClose }) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 backdrop-blur-sm p-4">
-      <div className="bg-lift border border-line rounded-2xl w-full max-w-sm shadow-elev-3 overflow-hidden animate-fade-in">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-line">
-          <h3 className="font-bold text-ink">{title}</h3>
-          <button onClick={onClose} className="p-1 text-clay hover:text-ink rounded-full min-w-[36px] min-h-[36px] flex items-center justify-center">
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-        <p className="px-5 py-4 text-sm text-ink/80 leading-relaxed">{message}</p>
-        <div className="px-5 py-3 border-t border-line flex gap-3 justify-end bg-surface">
-          <button onClick={onClose} className="btn-secondary text-xs px-3 py-1.5">
-            Cancel
-          </button>
-          <button
-            onClick={() => { onConfirm(); onClose() }}
-            className={confirmVariant === 'danger' ? 'btn-primary bg-coral hover:bg-coral/90 text-xs px-3 py-1.5' : 'btn-primary text-xs px-3 py-1.5'}
-          >
-            {confirmText}
           </button>
         </div>
       </div>
@@ -135,37 +103,37 @@ function ConfirmModal({ title, message, confirmText = 'Confirm', confirmVariant 
 // Main Connect page
 // =========================================================================
 
-  export default function Messages() {
-    const navigate = useNavigate()
-    const [searchParams, setSearchParams] = useSearchParams()
-    const urlRequestId = searchParams.get('request_id')
-    const user = getSessionUser()
-    const userId = user ? Number(user.id) : null
-  
-    // Refs
-    const socketRef = useRef(null)
-    const bottomRef = useRef(null)
-    const inputRef = useRef(null)
-    const inboxTimerRef = useRef(null)
-    const mountedRef = useRef(true)
-  
-    // UI state
-    const [toast, setToast] = useState('')
-  
-    // Inbox
-    const [inbox, setInbox] = useState([])
-    const [pendingRequests, setPendingRequests] = useState([])
-    const [loadingInbox, setLoadingInbox] = useState(true)
-    const [inboxSearch, setInboxSearch] = useState('')
-    const [globalError, setGlobalError] = useState('')
-  
-    // Active conversation
-    const [selectedRequestId, setSelectedRequestId] = useState(urlRequestId || null)
-    const [messages, setMessages] = useState([])
-    const [loadingMessages, setLoadingMessages] = useState(false)
-    const [connectionState, setConnectionState] = useState('offline')
-    const [wsError, setWsError] = useState('')
-    const [reviewedStatus, setReviewedStatus] = useState({})
+export default function Messages() {
+  const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const urlRequestId = searchParams.get('request_id')
+  const user = getSessionUser()
+  const userId = user ? Number(user.id) : null
+
+  // Refs
+  const socketRef = useRef(null)
+  const bottomRef = useRef(null)
+  const inputRef = useRef(null)
+  const inboxTimerRef = useRef(null)
+  const mountedRef = useRef(true)
+
+  // UI state
+  const [toast, setToast] = useState('')
+
+  // Inbox
+  const [inbox, setInbox] = useState([])
+  const [pendingRequests, setPendingRequests] = useState([])
+  const [loadingInbox, setLoadingInbox] = useState(true)
+  const [inboxSearch, setInboxSearch] = useState('')
+  const [globalError, setGlobalError] = useState('')
+
+  // Active conversation
+  const [selectedRequestId, setSelectedRequestId] = useState(urlRequestId || null)
+  const [messages, setMessages] = useState([])
+  const [loadingMessages, setLoadingMessages] = useState(false)
+  const [connectionState, setConnectionState] = useState('offline')
+  const [wsError, setWsError] = useState('')
+  const [reviewedStatus, setReviewedStatus] = useState({})
 
   // Compose
   const [draft, setDraft] = useState('')
@@ -177,7 +145,6 @@ function ConfirmModal({ title, message, confirmText = 'Confirm', confirmVariant 
   const [editingMsg, setEditingMsg] = useState(null)    // message object
   const [forwardingMsg, setForwardingMsg] = useState(null)
   const [scheduleOpen, setScheduleOpen] = useState(false)
-  const [confirmAction, setConfirmAction] = useState(null)
 
   // Search within chat
   const [chatSearch, setChatSearch] = useState('')
@@ -192,19 +159,11 @@ function ConfirmModal({ title, message, confirmText = 'Confirm', confirmVariant 
   const timerRef = useRef(null)
 
   // Presence
-  const [otherPresence, setOtherPresence] = useState({ status: "offline", last_active: null })
+  const [otherPresence, setOtherPresence] = useState({ status: 'offline', last_active: null })
 
-  // Toast
-  
-
-  
-  
-  
-  
-  
   const msgRefsMap = useRef({})   // id -> DOM ref
 
-  // Ã¢â€â‚¬Ã¢â€â‚¬ Inbox load Ã¢â€â‚¬Ã¢â€â‚¬
+  // ── Inbox load ──
   useEffect(() => {
     mountedRef.current = true
     loadInbox()
@@ -251,14 +210,14 @@ function ConfirmModal({ title, message, confirmText = 'Confirm', confirmVariant 
     }
   }
 
-  // Ã¢â€â‚¬Ã¢â€â‚¬ WebSocket lifecycle Ã¢â€â‚¬Ã¢â€â‚¬
+  // ── WebSocket lifecycle ──
   useEffect(() => {
     if (!selectedRequestId) return
     let isActive = true
     let ws = null
     let reconnectTimer = null
     let currentDelay = RECONNECT_DELAY_MS
-    
+
     const HEARTBEAT_INTERVAL_MS = 25000
     const HISTORY_FALLBACK_MS = 6000
     let heartbeatTimer = null
@@ -390,7 +349,10 @@ function ConfirmModal({ title, message, confirmText = 'Confirm', confirmVariant 
     }
   }, [selectedRequestId])
 
-  // Ã¢â€â‚¬Ã¢â€â‚¬ Handlers Ã¢â€â‚¬Ã¢â€â‚¬
+  // Clean up the recording timer if the page unmounts mid-recording
+  useEffect(() => () => { if (timerRef.current) clearInterval(timerRef.current) }, [])
+
+  // ── Handlers ──
 
   const showToast = useCallback((msg) => setToast(msg), [])
 
@@ -566,38 +528,24 @@ function ConfirmModal({ title, message, confirmText = 'Confirm', confirmVariant 
     }
   }
 
-  const handleDeleteForEveryone = (msgId) => {
-    setConfirmAction({
-      title: 'Delete Message',
-      message: 'Delete this message for everyone? This cannot be undone.',
-      confirmText: 'Delete for Everyone',
-      confirmVariant: 'danger',
-      onConfirm: async () => {
-        try {
-          await api.deleteMessageForEveryone(msgId)
-          setMessages(prev => prev ? prev.map(m => m.id === msgId ? { ...m, content: '', metadata: { ...m.metadata, deleted_for_everyone: true } } : m) : null)
-        } catch (err) {
-          showToast(err.message || 'Failed to delete')
-        }
-      }
-    })
+  const handleDeleteForEveryone = async (msgId) => {
+    if (!window.confirm('Delete this message for everyone?')) return
+    try {
+      await api.deleteMessageForEveryone(msgId)
+      setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: '', metadata: { ...m.metadata, deleted_for_everyone: true } } : m))
+    } catch (err) {
+      showToast(err.message || 'Failed to delete')
+    }
   }
 
-  const handleDeleteForMe = (msgId) => {
-    setConfirmAction({
-      title: 'Delete Message',
-      message: 'Delete this message for yourself?',
-      confirmText: 'Delete for Me',
-      confirmVariant: 'danger',
-      onConfirm: async () => {
-        try {
-          await api.deleteMessageForMe(msgId)
-          setMessages(prev => prev ? prev.filter(m => m.id !== msgId) : null)
-        } catch (err) {
-          showToast(err.message || 'Failed to delete')
-        }
-      }
-    })
+  const handleDeleteForMe = async (msgId) => {
+    if (!window.confirm('Delete this message for yourself?')) return
+    try {
+      await api.deleteMessageForMe(msgId)
+      setMessages(prev => prev.filter(m => m.id !== msgId))
+    } catch (err) {
+      showToast(err.message || 'Failed to delete')
+    }
   }
 
   const handleToggleReaction = async (msgId, emoji) => {
@@ -619,22 +567,14 @@ function ConfirmModal({ title, message, confirmText = 'Confirm', confirmVariant 
     }
   }
 
-  const handleCancelSession = (sessionId) => {
-    setConfirmAction({
-      title: 'Cancel Session',
-      message: 'Are you sure you want to cancel this scheduled session?',
-      confirmText: 'Cancel Session',
-      confirmVariant: 'danger',
-      onConfirm: async () => {
-        try {
-          await api.cancelSession(sessionId)
-          loadInbox(false)
-          showToast('Session cancelled')
-        } catch (err) {
-          showToast(err.message || 'Failed to cancel session')
-        }
-      }
-    })
+  const handleCancelSession = async (sessionId) => {
+    if (!window.confirm('Cancel this session?')) return
+    try {
+      await api.cancelSession(sessionId)
+      loadInbox(false)
+    } catch (err) {
+      showToast(err.message || 'Failed to cancel session')
+    }
   }
 
   const handleScrollToRef = (msgId) => {
@@ -642,7 +582,10 @@ function ConfirmModal({ title, message, confirmText = 'Confirm', confirmVariant 
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
   }
 
-  const handleScheduled = (session) => {
+  // The inbox is the source of truth for the active conversation, so a new
+  // session is picked up by reloading it. (The old version called a
+  // setActiveConversation() that never existed, which crashed the page.)
+  const handleScheduled = () => {
     setScheduleOpen(false)
     loadInbox(false)
     showToast('Session scheduled!')
@@ -651,7 +594,7 @@ function ConfirmModal({ title, message, confirmText = 'Confirm', confirmVariant 
   // Cancel editing
   const handleCancelEdit = () => { setEditingMsg(null); setDraft('') }
 
-  // Ã¢â€â‚¬Ã¢â€â‚¬ Derived Ã¢â€â‚¬Ã¢â€â‚¬
+  // ── Derived ──
 
   const filteredInbox = inbox.filter(c =>
     c.other_user_name.toLowerCase().includes(inboxSearch.toLowerCase()) ||
@@ -682,10 +625,6 @@ function ConfirmModal({ title, message, confirmText = 'Confirm', confirmVariant 
     }
   }, [activeConversation?.request_status, selectedRequestId, reviewedStatus])
 
-  const filteredMessages = chatSearch
-    ? messages.filter(m => m.content?.toLowerCase().includes(chatSearch.toLowerCase()))
-    : messages
-
   const searchMatches = chatSearch
     ? messages.reduce((acc, m, i) => {
         if (m.content?.toLowerCase().includes(chatSearch.toLowerCase())) acc.push(i)
@@ -693,446 +632,409 @@ function ConfirmModal({ title, message, confirmText = 'Confirm', confirmVariant 
       }, [])
     : []
 
-  // Ã¢â€â‚¬Ã¢â€â‚¬ Render Ã¢â€â‚¬Ã¢â€â‚¬
+  const activeIdx = inbox.findIndex(c => c.request_id === selectedRequestId)
+  const activeAvBg = AV_BG[(activeIdx < 0 ? 0 : activeIdx) % AV_BG.length]
+  const isOnline = otherPresence.status === 'online'
+
+  // ── Render ──
 
   return (
-    <div className="max-w-6xl mx-auto flex flex-col bg-transparent relative z-10" style={{ height: 'calc(100dvh - 64px)' }}>
-      {toast && <Toast message={toast} onDone={() => setToast(null)} />}
+    <div className="sv-msg">
+      {toast && <Toast message={toast} onDone={() => setToast('')} />}
 
-      {/* Desktop heading */}
-      <div className="hidden md:flex items-center gap-4 px-6 py-4 shrink-0">
-        <BackButton />
-        <h1 className="text-2xl font-display font-bold text-ink drop-shadow-md">Connect</h1>
-        {globalError && <p className="text-xs text-red-500 ml-auto">{globalError}</p>}
-      </div>
+      <div style={{ maxWidth: 1280, margin: '0 auto', padding: '24px clamp(16px, 3vw, 32px) 32px', display: 'flex', flexDirection: 'column', gap: 16 }}>
 
-      {/* Main panel */}
-      <div className="flex-1 flex md:mx-6 md:mb-6 md:rounded-2xl border border-line/10 bg-surface/50 backdrop-blur-xl shadow-[0_0_30px_rgba(0,0,0,0.5)] overflow-hidden min-h-0">
-
-        {/* Sidebar: Conversation List */}
-        <div className={`${selectedRequestId ? 'hidden md:flex' : 'flex'} flex-col w-full md:w-72 lg:w-80 border-r border-line/10 bg-surface/40 backdrop-blur-md shrink-0`}>
-          {/* Sidebar header */}
-          <div className="p-3 border-b border-line/10 bg-transparent flex items-center gap-2 shrink-0">
-            <BackButton className="md:hidden shrink-0" />
-            <input
-              type="text"
-              placeholder="Search conversations..."
-              value={inboxSearch}
-              onChange={e => setInboxSearch(e.target.value)}
-              className="input flex-1 text-sm bg-surface/60 border-line/10 focus:bg-surface focus:border-brand/50 text-ink/90 transition-colors"
-            />
-          </div>
-
-          {/* Inbox list */}
-          <div className="flex-1 overflow-y-auto">
-            {loadingInbox ? (
-              <div className="p-6 text-center text-clay text-sm">Loading...</div>
-            ) : filteredInbox.length === 0 ? (
-              <div className="p-8 text-center space-y-3">
-                <MessageCircle className="w-10 h-10 text-clay/40 mx-auto" />
-                <p className="text-sm text-clay font-medium">
-                  {inboxSearch ? 'No matches found' : 'No conversations yet'}
-                </p>
-                {!inboxSearch && (
-                  <p className="text-xs text-clay/60">Accept a connection request to start chatting</p>
-                )}
-              </div>
-            ) : (
-              <div className="divide-y divide-line/40">
-                {!inboxSearch && pendingRequests.map(req => (
-                  <PendingRequestCard 
-                    key={`req-${req.id}`} 
-                    req={req} 
-                    onAccept={handleAcceptRequest} 
-                    onDecline={handleDeclineRequest} 
-                  />
-                ))}
-                {filteredInbox.map(conv => (
-                  <button
-                    key={conv.request_id}
-                    onClick={() => handleSelectConversation(conv.request_id)}
-                    className={`conv-item ${selectedRequestId === conv.request_id ? 'conv-item-active' : ''}`}
-                  >
-                    <div className="relative shrink-0">
-                      <Avatar url={conv.other_user_avatar} name={conv.other_user_name} size="md" className="shrink-0 shadow-sm" />
-                      {conv.unread_count > 0 && (
-                        <span className="absolute -top-1 -right-1 bg-brand text-white text-[10px] font-bold min-w-[20px] h-[20px] rounded-full flex items-center justify-center border-2 border-surface px-1.5 shadow-sm">
-                          {conv.unread_count > 99 ? '99+' : conv.unread_count}
-                        </span>
-                      )}
-                      {/* Subtle online indicator (mocked for active conversation) */}
-                      {conv.unread_count === 0 && (
-                        <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-surface rounded-full shadow-sm"></span>
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0 flex flex-col justify-center">
-                      <div className="flex justify-between items-baseline mb-0.5">
-                        <h3 className="font-display font-bold text-ink text-[15px] truncate pr-2">{conv.other_user_name}</h3>
-                        <span className="text-[10px] font-bold text-clay uppercase tracking-wider whitespace-nowrap">
-                          {formatTime(conv.latest_message_time)}
-                        </span>
-                      </div>
-                      <p className="text-[10px] text-brandInk font-bold uppercase tracking-wider truncate mb-1.5 opacity-80">{conv.skill_name}</p>
-                      <p className={`text-xs truncate ${conv.unread_count > 0 ? 'text-ink font-bold' : 'text-clay font-medium'}`}>
-                        {conv.latest_message || 'No messages yet'}
-                      </p>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+          <button type="button" className="icb" aria-label="Back" onClick={() => navigate('/dashboard')}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#29251F" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
+          </button>
+          <h1 style={{ margin: 0, fontSize: 32, fontWeight: 900 }}>Connect</h1>
+          <span className="muted" style={{ fontWeight: 700 }}>Chat, plan and schedule with your partners</span>
+          {globalError && <span style={{ marginLeft: 'auto', color: '#9A2B1E', fontWeight: 700, fontSize: 13 }}>{globalError}</span>}
         </div>
 
-        {/* Ã¢â€â‚¬Ã¢â€â‚¬ Chat area Ã¢â€â‚¬Ã¢â€â‚¬ */}
-        <div className={`${!selectedRequestId ? 'hidden md:flex' : 'flex'} flex-1 flex-col min-w-0 min-h-0`}>
-          {selectedRequestId && activeConversation ? (
-            <>
-              {/* Chat header */}
-              <div className="h-16 px-4 border-b border-line/10 bg-surface/60 backdrop-blur-md flex items-center justify-between shrink-0 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.2)] z-10">
-                <div className="flex items-center gap-3 overflow-hidden min-w-0">
-                  <button
-                    onClick={handleBackToList}
-                    className="md:hidden p-2 -ml-2 text-ink/50 hover:text-ink hover:bg-ink/5 rounded-full min-w-[40px] min-h-[40px] flex items-center justify-center transition-colors"
-                  >
-                    <ArrowLeft className="w-5 h-5" />
-                  </button>
-                  <div className="relative shrink-0">
-                    <Avatar url={activeConversation.other_user_avatar} name={activeConversation.other_user_name} size="sm" className="shrink-0 shadow-sm border-2 border-surface" />
-                    {otherPresence.status === 'online' && (
-                      <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-surface rounded-full"></span>
-                    )}
-                  </div>
-                  <div className="min-w-0 flex flex-col justify-center">
-                    <h2 className="font-display font-bold text-ink text-base truncate leading-tight tracking-tight">
-                      {activeConversation.other_user_name}
-                    </h2>
-                    <div className="flex items-center gap-2 text-[11px] font-medium mt-0.5">
-                      <span className="flex items-center gap-1.5 text-xs text-ink/40 font-mono">
-                        <span className={`w-1.5 h-1.5 rounded-full ${otherPresence.status === 'online' ? 'bg-emerald-500' : 'bg-ink/30'}`} />
-                        {otherPresence.status === 'online' ? 'Online' : 'Offline'}
+        <div className="card shell" style={{ display: 'flex', height: 860, overflow: 'hidden' }}>
+
+          {/* ── sidebar ── */}
+          <aside className={`side${selectedRequestId ? ' hide' : ''}`} style={{ width: 340, flex: 'none', borderRight: '2px solid #29251F', background: '#F8F3E9', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ padding: 14, borderBottom: '2px solid #29251F', background: '#FFFDF8' }}>
+              <label style={{ position: 'relative', display: 'block' }}>
+                <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)' }} aria-hidden="true">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#29251F" strokeWidth="2.6" strokeLinecap="round"><circle cx="11" cy="11" r="7" /><path d="m21 21-5-5" /></svg>
+                </span>
+                <input
+                  className="in"
+                  style={{ paddingLeft: 40, minHeight: 46 }}
+                  placeholder="Search conversations..."
+                  aria-label="Search conversations"
+                  value={inboxSearch}
+                  onChange={e => setInboxSearch(e.target.value)}
+                />
+              </label>
+            </div>
+
+            <div style={{ flex: 1, overflowY: 'auto', padding: 12, display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {loadingInbox ? (
+                <p className="muted" style={{ textAlign: 'center', padding: '24px 0', fontWeight: 700, fontSize: 14 }}>Loading…</p>
+              ) : filteredInbox.length === 0 && pendingRequests.length === 0 ? (
+                <div style={{ padding: '32px 12px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
+                  <span style={{ width: 64, height: 64, borderRadius: 18, border: '2px solid #29251F', background: 'var(--accl)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, transform: 'rotate(-5deg)', boxShadow: '0 4px 0 #29251F' }}>💬</span>
+                  <strong>{inboxSearch ? 'No matches found' : 'No conversations yet'}</strong>
+                  {!inboxSearch && <span className="muted" style={{ fontSize: 13 }}>Accept a connection request to start chatting</span>}
+                </div>
+              ) : (
+                <>
+                  {!inboxSearch && pendingRequests.length > 0 && (
+                    <>
+                      <span className="eb" style={{ padding: '4px 6px' }}>NEW REQUEST</span>
+                      {pendingRequests.map(req => (
+                        <PendingRequestCard
+                          key={`req-${req.id}`}
+                          req={req}
+                          onAccept={handleAcceptRequest}
+                          onDecline={handleDeclineRequest}
+                        />
+                      ))}
+                    </>
+                  )}
+                  {filteredInbox.length > 0 && <span className="eb" style={{ padding: '4px 6px' }}>CONVERSATIONS</span>}
+                  {filteredInbox.map((conv, i) => (
+                    <button
+                      key={conv.request_id}
+                      type="button"
+                      className={`conv${selectedRequestId === conv.request_id ? ' on' : ''}`}
+                      onClick={() => handleSelectConversation(conv.request_id)}
+                    >
+                      <span className="av" style={{ width: 48, height: 48, fontSize: 18, background: conv.other_user_avatar ? `#FFFDF8 url(${conv.other_user_avatar})` : AV_BG[i % AV_BG.length] }}>
+                        {conv.other_user_avatar ? '' : (conv.other_user_name || '?')[0]}
+                        {conv.unread_count > 0 && <span className="unread">{conv.unread_count > 99 ? '99+' : conv.unread_count}</span>}
                       </span>
-                      <span className="text-line">&bull;</span>
-                      <span className="text-brandInk font-bold uppercase tracking-wider">{activeConversation.skill_name}</span>
-                      {otherPresence.status !== 'online' && otherPresence.last_active && (
+                      <span style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 3 }}>
+                        <span style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                          <strong style={{ fontSize: 15, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{conv.other_user_name}</strong>
+                          <span className="mono" style={{ fontSize: 11, color: '#6E6455' }}>{formatTime(conv.latest_message_time)}</span>
+                        </span>
+                        <span style={{ alignSelf: 'flex-start', fontSize: 10, fontWeight: 800, letterSpacing: '.06em', padding: '1px 6px', border: '2px solid #29251F', borderRadius: 6, background: '#D6F3EA' }}>
+                          {String(conv.skill_name || '').toUpperCase()}
+                        </span>
+                        <span style={{ fontSize: 13, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontWeight: conv.unread_count > 0 ? 800 : 600, color: conv.unread_count > 0 ? '#29251F' : '#6E6455' }}>
+                          {conv.latest_message || 'No messages yet'}
+                        </span>
+                      </span>
+                    </button>
+                  ))}
+                </>
+              )}
+            </div>
+          </aside>
+
+          {/* ── chat ── */}
+          <section className={`pane${!selectedRequestId ? ' hide' : ''}`} style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', background: '#F8F3E9', backgroundImage: 'radial-gradient(#E6D9C3 1.3px, transparent 1.3px)', backgroundSize: '22px 22px', position: 'relative' }}>
+
+            {selectedRequestId && activeConversation ? (
+              <>
+                {/* header */}
+                <header style={{ padding: '12px 16px', background: '#FFFDF8', borderBottom: '2px solid #29251F', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                  <button type="button" className="icb backbtn" aria-label="Back to conversations" onClick={handleBackToList}>‹</button>
+                  <span className="av" style={{ width: 46, height: 46, fontSize: 18, background: activeConversation.other_user_avatar ? `#FFFDF8 url(${activeConversation.other_user_avatar})` : activeAvBg }}>
+                    {activeConversation.other_user_avatar ? '' : (activeConversation.other_user_name || '?')[0]}
+                    {isOnline && <span className="dot" />}
+                  </span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <strong style={{ fontSize: 17 }}>{activeConversation.other_user_name}</strong>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 12, fontWeight: 700, marginTop: 2, flexWrap: 'wrap' }}>
+                      <span style={{ color: isOnline ? '#2E7D63' : '#6E6455' }}>● {isOnline ? 'Online' : 'Offline'}</span>
+                      <span className="muted">•</span>
+                      <span style={{ padding: '1px 6px', border: '2px solid #29251F', borderRadius: 6, background: '#D6F3EA', fontSize: 10, letterSpacing: '.06em' }}>
+                        {String(activeConversation.skill_name || '').toUpperCase()}
+                      </span>
+                      {!isOnline && otherPresence.last_active && (
                         <>
-                          <span className="text-line">&bull;</span>
-                          <span className="text-clay">Active {formatTime(otherPresence.last_active)}</span>
+                          <span className="muted">•</span>
+                          <span className="muted">Active {formatTime(otherPresence.last_active)}</span>
                         </>
                       )}
                     </div>
                   </div>
-                </div>
-
-                <div className="flex items-center gap-1 shrink-0">
-                  {/* Search toggle */}
                   <button
+                    type="button"
+                    className={`icb${chatSearchOpen ? ' on' : ''}`}
+                    aria-label="Search in conversation"
                     onClick={() => setChatSearchOpen(o => !o)}
-                    className={`p-2 rounded-full transition-colors min-w-[40px] min-h-[40px] flex items-center justify-center ${chatSearchOpen ? 'bg-brand/10 text-brandInk' : 'text-clay hover:text-ink hover:bg-ink/5'}`}
                   >
-                    <Search className="w-4 h-4" />
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={chatSearchOpen ? '#FFFDF8' : '#29251F'} strokeWidth="2.6" strokeLinecap="round"><circle cx="11" cy="11" r="7" /><path d="m21 21-5-5" /></svg>
                   </button>
-
-                  {/* Schedule / Join */}
                   {activeConversation.session_id ? (
-                    <button onClick={() => navigate(`/session/${activeConversation.session_id}`)} className="btn-primary text-xs px-2.5 py-1.5 h-auto">Join</button>
+                    <button type="button" className="btn btn-p" onClick={() => navigate(`/session/${activeConversation.session_id}`)}>▶ Join</button>
                   ) : (
-                    <button
-                      onClick={() => setScheduleOpen(true)}
-                      className="flex items-center gap-1 px-2.5 py-1.5 bg-brand text-white text-xs font-semibold rounded-lg hover:bg-brand/90 transition-colors min-h-[36px]"
-                    >
-                      <Calendar className="w-3.5 h-3.5" />
-                      <span className="hidden sm:inline">Schedule</span>
-                    </button>
+                    <button type="button" className="btn btn-p" onClick={() => setScheduleOpen(true)}>📅 Schedule</button>
                   )}
-                </div>
-              </div>
+                </header>
 
-              {/* Chat search bar */}
-              {chatSearchOpen && (
-                <div className="flex items-center gap-2 px-3 py-2 border-b border-line/10 bg-surface/40 shrink-0">
-                  <Search className="w-4 h-4 text-clay shrink-0" />
-                  <input
-                    autoFocus
-                    type="text"
-                    placeholder="Search in conversation..."
-                    value={chatSearch}
-                    onChange={e => { setChatSearch(e.target.value); setSearchHighlightIdx(0) }}
-                    className="flex-1 text-sm bg-transparent outline-none text-ink placeholder:text-clay"
-                  />
-                  {searchMatches.length > 0 && (
-                    <div className="flex items-center gap-1">
-                      <span className="text-xs text-clay whitespace-nowrap">{searchHighlightIdx + 1}/{searchMatches.length}</span>
-                      <button
-                        onClick={() => {
-                          const newIdx = (searchHighlightIdx - 1 + searchMatches.length) % searchMatches.length;
-                          setSearchHighlightIdx(newIdx);
-                          const msgId = messages[searchMatches[newIdx]]?.id;
-                          if (msgId) handleScrollToRef(msgId);
-                        }}
-                        className="p-1 text-clay hover:text-ink rounded min-w-[28px] min-h-[28px] flex items-center justify-center"
-                      >
-                        <ChevronUp className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => {
-                          const newIdx = (searchHighlightIdx + 1) % searchMatches.length;
-                          setSearchHighlightIdx(newIdx);
-                          const msgId = messages[searchMatches[newIdx]]?.id;
-                          if (msgId) handleScrollToRef(msgId);
-                        }}
-                        className="p-1 text-clay hover:text-ink rounded min-w-[28px] min-h-[28px] flex items-center justify-center"
-                      >
-                        <ChevronDown className="w-4 h-4" />
-                      </button>
-                    </div>
-                  )}
-                  <button onClick={() => { setChatSearch(''); setChatSearchOpen(false) }} className="p-1 text-clay hover:text-ink rounded min-w-[28px] min-h-[28px] flex items-center justify-center">
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-              )}
-
-              {/* Connection error */}
-              {wsError && (
-                <div className="bg-red-500/10 text-red-400 px-4 py-2 text-xs font-medium border-b border-red-500/20 shrink-0">
-                  {wsError}
-                </div>
-              )}
-
-              {/* Session card */}
-              {activeConversation.session_id && (
-                <SessionCard conv={activeConversation} onCancel={handleCancelSession} navigate={navigate} />
-              )}
-
-              {/* Messages list */}
-              <div className="flex-1 overflow-y-auto px-3 py-4 bg-transparent min-h-0">
-                {loadingMessages ? (
-                  <div className="flex items-center justify-center h-full">
-                    <div className="w-6 h-6 border-2 border-brand border-t-transparent rounded-full animate-spin" />
-                  </div>
-                ) : messages.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center h-full text-clay/60 space-y-3">
-                    <Hand className="w-10 h-10" />
-                    <p className="text-sm font-medium text-clay">Say hello!</p>
-                  </div>
-                ) : (
-                  <>
-                    {messages.map((m, idx) => {
-                      const isMe = Number(m.sender_id) === userId
-                      const isConsecutive = idx > 0 && messages[idx - 1].sender_id === m.sender_id
-                      const isMatch = chatSearch && m.content?.toLowerCase().includes(chatSearch.toLowerCase())
-
-                      return (
-                        <div key={m.id || idx} className={isMatch ? 'bg-brand/10 rounded-lg -mx-1 px-1' : ''}>
-                          <MessageBubble
-                            m={m}
-                            reqId={selectedRequestId}
-                            isMe={isMe}
-                            isConsecutive={isConsecutive}
-                            currentUserId={userId}
-                            allMessages={messages}
-                            onReply={handleReply}
-                            onCopy={handleCopy}
-                            onEdit={handleEdit}
-                            onDeleteForEveryone={handleDeleteForEveryone}
-                            onDeleteForMe={handleDeleteForMe}
-                            onToggleReaction={handleToggleReaction}
-                            onForward={setForwardingMsg}
-                            onScrollToRef={handleScrollToRef}
-                            msgRef={el => { if (el && m.id) msgRefsMap.current[m.id] = el }}
-                          />
-                        </div>
-                      )
-                    })}
-                    <div ref={bottomRef} />
-                    {activeConversation?.request_status === 'completed' && reviewedStatus[selectedRequestId]?.sessionId && (
-                      <div className="mt-6 mb-4">
-                        {reviewedStatus[selectedRequestId].reviewed ? (
-                          <div className="bg-moss/10 border border-moss/20 rounded-xl p-4 text-center">
-                            <p className="text-moss font-semibold mb-2">✓ Review submitted</p>
-                            <Link to="/dashboard" className="btn-primary inline-flex mt-2">
-                              Continue your Skill Journey →
-                            </Link>
-                          </div>
-                        ) : (
-                          <div className="bg-surface border border-line rounded-xl p-5 shadow-sm max-w-lg mx-auto">
-                            <ReviewForm 
-                              sessionId={reviewedStatus[selectedRequestId].sessionId} 
-                              otherName={activeConversation.other_user_name} 
-                              onSubmitted={() => setReviewedStatus(prev => ({ ...prev, [selectedRequestId]: { ...prev[selectedRequestId], reviewed: true } }))} 
-                            />
-                          </div>
-                        )}
-                      </div>
+                {/* chat search bar */}
+                {chatSearchOpen && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', background: '#FFFDF8', borderBottom: '2px dashed #29251F' }}>
+                    <input
+                      autoFocus
+                      className="in"
+                      style={{ flex: 1, padding: '8px 12px', boxShadow: 'none' }}
+                      placeholder="Search in conversation..."
+                      value={chatSearch}
+                      onChange={e => { setChatSearch(e.target.value); setSearchHighlightIdx(0) }}
+                    />
+                    {searchMatches.length > 0 && (
+                      <>
+                        <span className="mono" style={{ fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap' }}>{searchHighlightIdx + 1}/{searchMatches.length}</span>
+                        <button
+                          type="button"
+                          className="icb"
+                          aria-label="Previous match"
+                          style={{ width: 34, height: 34 }}
+                          onClick={() => {
+                            const newIdx = (searchHighlightIdx - 1 + searchMatches.length) % searchMatches.length;
+                            setSearchHighlightIdx(newIdx);
+                            const msgId = messages[searchMatches[newIdx]]?.id;
+                            if (msgId) handleScrollToRef(msgId);
+                          }}
+                        >↑</button>
+                        <button
+                          type="button"
+                          className="icb"
+                          aria-label="Next match"
+                          style={{ width: 34, height: 34 }}
+                          onClick={() => {
+                            const newIdx = (searchHighlightIdx + 1) % searchMatches.length;
+                            setSearchHighlightIdx(newIdx);
+                            const msgId = messages[searchMatches[newIdx]]?.id;
+                            if (msgId) handleScrollToRef(msgId);
+                          }}
+                        >↓</button>
+                      </>
                     )}
-                  </>
+                    <button type="button" className="icb" aria-label="Close search" style={{ width: 34, height: 34 }} onClick={() => { setChatSearch(''); setChatSearchOpen(false) }}>✕</button>
+                  </div>
                 )}
-              </div>
 
-              {/* Composer */}
-              <div className="bg-surface/60 backdrop-blur-md border-t border-line/10 shrink-0">
-                {/* Emoji picker */}
-                {showEmojiPicker && (
-                  <div className="absolute bottom-full left-2 mb-2 bg-lift border border-line shadow-elev-3 rounded-xl p-3 w-64 z-30">
-                    <div className="flex flex-wrap gap-1.5">
+                {/* connection error */}
+                {wsError && (
+                  <div style={{ padding: '10px 16px', background: '#F6DDD8', borderBottom: '2px solid #9A2B1E', color: '#9A2B1E', fontWeight: 700, fontSize: 13 }}>
+                    {wsError}
+                  </div>
+                )}
+
+                {/* session card */}
+                {activeConversation.session_id && (
+                  <SessionCard conv={activeConversation} onCancel={handleCancelSession} navigate={navigate} />
+                )}
+
+                {/* messages */}
+                <div style={{ flex: 1, overflowY: 'auto', padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 10 }} aria-live="polite">
+                  {loadingMessages ? (
+                    <p className="muted" style={{ margin: 'auto', fontWeight: 700 }}>Loading messages…</p>
+                  ) : messages.length === 0 ? (
+                    <div style={{ margin: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
+                      <span style={{ fontSize: 32 }}>👋</span>
+                      <strong>Say hello!</strong>
+                    </div>
+                  ) : (
+                    <>
+                      {messages.map((m, idx) => {
+                        const isMe = Number(m.sender_id) === userId
+                        const isConsecutive = idx > 0 && messages[idx - 1].sender_id === m.sender_id
+                        const isMatch = chatSearch && m.content?.toLowerCase().includes(chatSearch.toLowerCase())
+                        const thisDay = dayLabel(m.created_at)
+                        const prevDay = idx > 0 ? dayLabel(messages[idx - 1].created_at) : null
+                        const showDay = thisDay && thisDay !== prevDay
+
+                        return (
+                          <React.Fragment key={m.id || idx}>
+                            {showDay && <span className="day">{thisDay}</span>}
+                            <MessageBubble
+                              m={m}
+                              reqId={selectedRequestId}
+                              isMe={isMe}
+                              isConsecutive={isConsecutive}
+                              isMatch={!!isMatch}
+                              currentUserId={userId}
+                              allMessages={messages}
+                              onReply={handleReply}
+                              onCopy={handleCopy}
+                              onEdit={handleEdit}
+                              onDeleteForEveryone={handleDeleteForEveryone}
+                              onDeleteForMe={handleDeleteForMe}
+                              onToggleReaction={handleToggleReaction}
+                              onForward={setForwardingMsg}
+                              onScrollToRef={handleScrollToRef}
+                              msgRef={el => { if (el && m.id) msgRefsMap.current[m.id] = el }}
+                            />
+                          </React.Fragment>
+                        )
+                      })}
+                      <div ref={bottomRef} />
+                      {activeConversation?.request_status === 'completed' && reviewedStatus[selectedRequestId]?.sessionId && (
+                        <div style={{ marginTop: 18, alignSelf: 'center', width: '100%', maxWidth: 520 }}>
+                          {reviewedStatus[selectedRequestId].reviewed ? (
+                            <div className="card" style={{ padding: 20, background: '#D6F3EA', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, textAlign: 'center' }}>
+                              <strong>✓ Review submitted</strong>
+                              <Link to="/dashboard" className="btn btn-p">Continue your Skill Journey →</Link>
+                            </div>
+                          ) : (
+                            <div className="card" style={{ padding: 20 }}>
+                              <ReviewForm
+                                sessionId={reviewedStatus[selectedRequestId].sessionId}
+                                otherName={activeConversation.other_user_name}
+                                onSubmitted={() => setReviewedStatus(prev => ({ ...prev, [selectedRequestId]: { ...prev[selectedRequestId], reviewed: true } }))}
+                              />
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+
+                {/* composer */}
+                <div style={{ background: '#FFFDF8', borderTop: '2px solid #29251F', position: 'relative' }}>
+
+                  {showEmojiPicker && (
+                    <div className="epop" style={{ bottom: '100%', left: 16, marginBottom: 8 }}>
                       {REACTION_EMOJIS.map(em => (
                         <button
                           key={em.key}
                           type="button"
                           onClick={() => { setDraft(d => d + em.emoji); setShowEmojiPicker(false); inputRef.current?.focus() }}
-                          className="text-xl hover:scale-125 transition-transform p-1 min-w-[36px] min-h-[36px]"
                         >
                           {em.emoji}
                         </button>
                       ))}
                     </div>
-                  </div>
-                )}
+                  )}
 
-                {/* Reply / edit preview */}
-                {replyingTo && !editingMsg && (
-                  <ReplyPreview msg={replyingTo} onCancel={() => setReplyingTo(null)} />
-                )}
-                {editingMsg && (
-                  <div className="flex items-center gap-2 px-3 py-2 bg-gold/10 border-t border-gold/20">
-                    <Pencil className="w-4 h-4 text-gold shrink-0" />
-                    <p className="flex-1 text-xs text-gold font-medium">Editing message</p>
-                    <button onClick={handleCancelEdit} className="p-1 text-gold/70 hover:text-gold rounded-full min-w-[32px] min-h-[32px] flex items-center justify-center">
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                )}
+                  {/* replying-to bar (this is what the old build crashed on — it
+                      referenced a ReplyPreview component that was never imported) */}
+                  {replyingTo && !editingMsg && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 16px', borderBottom: '2px dashed #29251F', background: 'var(--accl)' }}>
+                      <span style={{ flex: 1, minWidth: 0, borderLeft: '4px solid #29251F', paddingLeft: 10 }}>
+                        <span className="eb" style={{ color: '#29251F' }}>REPLYING TO</span>
+                        <div style={{ fontSize: 14, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {truncate(replyingTo.content || 'Attachment', 80)}
+                        </div>
+                      </span>
+                      <button type="button" className="icb" aria-label="Cancel reply" style={{ width: 32, height: 32 }} onClick={() => setReplyingTo(null)}>✕</button>
+                    </div>
+                  )}
 
-                {uploadingFile && (
-                  <div className="px-4 pb-2 text-xs text-brandInk font-medium flex items-center gap-2 bg-surface">
-                    <span className="w-3 h-3 rounded-full border-2 border-brand border-t-transparent animate-spin" />
-                    Uploading {uploadingFile}...
-                  </div>
-                )}
+                  {editingMsg && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 16px', borderBottom: '2px dashed #29251F', background: '#FBEFC4' }}>
+                      <span aria-hidden="true">✎</span>
+                      <strong style={{ flex: 1, fontSize: 14 }}>Editing message</strong>
+                      <button type="button" className="icb" aria-label="Cancel edit" style={{ width: 32, height: 32 }} onClick={handleCancelEdit}>✕</button>
+                    </div>
+                  )}
 
-                {isRecording || voiceBlob ? (
-                  <div className="p-4 bg-transparent flex items-center justify-between gap-3 shrink-0 shadow-[0_-2px_10px_-4px_rgba(0,0,0,0.2)]">
-                    <button
-                      type="button"
-                      onClick={cancelRecording}
-                      className="p-2.5 text-red-400 hover:text-red-500 hover:bg-red-500/10 rounded-full transition-colors shrink-0"
-                    >
-                      <X className="w-5 h-5" />
-                    </button>
-                    {voiceBlob ? (
-                      <audio controls src={URL.createObjectURL(voiceBlob)} className="h-10 flex-1 max-w-sm" />
-                    ) : (
-                      <div className="flex-1 flex items-center justify-center gap-3 bg-red-500/10 border border-red-500/20 py-2.5 rounded-full text-red-500 font-mono font-bold tracking-wider">
-                        <span className="w-3 h-3 rounded-full bg-red-500 animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.6)]"></span>
-                        {Math.floor(recordingTime / 60)}:{(recordingTime % 60).toString().padStart(2, '0')}
-                      </div>
-                    )}
-                    <button
-                      type="button"
-                      onClick={isRecording ? stopRecording : sendVoice}
-                      className="w-10 h-10 flex items-center justify-center bg-brand text-white hover:bg-brand/90 rounded-full shadow-lg shadow-brand/20 transition-all shrink-0"
-                    >
-                      {isRecording ? <Square className="w-4 h-4 fill-current" /> : <Send className="w-4 h-4 ml-0.5" />}
-                    </button>
-                  </div>
-                ) : (
-                  <form onSubmit={handleSend} className="p-3 sm:p-4 bg-transparent flex items-end gap-2 sm:gap-3 shrink-0 shadow-[0_-2px_10px_-4px_rgba(0,0,0,0.2)]">
-                    <div className="flex items-center gap-1 mb-1 sm:mb-0">
-                      <label className="p-2 sm:p-2.5 text-clay hover:text-brandInk hover:bg-brand/10 rounded-full transition-colors cursor-pointer shrink-0" title="Attach file">
-                        <input type="file" className="hidden" onChange={handleFileUpload} accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg,.webp" />
-                        <Paperclip className="w-[22px] h-[22px]" />
+                  {uploadingFile && (
+                    <div style={{ padding: '8px 16px', fontSize: 13, fontWeight: 700, color: '#6E6455', borderBottom: '2px dashed #E2D3BB' }}>
+                      Uploading {uploadingFile}…
+                    </div>
+                  )}
+
+                  {isRecording || voiceBlob ? (
+                    <div style={{ padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <button type="button" className="icb" aria-label="Cancel recording" style={{ color: '#9A2B1E', fontWeight: 900 }} onClick={cancelRecording}>✕</button>
+                      {voiceBlob ? (
+                        <audio controls src={URL.createObjectURL(voiceBlob)} style={{ flex: 1, height: 46 }} />
+                      ) : (
+                        <div className="mono" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, minHeight: 46, border: '2px solid #9A2B1E', borderRadius: 999, background: '#F6DDD8', color: '#9A2B1E', fontWeight: 700 }}>
+                          <span style={{ width: 12, height: 12, borderRadius: 999, background: '#E2533A', border: '2px solid #9A2B1E' }} />
+                          {Math.floor(recordingTime / 60)}:{(recordingTime % 60).toString().padStart(2, '0')}
+                        </div>
+                      )}
+                      <button
+                        type="button"
+                        className="icb"
+                        aria-label={isRecording ? 'Stop recording' : 'Send voice message'}
+                        style={{ width: 46, height: 46, borderRadius: 999, background: 'var(--acc)' }}
+                        onClick={isRecording ? stopRecording : sendVoice}
+                      >
+                        {isRecording ? '■' : '➤'}
+                      </button>
+                    </div>
+                  ) : (
+                    <form onSubmit={handleSend} style={{ padding: '14px 16px', display: 'flex', alignItems: 'flex-end', gap: 10 }}>
+                      <label className="icb" title="Attach file" style={{ width: 46, height: 46 }}>
+                        📎
+                        <input type="file" style={{ display: 'none' }} onChange={handleFileUpload} accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg,.webp" />
+                        <span className="sr-only" style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>Attach file</span>
                       </label>
-                    </div>
 
-                    <div className="flex-1 relative bg-surface/50 backdrop-blur-md border border-line/20 focus-within:border-brand/50 focus-within:ring-2 focus-within:ring-brand/20 rounded-3xl transition-all shadow-sm flex items-end min-w-0">
-                      <button
-                        type="button"
-                        className="p-2.5 sm:p-3 text-clay hover:text-brandInk transition-colors shrink-0"
-                        onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                        title="Emojis"
-                      >
-                        <Smile className="w-[22px] h-[22px]" />
-                      </button>
-                      <textarea
-                        ref={inputRef}
-                        rows={1}
-                        className="w-full bg-transparent text-ink placeholder:text-clay/60 px-1 py-3 min-h-[48px] max-h-32 resize-none outline-none text-sm leading-relaxed"
-                        placeholder={editingMsg ? 'Edit message...' : 'Message...'}
-                        value={draft}
-                        onChange={e => {
-                          setDraft(e.target.value)
-                          e.target.style.height = 'auto'
-                          e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px'
-                        }}
-                        onKeyDown={handleKeyDown}
-                      />
-                      <button
-                        type="button"
-                        onClick={startRecording}
-                        className={`p-2.5 sm:p-3 transition-colors shrink-0 ${draft.trim() ? 'hidden' : 'text-clay hover:text-brandInk'}`}
-                        title="Voice Message"
-                      >
-                        <Mic className="w-[22px] h-[22px]" />
-                      </button>
-                    </div>
+                      <div style={{ flex: 1, display: 'flex', alignItems: 'flex-end', border: '2px solid #29251F', borderRadius: 14, background: '#FFFDF8', boxShadow: 'inset 0 3px 0 #EADFCC', padding: 3, minWidth: 0 }}>
+                        <button type="button" className="icb plain" aria-label="Emojis" onClick={() => setShowEmojiPicker(o => !o)}>🙂</button>
+                        <textarea
+                          ref={inputRef}
+                          rows={1}
+                          placeholder={editingMsg ? 'Edit message...' : 'Message...'}
+                          aria-label="Message"
+                          style={{ flex: 1, border: 'none', outline: 'none', resize: 'none', background: 'transparent', font: '500 15px Inter, sans-serif', padding: '10px 4px', minHeight: 40, maxHeight: 120, color: '#29251F' }}
+                          value={draft}
+                          onChange={e => {
+                            setDraft(e.target.value)
+                            e.target.style.height = 'auto'
+                            e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px'
+                          }}
+                          onKeyDown={handleKeyDown}
+                        />
+                        {!draft.trim() && (
+                          <button type="button" className="icb plain" aria-label="Voice message" onClick={startRecording}>🎙</button>
+                        )}
+                      </div>
 
-                    <button
-                      type="submit"
-                      disabled={!draft.trim() || connectionState === 'connecting'}
-                      className={`mb-1 sm:mb-0 w-10 h-10 sm:w-11 sm:h-11 flex items-center justify-center rounded-full transition-all shrink-0 ${
-                        draft.trim() 
-                          ? 'bg-brand text-white shadow-lg shadow-brand/20 hover:scale-105 active:scale-95' 
-                          : 'bg-surface border border-line text-clay opacity-50 cursor-not-allowed'
-                      }`}
-                    >
-                      <Send className="w-4 h-4 sm:w-5 sm:h-5 ml-0.5" />
-                    </button>
-                  </form>
-                )}
-              </div>
-            </>
-          ) : selectedRequestId && !activeConversation ? (
-            <div className="flex-1 flex items-center justify-center text-ink/40">
-              <div className="w-6 h-6 border-2 border-moss border-t-transparent rounded-full animate-spin" />
-            </div>
-          ) : (
-            <div className="hidden md:flex flex-1 flex-col items-center justify-center bg-transparent p-8 animate-fade-in stagger-2">
-              <div className="max-w-md w-full bg-surface/40 backdrop-blur-md border border-line/10 rounded-2xl p-8 text-center shadow-[0_0_30px_rgba(34,211,238,0.1)] relative overflow-hidden">
-                <div className="absolute -top-10 -right-10 text-brandInk/5 rotate-12 pointer-events-none">
-                  <MessageCircle className="w-48 h-48" />
+                      <button
+                        type="submit"
+                        aria-label="Send"
+                        disabled={!draft.trim() || connectionState === 'connecting'}
+                        style={{ width: 50, height: 50, flex: 'none', borderRadius: 999, border: '2px solid #29251F', background: draft.trim() ? 'var(--acc)' : '#F0E5D2', boxShadow: '0 3px 0 #29251F', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: draft.trim() ? 'pointer' : 'not-allowed', opacity: draft.trim() ? 1 : .6 }}
+                      >
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#29251F" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M22 2 11 13" /><path d="m22 2-7 20-4-9-9-4z" /></svg>
+                      </button>
+                    </form>
+                  )}
                 </div>
-                <div className="w-16 h-16 bg-brand/10 text-brandInk rounded-full flex items-center justify-center mx-auto mb-5 relative z-10 shadow-[0_0_15px_rgba(34,211,238,0.2)]">
-                  <MessageCircle className="w-8 h-8" />
-                </div>
-                <h2 className="text-xl font-bold text-ink mb-3 drop-shadow-sm">Welcome to Connect</h2>
-                <p className="text-sm text-clay font-medium mb-6">
-                  Select a conversation from the sidebar to start collaborating, schedule sessions, and jump right into the interactive learning room.
-                </p>
-                <div className="grid grid-cols-2 gap-4 text-left relative z-10">
-                  <div className="p-4 bg-surface/60 border border-brand/20 rounded-xl shadow-[0_0_10px_rgba(34,211,238,0.05)]">
-                    <p className="text-xs font-bold text-ink uppercase tracking-wider mb-1">Chat & Plan</p>
-                    <p className="text-xs text-clay">Message your partners to align on learning goals.</p>
-                  </div>
-                  <div className="p-4 bg-surface/60 border border-brand/20 rounded-xl shadow-[0_0_10px_rgba(34,211,238,0.05)]">
-                    <p className="text-xs font-bold text-ink uppercase tracking-wider mb-1">Live Sessions</p>
-                    <p className="text-xs text-clay">Schedule and join interactive video rooms.</p>
+              </>
+            ) : selectedRequestId && !activeConversation ? (
+              <p className="muted" style={{ margin: 'auto', fontWeight: 700 }}>Opening conversation…</p>
+            ) : (
+              <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 32 }}>
+                <div className="card" style={{ maxWidth: 460, padding: 32, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14, textAlign: 'center' }}>
+                  <span style={{ width: 72, height: 72, borderRadius: 20, border: '2px solid #29251F', background: 'var(--acc)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, transform: 'rotate(-4deg)', boxShadow: '0 5px 0 #29251F' }}>💬</span>
+                  <h2 style={{ margin: 0, fontSize: 26, fontWeight: 900 }}>Welcome to Connect</h2>
+                  <p className="muted" style={{ margin: 0, fontSize: 15, lineHeight: 1.55 }}>
+                    Select a conversation from the sidebar to start collaborating, schedule sessions, and jump right into the interactive learning room.
+                  </p>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, width: '100%', textAlign: 'left' }}>
+                    <div style={{ padding: 12, border: '2px solid #29251F', borderRadius: 12, background: '#D6F3EA' }}>
+                      <strong style={{ fontSize: 13 }}>CHAT &amp; PLAN</strong>
+                      <div style={{ fontSize: 12, marginTop: 4 }}>Message your partners to align on learning goals.</div>
+                    </div>
+                    <div style={{ padding: 12, border: '2px solid #29251F', borderRadius: 12, background: '#E6DDF6' }}>
+                      <strong style={{ fontSize: 13 }}>LIVE SESSIONS</strong>
+                      <div style={{ fontSize: 12, marginTop: 4 }}>Schedule and join interactive video rooms.</div>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          )}
+            )}
+
+            {/* schedule modal — sits over the chat pane, as in the design */}
+            {scheduleOpen && selectedRequestId && (
+              <ScheduleModal
+                requestId={selectedRequestId}
+                onClose={() => setScheduleOpen(false)}
+                onScheduled={handleScheduled}
+              />
+            )}
+          </section>
         </div>
       </div>
-
-      {/* Modals */}
-      {scheduleOpen && selectedRequestId && (
-        <ScheduleModal
-          requestId={selectedRequestId}
-          onClose={() => setScheduleOpen(false)}
-          onScheduled={handleScheduled}
-        />
-      )}
 
       {forwardingMsg && (
         <ForwardModal
@@ -1143,20 +1045,6 @@ function ConfirmModal({ title, message, confirmText = 'Confirm', confirmVariant 
           onForward={handleForward}
         />
       )}
-
-      {confirmAction && (
-        <ConfirmModal
-          title={confirmAction.title}
-          message={confirmAction.message}
-          confirmText={confirmAction.confirmText}
-          confirmVariant={confirmAction.confirmVariant}
-          onConfirm={confirmAction.onConfirm}
-          onClose={() => setConfirmAction(null)}
-        />
-      )}
     </div>
   )
 }
-
-
-
