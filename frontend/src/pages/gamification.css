@@ -1,0 +1,60 @@
+/* Journey — component styles from the JourneyV2 design.
+   Scoped under .sv-journey so the design's .card / .pill cannot collide with
+   the app's classes of the same name. */
+
+.sv-journey{
+  --acc:#FF8A3D; --accd:#C4581A; --accl:#FFE3CF;
+  font-family:Inter,system-ui,sans-serif;color:#29251F;background:#F8F3E9;
+  min-height:100vh;padding-bottom:80px;
+}
+.sv-journey *{box-sizing:border-box}
+.sv-journey a{color:#29251F}
+
+.sv-journey .muted{color:#6E6455}
+.sv-journey .eb{font-size:12px;font-weight:800;letter-spacing:.1em;color:#6E6455}
+.sv-journey .mono{font-family:"JetBrains Mono",ui-monospace,Menlo,monospace;font-weight:700}
+
+.sv-journey .card{background:#FFFDF8;border:2px solid #29251F;border-radius:16px;box-shadow:0 4px 0 #D2BEA0,0 7px 0 #29251F}
+.sv-journey .pill{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 10px;border-radius:999px;border:2px solid #29251F;font-size:11px;font-weight:800;white-space:nowrap;background:#FFFDF8}
+
+.sv-journey .ach{display:flex;flex-direction:column;gap:8px;padding:16px;border:2px solid #29251F;border-radius:14px;background:#FFFDF8;box-shadow:0 3px 0 #29251F}
+.sv-journey .ach.lock{border-style:dashed;box-shadow:none;background:transparent;color:#6E6455}
+.sv-journey .ic{width:48px;height:48px;border-radius:14px;border:2px solid #29251F;display:flex;align-items:center;justify-content:center;font-size:22px}
+
+.sv-journey .row{display:flex;align-items:center;gap:14px;padding:12px 16px;border-bottom:2px dashed #E2D3BB}
+.sv-journey .row.me{background:var(--accl);border:2px solid #29251F;border-radius:12px;margin:6px 8px;box-shadow:0 3px 0 #29251F}
+.sv-journey .av{width:40px;height:40px;flex:none;border-radius:999px;border:2px solid #29251F;display:flex;align-items:center;justify-content:center;font-weight:900}
+
+.sv-journey .sk{background:linear-gradient(90deg,#EFE6D6 25%,#F8F1E4 50%,#EFE6D6 75%);background-size:200% 100%;animation:svShJ 1.4s infinite linear;border-radius:16px;border:2px solid #E2D3BB}
+@keyframes svShJ{to{background-position:-200% 0}}
+
+.sv-journey .grid2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:28px;align-items:start}
+
+@media (max-width:1000px){.sv-journey .grid2{grid-template-columns:1fr}}
+@media (max-width:700px){
+  .sv-journey .ladder{grid-template-columns:repeat(3,1fr) !important}
+  .sv-journey .earn{grid-template-columns:1fr 1fr !important}
+  .sv-journey .achg{grid-template-columns:1fr 1fr !important}
+  .sv-journey .pod{gap:6px !important}
+}
+
+@keyframes svGrowY{from{transform:scaleY(.1);opacity:0}to{transform:scaleY(1);opacity:1}}
+@keyframes svPopJ{0%{opacity:0;scale:.82}70%{opacity:1;scale:1.04}100%{opacity:1;scale:1}}
+@keyframes svPulse{0%,100%{box-shadow:0 3px 0 #29251F}50%{box-shadow:0 3px 0 #29251F,0 0 0 6px rgba(255,138,61,.35)}}
+
+@media (prefers-reduced-motion:no-preference){
+  .sv-journey .ladder li{transform-origin:50% 100%;animation:svGrowY .8s cubic-bezier(.2,.8,.2,1) both}
+  .sv-journey .ladder li:nth-child(1){animation-delay:.22s}
+  .sv-journey .ladder li:nth-child(2){animation-delay:.34s}
+  .sv-journey .ladder li:nth-child(3){animation-delay:.46s}
+  .sv-journey .ladder li:nth-child(4){animation-delay:.58s}
+  .sv-journey .ladder li:nth-child(5){animation-delay:.70s}
+  .sv-journey .pod > div > div:last-child{transform-origin:50% 100%;animation:svGrowY .9s .4s both}
+  .sv-journey .ach{animation:svPopJ .45s both}
+  .sv-journey .ach:nth-child(2){animation-delay:.37s}
+  .sv-journey .ach:nth-child(3){animation-delay:.44s}
+  .sv-journey .ach:nth-child(4){animation-delay:.51s}
+  .sv-journey .ach:nth-child(5){animation-delay:.58s}
+  .sv-journey .ach:nth-child(6){animation-delay:.65s}
+  .sv-journey .row.me{animation:svPulse 2.4s 1.2s infinite}
+}
