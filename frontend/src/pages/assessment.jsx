@@ -27,6 +27,28 @@ const LEVELS = [
   { id: 'expert', icon: '🔥', label: 'Expert' },
 ]
 
+// The server sends a coding question's example as an OBJECT
+// ({ args: [...], expected: ... }). Rendering an object as a React child throws
+// and blanks the page, so turn it into the one-line form the design shows:
+//   second_largest([4, 1, 4, 3]) should return 3
+function formatExample(q) {
+  const ex = q && q.example
+  if (!ex || typeof ex !== 'object') return null
+  const show = (v) => { try { return JSON.stringify(v) } catch { return String(v) } }
+  const args = Array.isArray(ex.args) ? ex.args : []
+  return `${q.function_name || 'solve'}(${args.map(show).join(', ')}) should return ${show(ex.expected)}`
+}
+
+// Code-tracing and debugging items arrive with the snippet appended to the
+// question text after a blank line. Split it back out so the snippet renders in
+// the design's dark code block instead of running into the prompt.
+function splitQuestion(text) {
+  const t = String(text == null ? '' : text)
+  const i = t.indexOf('\n\n')
+  if (i === -1) return { prompt: t, code: null }
+  return { prompt: t.slice(0, i).trim(), code: t.slice(i + 2).trim() || null }
+}
+
 /* ── Code editor ─────────────────────────────────────────────────────────────
    Behaviour is unchanged from the previous Arena: Tab inserts four spaces,
    copy/cut remember what left THIS editor, and a paste whose contents did not
@@ -508,12 +530,14 @@ export default function Assessment() {
                 <span className="pill" style={{ background: 'var(--accl)' }}>{KIND_LABEL[qType] || qType}</span>
               </div>
 
-              {!isCode && (
+              {!isCode && (() => {
+                const { prompt, code } = splitQuestion(currentQuestion.question)
+                return (
                 <>
-                  <h2 style={{ margin: 0, fontSize: 22, fontWeight: 700, lineHeight: 1.5 }}>{currentQuestion.question}</h2>
-                  {currentQuestion.code && (
+                  <h2 style={{ margin: 0, fontSize: 22, fontWeight: 700, lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{prompt}</h2>
+                  {code && (
                     <pre className="mono" style={{ padding: '18px 20px', border: '2px solid #29251F', borderRadius: 12, background: '#29251F', color: '#F8F3E9', fontSize: 15, lineHeight: 1.6, overflowX: 'auto' }}>
-                      {currentQuestion.code}
+                      {code}
                     </pre>
                   )}
                   <div role="radiogroup" aria-label="Answer options" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -534,7 +558,8 @@ export default function Assessment() {
                     })}
                   </div>
                 </>
-              )}
+                )
+              })()}
 
               {isCode && (
                 <>
@@ -544,8 +569,8 @@ export default function Assessment() {
                     {currentQuestion.function_name && (
                       <span><strong>Function name:</strong> <code className="mono">{currentQuestion.function_name}</code></span>
                     )}
-                    {currentQuestion.example && (
-                      <span><strong>Example:</strong> <code className="mono">{currentQuestion.example}</code></span>
+                    {formatExample(currentQuestion) && (
+                      <span><strong>Example:</strong> <code className="mono">{formatExample(currentQuestion)}</code></span>
                     )}
                     <span className="muted" style={{ fontSize: 13 }}>
                       {currentQuestion.test_count
