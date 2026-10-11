@@ -1,8 +1,16 @@
-import { createIstToUtcDate, formatDate , getTodayIstYMD} from '../utils/dateTime'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api, getSessionUser } from '../api'
-import ReviewForm from '../components/connect/ReviewForm'
+import './requests.css'
+
+const AV_BG = ['#FBEFC4', '#E6DDF6', '#D6F3EA', '#FFE3CF']
+
+const ST = {
+  pending: ['● Pending', { background: '#FBEFC4' }, '#F5C542'],
+  accepted: ['● Accepted', { background: '#D6F3EA' }, '#6CCFB0'],
+  declined: ['○ Declined', { background: '#F0E5D2', color: '#6E6455', borderColor: '#8C8273' }, '#D2BEA0'],
+  completed: ['✓ Completed', { background: '#FFFDF8' }, '#29251F'],
+}
 
 export default function Requests() {
   const user = getSessionUser()
@@ -12,6 +20,8 @@ export default function Requests() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [reviewedMap, setReviewedMap] = useState({})
+  const [confirmReq, setConfirmReq] = useState(null)
+  const [completing, setCompleting] = useState(false)
 
   async function load() {
     setLoading(true)
@@ -22,7 +32,7 @@ export default function Requests() {
       setOutgoing(out)
 
       const completed = [...inc, ...out].filter((r) => r.status === 'completed')
-      
+
       let sessions = []
       try {
         sessions = await api.mySessions()
@@ -42,7 +52,7 @@ export default function Requests() {
       const checks = await Promise.allSettled(
         completedSessionsToReview.map((item) => api.getMyReviewForSession(item.s.id))
       )
-      
+
       const map = {}
       completedSessionsToReview.forEach((item, i) => {
         if (checks[i].status === 'fulfilled' && checks[i].value) {
@@ -73,11 +83,16 @@ export default function Requests() {
 
   async function completeSession(id) {
     setError('')
+    setCompleting(true)
     try {
       await api.completeRequest(id)
+      setConfirmReq(null)
       load()
     } catch (err) {
       setError(err.message)
+      setConfirmReq(null)
+    } finally {
+      setCompleting(false)
     }
   }
 
@@ -86,49 +101,108 @@ export default function Requests() {
   }
 
   const list = tab === 'incoming' ? incoming : outgoing
+  const all = [...incoming, ...outgoing]
   const incomingPending = incoming.filter((r) => r.status === 'pending').length
+  const activeCount = all.filter((r) => r.status === 'accepted').length
+  const completedCount = all.filter((r) => r.status === 'completed').length
+
+  const empty = tab === 'incoming'
+    ? { icon: '📬', title: 'No incoming requests', text: 'When someone wants to learn from you, their request will appear here.' }
+    : { icon: '📤', title: 'No sent requests', text: 'Find a teacher in the marketplace and send your first request.' }
 
   return (
-    <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
-      {/* Header */}
-      <p className="label-eyebrow mb-1">My connections</p>
-      <h1 className="font-display text-4xl mb-8">Requests</h1>
+    <div className="sv-req">
+      <div style={{ maxWidth: 920, margin: '0 auto', padding: '44px clamp(16px, 3vw, 32px) 0', display: 'flex', flexDirection: 'column', gap: 28 }}>
 
-      {/* Tabs */}
-      <div className="flex gap-2 mb-6 border-b border-line/20 pb-0">
-        <TabButton
-          label="Incoming"
-          badge={incomingPending}
-          active={tab === 'incoming'}
-          onClick={() => setTab('incoming')}
-        />
-        <TabButton
-          label="Sent"
-          active={tab === 'outgoing'}
-          onClick={() => setTab('outgoing')}
-        />
+        {/* header */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 20, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <span className="eb">MY CONNECTIONS</span>
+            <h1 style={{ margin: 0, fontSize: 52, fontWeight: 900, lineHeight: 1, letterSpacing: '-1px' }}>Requests</h1>
+          </div>
+          <div className="stats" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, auto)', gap: 10 }}>
+            <div style={{ padding: '10px 14px', border: '2px solid #29251F', borderRadius: 12, background: '#FBEFC4', boxShadow: '0 3px 0 #29251F' }}>
+              <div className="mono" style={{ fontSize: 22 }}>{incomingPending}</div>
+              <span style={{ fontSize: 12, fontWeight: 800 }}>to answer</span>
+            </div>
+            <div style={{ padding: '10px 14px', border: '2px solid #29251F', borderRadius: 12, background: '#D6F3EA', boxShadow: '0 3px 0 #29251F' }}>
+              <div className="mono" style={{ fontSize: 22 }}>{activeCount}</div>
+              <span style={{ fontSize: 12, fontWeight: 800 }}>active</span>
+            </div>
+            <div style={{ padding: '10px 14px', border: '2px solid #29251F', borderRadius: 12, background: '#FFFDF8', boxShadow: '0 3px 0 #29251F' }}>
+              <div className="mono" style={{ fontSize: 22 }}>{completedCount}</div>
+              <span style={{ fontSize: 12, fontWeight: 800 }}>completed</span>
+            </div>
+          </div>
+        </div>
+
+        {/* tabs */}
+        <div>
+          <div role="tablist" style={{ display: 'flex', gap: 8, paddingLeft: 12 }}>
+            <button type="button" role="tab" aria-selected={tab === 'incoming'} className={`tab${tab === 'incoming' ? ' on' : ''}`} onClick={() => setTab('incoming')}>
+              Incoming
+              {incomingPending > 0 && <span className="cnt" aria-label={`${incomingPending} pending`}>{incomingPending}</span>}
+            </button>
+            <button type="button" role="tab" aria-selected={tab === 'outgoing'} className={`tab${tab === 'outgoing' ? ' on' : ''}`} onClick={() => setTab('outgoing')}>
+              Sent
+            </button>
+          </div>
+
+          <div style={{ borderTop: '2px solid #29251F', paddingTop: 28, display: 'flex', flexDirection: 'column', gap: 22 }}>
+            {error && (
+              <div className="card" style={{ padding: '14px 18px', background: '#F6DDD8', borderColor: '#9A2B1E', color: '#9A2B1E', fontWeight: 700 }}>{error}</div>
+            )}
+
+            {loading ? (
+              <>
+                <div className="sk" style={{ height: 180 }} />
+                <div className="sk" style={{ height: 180 }} />
+                <div className="sk" style={{ height: 180 }} />
+              </>
+            ) : list.length === 0 ? (
+              <div className="card" style={{ padding: '48px 28px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, textAlign: 'center', borderStyle: 'dashed', boxShadow: 'none' }}>
+                <span style={{ width: 80, height: 80, borderRadius: 22, border: '2px solid #29251F', background: 'var(--accl)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 34, transform: 'rotate(-5deg)', boxShadow: '0 5px 0 #29251F' }}>{empty.icon}</span>
+                <h2 style={{ margin: '6px 0 0', fontSize: 24, fontWeight: 900 }}>{empty.title}</h2>
+                <p className="muted" style={{ margin: 0, maxWidth: 380, fontSize: 15, lineHeight: 1.55 }}>{empty.text}</p>
+                {tab === 'outgoing' && (
+                  <Link to="/marketplace" className="btn btn-p" style={{ marginTop: 6, minHeight: 50 }}>Browse teachers →</Link>
+                )}
+              </div>
+            ) : (
+              list.map((r, idx) => (
+                <RequestCard
+                  key={r.id}
+                  r={r}
+                  idx={idx}
+                  tab={tab}
+                  onAccept={() => respond(r.id, true)}
+                  onDecline={() => respond(r.id, false)}
+                  onComplete={() => setConfirmReq(r)}
+                  reviewed={reviewedMap[r.id]}
+                  onReviewed={() => markReviewed(r.id)}
+                />
+              ))
+            )}
+          </div>
+        </div>
       </div>
 
-      {error && <p className="alert-error mb-4">{error}</p>}
-
-      {loading ? (
-        <RequestsSkeleton />
-      ) : list.length === 0 ? (
-        <EmptyRequests tab={tab} />
-      ) : (
-        <div className="space-y-3">
-          {list.map((r) => (
-            <RequestCard
-              key={r.id}
-              r={r}
-              tab={tab}
-              onAccept={() => respond(r.id, true)}
-              onDecline={() => respond(r.id, false)}
-              onComplete={() => completeSession(r.id)}
-              reviewed={reviewedMap[r.id]}
-              onReviewed={() => markReviewed(r.id)}
-            />
-          ))}
+      {/* mark-complete confirm */}
+      {confirmReq && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(41,37,31,.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, zIndex: 10 }}>
+          <div className="card" role="dialog" aria-labelledby="sv-req-mc" style={{ maxWidth: 440, width: '100%', padding: 30, display: 'flex', flexDirection: 'column', gap: 14, textAlign: 'center', alignItems: 'center' }}>
+            <span style={{ width: 72, height: 72, borderRadius: 20, border: '2px solid #29251F', background: '#D6F3EA', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, fontWeight: 900, boxShadow: '0 5px 0 #29251F' }}>✓</span>
+            <h3 id="sv-req-mc" style={{ margin: 0, fontSize: 24, fontWeight: 900 }}>Mark this as complete?</h3>
+            <p className="muted" style={{ margin: 0, fontSize: 15, lineHeight: 1.55 }}>
+              You and {((tab === 'incoming' ? confirmReq.from_user_name : confirmReq.to_user_name) || 'they').split(' ')[0]} both earn <strong style={{ color: '#29251F' }}>+20 pts</strong>. The connection moves to Completed and you can leave a review. This can't be undone.
+            </p>
+            <div style={{ display: 'flex', gap: 12, width: '100%' }}>
+              <button type="button" className="btn btn-s" style={{ flex: 1, minHeight: 50 }} onClick={() => setConfirmReq(null)}>Not yet</button>
+              <button type="button" className="btn btn-p" style={{ flex: 1, minHeight: 50 }} disabled={completing} onClick={() => completeSession(confirmReq.id)}>
+                {completing ? 'Working…' : 'Yes, complete'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
@@ -137,318 +211,135 @@ export default function Requests() {
 
 // ── Request card ──────────────────────────────────────────────────────────────
 
-function RequestCard({ r, tab, onAccept, onDecline, onComplete, reviewed, onReviewed }) {
+function RequestCard({ r, idx, tab, onAccept, onDecline, onComplete, reviewed, onReviewed }) {
   const otherName = tab === 'incoming' ? r.from_user_name : r.to_user_name
+  const s = ST[r.status] || ST.pending
+  const inc = tab === 'incoming'
 
-  return (
-    <div className="card overflow-hidden">
-      {/* Top stripe by status */}
-      <div className={`h-0.5 ${
-        r.status === 'accepted' ? 'bg-moss' :
-        r.status === 'pending' ? 'bg-gold' :
-        r.status === 'completed' ? 'bg-ink/20' :
-        'bg-transparent'
-      }`} />
-
-      <div className="p-5">
-        {/* Main row */}
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <p className="font-semibold text-base">{otherName}</p>
-              <span className="text-ink/25">·</span>
-              <span className="text-sm text-ink/50">{r.skill_name}</span>
-              <StatusPill status={r.status} />
-            </div>
-            {r.message && (
-              <p className="text-sm text-ink/55 mt-2 italic leading-relaxed">
-                "{r.message}"
-              </p>
-            )}
-          </div>
-
-          {/* Action buttons */}
-          <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
-            {tab === 'incoming' && r.status === 'pending' && (
-              <>
-                <button onClick={onAccept} className="btn-primary text-sm py-1.5 px-4">
-                  Accept
-                </button>
-                <button onClick={onDecline} className="btn-secondary text-sm py-1.5 px-4">
-                  Decline
-                </button>
-              </>
-            )}
-
-            {r.status === 'accepted' && (
-              <>
-                <Link to={`/messages?request_id=${r.id}`} className="btn-primary text-sm py-1.5 px-4">
-                  Open chat
-                </Link>
-                <button
-                  onClick={onComplete}
-                  className="btn-secondary text-sm py-1.5 px-4 text-moss border-moss/30 hover:border-moss"
-                  title="Mark session as complete — both participants earn +20 pts"
-                >
-                  Mark complete ✓
-                </button>
-              </>
-            )}
-
-            {r.status === 'declined' && (
-              <span className="text-xs text-ink/35 italic">No further action</span>
-            )}
-          </div>
-        </div>
-
-        {/* Two-way learning context panel — shown on incoming requests */}
-        <LearningContext r={r} tab={tab} />
-
-        {/* For accepted: direct user to Connect to schedule */}
-        {r.status === 'accepted' && (
-          <div className="mt-4 pt-4 border-t border-line/10 flex items-center gap-3">
-            <p className="text-xs text-ink/50 flex-1">💬 Use <strong>Connect</strong> to chat and schedule a session with this person.</p>
-          </div>
-        )}
-
-        {/* Review panel */}
-        {r.status === 'completed' && reviewed && (
-          <div className="mt-4 pt-4 border-t border-line/10">
-            {reviewed.reviewed ? (
-              <p className="alert-success inline-flex items-center gap-1.5">
-                <span>✓</span> Review submitted — thanks for the feedback!
-              </p>
-            ) : (
-              <ReviewForm
-                sessionId={reviewed.sessionId}
-                otherName={otherName}
-                onSubmitted={onReviewed}
-              />
-            )}
-          </div>
-        )}
-      </div>
-    </div>
-  )
-}
-
-
-// ── Two-way learning context panel ───────────────────────────────────────────
-
-function LearningContext({ r, tab }) {
   const hasLearnInfo = r.learner_current_level || r.learner_topics || r.learner_goals
   const hasTeachInfo = r.learner_can_teach || r.learner_teach_proficiency
 
-  if (!hasLearnInfo && !hasTeachInfo) return null
+  const cardStyle = {
+    borderLeftWidth: 10,
+    borderLeftColor: s[2],
+    ...(r.status === 'declined' ? { opacity: .8 } : {}),
+  }
 
   return (
-    <div className="mt-4 pt-4 border-t border-line/10 grid sm:grid-cols-2 gap-4">
-      {/* What the learner wants to learn */}
-      {hasLearnInfo && (
-        <div>
-          <p className="text-xs font-semibold text-ink/50 uppercase tracking-wide mb-2">
-            {tab === 'incoming' ? 'They want to learn' : 'You want to learn'}
-          </p>
-          <div className="space-y-1.5">
-            {r.learner_current_level && (
-              <div className="flex gap-2 text-sm">
-                <span className="text-ink/40 w-24 shrink-0">Current level</span>
-                <span className="font-medium">{r.learner_current_level}</span>
-              </div>
-            )}
-            {r.learner_topics && (
-              <div className="flex gap-2 text-sm">
-                <span className="text-ink/40 w-24 shrink-0">Topics</span>
-                <span>{r.learner_topics}</span>
-              </div>
-            )}
-            {r.learner_goals && (
-              <div className="flex gap-2 text-sm">
-                <span className="text-ink/40 w-24 shrink-0">Goals</span>
-                <span>{r.learner_goals}</span>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+    <article className="card" style={cardStyle}>
+      <div style={{ padding: '22px 24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+          <span style={{
+            width: 52, height: 52, flex: 'none', borderRadius: 999, border: '2px solid #29251F',
+            background: AV_BG[idx % AV_BG.length], display: 'flex', alignItems: 'center',
+            justifyContent: 'center', fontSize: 20, fontWeight: 900, boxShadow: '0 3px 0 #29251F'
+          }}>{(otherName || '?')[0]}</span>
 
-      {/* What the learner can teach */}
-      {hasTeachInfo && (
-        <div>
-          <p className="text-xs font-semibold text-ink/50 uppercase tracking-wide mb-2">
-            {tab === 'incoming' ? 'They can teach' : 'You offered to teach'}
-          </p>
-          <div className="space-y-1.5">
-            {r.learner_can_teach && (
-              <div className="flex gap-2 text-sm">
-                <span className="text-ink/40 w-24 shrink-0">Skills</span>
-                <span>{r.learner_can_teach}</span>
-              </div>
+          <div style={{ flex: 1, minWidth: 200, display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+              <strong style={{ fontSize: 19 }}>{otherName}</strong>
+              <span className="pill" style={s[1]}>{s[0]}</span>
+            </div>
+            <span style={{ fontSize: 14, fontWeight: 700 }}>
+              {inc ? 'wants to learn' : 'You asked to learn'}{' '}
+              <span style={{ padding: '2px 8px', border: '2px solid #29251F', borderRadius: 6, background: 'var(--accl)' }}>{r.skill_name}</span>
+            </span>
+          </div>
+
+          <div className="acts" style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            {inc && r.status === 'pending' && (
+              <>
+                <button type="button" className="btn btn-p" onClick={onAccept}>Accept</button>
+                <button type="button" className="btn btn-s" onClick={onDecline}>Decline</button>
+              </>
             )}
-            {r.learner_teach_proficiency && (
-              <div className="flex gap-2 text-sm">
-                <span className="text-ink/40 w-24 shrink-0">Proficiency</span>
-                <span className="font-medium">{r.learner_teach_proficiency}</span>
-              </div>
+            {r.status === 'accepted' && (
+              <>
+                <Link to={`/messages?request_id=${r.id}`} className="btn btn-p">Open chat</Link>
+                <button type="button" className="btn btn-g" title="Both participants earn +20 pts" onClick={onComplete}>Mark complete ✓</button>
+              </>
+            )}
+            {!inc && r.status === 'pending' && (
+              <span className="muted" style={{ fontSize: 13, fontWeight: 700, paddingTop: 12 }}>Waiting for their reply</span>
+            )}
+            {r.status === 'declined' && (
+              <span className="muted" style={{ fontSize: 13, fontWeight: 700, paddingTop: 12 }}>No further action</span>
             )}
           </div>
         </div>
-      )}
-    </div>
+
+        {r.message && (
+          <div style={{ position: 'relative', alignSelf: 'flex-start', maxWidth: 600, padding: '12px 16px', border: '2px solid #29251F', borderRadius: '4px 14px 14px 14px', background: '#F8F3E9', fontSize: 15, fontWeight: 600, lineHeight: 1.5 }}>
+            {r.message}
+          </div>
+        )}
+
+        {(hasLearnInfo || hasTeachInfo) && (
+          <div className="ctx" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            {hasLearnInfo && (
+              <div style={{ padding: 14, border: '2px solid #29251F', borderRadius: 12, background: '#E6DDF6', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <span className="eb" style={{ color: '#29251F' }}>{inc ? 'THEY WANT TO LEARN' : 'YOU WANT TO LEARN'}</span>
+                <dl className="kv" style={{ margin: 0 }}>
+                  {r.learner_current_level && (<><dt>Current level</dt><dd>{r.learner_current_level}</dd></>)}
+                  {r.learner_topics && (<><dt>Topics</dt><dd>{r.learner_topics}</dd></>)}
+                  {r.learner_goals && (<><dt>Goals</dt><dd>{r.learner_goals}</dd></>)}
+                </dl>
+              </div>
+            )}
+            {hasTeachInfo && (
+              <div style={{ padding: 14, border: '2px solid #29251F', borderRadius: 12, background: '#D6F3EA', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <span className="eb" style={{ color: '#29251F' }}>{inc ? 'THEY CAN TEACH' : 'YOU OFFERED TO TEACH'}</span>
+                <dl className="kv" style={{ margin: 0 }}>
+                  {r.learner_can_teach && (<><dt>Skills</dt><dd>{r.learner_can_teach}</dd></>)}
+                  {r.learner_teach_proficiency && (<><dt>Proficiency</dt><dd>{r.learner_teach_proficiency}</dd></>)}
+                </dl>
+              </div>
+            )}
+          </div>
+        )}
+
+        {r.status === 'accepted' && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', border: '2px dashed #29251F', borderRadius: 10, fontSize: 14, fontWeight: 600 }}>
+            <span aria-hidden="true">💬</span>Use <strong>Connect</strong> to chat and schedule a session with this person.
+          </div>
+        )}
+
+        {r.status === 'completed' && reviewed && (
+          reviewed.reviewed ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 18px', border: '2px solid #29251F', borderRadius: 12, background: '#D6F3EA', fontWeight: 700, alignSelf: 'flex-start' }}>
+              <span style={{ width: 26, height: 26, borderRadius: 999, border: '2px solid #29251F', background: '#FFFDF8', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900 }}>✓</span>
+              Review submitted — thanks for the feedback!
+            </div>
+          ) : (
+            <ReviewPanel sessionId={reviewed.sessionId} otherName={otherName} onSubmitted={onReviewed} />
+          )
+        )}
+      </div>
+    </article>
   )
 }
 
+// ── Inline review form ────────────────────────────────────────────────────────
 
-// ── Schedule session panel ────────────────────────────────────────────────────
+const RATING_WORDS = ['', 'Poor', 'Fair', 'Good', 'Great', 'Excellent']
 
-function SchedulePanel({ requestId, skill }) {
-  const [session, setSession] = useState(null)   // existing session or null
-  const [showForm, setShowForm] = useState(false)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
-
-  async function loadSession() {
-    // Fetch upcoming sessions and find one matching this request
-    try {
-      const sessions = await api.mySessions()
-      const match = sessions.find(
-        (s) => s.request_id === requestId && s.status === 'scheduled'
-      )
-      setSession(match || null)
-    } catch {
-      // non-fatal — just show the form
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => { loadSession() }, [requestId])
-
-  async function handleCancel() {
-    if (!session) return
-    setError('')
-    try {
-      await api.cancelSession(session.id)
-      setSession(null)
-      setShowForm(false)
-    } catch (err) {
-      setError(err.message)
-    }
-  }
-
-  function onScheduled(newSession) {
-    setSession(newSession)
-    setShowForm(false)
-  }
-
-  if (loading) return null
-
-  return (
-    <div className="mt-4 pt-4 border-t border-line/10">
-      {error && <p className="alert-error mb-3 text-xs">{error}</p>}
-
-      {session ? (
-        /* ── Scheduled session display ── */
-        <div>
-          <p className="text-xs font-semibold text-ink/50 uppercase tracking-wide mb-2">
-            Scheduled Session
-          </p>
-          <div className="bg-brand/5 dark:bg-brand/10 border border-moss/20 rounded-lg p-3 flex items-center justify-between gap-4">
-            <div className="space-y-0.5">
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-semibold text-moss capitalize">{session.skill}</span>
-                <span className="text-xs bg-brand/10 dark:bg-brand/20 text-moss border border-moss/20 px-1.5 py-0.5 rounded-full font-medium">
-                  Scheduled ●
-                </span>
-              </div>
-              <p className="text-sm text-ink/70">
-                📅 {formatDate(session.scheduled_start || session.session_date)}{' '}
-                <span className="text-ink/40 mx-1">·</span>
-                ⏰ {session.start_time} – {session.end_time}
-              </p>
-              {session.notes && (
-                <p className="text-xs text-ink/50 italic">{session.notes}</p>
-              )}
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <Link
-                to={`/session/${session.id}`}
-                className="btn-primary text-xs py-1.5 px-3"
-              >
-                Join
-              </Link>
-              <button
-                onClick={handleCancel}
-                className="text-xs text-red-600 border border-red-200 hover:border-red-400 px-2.5 py-1.5 rounded-lg transition-colors"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : showForm ? (
-        /* ── Schedule form ── */
-        <div>
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-xs font-semibold text-ink/50 uppercase tracking-wide">
-              Schedule Session
-            </p>
-            <button
-              onClick={() => setShowForm(false)}
-              className="text-xs text-ink/40 hover:text-ink"
-            >
-              ✕ Close
-            </button>
-          </div>
-          <ScheduleForm
-            requestId={requestId}
-            skill={skill}
-            onScheduled={onScheduled}
-          />
-        </div>
-      ) : (
-        /* ── Button to open form ── */
-        <button
-          onClick={() => setShowForm(true)}
-          className="btn-secondary text-sm py-1.5 px-4 w-full"
-        >
-          📅 Schedule Session
-        </button>
-      )}
-    </div>
-  )
-}
-
-// ── Schedule form ─────────────────────────────────────────────────────────────
-
-function ScheduleForm({ requestId, skill, onScheduled }) {
-  const today = getTodayIstYMD()
-  const [date, setDate] = useState('')
-  const [start, setStart] = useState('')
-  const [end, setEnd] = useState('')
-  const [notes, setNotes] = useState('')
+function ReviewPanel({ sessionId, otherName, onSubmitted }) {
+  const [rating, setRating] = useState(0)
+  const [hovered, setHovered] = useState(0)
+  const [comment, setComment] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [formError, setFormError] = useState('')
 
+  const shown = hovered || rating
+
   async function handleSubmit(e) {
     e.preventDefault()
-    if (!date || !start || !end) {
-      setFormError('Date, start time, and end time are required.')
-      return
-    }
+    if (rating === 0) { setFormError('Please select a star rating.'); return }
     setFormError('')
     setSubmitting(true)
     try {
-      const created = await api.createSession({
-        request_id: requestId,
-        session_date: date,
-        start_time: start,
-        end_time: end,
-          scheduled_start: createIstToUtcDate(date, start).toISOString(),
-          scheduled_end: createIstToUtcDate(date, end).toISOString(),
-        notes: notes || null,
-      })
-      onScheduled(created)
+      await api.submitReview(sessionId, { rating, comment })
+      onSubmitted()
     } catch (err) {
       setFormError(err.message)
     } finally {
@@ -457,141 +348,38 @@ function ScheduleForm({ requestId, skill, onScheduled }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-3">
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <div>
-          <label className="field-label text-xs">Date</label>
-          <input
-            type="date"
-            className="input text-sm"
-            min={today}
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            required
-          />
-        </div>
-        <div>
-          <label className="field-label text-xs">Start time</label>
-          <input
-            type="time"
-            className="input text-sm"
-            value={start}
-            onChange={(e) => setStart(e.target.value)}
-            required
-          />
-        </div>
-        <div>
-          <label className="field-label text-xs">End time</label>
-          <input
-            type="time"
-            className="input text-sm"
-            value={end}
-            onChange={(e) => setEnd(e.target.value)}
-            required
-          />
-        </div>
+    <form onSubmit={handleSubmit} style={{ padding: 16, border: '2px solid #29251F', borderRadius: 12, background: '#FBEFC4', display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <span style={{ fontWeight: 700 }}>Rate your session with <strong>{otherName}</strong></span>
+
+      <div role="group" aria-label="Rating" style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+        {[1, 2, 3, 4, 5].map((star) => (
+          <button
+            key={star}
+            type="button"
+            className={`star${star <= shown ? ' on' : ''}`}
+            aria-label={`${star} star${star > 1 ? 's' : ''}`}
+            onClick={() => setRating(star)}
+            onMouseEnter={() => setHovered(star)}
+            onMouseLeave={() => setHovered(0)}
+          >★</button>
+        ))}
+        {shown > 0 && <span style={{ marginLeft: 8, fontWeight: 800 }}>{RATING_WORDS[shown]}</span>}
       </div>
-      <div>
-        <label className="field-label text-xs">Notes / agenda (optional)</label>
-        <input
-          className="input text-sm"
-          placeholder="What will you cover in this session?"
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-        />
-      </div>
-      {formError && <p className="alert-error text-xs py-2">{formError}</p>}
-      <button
-        type="submit"
-        disabled={submitting}
-        className="btn-primary text-sm py-2 w-full"
-      >
-        {submitting ? 'Scheduling…' : 'Confirm Session'}
+
+      <textarea
+        className="in"
+        rows="2"
+        placeholder="Share what made this session valuable (optional)…"
+        value={comment}
+        onChange={(e) => setComment(e.target.value)}
+        maxLength={500}
+      />
+
+      {formError && <span style={{ fontSize: 13, fontWeight: 700, color: '#9A2B1E' }}>{formError}</span>}
+
+      <button type="submit" className="btn btn-p" style={{ alignSelf: 'flex-start' }} disabled={submitting || rating === 0}>
+        {submitting ? 'Submitting…' : 'Submit review (+5 pts)'}
       </button>
     </form>
-  )
-}
-
-
-
-// ── Sub-components ────────────────────────────────────────────────────────────
-
-function TabButton({ label, active, onClick, badge = 0 }) {
-  return (
-    <button
-      onClick={onClick}
-      className={`relative text-sm px-4 py-2.5 font-medium border-b-2 transition-all duration-150 -mb-px ${
-        active
-          ? 'border-moss text-moss'
-          : 'border-transparent text-ink/50 hover:text-ink'
-      }`}
-    >
-      {label}
-      {badge > 0 && (
-        <span className="ml-1.5 bg-clay text-paper text-xs font-medium w-4 h-4 rounded-full inline-flex items-center justify-center">
-          {badge}
-        </span>
-      )}
-    </button>
-  )
-}
-
-function StatusPill({ status }) {
-  const cls = {
-    pending: 'status-pending',
-    accepted: 'status-accepted',
-    declined: 'status-declined',
-    completed: 'status-completed',
-  }[status] || ''
-
-  const dot = {
-    pending: '●',
-    accepted: '●',
-    declined: '○',
-    completed: '✓',
-  }[status] || ''
-
-  return (
-    <span className={cls}>
-      
-      {status}
-    </span>
-  )
-}
-
-function RequestsSkeleton() {
-  return (
-    <div className="space-y-3">
-      {[...Array(3)].map((_, i) => (
-        <div key={i} className="card p-5">
-          <div className="flex justify-between items-start gap-4">
-            <div className="space-y-2 flex-1">
-              <div className="skeleton h-4 w-40 rounded" />
-              <div className="skeleton h-3 w-64 rounded" />
-            </div>
-            <div className="skeleton h-8 w-24 rounded-lg" />
-          </div>
-        </div>
-      ))}
-    </div>
-  )
-}
-
-function EmptyRequests({ tab }) {
-  return (
-    <div className="card p-12 text-center">
-      <p className="text-4xl mb-4">{tab === 'incoming' ? '📬' : '📤'}</p>
-      <h2 className="font-display text-xl mb-2">
-        {tab === 'incoming' ? 'No incoming requests' : 'No sent requests'}
-      </h2>
-      <p className="text-sm text-ink/50 max-w-xs mx-auto mb-6">
-        {tab === 'incoming'
-          ? 'When someone wants to learn from you, their request will appear here.'
-          : 'Find a teacher in the marketplace and send your first request.'}
-      </p>
-      {tab === 'outgoing' && (
-        <Link to="/marketplace" className="btn-primary">Browse teachers →</Link>
-      )}
-    </div>
   )
 }

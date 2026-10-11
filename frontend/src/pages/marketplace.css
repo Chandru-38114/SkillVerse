@@ -1,0 +1,73 @@
+/* Discover — component styles from the MarketV2 design.
+   Scoped under .sv-market so the design's .card / .pill / .btn / .in / .chip
+   cannot collide with the app's classes of the same name. */
+
+.sv-market{
+  --acc:#FF8A3D; --accd:#C4581A; --accl:#FFE3CF;
+  font-family:Inter,system-ui,sans-serif;color:#29251F;background:#F8F3E9;
+  min-height:100vh;padding-bottom:80px;position:relative;
+}
+.sv-market *{box-sizing:border-box}
+.sv-market a{color:#29251F}
+
+.sv-market .muted{color:#6E6455}
+.sv-market .eb{font-size:12px;font-weight:800;letter-spacing:.1em;color:#6E6455}
+.sv-market .mono{font-family:"JetBrains Mono",ui-monospace,Menlo,monospace}
+
+.sv-market .btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;min-height:50px;padding:0 24px;border:2px solid #29251F;border-radius:10px;font:800 16px Inter,sans-serif;color:#29251F;text-decoration:none;cursor:pointer;transition:transform 180ms ease,box-shadow 180ms ease,background-color 180ms ease;white-space:nowrap}
+.sv-market .btn-p{background:var(--acc);box-shadow:inset 0 2px 0 rgba(255,255,255,.45),0 4px 0 var(--accd),0 7px 0 #29251F}
+.sv-market .btn-p:hover:not(:disabled){transform:translateY(3px);box-shadow:0 2px 0 var(--accd),0 4px 0 #29251F}
+.sv-market .btn-s{background:#FFFDF8;box-shadow:inset 0 2px 0 rgba(255,255,255,.9),0 4px 0 #D2BEA0,0 7px 0 #29251F}
+.sv-market .btn-s:hover:not(:disabled){background:#F0E5D2;transform:translateY(3px);box-shadow:0 2px 0 #D2BEA0,0 4px 0 #29251F}
+.sv-market .btn:active:not(:disabled){transform:translateY(7px);box-shadow:none}
+.sv-market .btn:disabled{opacity:.55;cursor:not-allowed}
+.sv-market .btn:focus-visible,.sv-market a:focus-visible,.sv-market button:focus-visible,.sv-market .in:focus-visible{outline:3px solid #A58D70;outline-offset:3px}
+
+.sv-market .card{background:#FFFDF8;border:2px solid #29251F;border-radius:16px;box-shadow:0 4px 0 #D2BEA0,0 7px 0 #29251F}
+.sv-market .pill{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 10px;border-radius:999px;border:2px solid #29251F;font-size:12px;font-weight:800;white-space:nowrap;background:#FFFDF8}
+
+.sv-market .in{width:100%;min-height:50px;padding:0 14px;border:2px solid #29251F;border-radius:10px;background:#FFFDF8;font:600 15px Inter,sans-serif;box-shadow:inset 0 3px 0 #EADFCC;color:#29251F}
+.sv-market .in::placeholder{color:#9A8F7E}
+.sv-market select.in{appearance:none;-webkit-appearance:none;padding-right:42px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2329251F' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center}
+
+.sv-market .chip{display:inline-flex;align-items:center;height:36px;padding:0 14px;border-radius:999px;border:2px solid #29251F;background:#FFFDF8;font:700 13px Inter,sans-serif;cursor:pointer;box-shadow:0 2px 0 #29251F;color:#29251F}
+.sv-market .chip:hover{background:var(--accl);transform:translateY(1px);box-shadow:0 1px 0 #29251F}
+
+.sv-market .seg{display:inline-flex;padding:4px;gap:4px;border:2px solid #29251F;border-radius:12px;background:#F0E5D2;box-shadow:inset 0 3px 0 #E2D3BB}
+.sv-market .seg button{min-height:40px;padding:0 16px;border-radius:8px;border:2px solid transparent;background:transparent;font:800 14px Inter,sans-serif;cursor:pointer;color:#29251F}
+.sv-market .seg button.on{background:#FFFDF8;border-color:#29251F;box-shadow:0 3px 0 #29251F}
+
+.sv-market .srow{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px 12px;border:2px solid #29251F;border-radius:10px;background:#FFFDF8;font-weight:800;font-size:14px}
+.sv-market .lv{font-size:10px;font-weight:800;letter-spacing:.06em;padding:3px 7px;border-radius:6px;border:2px solid #29251F}
+
+.sv-market .sk{background:linear-gradient(90deg,#EFE6D6 25%,#F8F1E4 50%,#EFE6D6 75%);background-size:200% 100%;animation:svShM 1.4s infinite linear;border-radius:16px;border:2px solid #E2D3BB}
+@keyframes svShM{to{background-position:-200% 0}}
+
+.sv-market .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:36px 32px}
+@media (max-width:1000px){.sv-market .grid{grid-template-columns:1fr}}
+@media (max-width:620px){
+  .sv-market .ex{grid-template-columns:1fr !important}
+  .sv-market .sform{flex-direction:column}
+  .sv-market .seg{width:100%}
+  .sv-market .seg button{flex:1;padding:0 6px;font-size:12px}
+}
+
+@keyframes svPopM{0%{opacity:0;scale:.82}70%{opacity:1;scale:1.04}100%{opacity:1;scale:1}}
+@keyframes svSlideLM{from{opacity:0;transform:translateX(-14px)}to{opacity:1;transform:translateX(0)}}
+@keyframes svStampM{0%{opacity:0;scale:1.6;rotate:10deg}60%{opacity:1;scale:.94}100%{opacity:1;scale:1;rotate:3deg}}
+@keyframes svFloatM{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+
+@media (prefers-reduced-motion:no-preference){
+  .sv-market .stamp{animation:svStampM .7s .45s both}
+  .sv-market .srow{animation:svSlideLM .45s both}
+  .sv-market .srow:nth-child(2){animation-delay:.48s}
+  .sv-market .srow:nth-child(3){animation-delay:.56s}
+  .sv-market .chip{animation:svPopM .4s both}
+  .sv-market .chip:nth-child(2){animation-delay:.25s}
+  .sv-market .chip:nth-child(3){animation-delay:.30s}
+  .sv-market .chip:nth-child(4){animation-delay:.35s}
+  .sv-market .chip:nth-child(5){animation-delay:.40s}
+  .sv-market .chip:nth-child(6){animation-delay:.45s}
+  .sv-market .chip:nth-child(7){animation-delay:.50s}
+  .sv-market .float span{animation:svFloatM 4s infinite}
+}
