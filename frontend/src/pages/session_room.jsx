@@ -6,7 +6,7 @@ import Compiler from '../components/Compiler'
 import Whiteboard from '../components/Whiteboard'
 import Materials from '../components/Materials'
 import Notes from '../components/Notes'
-import { Code2, PenLine, FileText, FolderOpen, ChevronDown, ChevronUp, Info, Hand, CheckCircle2, Play, BookOpen, User, Calendar } from 'lucide-react'
+import { Code2, PenLine, FileText, FolderOpen, ChevronDown, ChevronUp, Info, Hand, CheckCircle2, Play, BookOpen, User, Calendar, X, AlertCircle } from 'lucide-react'
 
 const TABS = [
   { id: 'Code',       label: 'Code',   Icon: Code2 },
@@ -34,6 +34,8 @@ function SessionRoomComponent() {
   })
   const [isCompleted, setIsCompleted] = useState(false)
   const [notesLoaded, setNotesLoaded] = useState(false)
+  const [showCompleteConfirm, setShowCompleteConfirm] = useState(false)
+  const [errorToast, setErrorToast] = useState('')
 
   useEffect(() => {
     async function load() {
@@ -114,9 +116,9 @@ function SessionRoomComponent() {
   }
 
   const handleComplete = async () => {
-    if (!window.confirm("Are you sure you want to complete this session? This will update your skill progress and cannot be undone.")) return;
-    
+    setShowCompleteConfirm(false)
     setCompleting(true)
+    setErrorToast('')
     try {
       await api.saveSessionNotes(sessionId, notesData)
       const res = await api.completeSessionProgress(sessionId)
@@ -129,7 +131,7 @@ function SessionRoomComponent() {
         navigate('/dashboard')
       }
     } catch (err) {
-      alert("Failed to complete session: " + err.message)
+      setErrorToast("Failed to complete session: " + (err.message || 'Unknown error'))
       setCompleting(false)
     }
   }
@@ -167,7 +169,7 @@ function SessionRoomComponent() {
              Leave Session
            </button>
            {!isCompleted && (
-             <button onClick={handleComplete} disabled={completing} className="btn-primary text-xs px-4 py-2 flex items-center gap-1.5 shadow-sm">
+             <button onClick={() => setShowCompleteConfirm(true)} disabled={completing} className="btn-primary text-xs px-4 py-2 flex items-center gap-1.5 shadow-sm">
                <CheckCircle2 className="w-4 h-4" />
                Complete Session
              </button>
@@ -283,6 +285,53 @@ function SessionRoomComponent() {
           </div>
         </VideoChat>
       </div>
+
+      {/* Complete session confirmation modal */}
+      {showCompleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 backdrop-blur-sm p-4 animate-fade-in">
+          <div className="bg-lift border border-line rounded-2xl w-full max-w-sm shadow-elev-3 overflow-hidden">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-line">
+              <h3 className="font-bold text-ink">Complete Session</h3>
+              <button
+                onClick={() => setShowCompleteConfirm(false)}
+                className="p-1 text-clay hover:text-ink rounded-full min-w-[36px] min-h-[36px] flex items-center justify-center"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <p className="px-5 py-4 text-sm text-ink/80 leading-relaxed">
+              Are you sure you want to complete this session? This will update your skill progress and cannot be undone.
+            </p>
+            <div className="px-5 py-3 border-t border-line flex gap-3 justify-end bg-surface">
+              <button
+                onClick={() => setShowCompleteConfirm(false)}
+                className="btn-secondary text-xs px-3 py-1.5"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleComplete}
+                disabled={completing}
+                className="btn-primary text-xs px-3 py-1.5 flex items-center gap-1.5"
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                {completing ? 'Completing...' : 'Complete Session'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Error Toast */}
+      {errorToast && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-coral text-white text-xs font-semibold px-4 py-2.5 rounded-xl shadow-elev-3 flex items-center gap-2 animate-fade-in">
+          <AlertCircle className="w-4 h-4 shrink-0" />
+          <span>{errorToast}</span>
+          <button onClick={() => setErrorToast('')} className="ml-2 hover:opacity-80">
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
     </div>
   )
 }

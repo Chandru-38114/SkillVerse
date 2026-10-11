@@ -14,7 +14,7 @@ import DateTimePicker from '../components/DateTimePicker'
 const RECONNECT_DELAY_MS = 2000
 const MAX_RECONNECT_DELAY_MS = 10000
 import { REACTION_EMOJIS, getEmojiForKey } from '../utils/emojis'
-import MessageBubble from '../components/chat/MessageBubble'
+import MessageBubble, { ReplyPreview } from '../components/chat/MessageBubble'
 import ScheduleModal from '../components/chat/ScheduleModal'
 import SessionCard from '../components/chat/SessionCard'
 import PendingRequestCard from '../components/connect/PendingRequestCard'
@@ -104,6 +104,33 @@ function ForwardModal({ message, inbox, currentRequestId, onClose, onForward }) 
   )
 }
 
+function ConfirmModal({ title, message, confirmText = 'Confirm', confirmVariant = 'danger', onConfirm, onClose }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 backdrop-blur-sm p-4">
+      <div className="bg-lift border border-line rounded-2xl w-full max-w-sm shadow-elev-3 overflow-hidden animate-fade-in">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-line">
+          <h3 className="font-bold text-ink">{title}</h3>
+          <button onClick={onClose} className="p-1 text-clay hover:text-ink rounded-full min-w-[36px] min-h-[36px] flex items-center justify-center">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        <p className="px-5 py-4 text-sm text-ink/80 leading-relaxed">{message}</p>
+        <div className="px-5 py-3 border-t border-line flex gap-3 justify-end bg-surface">
+          <button onClick={onClose} className="btn-secondary text-xs px-3 py-1.5">
+            Cancel
+          </button>
+          <button
+            onClick={() => { onConfirm(); onClose() }}
+            className={confirmVariant === 'danger' ? 'btn-primary bg-coral hover:bg-coral/90 text-xs px-3 py-1.5' : 'btn-primary text-xs px-3 py-1.5'}
+          >
+            {confirmText}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // =========================================================================
 // Main Connect page
 // =========================================================================
@@ -150,6 +177,7 @@ function ForwardModal({ message, inbox, currentRequestId, onClose, onForward }) 
   const [editingMsg, setEditingMsg] = useState(null)    // message object
   const [forwardingMsg, setForwardingMsg] = useState(null)
   const [scheduleOpen, setScheduleOpen] = useState(false)
+  const [confirmAction, setConfirmAction] = useState(null)
 
   // Search within chat
   const [chatSearch, setChatSearch] = useState('')
@@ -538,24 +566,38 @@ function ForwardModal({ message, inbox, currentRequestId, onClose, onForward }) 
     }
   }
 
-  const handleDeleteForEveryone = async (msgId) => {
-    if (!window.confirm('Delete this message for everyone?')) return
-    try {
-      await api.deleteMessageForEveryone(msgId)
-      setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: '', metadata: { ...m.metadata, deleted_for_everyone: true } } : m))
-    } catch (err) {
-      showToast(err.message || 'Failed to delete')
-    }
+  const handleDeleteForEveryone = (msgId) => {
+    setConfirmAction({
+      title: 'Delete Message',
+      message: 'Delete this message for everyone? This cannot be undone.',
+      confirmText: 'Delete for Everyone',
+      confirmVariant: 'danger',
+      onConfirm: async () => {
+        try {
+          await api.deleteMessageForEveryone(msgId)
+          setMessages(prev => prev ? prev.map(m => m.id === msgId ? { ...m, content: '', metadata: { ...m.metadata, deleted_for_everyone: true } } : m) : null)
+        } catch (err) {
+          showToast(err.message || 'Failed to delete')
+        }
+      }
+    })
   }
 
-  const handleDeleteForMe = async (msgId) => {
-    if (!window.confirm('Delete this message for yourself?')) return
-    try {
-      await api.deleteMessageForMe(msgId)
-      setMessages(prev => prev.filter(m => m.id !== msgId))
-    } catch (err) {
-      showToast(err.message || 'Failed to delete')
-    }
+  const handleDeleteForMe = (msgId) => {
+    setConfirmAction({
+      title: 'Delete Message',
+      message: 'Delete this message for yourself?',
+      confirmText: 'Delete for Me',
+      confirmVariant: 'danger',
+      onConfirm: async () => {
+        try {
+          await api.deleteMessageForMe(msgId)
+          setMessages(prev => prev ? prev.filter(m => m.id !== msgId) : null)
+        } catch (err) {
+          showToast(err.message || 'Failed to delete')
+        }
+      }
+    })
   }
 
   const handleToggleReaction = async (msgId, emoji) => {
@@ -577,14 +619,22 @@ function ForwardModal({ message, inbox, currentRequestId, onClose, onForward }) 
     }
   }
 
-  const handleCancelSession = async (sessionId) => {
-    if (!window.confirm('Cancel this session?')) return
-    try {
-      await api.cancelSession(sessionId)
-      loadInbox(false)
-    } catch (err) {
-      showToast(err.message || 'Failed to cancel session')
-    }
+  const handleCancelSession = (sessionId) => {
+    setConfirmAction({
+      title: 'Cancel Session',
+      message: 'Are you sure you want to cancel this scheduled session?',
+      confirmText: 'Cancel Session',
+      confirmVariant: 'danger',
+      onConfirm: async () => {
+        try {
+          await api.cancelSession(sessionId)
+          loadInbox(false)
+          showToast('Session cancelled')
+        } catch (err) {
+          showToast(err.message || 'Failed to cancel session')
+        }
+      }
+    })
   }
 
   const handleScrollToRef = (msgId) => {
@@ -594,12 +644,6 @@ function ForwardModal({ message, inbox, currentRequestId, onClose, onForward }) 
 
   const handleScheduled = (session) => {
     setScheduleOpen(false)
-    if (activeConversation) {
-      setActiveConversation(prev => ({
-        ...prev,
-        session_id: session.id
-      }))
-    }
     loadInbox(false)
     showToast('Session scheduled!')
   }
@@ -1097,6 +1141,17 @@ function ForwardModal({ message, inbox, currentRequestId, onClose, onForward }) 
           currentRequestId={selectedRequestId}
           onClose={() => setForwardingMsg(null)}
           onForward={handleForward}
+        />
+      )}
+
+      {confirmAction && (
+        <ConfirmModal
+          title={confirmAction.title}
+          message={confirmAction.message}
+          confirmText={confirmAction.confirmText}
+          confirmVariant={confirmAction.confirmVariant}
+          onConfirm={confirmAction.onConfirm}
+          onClose={() => setConfirmAction(null)}
         />
       )}
     </div>
