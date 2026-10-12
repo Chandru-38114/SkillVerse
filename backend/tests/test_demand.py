@@ -343,6 +343,74 @@ class TestDemandAndTeacherVisibility(unittest.TestCase):
         self.assertIsNone(charlie_res.average_rating)
         self.assertIsNone(charlie_res.review_count)
 
+    def test_two_learners_requesting_same_skill_both_get_rows_but_teacher_notified_once(self):
+        """
+        If two learners request the same skill when no teacher is available:
+        - Each learner gets their own distinct DemandRequest row.
+        - Eligible teachers are NOT notified twice for the same skill.
+        """
+        # Bob has Rust with level 3 on his profile, unlisted as teacher
+        us_bob = models.UserSkill(user_id=self.bob.id, skill_id=self.skill_rust.id, role="learning", level_num=3)
+        self.db.add(us_bob)
+        self.db.commit()
+
+        # Learner 1 (Alice) requests Rust
+        res1 = create_demand_request(payload=schemas.DemandRequestCreate(skill_name="Rust"), current_user=self.alice, db=self.db)
+        self.assertEqual(res1.status, "open")
+
+        # Bob got 1 notification
+        bob_notifs_1 = self.db.query(models.Notification).filter(models.Notification.user_id == self.bob.id).count()
+        self.assertEqual(bob_notifs_1, 1)
+
+        # Learner 2 (Charlie) requests Rust seconds later
+        res2 = create_demand_request(payload=schemas.DemandRequestCreate(skill_name="Rust"), current_user=self.charlie, db=self.db)
+        self.assertEqual(res2.status, "open")
+
+        # Both learners have their own distinct DemandRequest rows
+        self.assertNotEqual(res1.demand_request.id, res2.demand_request.id)
+        all_rust_demands = self.db.query(models.DemandRequest).filter(models.DemandRequest.skill_id == self.skill_rust.id).all()
+        self.assertEqual(len(all_rust_demands), 2)
+        requester_ids = {d.requester_id for d in all_rust_demands}
+        self.assertEqual(requester_ids, {self.alice.id, self.charlie.id})
+
+        # Bob is NOT spammed: Bob still has only 1 notification for Rust!
+        bob_notifs_2 = self.db.query(models.Notification).filter(models.Notification.user_id == self.bob.id).count()
+        self.assertEqual(bob_notifs_2, 1)
+
+    def test_fulfillment_only_affects_matching_skill_and_requester(self):
+        """
+        Fulfillment only marks the demand request for that specific skill and requester,
+        leaving other open requests for other skills or other requesters open.
+        """
+        # Alice has open requests for Go and React
+        dr_alice_go = models.DemandRequest(requester_id=self.alice.id, skill_id=self.skill_go.id, status="open")
+        dr_alice_react = models.DemandRequest(requester_id=self.alice.id, skill_id=self.skill_react.id, status="open")
+        # Charlie also has an open request for Go
+        dr_charlie_go = models.DemandRequest(requester_id=self.charlie.id, skill_id=self.skill_go.id, status="open")
+        self.db.add_all([dr_alice_go, dr_alice_react, dr_charlie_go])
+        self.db.commit()
+
+        # Alice connects with Bob for Go (connection accepted)
+        fulfill_count = fulfill_demand_request_on_connection(
+            db=self.db,
+            user_a_id=self.alice.id,
+            user_b_id=self.bob.id,
+            skill_id=self.skill_go.id
+        )
+        self.assertEqual(fulfill_count, 1)
+
+        # Alice's Go request is fulfilled
+        self.db.refresh(dr_alice_go)
+        self.assertEqual(dr_alice_go.status, "fulfilled")
+
+        # Alice's React request is STILL open
+        self.db.refresh(dr_alice_react)
+        self.assertEqual(dr_alice_react.status, "open")
+
+        # Charlie's Go request is STILL open (Charlie wasn't part of this connection)
+        self.db.refresh(dr_charlie_go)
+        self.assertEqual(dr_charlie_go.status, "open")
+
 
 if __name__ == "__main__":
     unittest.main()

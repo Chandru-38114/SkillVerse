@@ -193,6 +193,23 @@ def create_demand_request(
                 users_checked[u_id] = us
 
     for u_id, us in users_checked.items():
+        # Prevent duplicate teacher notifications: do not notify the same teacher twice for the same skill
+        # while an open demand request for this skill is active
+        already_notified = (
+            db.query(models.Notification)
+            .join(models.DemandRequest, models.Notification.related_id == models.DemandRequest.id)
+            .filter(
+                models.Notification.user_id == u_id,
+                models.Notification.type == "demand_request",
+                models.DemandRequest.skill_id == skill.id,
+                models.DemandRequest.status == "open",
+                models.DemandRequest.id != dr.id,
+            )
+            .first()
+        )
+        if already_notified:
+            continue
+
         u_lvl = us.level_num if us.level_num is not None else 0
         if is_eligible_to_teach(u_lvl, learner_level_num):
             msg = f"{current_user.name} wants to learn {skill.name}. You're eligible to teach it — send them a request"
