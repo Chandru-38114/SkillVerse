@@ -1,0 +1,53 @@
+/* Progress — component styles from the ProgressV2 design.
+   Scoped under .sv-prog so the design's .card / .pill / .btn cannot collide
+   with the app's classes of the same name. */
+
+.sv-prog{
+  --acc:#FF8A3D; --accd:#C4581A; --accl:#FFE3CF;
+  font-family:Inter,system-ui,sans-serif;color:#29251F;background:#F8F3E9;
+  min-height:100vh;padding-bottom:80px;
+}
+.sv-prog *{box-sizing:border-box}
+.sv-prog a{color:#29251F}
+
+.sv-prog .muted{color:#6E6455}
+.sv-prog .eb{font-size:12px;font-weight:800;letter-spacing:.1em;color:#6E6455}
+.sv-prog .mono{font-family:"JetBrains Mono",ui-monospace,Menlo,monospace}
+
+.sv-prog .btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;min-height:46px;padding:0 20px;border:2px solid #29251F;border-radius:10px;font:800 15px Inter,sans-serif;color:#29251F;text-decoration:none;cursor:pointer;transition:transform 180ms ease,box-shadow 180ms ease,background-color 180ms ease}
+.sv-prog .btn-p{background:var(--acc);box-shadow:inset 0 2px 0 rgba(255,255,255,.45),0 4px 0 var(--accd),0 7px 0 #29251F}
+.sv-prog .btn-p:hover:not([aria-disabled="true"]){transform:translateY(3px);box-shadow:0 2px 0 var(--accd),0 4px 0 #29251F}
+.sv-prog .btn-s{background:#FFFDF8;box-shadow:inset 0 2px 0 rgba(255,255,255,.9),0 4px 0 #D2BEA0,0 7px 0 #29251F}
+.sv-prog .btn-s:hover{background:#F0E5D2;transform:translateY(3px);box-shadow:0 2px 0 #D2BEA0,0 4px 0 #29251F}
+.sv-prog .btn-g{background:#EDE6D8;color:#8C8273;border-color:#B9AE9C;box-shadow:none;cursor:not-allowed}
+.sv-prog .btn:focus-visible,.sv-prog a:focus-visible{outline:3px solid #A58D70;outline-offset:3px}
+
+.sv-prog .card{background:#FFFDF8;border:2px solid #29251F;border-radius:16px;box-shadow:0 4px 0 #D2BEA0,0 7px 0 #29251F}
+.sv-prog .pill{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 10px;border-radius:999px;border:2px solid #29251F;font-size:12px;font-weight:800;white-space:nowrap;background:#FFFDF8}
+
+.sv-prog .sk{background:linear-gradient(90deg,#EFE6D6 25%,#F8F1E4 50%,#EFE6D6 75%);background-size:200% 100%;animation:svShP 1.4s infinite linear;border-radius:16px;border:2px solid #E2D3BB}
+@keyframes svShP{to{background-position:-200% 0}}
+
+/* skill map */
+.sv-prog .map{display:grid;grid-template-columns:170px repeat(5,minmax(0,1fr));border:2px solid #29251F;border-radius:14px;overflow:hidden;background:#FFFDF8}
+.sv-prog .map>div{border-right:2px dashed #E2D3BB;border-bottom:2px dashed #E2D3BB;min-height:62px;display:flex;align-items:center;padding:8px 10px}
+.sv-prog .map .hd{min-height:auto;padding:10px;background:#F0E5D2;border-bottom:2px solid #29251F;font-size:11px;font-weight:800;letter-spacing:.06em;justify-content:center;text-align:center}
+.sv-prog .map .nm{font-weight:900;font-size:15px;gap:8px;border-right:2px solid #29251F}
+.sv-prog .seg{flex:1;height:14px;border:2px solid #29251F}
+.sv-prog .tok{width:38px;height:38px;border-radius:999px;border:2px solid #29251F;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:13px;box-shadow:0 3px 0 #29251F;margin:0 auto;background:var(--acc);position:relative;z-index:1}
+
+.sv-prog .grid2{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:28px;align-items:start}
+
+@media (max-width:1000px){
+  .sv-prog .grid2{grid-template-columns:1fr}
+  .sv-prog .map{grid-template-columns:110px repeat(5,minmax(44px,1fr))}
+  .sv-prog .map .hd span{display:none}
+}
+
+@keyframes svPopP{0%{opacity:0;scale:.82}70%{opacity:1;scale:1.04}100%{opacity:1;scale:1}}
+@keyframes svGrowX{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+
+@media (prefers-reduced-motion:no-preference){
+  .sv-prog .tok{animation:svPopP .6s .6s both}
+  .sv-prog .seg{transform-origin:0 50%;animation:svGrowX .8s .3s both}
+}

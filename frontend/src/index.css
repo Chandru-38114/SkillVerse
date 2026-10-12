@@ -2,27 +2,499 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ─────────────────────────────────────────────────
+   DESIGN SYSTEM — SEMANTIC TOKENS
+   5-Level Elevation Model:
+     1. paper    — page background (deepest)
+     2. surface  — primary panels, cards, sidebars
+     3. lift     — modals, dropdowns, popovers, selected items
+     4. ink      — primary text
+     5. brand    — primary action colour
+──────────────────────────────────────────────────── */
+@layer base {
+  :root {
+    /* SkillVerse V2 - warm paper, ink and hard-shadow design */
+    --color-paper:      248 243 233;   /* #F8F3E9 warm paper */
+    --color-surface:    255 253 248;   /* #FFFDF8 */
+    --color-lift:       240 229 210;   /* #F0E5D2 */
+    --color-ink:         41  37  31;   /* #29251F */
+    --color-clay:       110 100  85;   /* #6E6455 */
+    --color-line:       210 190 160;   /* #D2BEA0 sand */
+
+    /* Brand - accent orange / mint */
+    --color-brand:      255 138  61;   /* #FF8A3D accent orange */
+    --color-brand2:     108 207 176;   /* #6CCFB0 mint */
+    --color-brandLight: 255 227 207;   /* #FFE3CF */
+    --color-accent:     255 138  61;
+    --color-brandInk:   168  72  15;   /* #A8480F - AA-readable accent text, never a fill */
+
+    /* Gold/Accent */
+    --color-gold:       251 239 196;   /* #FBEFC4 butter */
+    --color-goldLight:  249 245 232;
+
+    /* Chat bubbles */
+    --color-bubbleMe:   255 138  61;
+    --color-bubbleThem: 255 253 248;
+  }
+
+  /* Force light theme variables on .dark since we are ignoring forced dark mode */
+  .dark {
+    --color-paper:      248 243 233;
+    --color-surface:    255 253 248;
+    --color-lift:       240 229 210;
+    --color-ink:         41  37  31;
+    --color-clay:       110 100  85;
+    --color-line:       210 190 160;
+    --color-brand:      255 138  61;
+    --color-brand2:     108 207 176;
+    --color-brandLight: 255 227 207;
+    --color-accent:     255 138  61;
+    --color-brandInk:   168  72  15;
+    --color-gold:       251 239 196;
+    --color-goldLight:  249 245 232;
+    --color-bubbleMe:   255 138  61;
+    --color-bubbleThem: 255 253 248;
+  }
+}
+
+/* ─────────────────────────────────────────────────
+   BASE STYLES
+──────────────────────────────────────────────────── */
 html, body {
-  background-color: #F6F4EE;
-  color: #12151B;
+  @apply bg-paper text-ink font-body overflow-x-hidden w-full break-words;
+  -webkit-font-smoothing: antialiased;
 }
 
+/* Prevent iOS Zoom on Inputs */
+input, textarea, select {
+  @apply text-base md:text-sm;
+}
+
+/* ─────────────────────────────────────────────────
+   COMPONENT CLASSES
+──────────────────────────────────────────────────── */
+
+/* Cards & Panels */
 .card {
-  @apply bg-white border border-line rounded-sk shadow-[0_1px_0_0_rgba(18,21,27,0.04)];
+  @apply bg-surface border-2 border-ink rounded-sk-lg shadow-hard-2 p-6 md:p-8 transition-shadow duration-200;
 }
 
+.card-hover {
+  @apply card hover:shadow-hard-press;
+}
+
+/* Section Panel for open layout without rigid card borders */
+.section-panel {
+  @apply bg-surface border-2 border-ink rounded-sk-lg shadow-hard-1 p-6 md:p-8 relative overflow-hidden;
+}
+
+/* Buttons */
 .btn-primary {
-  @apply bg-moss text-paper px-4 py-2 rounded-sk font-medium hover:bg-moss2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
+  @apply bg-brand text-ink px-6 py-2.5 rounded-sk border-2 border-ink font-extrabold text-sm tracking-wide
+         min-h-[48px] md:min-h-[52px]
+         transition-shadow duration-200
+         disabled:opacity-40 disabled:cursor-not-allowed
+         inline-flex items-center justify-center gap-2;
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, .45), 0 4px 0 #C4581A, 0 7px 0 rgb(var(--color-ink));
+}
+
+.btn-primary:hover:not(:disabled) {
+  box-shadow: 0 2px 0 #C4581A, 0 4px 0 rgb(var(--color-ink));
+}
+
+.btn-brand {
+  @apply btn-primary;
 }
 
 .btn-secondary {
-  @apply bg-transparent border border-ink/15 text-ink px-4 py-2 rounded-sk font-medium hover:border-ink/40 transition-colors;
+  @apply bg-surface text-ink px-6 py-2.5 rounded-sk border-2 border-ink font-extrabold text-sm
+         min-h-[48px] md:min-h-[52px]
+         shadow-hard-1
+         transition-shadow duration-200
+         disabled:opacity-40 disabled:cursor-not-allowed
+         inline-flex items-center justify-center gap-2;
 }
 
+.btn-secondary:hover:not(:disabled) {
+  box-shadow: none;
+}
+
+.btn-ghost {
+  /* Brand stays a fill, never ghost-button text, to hold 4.5:1 contrast on paper. */
+  @apply text-clay px-4 py-2.5 rounded-sk text-sm font-semibold
+         min-h-[44px] md:min-h-0
+         hover:text-ink hover:bg-brand/10 transition-all duration-200;
+}
+
+/* Inputs */
 .input {
-  @apply w-full border border-line rounded-sk px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-moss/40 focus:border-moss;
+  @apply w-full bg-surface border-2 border-ink rounded-sk-md px-4 py-3 text-ink text-base md:text-sm
+         min-h-[48px]
+         placeholder:text-clay/60
+         focus:outline-none
+         transition-all duration-200;
 }
 
+.input:focus-visible {
+  outline: 3px solid rgb(var(--color-brand));
+  outline-offset: 2px;
+}
+
+textarea.input {
+  @apply resize-none min-h-[80px];
+}
+
+/* Disabled input look */
+.input:disabled {
+  @apply bg-lift opacity-70 cursor-not-allowed;
+}
+
+/* Pills and eyebrow labels */
+.pill {
+  @apply inline-flex items-center justify-center h-[30px] px-3 rounded-full border-2 border-current text-xs font-extrabold;
+}
+
+.eb {
+  @apply text-xs font-extrabold uppercase tracking-[0.18em];
+}
+
+.serif {
+  @apply font-display italic font-semibold;
+}
+
+/* Labels */
 .label-eyebrow {
-  @apply text-xs uppercase tracking-[0.14em] text-ink/50 font-medium;
+  @apply text-[10px] md:text-xs uppercase tracking-[0.12em] text-clay font-semibold;
+}
+
+.field-label {
+  @apply text-sm font-medium text-ink block mb-1.5;
+}
+
+/* Status indicators */
+.status-pill {
+  @apply inline-flex items-center gap-1 text-[11px] md:text-xs font-medium px-2.5 py-1 rounded-full whitespace-nowrap;
+}
+
+.status-pending   { @apply status-pill bg-goldLight text-gold; }
+.status-accepted  { @apply status-pill bg-brandLight text-brand2; }
+.status-declined  { @apply status-pill bg-line text-clay; }
+.status-completed { @apply status-pill bg-brandLight text-brand2; }
+
+/* Alert / feedback */
+.alert-error {
+  @apply text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-3;
+}
+
+.alert-success {
+  @apply text-sm text-brand2 bg-brandLight border border-brand/20 rounded-lg px-4 py-3;
+}
+
+/* Section divider */
+.section-divider {
+  @apply border-t border-line my-4 md:my-6;
+}
+
+/* Page wrappers */
+.page {
+  @apply max-w-6xl mx-auto px-4 sm:px-6 py-5 md:py-8;
+}
+
+.page-narrow {
+  @apply max-w-md mx-auto px-4 sm:px-6 py-5 md:py-8;
+}
+
+/* Skeleton loading */
+.skeleton {
+  @apply bg-line/60 rounded-lg animate-pulse;
+}
+
+/* ─────────────────────────────────────────────────
+   SCROLLBAR — theme-aware
+──────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, 0.25);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 0.45);
+}
+
+/* ─────────────────────────────────────────────────
+   CHAT BUBBLE COMPONENTS
+──────────────────────────────────────────────────── */
+/* Sent bubble */
+.bubble-me {
+  @apply bg-brand text-white rounded-2xl rounded-br-sm px-3 py-2 text-sm leading-relaxed shadow-elev-1;
+}
+
+/* Received bubble */
+.bubble-them {
+  @apply bg-lift border border-line/60 text-ink rounded-2xl rounded-bl-sm px-3 py-2 text-sm leading-relaxed shadow-elev-1;
+}
+
+/* Reply quote strip */
+.reply-quote {
+  @apply block w-full text-left mb-1 px-3 py-1.5 rounded-lg border-l-2 border-brand/60
+         bg-ink/5 hover:bg-ink/10 transition-colors cursor-pointer;
+}
+
+/* ─────────────────────────────────────────────────
+   CONTEXT MENU / DROPDOWNS
+──────────────────────────────────────────────────── */
+.dropdown-menu {
+  @apply bg-surface/90 backdrop-blur-xl border border-line/10 rounded-xl shadow-[0_10px_30px_-5px_rgba(0,0,0,0.5)] overflow-hidden min-w-[150px] z-50;
+}
+
+.dropdown-item {
+  @apply w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-ink
+         hover:bg-brand/10 hover:text-brandInk transition-colors text-left;
+}
+
+.dropdown-item-danger {
+  @apply w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-red-400
+         hover:bg-red-500/10 transition-colors text-left;
+}
+
+/* ─────────────────────────────────────────────────
+   CONNECT SIDEBAR
+──────────────────────────────────────────────────── */
+.conv-item {
+  @apply w-full text-left px-4 py-3.5 flex gap-3 relative
+         hover:bg-brand/5 transition-colors duration-150;
+}
+
+.conv-item-active {
+  @apply bg-brand/10 border-r-2 border-brand;
+}
+
+/* ─────────────────────────────────────────────────
+   EMOJI / REACTION POPOVER
+──────────────────────────────────────────────────── */
+.emoji-popover {
+  @apply flex gap-1 bg-lift border border-line rounded-xl shadow-elev-3 p-1.5 z-30;
+}
+
+/* ─────────────────────────────────────────────────
+   AUDIO PLAYER COMPONENT
+──────────────────────────────────────────────────── */
+.audio-player {
+  @apply flex items-center gap-2 py-1;
+}
+
+/* ─────────────────────────────────────────────────
+   DARK MODE — ADDITIONAL OVERRIDES
+   These handle edge cases where Tailwind classes
+   alone are not sufficient.
+──────────────────────────────────────────────────── */
+
+/* Native date/time inputs in dark mode */
+.dark input[type="date"],
+.dark input[type="time"],
+.dark input[type="datetime-local"] {
+  color-scheme: dark;
+}
+
+/* Code editor wrapper inside session room */
+.dark .cm-editor {
+  background-color: rgb(var(--color-surface)) !important;
+}
+.dark .cm-gutters {
+  background-color: rgb(var(--color-paper)) !important;
+  border-right-color: rgb(var(--color-line)) !important;
+  color: rgb(var(--color-clay)) !important;
+}
+
+/* Whiteboard canvas — keep visible in dark mode */
+.dark canvas {
+  border-radius: 0.5rem;
+}
+@keyframes float-up {
+  0% { transform: translateY(20px) scale(0.8); opacity: 0; }
+  10% { transform: translateY(0) scale(1.2); opacity: 1; }
+  100% { transform: translateY(-100px) scale(1); opacity: 0; }
+}
+.animate-float-up {
+  animation: float-up 3s ease-out forwards;
+}
+
+/* ─────────────────────────────────────────────────
+   ANIMATIONS & STORYTELLING
+──────────────────────────────────────────────────── */
+@keyframes ambient-drift-1 {
+  0% { transform: translate(0, 0) scale(1) rotate(0deg); }
+  33% { transform: translate(4%, 6%) scale(1.1) rotate(5deg); }
+  66% { transform: translate(-3%, 3%) scale(0.9) rotate(-5deg); }
+  100% { transform: translate(0, 0) scale(1) rotate(0deg); }
+}
+
+@keyframes ambient-drift-2 {
+  0% { transform: translate(0, 0) scale(1) rotate(0deg); }
+  33% { transform: translate(-5%, -4%) scale(0.9) rotate(-5deg); }
+  66% { transform: translate(3%, -6%) scale(1.1) rotate(5deg); }
+  100% { transform: translate(0, 0) scale(1) rotate(0deg); }
+}
+
+@keyframes ambient-drift-3 {
+  0% { transform: translate(0, 0) scale(1) rotate(0deg); }
+  50% { transform: translate(3%, -3%) scale(1.15) rotate(10deg); }
+  100% { transform: translate(0, 0) scale(1) rotate(0deg); }
+}
+
+@keyframes slow-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(1.05); }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(15px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes progress-fill {
+  from { width: 0%; }
+}
+
+/* Base states for staggered animations */
+.animate-fade-in { opacity: 0; }
+.animate-slide-up { opacity: 0; transform: translateY(15px); }
+
+@media (prefers-reduced-motion: no-preference) {
+  .animate-fade-in {
+    animation: fade-in 0.4s ease-out forwards;
+  }
+  .animate-slide-up {
+    animation: slide-up 0.5s ease-out forwards;
+  }
+  .animate-progress {
+    animation: progress-fill 1s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  }
+  
+  .animate-ambient-drift-1 {
+    animation: ambient-drift-1 45s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  }
+  .animate-ambient-drift-2 {
+    animation: ambient-drift-2 55s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  }
+  .animate-ambient-drift-3 {
+    animation: ambient-drift-3 65s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  }
+  
+  .animate-slow-pulse {
+    animation: slow-pulse 4s ease-in-out infinite;
+  }
+  
+  /* Stagger delays */
+  .stagger-1 { animation-delay: 50ms; }
+  .stagger-2 { animation-delay: 100ms; }
+  .stagger-3 { animation-delay: 150ms; }
+  .stagger-4 { animation-delay: 200ms; }
+  .stagger-5 { animation-delay: 250ms; }
+}
+
+/* ─────────────────────────────────────────────────
+   EXPERIMENT 16 — SKILL JOURNEY VISUAL WORLD
+   Node states, path geometry, circuit accents,
+   hero-to-journey bridge, quest destination
+──────────────────────────────────────────────────── */
+
+/* ── Journey node: active state breathing glow ── */
+@keyframes node-breathe {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(67, 56, 202, 0);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 0 10px rgba(67, 56, 202, 0.10);
+    transform: scale(1.03);
+  }
+}
+
+/* ── Journey path trace — draws in on mount ── */
+@keyframes path-trace {
+  from { stroke-dashoffset: 1000; }
+  to   { stroke-dashoffset: 0; }
+}
+
+/* ── Circuit glow pulse — for background tech symbols ── */
+@keyframes circuit-glow {
+  0%, 100% { opacity: 0.05; }
+  50%       { opacity: 0.10; }
+}
+
+/* ── Hero→Journey bridge fade in ── */
+@keyframes bridge-fade {
+  from { opacity: 0; transform: scaleY(0); transform-origin: top; }
+  to   { opacity: 1; transform: scaleY(1); transform-origin: top; }
+}
+
+/* ── Quest region inner shimmer (once on mount) ── */
+@keyframes quest-shimmer {
+  0%   { background-position: -300% center; }
+  100% { background-position: 300% center; }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+
+  /* Node breathing — active journey node */
+  .journey-node-breathe {
+    animation: node-breathe 3s ease-in-out infinite;
+  }
+
+  /* Path trace on mount */
+  .journey-path-trace {
+    stroke-dasharray: 1000;
+    stroke-dashoffset: 1000;
+    animation: path-trace 1.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    animation-delay: 0.3s;
+  }
+
+  /* Circuit accent glow */
+  .animate-circuit-glow {
+    animation: circuit-glow 6s ease-in-out infinite;
+  }
+
+  /* Hero bridge fade in */
+  .animate-bridge-fade {
+    animation: bridge-fade 0.6s ease-out forwards;
+    animation-delay: 0.4s;
+    opacity: 0;
+  }
+}
+
+/* ── Glass quest surface — used inline but defined for reuse ── */
+.glass-quest {
+  background: linear-gradient(
+    135deg,
+    rgba(236, 238, 255, 0.78) 0%,
+    rgba(255, 255, 255, 0.58) 50%,
+    rgba(244, 244, 250, 0.68) 100%
+  );
+  backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
+  border: 1px solid rgba(67, 56, 202, 0.14);
+  border-radius: 2rem;
+}
+
+/* ── Journey path line — completed segment ── */
+.journey-path-completed {
+  background: linear-gradient(
+    to bottom,
+    rgb(124, 58, 237) 0%,
+    rgb(67, 56, 202) 100%
+  );
+  box-shadow: 0 0 12px rgba(67, 56, 202, 0.40);
+  border-radius: 9999px;
+}
+
+/* ── Journey path line — pending segment ── */
+.journey-path-pending {
+  border-left: 2px dashed rgba(67, 56, 202, 0.20);
 }

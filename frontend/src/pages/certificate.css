@@ -1,0 +1,56 @@
+/* Certificate + Verify — component styles from the CertsV2 design.
+   Scoped under .sv-cert so the design's .card / .btn / .pill cannot collide
+   with the app's classes of the same name. Both pages use this file. */
+
+.sv-cert{
+  --acc:#FF8A3D; --accd:#C4581A; --accl:#FFE3CF;
+  font-family:Inter,system-ui,sans-serif;color:#29251F;background:#F8F3E9;
+  min-height:100vh;padding-bottom:80px;
+}
+.sv-cert *{box-sizing:border-box}
+.sv-cert a{color:#29251F}
+
+.sv-cert .muted{color:#6E6455}
+.sv-cert .eb{font-size:12px;font-weight:800;letter-spacing:.1em;color:#6E6455}
+.sv-cert .mono{font-family:"JetBrains Mono",ui-monospace,Menlo,monospace}
+.sv-cert .serif{font-family:Fraunces,Georgia,serif}
+
+.sv-cert .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:48px;padding:0 20px;border:2px solid #29251F;border-radius:10px;font:800 15px Inter,sans-serif;color:#29251F;text-decoration:none;cursor:pointer;transition:transform 180ms ease,box-shadow 180ms ease;white-space:nowrap}
+.sv-cert .btn-p{background:var(--acc);box-shadow:inset 0 2px 0 rgba(255,255,255,.45),0 3px 0 var(--accd),0 5px 0 #29251F}
+.sv-cert .btn-p:hover:not(:disabled){transform:translateY(2px);box-shadow:0 1px 0 var(--accd),0 3px 0 #29251F}
+.sv-cert .btn-s{background:#FFFDF8;box-shadow:0 3px 0 #D2BEA0,0 5px 0 #29251F}
+.sv-cert .btn-s:hover:not(:disabled){background:#F0E5D2;transform:translateY(2px);box-shadow:0 1px 0 #D2BEA0,0 3px 0 #29251F}
+.sv-cert .btn:disabled{background:#EDE6D8;color:#8C8273;border-color:#B9AE9C;box-shadow:none;transform:none;cursor:not-allowed}
+.sv-cert .btn:focus-visible,.sv-cert a:focus-visible,.sv-cert button:focus-visible{outline:3px solid #A58D70;outline-offset:3px}
+
+.sv-cert .card{background:#FFFDF8;border:2px solid #29251F;border-radius:16px;box-shadow:0 4px 0 #D2BEA0,0 7px 0 #29251F}
+.sv-cert .pill{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 10px;border-radius:999px;border:2px solid #29251F;font-size:12px;font-weight:800;white-space:nowrap;background:#FFFDF8}
+
+.sv-cert .dl{display:grid;grid-template-columns:130px 1fr;gap:12px 14px;margin:0;font-size:15px}
+.sv-cert .dl dt{font-size:11px;font-weight:800;letter-spacing:.08em;color:#6E6455;padding-top:3px}
+.sv-cert .dl dd{margin:0;font-weight:700}
+
+/* the certificate document itself */
+.sv-cert .doc{width:100%;max-width:620px;aspect-ratio:210/297;background:#FFFDF8;border:2px solid #29251F;box-shadow:0 6px 0 #29251F;position:relative;padding:22px;container-type:inline-size}
+.sv-cert .doc .frame{position:absolute;inset:14px;border:3px solid #29251F;outline:2px solid #29251F;outline-offset:-10px;pointer-events:none}
+.sv-cert .doc .inner{position:relative;height:100%;display:flex;flex-direction:column;align-items:center;text-align:center;padding:7cqw 7cqw 5cqw}
+
+.sv-cert .lay{display:grid;grid-template-columns:minmax(0,620px) minmax(0,1fr);gap:36px;align-items:start}
+
+@media (max-width:1000px){.sv-cert .lay{grid-template-columns:1fr}}
+@media print{.sv-cert .noprint{display:none !important}}
+
+@keyframes svRiseCe{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:translateY(0)}}
+@keyframes svStampCe{0%{opacity:0;scale:1.6;rotate:4deg}60%{opacity:1;scale:.94}100%{opacity:1;scale:1;rotate:-12deg}}
+@keyframes svPopCe{0%{opacity:0;scale:.82}70%{opacity:1;scale:1.04}100%{opacity:1;scale:1}}
+@keyframes svShakeCe{0%,100%{transform:translateX(0)}20%{transform:translateX(-6px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(4px)}}
+@keyframes svSpinCe{to{transform:rotate(360deg)}}
+
+.sv-cert .spin{animation:svSpinCe 1s linear infinite}
+
+@media (prefers-reduced-motion:no-preference){
+  .sv-cert .doc{animation:svRiseCe 1s .1s both}
+  .sv-cert .seal{animation:svStampCe .8s .7s both}
+  .sv-cert .vmark{animation:svPopCe .6s .3s both}
+  .sv-cert .xmark{animation:svShakeCe .5s .4s both}
+}

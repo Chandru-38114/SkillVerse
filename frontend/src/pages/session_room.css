@@ -1,0 +1,60 @@
+/* Learning Arena — component styles from the LearningV2 design.
+   Scoped under .sv-room so the design's .card / .pill / .btn cannot collide
+   with the app's classes of the same name. */
+
+.sv-room{
+  --acc:#FF8A3D; --accd:#C4581A; --accl:#FFE3CF;
+  font-family:Inter,system-ui,sans-serif;color:#29251F;background:#F8F3E9;
+  height:100dvh;width:100%;overflow:hidden;display:flex;flex-direction:column;position:relative;
+}
+.sv-room *{box-sizing:border-box}
+.sv-room a{color:#29251F}
+
+.sv-room .muted{color:#6E6455}
+.sv-room .eb{font-size:11px;font-weight:800;letter-spacing:.1em;color:#6E6455}
+.sv-room .mono{font-family:"JetBrains Mono",ui-monospace,Menlo,monospace}
+
+.sv-room .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:42px;padding:0 16px;border:2px solid #29251F;border-radius:10px;font:800 14px Inter,sans-serif;color:#29251F;text-decoration:none;cursor:pointer;transition:transform 180ms ease,box-shadow 180ms ease;white-space:nowrap}
+.sv-room .btn-p{background:var(--acc);box-shadow:inset 0 2px 0 rgba(255,255,255,.45),0 3px 0 var(--accd),0 5px 0 #29251F}
+.sv-room .btn-p:hover:not(:disabled){transform:translateY(2px);box-shadow:0 1px 0 var(--accd),0 3px 0 #29251F}
+.sv-room .btn-s{background:#FFFDF8;box-shadow:0 3px 0 #D2BEA0,0 5px 0 #29251F}
+.sv-room .btn-s:hover:not(:disabled){background:#F0E5D2;transform:translateY(2px);box-shadow:0 1px 0 #D2BEA0,0 3px 0 #29251F}
+.sv-room .btn-g{background:#D6F3EA;box-shadow:0 3px 0 #29251F}
+.sv-room .btn-d{background:#E2533A;color:#FFFDF8;box-shadow:0 3px 0 #9A2B1E,0 5px 0 #29251F}
+.sv-room .btn:disabled{opacity:.55;cursor:not-allowed}
+.sv-room .btn:focus-visible,.sv-room a:focus-visible,.sv-room button:focus-visible{outline:3px solid #A58D70;outline-offset:3px}
+
+.sv-room .card{background:#FFFDF8;border:2px solid #29251F;border-radius:16px;box-shadow:0 4px 0 #D2BEA0,0 7px 0 #29251F}
+.sv-room .pill{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 10px;border-radius:999px;border:2px solid #29251F;font-size:12px;font-weight:800;white-space:nowrap;background:#FFFDF8}
+
+.sv-room .ttab{display:inline-flex;align-items:center;gap:8px;min-height:42px;padding:0 16px;border:2px solid transparent;border-radius:10px;font:800 14px Inter,sans-serif;cursor:pointer;background:transparent;color:#29251F}
+.sv-room .ttab:hover{background:#F0E5D2}
+.sv-room .ttab.on{background:#FFFDF8;border-color:#29251F;box-shadow:0 3px 0 #29251F}
+
+/* notes fields */
+.sv-room .fld{border:2px solid #29251F;border-radius:12px;overflow:hidden;background:#FFFDF8}
+.sv-room .fld .h{padding:10px 14px;border-bottom:2px solid #29251F;background:#F0E5D2}
+.sv-room .fld textarea{display:block;width:100%;border:none;outline:none;resize:vertical;padding:12px 14px;min-height:84px;font:500 14px Inter,sans-serif;background:#FFFDF8;color:#29251F}
+.sv-room .fld textarea:disabled{background:#F8F3E9;color:#6E6455}
+
+/* the pane that is not the active tool stays mounted so its socket and
+   drawings survive a tab switch — it is only hidden */
+.sv-room .pane{flex:1;min-width:0;display:flex}
+.sv-room .pane.off{display:none}
+
+.sv-room pre{margin:0}
+
+@keyframes svPulseR2{50%{opacity:.35}}
+.sv-room .live{animation:svPulseR2 1.4s infinite}
+@media (prefers-reduced-motion:reduce){.sv-room .live{animation:none}}
+
+@keyframes svPopR2{0%{opacity:0;scale:.82}70%{opacity:1;scale:1.04}100%{opacity:1;scale:1}}
+@media (prefers-reduced-motion:no-preference){
+  .sv-room .ttab.on{animation:svPopR2 .4s both}
+}
+
+@media (max-width:900px){
+  .sv-room .body{flex-direction:column !important}
+  .sv-room .tools{overflow-x:auto}
+  .sv-room .ttab{min-height:36px;padding:0 12px;font-size:13px}
+}

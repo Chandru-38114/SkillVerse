@@ -1,11 +1,202 @@
-from typing import List
-from fastapi import APIRouter, Depends, HTTPException
+from typing import List, Optional
+import asyncio
+import logging
+from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect, Query, File, UploadFile
+import uuid
+import mimetypes
+from fastapi.responses import RedirectResponse
+from starlette.concurrency import run_in_threadpool
+from jose import jwt, JWTError
 from sqlalchemy.orm import Session
+from ..notification_service import create_notification
+from ..utils.timezone import enforce_utc_iso
+from ..supabase_client import get_supabase
 
 from .. import models, schemas, auth
-from ..database import get_db
+from ..database import get_db, SessionLocal
+from ..ws_manager import chat_manager
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/chat", tags=["chat"])
+
+ALLOWED_EXTENSIONS = {
+    "pdf": "application/pdf",
+    "png": "image/png",
+    "jpg": "image/jpeg",
+    "jpeg": "image/jpeg",
+    "txt": "text/plain",
+    "doc": "application/msword",
+    "docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+}
+
+@router.post("/{request_id}/upload")
+def upload_attachment(
+    request_id: int,
+    type: str = Query("file"), # "voice" or "file"
+    file: UploadFile = File(...),
+    current_user: models.User = Depends(auth.get_current_user),
+    db: Session = Depends(get_db)
+):
+    _authorize(db, request_id, current_user.id)
+
+    ext = file.filename.split(".")[-1].lower() if file.filename and "." in file.filename else ""
+    file_bytes = file.file.read()
+    size_bytes = len(file_bytes)
+
+    # 1. Safely normalize the MIME type (browser often sends audio/webm;codecs=opus or video/webm for audio)
+    raw_content_type = file.content_type or ""
+    content_type = raw_content_type.split(";")[0].strip()
+    
+    if type == "voice":
+        if content_type.startswith("video/"):
+            content_type = content_type.replace("video/", "audio/")
+        elif not content_type:
+            content_type = "audio/webm"
+    elif type == "file" and not content_type:
+        content_type = "application/octet-stream"
+
+    if type == "file":
+        if size_bytes > 25 * 1024 * 1024:
+            raise HTTPException(status_code=400, detail="File too large (max 25MB)")
+        if ext in ["exe", "bat", "cmd", "ps1", "sh", "js", "vbs"]:
+            raise HTTPException(status_code=400, detail="Executable files are not allowed")
+    elif type == "voice":
+        if size_bytes > 10 * 1024 * 1024:
+            raise HTTPException(status_code=400, detail="Voice message too large")
+        ext = ext or "webm"
+    else:
+        raise HTTPException(status_code=400, detail="Invalid attachment type")
+
+    filename = f"req_{request_id}_{current_user.id}_{uuid.uuid4().hex}.{ext}"
+    bucket = "chat_audio" if type == "voice" else "chat_files"
+    supabase = get_supabase()
+
+    try:
+        logger.info(f"Uploading to bucket '{bucket}', path '{filename}', content-type '{content_type}' (raw: {raw_content_type})")
+        res = supabase.storage.from_(bucket).upload(
+            file=file_bytes,
+            path=filename,
+            file_options={"content-type": content_type}
+        )
+        
+        if isinstance(res, dict):
+            status = res.get("statusCode", res.get("status", 200))
+            if res.get("error") or status >= 400:
+                msg = res.get("message", res.get("error", "Upload failed"))
+                logger.error(f"Storage upload dict error (Bucket: {bucket}, Path: {filename}): HTTP {status} - {msg}")
+                raise HTTPException(status_code=status if isinstance(status, int) else 500, detail=f"Storage upload failed (HTTP {status}): {msg}")
+        elif hasattr(res, "status_code") and res.status_code >= 400:
+            err = res.json() if hasattr(res, "json") else {}
+            msg = err.get("message", err.get("error", "Upload failed"))
+            logger.error(f"Storage upload response error (Bucket: {bucket}, Path: {filename}): HTTP {res.status_code} - {msg}")
+            raise HTTPException(status_code=res.status_code, detail=f"Storage upload failed (HTTP {res.status_code}): {msg}")
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        # If the SDK throws an exception (like the text AttributeError), fallback to a reliable REST upload
+        logger.warning(f"Storage SDK upload failed (Bucket: {bucket}, Path: {filename}): {str(e)}. Attempting REST fallback...")
+        import requests
+        from ..supabase_client import SUPABASE_URL, SUPABASE_KEY
+        
+        if not SUPABASE_URL or not SUPABASE_KEY:
+            raise HTTPException(status_code=500, detail="Storage configuration missing for fallback.")
+            
+        from urllib.parse import urlparse
+        parsed = urlparse(SUPABASE_URL)
+        base_url = f"{parsed.scheme}://{parsed.netloc}"
+        url = f"{base_url}/storage/v1/object/{bucket}/{filename}"
+        headers = {
+            "apikey": SUPABASE_KEY,
+            "Authorization": f"Bearer {SUPABASE_KEY}",
+            "Content-Type": content_type
+        }
+        
+        try:
+            resp = requests.post(url, data=file_bytes, headers=headers, timeout=30)
+            if resp.status_code >= 400:
+                err_dict = resp.json() if resp.text else {}
+                msg = err_dict.get("message", err_dict.get("error", resp.text or "REST Upload failed"))
+                logger.error(f"REST fallback upload failed: HTTP {resp.status_code} - {msg}")
+                raise HTTPException(status_code=resp.status_code, detail=f"Storage upload failed (HTTP {resp.status_code}): {msg}")
+            logger.info("REST fallback upload succeeded.")
+        except HTTPException:
+            raise
+        except Exception as rest_e:
+            logger.error(f"REST fallback also failed: {str(rest_e)}", exc_info=True)
+            raise HTTPException(status_code=500, detail="Both SDK and REST upload failed. Check server logs.")
+
+    metadata = {
+        "type": type,
+        "mime_type": content_type,
+        "size_bytes": size_bytes
+    }
+    if type == "voice":
+        metadata["audio_path"] = filename
+    else:
+        metadata["file_path"] = filename
+        metadata["file_name"] = file.filename
+
+    return {"metadata": metadata}
+
+
+@router.get("/{request_id}/file/{bucket}/{filename}")
+def download_chat_file(
+    request_id: int,
+    bucket: str,
+    filename: str,
+    current_user: models.User = Depends(auth.get_current_user),
+    db: Session = Depends(get_db)
+):
+    _authorize(db, request_id, current_user.id)
+    if bucket not in ["chat_audio", "chat_files"]:
+        raise HTTPException(status_code=400, detail="Invalid bucket")
+    if not filename.startswith(f"req_{request_id}_"):
+        raise HTTPException(status_code=403, detail="Unauthorized access to this file")
+
+    from ..supabase_client import SUPABASE_URL, SUPABASE_KEY
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        raise HTTPException(status_code=500, detail="Storage configuration missing")
+
+    from urllib.parse import urlparse
+    import requests
+
+    parsed = urlparse(SUPABASE_URL)
+    base_url = f"{parsed.scheme}://{parsed.netloc}"
+    sign_url = f"{base_url}/storage/v1/object/sign/{bucket}/{filename}"
+
+    headers = {
+        "apikey": SUPABASE_KEY,
+        "Authorization": f"Bearer {SUPABASE_KEY}",
+        "Content-Type": "application/json"
+    }
+    
+    try:
+        resp = requests.post(sign_url, json={"expiresIn": 3600}, headers=headers, timeout=10)
+        if resp.status_code >= 400:
+            err_dict = resp.json() if resp.text else {}
+            msg = err_dict.get("message", err_dict.get("error", "Signed URL generation failed"))
+            raise Exception(f"HTTP {resp.status_code}: {msg}")
+            
+        data = resp.json()
+        # Storage API usually returns {"signedURL": "/object/sign/..."}
+        signed_path = data.get("signedURL") or data.get("signedUrl")
+        if not signed_path:
+            raise Exception("No signed URL path in response")
+            
+        if signed_path.startswith("/storage/v1/"):
+            full_signed_url = f"{base_url}{signed_path}"
+        elif signed_path.startswith("/object/sign/"):
+            full_signed_url = f"{base_url}/storage/v1{signed_path}"
+        else:
+            full_signed_url = f"{base_url}/storage/v1/{signed_path.lstrip('/')}"
+            
+        return {"url": full_signed_url}
+    except Exception as e:
+        logger.error(f"Failed to generate signed URL for {bucket}/{filename}: {e}")
+        raise HTTPException(status_code=500, detail="Could not generate download link")
+
 
 
 def _authorize(db: Session, request_id: int, user_id: int) -> models.ConnectionRequest:
@@ -17,14 +208,238 @@ def _authorize(db: Session, request_id: int, user_id: int) -> models.ConnectionR
     return req
 
 
+def _serialize_message(msg: models.Message) -> dict:
+    """Shared serializer for WS payloads — keeps history, new messages, and
+    update broadcasts consistent."""
+    return {
+        "id": msg.id,
+        "sender_id": msg.sender_id,
+        "content": msg.content,
+        "is_read": msg.is_read,
+        "created_at": enforce_utc_iso(msg.created_at),
+        "metadata": msg.message_metadata or {},
+    }
+
+
+async def _broadcast_message_update(request_id: int, msg: models.Message) -> None:
+    """Broadcast a message_update event to all participants in a conversation."""
+    try:
+        db = SessionLocal()
+        req = db.query(models.ConnectionRequest).filter(models.ConnectionRequest.id == request_id).first()
+        room_id = str(request_id)
+        if req:
+            u1, u2 = min(req.from_user_id, req.to_user_id), max(req.from_user_id, req.to_user_id)
+            room_id = f"pair_{u1}_{u2}"
+        db.close()
+        await chat_manager.broadcast(room_id, {
+            "type": "message_update",
+            "message": _serialize_message(msg),
+        })
+    except Exception:
+        pass  # Never let a failed broadcast crash the REST response
+
+
+from sqlalchemy import or_, and_, desc, func
+
+@router.get("/inbox", response_model=List[schemas.InboxConversationOut])
+def get_inbox(
+    current_user: models.User = Depends(auth.get_current_user),
+    db: Session = Depends(get_db),
+):
+    # Fetch requests where user is either from or to, oldest first
+    reqs = db.query(models.ConnectionRequest).filter(
+        or_(
+            models.ConnectionRequest.from_user_id == current_user.id,
+            models.ConnectionRequest.to_user_id == current_user.id
+        ),
+        models.ConnectionRequest.status.in_(['accepted', 'completed'])
+    ).order_by(models.ConnectionRequest.created_at.asc()).all()
+
+    if not reqs:
+        return []
+
+    req_ids = [r.id for r in reqs]
+    
+    # Deduplicate by user pair to enforce ONE conversation per user pair
+    canonical_reqs = {}
+    pair_req_ids = {}
+    req_to_other_user = {}
+    
+    for req in reqs:
+        other_user_id = req.to_user_id if req.from_user_id == current_user.id else req.from_user_id
+        if other_user_id not in canonical_reqs:
+            canonical_reqs[other_user_id] = req
+            pair_req_ids[other_user_id] = []
+        pair_req_ids[other_user_id].append(req.id)
+        req_to_other_user[req.id] = other_user_id
+
+    other_user_ids = list(canonical_reqs.keys())
+    users_map = {u.id: u for u in db.query(models.User).filter(models.User.id.in_(other_user_ids)).all()}
+    
+    # We map skill_ids just for the canonical request
+    canonical_skill_ids = {req.skill_id for req in canonical_reqs.values()}
+    skills_map = {s.id: s for s in db.query(models.Skill).filter(models.Skill.id.in_(canonical_skill_ids)).all()}
+    
+    # Only map sessions that are currently 'scheduled'. Exclude completed or cancelled ones.
+    # Sessions can belong to any request ID between the pair.
+    sessions_map_pair = {}
+    sessions = db.query(models.Session).filter(
+        models.Session.request_id.in_(req_ids),
+        models.Session.status == "scheduled"
+    ).all()
+    for s in sessions:
+        other_u_id = req_to_other_user[s.request_id]
+        if other_u_id not in sessions_map_pair:
+            sessions_map_pair[other_u_id] = s # just take the first scheduled session
+
+    # Hidden messages subquery
+    hidden_subq = db.query(models.MessageUserState.message_id).filter(
+        models.MessageUserState.user_id == current_user.id
+    ).subquery()
+
+    # Unread counts map
+    unread_counts = db.query(
+        models.Message.request_id, func.count(models.Message.id)
+    ).filter(
+        models.Message.request_id.in_(req_ids),
+        models.Message.sender_id != current_user.id,
+        models.Message.is_read == False,
+        ~models.Message.id.in_(hidden_subq)
+    ).group_by(models.Message.request_id).all()
+    
+    unread_map_pair = {}
+    for req_id, count in unread_counts:
+        other_u_id = req_to_other_user[req_id]
+        unread_map_pair[other_u_id] = unread_map_pair.get(other_u_id, 0) + count
+
+    # Latest messages map
+    subq = db.query(
+        models.Message.request_id,
+        func.max(models.Message.created_at).label('max_dt')
+    ).filter(
+        models.Message.request_id.in_(req_ids),
+        ~models.Message.id.in_(hidden_subq)
+    ).group_by(models.Message.request_id).subquery()
+
+    latest_msgs = db.query(models.Message).join(
+        subq,
+        (models.Message.request_id == subq.c.request_id) &
+        (models.Message.created_at == subq.c.max_dt)
+    ).all()
+    
+    latest_msg_map_pair = {}
+    for msg in latest_msgs:
+        other_u_id = req_to_other_user[msg.request_id]
+        if other_u_id not in latest_msg_map_pair:
+            latest_msg_map_pair[other_u_id] = msg
+        else:
+            if msg.created_at > latest_msg_map_pair[other_u_id].created_at:
+                latest_msg_map_pair[other_u_id] = msg
+
+    inbox = []
+    for other_user_id, req in canonical_reqs.items():
+        other_user = users_map.get(other_user_id)
+        skill = skills_map.get(req.skill_id)
+
+        latest_msg = latest_msg_map_pair.get(other_user_id)
+        unread_count = unread_map_pair.get(other_user_id, 0)
+        session = sessions_map_pair.get(other_user_id)
+
+        inbox.append(schemas.InboxConversationOut(
+            request_id=req.id,
+            other_user_id=other_user.id if other_user else other_user_id,
+            other_user_name=other_user.name if other_user else "Unknown",
+            other_user_avatar=other_user.profile_picture_url if (other_user and hasattr(other_user, 'profile_picture_url')) else None,
+            other_last_active=other_user.last_active if other_user else None,
+            skill_name=skill.name if skill else "Unknown",
+            latest_message=latest_msg.content if latest_msg else ("Request " + req.status),
+            latest_message_time=latest_msg.created_at if latest_msg else req.created_at,
+            unread_count=unread_count,
+            request_status=req.status,
+            session_id=session.id if session else None,
+            session_date=session.session_date if session else None,
+            session_time=session.start_time if session else None,
+            scheduled_start=session.scheduled_start if session else None,
+            scheduled_end=session.scheduled_end if session else None
+        ))
+
+    # Sort by latest message time descending
+    inbox.sort(key=lambda x: x.latest_message_time.timestamp() if x.latest_message_time else 0, reverse=True)
+    return inbox
+
+@router.post("/{request_id}/read")
+def mark_conversation_read(
+    request_id: int,
+    current_user: models.User = Depends(auth.get_current_user),
+    db: Session = Depends(get_db),
+):
+    req = _authorize(db, request_id, current_user.id)
+    other_user_id = req.to_user_id if req.from_user_id == current_user.id else req.from_user_id
+
+    # Find all requests between this user pair to merge reads
+    pair_reqs = db.query(models.ConnectionRequest.id).filter(
+        or_(
+            and_(models.ConnectionRequest.from_user_id == current_user.id, models.ConnectionRequest.to_user_id == other_user_id),
+            and_(models.ConnectionRequest.from_user_id == other_user_id, models.ConnectionRequest.to_user_id == current_user.id),
+        )
+    ).all()
+    pair_req_ids = [r[0] for r in pair_reqs]
+
+    unread_messages = db.query(models.Message).filter(
+        models.Message.request_id.in_(pair_req_ids),
+        models.Message.sender_id == other_user_id,
+        models.Message.is_read == False
+    ).all()
+
+    if not unread_messages:
+        return {"detail": "No unread messages"}
+
+    msg_ids = []
+    for msg in unread_messages:
+        msg.is_read = True
+        msg_ids.append(msg.id)
+
+    db.commit()
+
+    try:
+        room_id = f"pair_{min(current_user.id, other_user_id)}_{max(current_user.id, other_user_id)}"
+        import asyncio
+        loop = asyncio.get_running_loop()
+        loop.create_task(chat_manager.broadcast(room_id, {
+            "type": "messages_read",
+            "request_id": request_id,
+            "reader_id": current_user.id,
+            "message_ids": msg_ids
+        }))
+    except Exception:
+        pass
+
+    return {"detail": "Messages marked as read", "message_ids": msg_ids}
+
 @router.get("/{request_id}/messages", response_model=List[schemas.MessageOut])
 def list_messages(
     request_id: int,
     current_user: models.User = Depends(auth.get_current_user),
     db: Session = Depends(get_db),
 ):
-    _authorize(db, request_id, current_user.id)
-    rows = db.query(models.Message).filter(models.Message.request_id == request_id).order_by(models.Message.created_at).all()
+    req = _authorize(db, request_id, current_user.id)
+    other_user_id = req.to_user_id if req.from_user_id == current_user.id else req.from_user_id
+
+    pair_reqs = db.query(models.ConnectionRequest.id).filter(
+        or_(
+            and_(models.ConnectionRequest.from_user_id == current_user.id, models.ConnectionRequest.to_user_id == other_user_id),
+            and_(models.ConnectionRequest.from_user_id == other_user_id, models.ConnectionRequest.to_user_id == current_user.id),
+        )
+    ).all()
+    pair_req_ids = [r[0] for r in pair_reqs]
+
+    hidden_subq = db.query(models.MessageUserState.message_id).filter(
+        models.MessageUserState.user_id == current_user.id
+    ).subquery()
+    rows = db.query(models.Message).filter(
+        models.Message.request_id.in_(pair_req_ids),
+        ~models.Message.id.in_(hidden_subq)
+    ).order_by(models.Message.created_at).all()
     return rows
 
 
@@ -36,8 +451,298 @@ def send_message(
     db: Session = Depends(get_db),
 ):
     _authorize(db, request_id, current_user.id)
-    msg = models.Message(request_id=request_id, sender_id=current_user.id, content=payload.content)
+    msg = models.Message(request_id=request_id, sender_id=current_user.id, content=payload.content, message_metadata=payload.metadata)
     db.add(msg)
     db.commit()
     db.refresh(msg)
+    req = db.query(models.ConnectionRequest).filter(models.ConnectionRequest.id == request_id).first()
+    other_user_id = req.to_user_id if req.from_user_id == current_user.id else req.from_user_id
+    create_notification(db, other_user_id, "message", "New Message", f"{current_user.name} sent you a message", request_id, "chat")
     return msg
+
+
+def _authenticate_ws(token: str, db: Session) -> Optional[models.User]:
+    """Same JWT the REST API uses, just decoded manually — browsers can't set
+    Authorization headers on a native WebSocket handshake, so the token is
+    passed as a query param instead: /chat/ws/{request_id}?token=..."""
+    try:
+        payload = jwt.decode(token, auth.SECRET_KEY, algorithms=[auth.ALGORITHM])
+        user_id = payload.get("sub")
+        if user_id is None:
+            return None
+    except JWTError:
+        return None
+    return db.query(models.User).filter(models.User.id == int(user_id)).first()
+
+
+def _ws_auth_and_authz(token: str, request_id: int):
+    db = SessionLocal()
+    try:
+        user = _authenticate_ws(token, db)
+        if not user:
+            return None, 4401, None
+        try:
+            req = _authorize(db, request_id, user.id)
+            other_user_id = req.to_user_id if req.from_user_id == user.id else req.from_user_id
+            return user, None, other_user_id
+        except HTTPException:
+            return None, 4403, None
+    finally:
+        db.close()
+
+def _fetch_history(request_id: int, user_id: int):
+    db_hist = SessionLocal()
+    try:
+        req = db_hist.query(models.ConnectionRequest).filter(models.ConnectionRequest.id == request_id).first()
+        other_user_id = req.to_user_id if req.from_user_id == user_id else req.from_user_id
+
+        pair_reqs = db_hist.query(models.ConnectionRequest.id).filter(
+            or_(
+                and_(models.ConnectionRequest.from_user_id == user_id, models.ConnectionRequest.to_user_id == other_user_id),
+                and_(models.ConnectionRequest.from_user_id == other_user_id, models.ConnectionRequest.to_user_id == user_id),
+            )
+        ).all()
+        pair_req_ids = [r[0] for r in pair_reqs]
+
+        hidden_subq = db_hist.query(models.MessageUserState.message_id).filter(
+            models.MessageUserState.user_id == user_id
+        ).subquery()
+        
+        messages = db_hist.query(models.Message).filter(
+            models.Message.request_id.in_(pair_req_ids),
+            ~models.Message.id.in_(hidden_subq)
+        ).order_by(models.Message.created_at).all()
+        return [_serialize_message(m) for m in messages]
+    finally:
+        db_hist.close()
+
+def _save_message_and_notify(request_id: int, user_id: int, user_name: str, content: str, metadata: dict = None):
+    db_msg = SessionLocal()
+    try:
+        msg = models.Message(request_id=request_id, sender_id=user_id, content=content, message_metadata=metadata or {})
+        db_msg.add(msg)
+        db_msg.commit()
+        db_msg.refresh(msg)
+        req = db_msg.query(models.ConnectionRequest).filter(models.ConnectionRequest.id == request_id).first()
+        if req:
+            other_user_id = req.to_user_id if req.from_user_id == user_id else req.from_user_id
+            create_notification(db_msg, other_user_id, "message", "New Message", f"{user_name} sent you a message", request_id, "chat")
+
+        return _serialize_message(msg)
+    finally:
+        db_msg.close()
+
+@router.websocket("/ws/{request_id}")
+async def chat_websocket(websocket: WebSocket, request_id: int, token: str = Query("")):
+    await websocket.accept()
+    user, error_code, other_user_id = await run_in_threadpool(_ws_auth_and_authz, token, request_id)
+    if error_code:
+        await websocket.close(code=error_code)
+        return
+
+    room_id = f"pair_{min(user.id, other_user_id)}_{max(user.id, other_user_id)}"
+    await chat_manager.connect(room_id, websocket, accept=False)
+
+    try:
+        # Broadcast presence online
+        await chat_manager.broadcast(room_id, {
+            "type": "presence_update",
+            "user_id": user.id,
+            "status": "online"
+        })
+
+        # Tell me if the other user is already online
+        if chat_manager.room_size(room_id) > 1:
+            await websocket.send_json({
+                "type": "presence_update",
+                "user_id": other_user_id,
+                "status": "online"
+            })
+
+        # Send history immediately upon connection
+        hist_messages = await run_in_threadpool(_fetch_history, request_id, user.id)
+        await websocket.send_json({"type": "history", "messages": hist_messages})
+
+        while True:
+            data = await websocket.receive_json()
+            if data.get("type") == "ping":
+                await websocket.send_json({"type": "pong"})
+                continue
+
+            content = (data.get("content") or "").strip()
+            metadata = data.get("metadata", {})
+            if not content and not metadata:
+                continue
+
+            msg_payload = await run_in_threadpool(_save_message_and_notify, request_id, user.id, user.name, content, metadata)
+            msg_payload["type"] = "message"
+            await chat_manager.broadcast(room_id, msg_payload)
+    except WebSocketDisconnect:
+        pass
+    except Exception:
+        logger.exception("Chat websocket error (request_id=%s, user_id=%s)", request_id, user.id)
+        try:
+            await websocket.close(code=1011)
+        except Exception:
+            pass
+    finally:
+        chat_manager.disconnect(room_id, websocket)
+        try:
+            last_active_iso = await run_in_threadpool(_update_last_active, user.id)
+            await chat_manager.broadcast(room_id, {
+                "type": "presence_update",
+                "user_id": user.id,
+                "status": "offline",
+                "last_active": last_active_iso
+            })
+        except Exception:
+            logger.exception("Error broadcasting offline presence")
+
+def _update_last_active(user_id: int) -> str:
+    db = SessionLocal()
+    try:
+        from ..utils.timezone import utc_now
+        now = utc_now()
+        db.query(models.User).filter(models.User.id == user_id).update({"last_active": now})
+        db.commit()
+        return enforce_utc_iso(now)
+    finally:
+        db.close()
+
+
+# ── Message operations ────────────────────────────────────────────────────────
+
+def _get_message_authorized(db: Session, message_id: int, user_id: int) -> models.Message:
+    """Fetch message and verify user belongs to the conversation."""
+    msg = db.query(models.Message).filter(models.Message.id == message_id).first()
+    if not msg:
+        raise HTTPException(status_code=404, detail="Message not found")
+    _authorize(db, msg.request_id, user_id)
+    return msg
+
+
+
+
+@router.put("/messages/{message_id}", response_model=schemas.MessageOut)
+def edit_message(
+    message_id: int,
+    payload: schemas.MessageEdit,
+    current_user: models.User = Depends(auth.get_current_user),
+    db: Session = Depends(get_db),
+):
+    msg = _get_message_authorized(db, message_id, current_user.id)
+    if msg.sender_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Only the sender can edit this message")
+    if (msg.message_metadata or {}).get("deleted_for_everyone"):
+        raise HTTPException(status_code=400, detail="Cannot edit a deleted message")
+
+    from ..utils.timezone import utc_now
+    new_meta = dict(msg.message_metadata or {})
+    new_meta["edited_at"] = utc_now().isoformat()
+    msg.content = payload.content
+    msg.message_metadata = new_meta
+    db.commit()
+    db.refresh(msg)
+
+    # Broadcast real-time update to both participants
+    import asyncio
+    try:
+        loop = asyncio.get_running_loop()
+        loop.create_task(_broadcast_message_update(msg.request_id, msg))
+    except Exception:
+        pass
+    return msg
+
+
+@router.delete("/messages/{message_id}")
+def delete_message_for_everyone(
+    message_id: int,
+    current_user: models.User = Depends(auth.get_current_user),
+    db: Session = Depends(get_db),
+):
+    msg = _get_message_authorized(db, message_id, current_user.id)
+    if msg.sender_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Only the sender can delete this message for everyone")
+
+    request_id = msg.request_id
+    new_meta = dict(msg.message_metadata or {})
+    new_meta["deleted_for_everyone"] = True
+    msg.content = ""
+    msg.message_metadata = new_meta
+    db.commit()
+    db.refresh(msg)
+
+    # Broadcast real-time update to both participants
+    import asyncio
+    try:
+        loop = asyncio.get_running_loop()
+        loop.create_task(_broadcast_message_update(request_id, msg))
+    except Exception:
+        pass
+    return {"detail": "Message deleted", "id": message_id, "request_id": request_id}
+
+
+@router.post("/messages/{message_id}/hide")
+def delete_message_for_me(
+    message_id: int,
+    current_user: models.User = Depends(auth.get_current_user),
+    db: Session = Depends(get_db),
+):
+    msg = _get_message_authorized(db, message_id, current_user.id)
+    existing = db.query(models.MessageUserState).filter(
+        models.MessageUserState.message_id == message_id,
+        models.MessageUserState.user_id == current_user.id
+    ).first()
+    
+    if not existing:
+        state = models.MessageUserState(message_id=message_id, user_id=current_user.id)
+        db.add(state)
+        db.commit()
+        
+    return {"detail": "Message hidden successfully", "id": message_id}
+
+
+@router.post("/messages/{message_id}/react")
+def toggle_reaction(
+    message_id: int,
+    payload: schemas.ReactionUpdate,
+    current_user: models.User = Depends(auth.get_current_user),
+    db: Session = Depends(get_db),
+):
+    msg = _get_message_authorized(db, message_id, current_user.id)
+    new_meta = dict(msg.message_metadata or {})
+    reactions = dict(new_meta.get("reactions", {}))
+
+    emoji = payload.emoji
+    user_id = current_user.id
+
+    if emoji not in reactions:
+        reactions[emoji] = []
+
+    if user_id in reactions[emoji]:
+        reactions[emoji].remove(user_id)
+        if not reactions[emoji]:
+            del reactions[emoji]
+    else:
+        # Prevent duplicate user IDs
+        if user_id not in reactions.get(emoji, []):
+            reactions[emoji] = reactions.get(emoji, []) + [user_id]
+
+    new_meta["reactions"] = reactions
+    msg.message_metadata = new_meta
+    db.commit()
+    db.refresh(msg)
+
+    # Broadcast real-time update to both participants
+    import asyncio
+    try:
+        loop = asyncio.get_running_loop()
+        loop.create_task(_broadcast_message_update(msg.request_id, msg))
+    except Exception:
+        pass
+    return {
+        "id": msg.id,
+        "request_id": msg.request_id,
+        "metadata": msg.message_metadata,
+    }
+

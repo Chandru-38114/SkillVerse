@@ -1,0 +1,65 @@
+/* Dashboard — component styles from the DashboardV2 design.
+   Scoped under .sv-dash so the design's .card / .pill / .btn cannot collide
+   with the app's classes of the same name. */
+
+.sv-dash{
+  --acc:#FF8A3D; --accd:#C4581A; --accl:#FFE3CF;
+  font-family:Inter,system-ui,sans-serif;color:#29251F;background:#F8F3E9;
+  min-height:100vh;padding-bottom:80px;
+}
+.sv-dash *{box-sizing:border-box}
+.sv-dash a{color:#29251F}
+
+.sv-dash .muted{color:#6E6455}
+.sv-dash .eb{font-size:12px;font-weight:800;letter-spacing:.1em;color:#6E6455}
+
+.sv-dash .btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;min-height:50px;padding:0 24px;border:2px solid #29251F;border-radius:10px;font:800 16px Inter,sans-serif;color:#29251F;text-decoration:none;cursor:pointer;transition:transform 180ms ease,box-shadow 180ms ease,background-color 180ms ease}
+.sv-dash .btn-p{background:var(--acc);box-shadow:inset 0 2px 0 rgba(255,255,255,.45),0 4px 0 var(--accd),0 7px 0 #29251F}
+.sv-dash .btn-p:hover{transform:translateY(3px);box-shadow:0 2px 0 var(--accd),0 4px 0 #29251F}
+.sv-dash .btn-s{background:#FFFDF8;box-shadow:inset 0 2px 0 rgba(255,255,255,.9),0 4px 0 #D2BEA0,0 7px 0 #29251F}
+.sv-dash .btn-s:hover{background:#F0E5D2;transform:translateY(3px);box-shadow:0 2px 0 #D2BEA0,0 4px 0 #29251F}
+.sv-dash .btn:active{transform:translateY(7px);box-shadow:none}
+.sv-dash .btn:focus-visible,.sv-dash a:focus-visible{outline:3px solid #A58D70;outline-offset:3px}
+
+.sv-dash .card{background:#FFFDF8;border:2px solid #29251F;border-radius:16px;box-shadow:0 4px 0 #D2BEA0,0 7px 0 #29251F}
+.sv-dash .card-h{transition:transform 180ms ease,box-shadow 180ms ease}
+.sv-dash .card-h:hover{transform:translateY(-3px);box-shadow:0 7px 0 #D2BEA0,0 10px 0 #29251F}
+.sv-dash .pill{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 10px;border-radius:999px;border:2px solid #29251F;font-size:12px;font-weight:800;white-space:nowrap}
+.sv-dash .bar{height:12px;border-radius:999px;border:2px solid #29251F;background:#F0E5D2;overflow:hidden}
+.sv-dash .bar>span{display:block;height:100%;background:var(--acc);border-right:2px solid #29251F}
+
+.sv-dash .sk{background:linear-gradient(90deg,#EFE6D6 25%,#F8F1E4 50%,#EFE6D6 75%);background-size:200% 100%;animation:svSh 1.4s infinite linear;border-radius:16px;border:2px solid #E2D3BB}
+@keyframes svSh{to{background-position:-200% 0}}
+
+.sv-dash .ic{width:42px;height:42px;border-radius:10px;border:2px solid #29251F;background:#FFFDF8;display:flex;align-items:center;justify-content:center;position:relative;box-shadow:0 3px 0 #29251F}
+.sv-dash .ql{display:flex;align-items:center;gap:12px;padding:12px;border-radius:12px;border:2px solid transparent;text-decoration:none;font-weight:700}
+.sv-dash .ql:hover{background:#F0E5D2;border-color:#29251F}
+.sv-dash .qi{width:36px;height:36px;flex:none;border-radius:10px;border:2px solid #29251F;display:flex;align-items:center;justify-content:center;font-weight:900}
+.sv-dash .badge{width:76px;height:76px;border-radius:20px;border:2px solid #29251F;display:flex;align-items:center;justify-content:center;font-size:30px;box-shadow:0 4px 0 #29251F}
+
+.sv-dash .grid{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:32px}
+.sv-dash .paths{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}
+.sv-dash .hero{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:28px;align-items:stretch}
+
+@media (max-width:1100px){
+  .sv-dash .hero,.sv-dash .grid{grid-template-columns:1fr}
+}
+@media (max-width:640px){
+  .sv-dash .paths{grid-template-columns:1fr}
+  .sv-dash .stats{grid-template-columns:1fr 1fr !important}
+}
+
+/* motion — from the design's shared motion sheet */
+@keyframes svStamp{0%{opacity:0;scale:1.4;rotate:-8deg}100%{opacity:1;scale:1;rotate:-1.5deg}}
+@keyframes svPopD{0%{opacity:0;scale:.82}70%{opacity:1;scale:1.04}100%{opacity:1;scale:1}}
+@keyframes svSlideLD{from{opacity:0;translate:-28px 0}to{opacity:1;translate:0 0}}
+
+@media (prefers-reduced-motion:no-preference){
+  .sv-dash h1 span{display:inline-block;animation:svStamp .8s .35s both}
+  .sv-dash .badge{animation:svPopD .6s .5s both}
+  .sv-dash .ql{animation:svSlideLD .5s both}
+  .sv-dash .ql:nth-child(2){animation-delay:.50s}
+  .sv-dash .ql:nth-child(3){animation-delay:.60s}
+  .sv-dash .stats > div{animation:svPopD .5s .45s both}
+  .sv-dash .paths .card-h:hover{transform:translateY(-6px) rotate(-.6deg)}
+}

@@ -1,0 +1,61 @@
+/* Profile — component styles from the ProfileV2 design.
+   Scoped under .sv-profile so the design's .card / .pill / .btn cannot collide
+   with the app's classes of the same name. */
+
+.sv-profile{
+  --acc:#FF8A3D; --accd:#C4581A; --accl:#FFE3CF;
+  font-family:Inter,system-ui,sans-serif;color:#29251F;background:#F8F3E9;
+  min-height:100vh;padding-bottom:80px;
+}
+.sv-profile *{box-sizing:border-box}
+.sv-profile a{color:#29251F}
+
+.sv-profile .muted{color:#6E6455}
+.sv-profile .eb{font-size:12px;font-weight:800;letter-spacing:.1em;color:#6E6455}
+.sv-profile .mono{font-family:"JetBrains Mono",ui-monospace,Menlo,monospace}
+
+.sv-profile .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 18px;border:2px solid #29251F;border-radius:10px;font:800 14px Inter,sans-serif;color:#29251F;text-decoration:none;cursor:pointer;transition:transform 180ms ease,box-shadow 180ms ease;white-space:nowrap}
+.sv-profile .btn-p{background:var(--acc);box-shadow:inset 0 2px 0 rgba(255,255,255,.45),0 3px 0 var(--accd),0 5px 0 #29251F}
+.sv-profile .btn-p:hover{transform:translateY(2px);box-shadow:0 1px 0 var(--accd),0 3px 0 #29251F}
+.sv-profile .btn-s{background:#FFFDF8;box-shadow:0 3px 0 #D2BEA0,0 5px 0 #29251F}
+.sv-profile .btn-s:hover{background:#F0E5D2;transform:translateY(2px);box-shadow:0 1px 0 #D2BEA0,0 3px 0 #29251F}
+.sv-profile .btn:focus-visible,.sv-profile a:focus-visible{outline:3px solid #A58D70;outline-offset:3px}
+
+.sv-profile .card{background:#FFFDF8;border:2px solid #29251F;border-radius:16px;box-shadow:0 4px 0 #D2BEA0,0 7px 0 #29251F}
+.sv-profile .pill{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 10px;border-radius:999px;border:2px solid #29251F;font-size:12px;font-weight:800;white-space:nowrap;background:#FFFDF8}
+
+.sv-profile .stat{padding:14px 16px;border:2px solid #29251F;border-radius:14px;display:flex;flex-direction:column;gap:2px}
+.sv-profile .teach{display:flex;align-items:center;gap:14px;padding:14px 16px;border:2px solid #29251F;border-radius:14px;background:#FFFDF8;box-shadow:0 3px 0 #29251F}
+
+.sv-profile .bar{height:12px;border:2px solid #29251F;border-radius:999px;background:#F0E5D2;overflow:hidden}
+.sv-profile .bar span{display:block;height:100%;background:#9C8BD0;border-right:2px solid #29251F}
+
+.sv-profile .sk{background:linear-gradient(90deg,#EFE6D6 25%,#F8F1E4 50%,#EFE6D6 75%);background-size:200% 100%;animation:svShPr 1.4s infinite linear;border-radius:16px;border:2px solid #E2D3BB}
+@keyframes svShPr{to{background-position:-200% 0}}
+
+.sv-profile .grid2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:28px;align-items:start}
+
+@media (max-width:980px){
+  .sv-profile .grid2{grid-template-columns:1fr}
+  .sv-profile .idc{flex-direction:column;text-align:center;align-items:center !important}
+  .sv-profile .idc .meta{justify-content:center}
+}
+@media (max-width:640px){.sv-profile .stats{grid-template-columns:1fr 1fr !important}}
+
+@keyframes svPopPr{0%{opacity:0;scale:.82}70%{opacity:1;scale:1.04}100%{opacity:1;scale:1}}
+@keyframes svSlideLPr{from{opacity:0;transform:translateX(-14px)}to{opacity:1;transform:translateX(0)}}
+@keyframes svSlideRPr{from{opacity:0;transform:translateX(18px)}to{opacity:1;transform:translateX(0)}}
+
+@media (prefers-reduced-motion:no-preference){
+  .sv-profile .idc > span:first-child{animation:svPopPr .7s .2s both}
+  .sv-profile .stat{animation:svPopPr .5s both}
+  .sv-profile .stat:nth-child(2){animation-delay:.43s}
+  .sv-profile .stat:nth-child(3){animation-delay:.51s}
+  .sv-profile .stat:nth-child(4){animation-delay:.59s}
+  .sv-profile .teach{animation:svSlideLPr .5s both}
+  .sv-profile .teach:nth-child(2){animation-delay:.50s}
+  .sv-profile .teach:nth-child(3){animation-delay:.60s}
+  .sv-profile figure.card{animation:svSlideRPr .6s both}
+  .sv-profile figure.card:nth-of-type(2){animation-delay:.12s}
+  .sv-profile figure.card:nth-of-type(3){animation-delay:.24s}
+}

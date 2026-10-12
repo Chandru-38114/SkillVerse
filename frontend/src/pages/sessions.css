@@ -1,0 +1,63 @@
+/* Sessions — component styles from the SessionsV2 design.
+   Scoped under .sv-sessions so the design's .card / .pill / .btn / .tab
+   cannot collide with the app's classes of the same name. */
+
+.sv-sessions{
+  --acc:#FF8A3D; --accd:#C4581A; --accl:#FFE3CF;
+  font-family:Inter,system-ui,sans-serif;color:#29251F;background:#F8F3E9;
+  min-height:100vh;padding-bottom:80px;position:relative;
+}
+.sv-sessions *{box-sizing:border-box}
+.sv-sessions a{color:#29251F}
+
+.sv-sessions .muted{color:#6E6455}
+.sv-sessions .eb{font-size:12px;font-weight:800;letter-spacing:.1em;color:#6E6455}
+.sv-sessions .mono{font-family:"JetBrains Mono",ui-monospace,Menlo,monospace}
+
+.sv-sessions .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:46px;padding:0 20px;border:2px solid #29251F;border-radius:10px;font:800 15px Inter,sans-serif;color:#29251F;text-decoration:none;cursor:pointer;transition:transform 180ms ease,box-shadow 180ms ease;white-space:nowrap}
+.sv-sessions .btn-p{background:var(--acc);box-shadow:inset 0 2px 0 rgba(255,255,255,.45),0 3px 0 var(--accd),0 5px 0 #29251F}
+.sv-sessions .btn-p:hover:not(:disabled){transform:translateY(2px);box-shadow:0 1px 0 var(--accd),0 3px 0 #29251F}
+.sv-sessions .btn-s{background:#FFFDF8;box-shadow:0 3px 0 #D2BEA0,0 5px 0 #29251F}
+.sv-sessions .btn-s:hover:not(:disabled){background:#F0E5D2;transform:translateY(2px);box-shadow:0 1px 0 #D2BEA0,0 3px 0 #29251F}
+.sv-sessions .btn-d{background:#E2533A;color:#FFFDF8;box-shadow:0 3px 0 #9A2B1E,0 5px 0 #29251F}
+.sv-sessions .btn:disabled{opacity:.55;cursor:not-allowed}
+.sv-sessions .btn:focus-visible,.sv-sessions a:focus-visible,.sv-sessions button:focus-visible{outline:3px solid #A58D70;outline-offset:3px}
+
+.sv-sessions .card{background:#FFFDF8;border:2px solid #29251F;border-radius:16px;box-shadow:0 4px 0 #D2BEA0,0 7px 0 #29251F}
+.sv-sessions .pill{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 10px;border-radius:999px;border:2px solid #29251F;font-size:11px;font-weight:800;white-space:nowrap;background:#FFFDF8;text-transform:uppercase;letter-spacing:.05em}
+
+.sv-sessions .tab{display:inline-flex;align-items:center;gap:10px;min-height:46px;padding:0 18px;border:2px solid #29251F;border-radius:12px 12px 0 0;border-bottom:none;background:#F0E5D2;font:800 15px Inter,sans-serif;cursor:pointer;color:#29251F;margin-bottom:-2px}
+.sv-sessions .tab.on{background:#FFFDF8;box-shadow:inset 0 5px 0 var(--acc)}
+.sv-sessions .cnt{min-width:24px;height:22px;padding:0 6px;border-radius:999px;border:2px solid #29251F;background:#FFFDF8;font:700 11px "JetBrains Mono",ui-monospace,monospace;display:inline-flex;align-items:center;justify-content:center}
+.sv-sessions .tab.on .cnt{background:var(--acc)}
+
+.sv-sessions .ticket{display:flex;align-items:stretch}
+.sv-sessions .date{width:92px;flex:none;border-right:2px dashed #29251F;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:14px 8px}
+
+.sv-sessions .sk{background:linear-gradient(90deg,#EFE6D6 25%,#F8F1E4 50%,#EFE6D6 75%);background-size:200% 100%;animation:svShS 1.4s infinite linear;border-radius:16px;border:2px solid #E2D3BB}
+@keyframes svShS{to{background-position:-200% 0}}
+@keyframes svPulseS{50%{opacity:.35}}
+.sv-sessions .live{animation:svPulseS 1.4s infinite}
+@media (prefers-reduced-motion:reduce){.sv-sessions .live,.sv-sessions .sk{animation:none}}
+
+@media (max-width:700px){
+  .sv-sessions .ticket{flex-direction:column}
+  .sv-sessions .date{width:auto;flex-direction:row;gap:8px;border-right:none;border-bottom:2px dashed #29251F}
+  .sv-sessions .acts{width:100%}
+  .sv-sessions .acts .btn{flex:1}
+  .sv-sessions .hero{grid-template-columns:1fr !important}
+}
+
+@keyframes svSlideRS{from{opacity:0;transform:translateX(18px)}to{opacity:1;transform:translateX(0)}}
+@keyframes svRiseS{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:translateY(0)}}
+@keyframes svPopS{0%{opacity:0;scale:.82}70%{opacity:1;scale:1.04}100%{opacity:1;scale:1}}
+
+@media (prefers-reduced-motion:no-preference){
+  .sv-sessions .ticket{animation:svSlideRS .6s both}
+  .sv-sessions .ticket:nth-child(2){animation-delay:.40s}
+  .sv-sessions .ticket:nth-child(3){animation-delay:.50s}
+  .sv-sessions .ticket:nth-child(4){animation-delay:.60s}
+  .sv-sessions .hero{animation:svRiseS .8s .1s both}
+  .sv-sessions .date{animation:svPopS .5s .4s both}
+  .sv-sessions .ticket:hover .date{scale:1.06;transition:scale .2s}
+}

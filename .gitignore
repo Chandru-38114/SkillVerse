@@ -3,8 +3,10 @@ venv/
 __pycache__/
 *.pyc
 
-# Environment
+# Environment — ignore all .env variants except the documented example templates
 .env
+.env.*
+!.env.example
 
 # Database
 *.db
@@ -19,3 +21,14 @@ dist/
 # OS
 .DS_Store
 Thumbs.db
+
+# Temp
+scratch/
+
+# Runtime User Uploads
+backend/uploads/
+backend/venv*
+create_zip.py
+
+# Evaluation suite scratch data (throwaway SQLite files, not for the repo)
+eval/tmp/

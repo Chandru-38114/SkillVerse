@@ -1,49 +1,146 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { api, saveSession } from '../api'
+import { api, saveSession, prewarmServer } from '../api'
+import AuthShell, { Alert, AuthField, PwField, GoogleButton } from '../components/auth/AuthShell'
 
 export default function Login() {
   const navigate = useNavigate()
-  const [email, setEmail] = useState('')
+  const [identifier, setIdentifier] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [googleLoading, setGoogleLoading] = useState(false)
+  const [slowServerMessage, setSlowServerMessage] = useState(false)
+
+  useEffect(() => {
+    prewarmServer()
+  }, [])
+
+  useEffect(() => {
+    let timer
+    if (loading || googleLoading) {
+      setSlowServerMessage(false)
+      timer = setTimeout(() => {
+        setSlowServerMessage(true)
+      }, 6000)
+    } else {
+      setSlowServerMessage(false)
+    }
+    return () => clearTimeout(timer)
+  }, [loading, googleLoading])
 
   async function handleSubmit(e) {
     e.preventDefault()
     setError('')
     setLoading(true)
     try {
-      const { access_token, user } = await api.login({ email, password })
+      const isEmail = identifier.includes('@')
+      const payload = {
+        email: isEmail ? identifier : null,
+        mobile_number: isEmail ? null : identifier,
+        password
+      }
+      const { access_token, user } = await api.login(payload)
       saveSession(access_token, user)
-      navigate('/dashboard')
+      if (!user.is_email_verified) {
+        navigate('/verify-email')
+      } else if (!user.college || user.college.trim() === '') {
+        navigate('/onboarding')
+      } else {
+        navigate('/dashboard')
+      }
     } catch (err) {
-      setError(err.message)
+      setError(err.message || 'Login failed')
     } finally {
       setLoading(false)
     }
   }
 
+  async function handleGoogleSuccess(credentialResponse) {
+    setError('')
+    setGoogleLoading(true)
+    try {
+      const res = await api.googleAuth(credentialResponse.credential)
+
+      if (res.onboarding_required) {
+        navigate('/onboarding', { state: { onboardingToken: res.onboarding_token } })
+      } else {
+        const { access_token, user } = res
+        saveSession(access_token, user)
+        if (!user.college || user.college.trim() === '') {
+          navigate('/onboarding')
+        } else {
+          navigate('/dashboard')
+        }
+      }
+    } catch (err) {
+      setError(err.message || 'Google authentication failed')
+    } finally {
+      setGoogleLoading(false)
+    }
+  }
+
   return (
-    <div className="max-w-md mx-auto px-6 py-16">
-      <h1 className="font-display text-3xl mb-8">Welcome back</h1>
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <label className="block">
-          <span className="label-eyebrow block mb-1.5">Email</span>
-          <input className="input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-        </label>
-        <label className="block">
-          <span className="label-eyebrow block mb-1.5">Password</span>
-          <input className="input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
-        </label>
-        {error && <p className="text-sm text-red-600">{error}</p>}
-        <button type="submit" disabled={loading} className="btn-primary w-full">
-          {loading ? 'Logging in…' : 'Log in'}
+    <AuthShell
+      eyebrow="WELCOME BACK"
+      title="Pick up where you left off."
+      text="Your sessions, requests and progress are waiting for you."
+      steps={['Check your requests', 'Join your next session', 'Keep your streak going']}
+      current={-1}
+    >
+      <form className="card" onSubmit={handleSubmit} style={{ width: '100%', maxWidth: 460, padding: 32, display: 'flex', flexDirection: 'column', gap: 18 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <h2 style={{ margin: 0, fontSize: 30, fontWeight: 900 }}>Log in</h2>
+          <span className="muted">Welcome back</span>
+        </div>
+
+        {error && <Alert kind="err">{error}</Alert>}
+        {slowServerMessage && (
+          <Alert kind="info">
+            Waking up the server, this can take up to a minute. Please don't refresh.
+          </Alert>
+        )}
+
+        <AuthField
+          id="identifier"
+          label="Email or Mobile Number"
+          placeholder="you@example.com or +1234567890"
+          value={identifier}
+          onChange={setIdentifier}
+          invalid={!!error}
+          disabled={loading || googleLoading}
+          required
+        />
+
+        <PwField
+          id="password"
+          label="Password"
+          value={password}
+          onChange={setPassword}
+          invalid={!!error}
+          disabled={loading || googleLoading}
+          required
+          right={<Link to="/forgot-password" style={{ fontSize: 13, fontWeight: 700 }}>Forgot password?</Link>}
+        />
+
+        <button type="submit" className="btn btn-p full" style={{ marginTop: 4 }} disabled={loading || googleLoading}>
+          {loading ? 'Signing in…' : 'Log In'}
         </button>
+
+        <div className="divider" style={{ marginTop: 6 }}>or</div>
+
+        <GoogleButton
+          onSuccess={handleGoogleSuccess}
+          onError={() => setError('Google Login failed')}
+          label={googleLoading ? "Signing you in..." : "Continue with Google"}
+          width={396}
+          disabled={loading || googleLoading}
+        />
       </form>
-      <p className="text-sm text-ink/50 mt-6">
-        New here? <Link to="/signup" className="text-moss font-medium">Create a profile</Link>
-      </p>
-    </div>
+
+      <span style={{ fontSize: 15 }}>
+        New to SkillVerse? <Link to="/signup" style={{ fontWeight: 800 }}>Create an account</Link>
+      </span>
+    </AuthShell>
   )
 }

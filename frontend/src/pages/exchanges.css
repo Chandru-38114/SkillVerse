@@ -1,0 +1,188 @@
+/* Exchanges — component styles following Market and Requests design tokens.
+   Scoped under .sv-ex so styles do not collide with global classes. */
+
+.sv-ex {
+  --acc: #FF8A3D;
+  --accd: #C4581A;
+  --accl: #FFE3CF;
+  font-family: Inter, system-ui, sans-serif;
+  color: #29251F;
+  background: #F8F3E9;
+  min-height: 100vh;
+  padding-bottom: 80px;
+  position: relative;
+}
+
+.sv-ex * {
+  box-sizing: border-box;
+}
+
+.sv-ex a {
+  color: #29251F;
+}
+
+.sv-ex .muted {
+  color: #6E6455;
+}
+
+.sv-ex .eb {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .1em;
+  color: #6E6455;
+}
+
+.sv-ex .mono {
+  font-family: "JetBrains Mono", ui-monospace, Menlo, monospace;
+}
+
+.sv-ex .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 18px;
+  border: 2px solid #29251F;
+  border-radius: 10px;
+  font: 800 15px Inter, sans-serif;
+  color: #29251F;
+  text-decoration: none;
+  cursor: pointer;
+  transition: transform 180ms ease, box-shadow 180ms ease, background-color 180ms ease;
+  white-space: nowrap;
+}
+
+.sv-ex .btn-p {
+  background: var(--acc);
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, .45), 0 3px 0 var(--accd), 0 5px 0 #29251F;
+}
+
+.sv-ex .btn-p:hover:not(:disabled) {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 var(--accd), 0 3px 0 #29251F;
+}
+
+.sv-ex .btn-s {
+  background: #FFFDF8;
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, .9), 0 3px 0 #D2BEA0, 0 5px 0 #29251F;
+}
+
+.sv-ex .btn-s:hover:not(:disabled) {
+  background: #F0E5D2;
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 #D2BEA0, 0 3px 0 #29251F;
+}
+
+.sv-ex .btn-d {
+  background: #F6DDD8;
+  color: #9A2B1E;
+  border-color: #9A2B1E;
+  box-shadow: 0 3px 0 #29251F;
+}
+
+.sv-ex .btn-d:hover:not(:disabled) {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 #29251F;
+}
+
+.sv-ex .btn:disabled {
+  opacity: .55;
+  cursor: not-allowed;
+}
+
+.sv-ex .btn:focus-visible,
+.sv-ex a:focus-visible,
+.sv-ex button:focus-visible {
+  outline: 3px solid #A58D70;
+  outline-offset: 3px;
+}
+
+.sv-ex .card {
+  background: #FFFDF8;
+  border: 2px solid #29251F;
+  border-radius: 16px;
+  box-shadow: 0 4px 0 #D2BEA0, 0 7px 0 #29251F;
+}
+
+.sv-ex .pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 2px solid #29251F;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+  background: #FFFDF8;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.sv-ex .tab {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 0 22px;
+  border: 2px solid #29251F;
+  border-radius: 12px 12px 0 0;
+  border-bottom: none;
+  background: #F0E5D2;
+  font: 800 16px Inter, sans-serif;
+  cursor: pointer;
+  color: #29251F;
+  margin-bottom: -2px;
+}
+
+.sv-ex .tab.on {
+  background: #FFFDF8;
+  box-shadow: inset 0 5px 0 var(--acc);
+}
+
+.sv-ex .cnt {
+  min-width: 24px;
+  height: 24px;
+  padding: 0 6px;
+  border-radius: 999px;
+  border: 2px solid #29251F;
+  background: var(--acc);
+  font: 700 12px "JetBrains Mono", ui-monospace, monospace;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sv-ex .sk {
+  background: linear-gradient(90deg, #EFE6D6 25%, #F8F1E4 50%, #EFE6D6 75%);
+  background-size: 200% 100%;
+  animation: svShE 1.4s infinite linear;
+  border-radius: 16px;
+  border: 2px solid #E2D3BB;
+}
+
+@keyframes svShE {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+@media (max-width: 700px) {
+  .sv-ex .tabs-wrap {
+    overflow-x: auto;
+    width: 100%;
+  }
+  .sv-ex .group-header {
+    flex-direction: column;
+    align-items: flex-start !important;
+  }
+  .sv-ex .acts {
+    width: 100%;
+  }
+  .sv-ex .acts .btn {
+    flex: 1;
+  }
+}

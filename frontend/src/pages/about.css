@@ -1,0 +1,67 @@
+/* About — component styles from the AboutV2 design.
+   Scoped under .sv-about so the design's .card / .btn cannot collide with the
+   app's classes of the same name. */
+
+.sv-about{
+  --acc:#FF8A3D; --accd:#C4581A; --accl:#FFE3CF;
+  font-family:Inter,system-ui,sans-serif;color:#29251F;background:#F8F3E9;
+}
+.sv-about *{box-sizing:border-box}
+.sv-about a{color:#29251F}
+
+.sv-about .wrap{max-width:1120px;margin:0 auto;padding:0 24px}
+.sv-about .muted{color:#6E6455}
+.sv-about .eyebrow{font-size:12px;font-weight:800;letter-spacing:.12em;color:#6E6455;text-transform:uppercase}
+.sv-about .h2{margin:0;font-size:clamp(32px,4vw,46px);line-height:1.08;font-weight:900;letter-spacing:-.6px}
+.sv-about .body{margin:0;font-size:18px;line-height:1.65;color:#4E473C}
+
+.sv-about .card{background:#FFFDF8;border:2px solid #29251F;border-radius:14px;box-shadow:0 4px 0 #D2BEA0,0 7px 0 #29251F}
+
+.sv-about .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:40px;padding:0 16px;border:2px solid #29251F;border-radius:9px;font:800 14px Inter,sans-serif;color:#29251F;background:#FFFDF8;text-decoration:none;cursor:pointer;box-shadow:inset 0 1px 0 rgba(255,255,255,.9),0 2px 0 #D2BEA0,0 4px 0 #29251F;transition:transform 180ms ease,box-shadow 180ms ease,background-color 180ms ease}
+.sv-about .btn:hover{background:#F0E5D2;transform:translateY(2px);box-shadow:0 1px 0 #D2BEA0,0 2px 0 #29251F}
+.sv-about .btn:active{transform:translateY(4px);box-shadow:none}
+.sv-about .btn:focus-visible,.sv-about a:focus-visible{outline:3px solid #A58D70;outline-offset:4px}
+
+.sv-about .mark{background:linear-gradient(transparent 56%,var(--acc) 56%,var(--acc) 92%,transparent 92%);padding:0 6px}
+
+.sv-about .frame{position:relative}
+.sv-about .frame .back{position:absolute;inset:0;border-radius:18px;border:2px solid #29251F;transform:translate(14px,14px)}
+.sv-about .frame .img{position:relative;border-radius:18px;border:2px solid #29251F;background:#EADFCC;overflow:hidden;display:flex;align-items:center;justify-content:center;aspect-ratio:4/3}
+.sv-about .frame .img img{width:100%;height:100%;object-fit:cover}
+.sv-about .ph{display:flex;flex-direction:column;align-items:center;gap:8px;color:#6E6455;font:600 13px Inter,sans-serif;text-align:center;padding:16px}
+
+.sv-about .sticker{position:absolute;border:2px solid #29251F;box-shadow:0 4px 0 #29251F;font-weight:900}
+.sv-about .num{display:inline-flex;align-items:center;justify-content:center;height:34px;padding:0 12px;border-radius:999px;border:2px solid #29251F;background:#29251F;color:#FFFDF8;font:800 13px Inter,sans-serif}
+
+.sv-about .alt{display:flex;gap:72px;align-items:center;flex-wrap:wrap}
+.sv-about .alt > div{flex:1 1 420px;min-width:0}
+
+.sv-about .tile{width:56px;height:56px;border-radius:14px;border:2px solid #29251F;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:900}
+
+.sv-about .loop{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:36px;position:relative}
+.sv-about .stage{padding:22px;display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center;position:relative}
+.sv-about .arr{position:absolute;right:-32px;top:50%;transform:translateY(-50%);z-index:2}
+
+.sv-about .stairs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;align-items:end}
+.sv-about .stair{border:2px solid #29251F;border-radius:12px 12px 0 0;display:flex;flex-direction:column;justify-content:flex-start;align-items:center;padding:16px 10px;font-weight:900;gap:4px}
+
+@media (max-width:860px){
+  .sv-about .loop{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .sv-about .arr{display:none}
+  .sv-about .alt{gap:44px}
+}
+@media (max-width:520px){.sv-about .loop{grid-template-columns:1fr}}
+@media (prefers-reduced-motion:reduce){.sv-about .btn{transition:none}}
+
+@keyframes svGrowYAb{from{transform:scaleY(.1);opacity:0}to{transform:scaleY(1);opacity:1}}
+@keyframes svPopAb{0%{opacity:0;scale:.82}70%{opacity:1;scale:1.04}100%{opacity:1;scale:1}}
+@keyframes svKenAb{from{scale:1}to{scale:1.08}}
+
+@media (prefers-reduced-motion:no-preference){
+  .sv-about .stair{transform-origin:bottom;animation:svGrowYAb .9s cubic-bezier(.2,.8,.2,1) both}
+  .sv-about .stair:nth-child(2){animation-delay:.15s}
+  .sv-about .stair:nth-child(3){animation-delay:.3s}
+  .sv-about .stair:nth-child(4){animation-delay:.45s}
+  .sv-about .frame .img img{animation:svKenAb 16s ease-in-out infinite alternate}
+  .sv-about .tile{animation:svPopAb .6s .3s both}
+}

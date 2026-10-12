@@ -1,16 +1,31 @@
+import os
 from sqlalchemy import create_engine
+from sqlalchemy.pool import NullPool
 from sqlalchemy.orm import sessionmaker, declarative_base
 
-# SQLite for local dev. Swap to Postgres later by changing this URL, e.g.:
-# "postgresql://user:password@localhost:5432/skillverse"
-SQLALCHEMY_DATABASE_URL = "sqlite:///./skillverse.db"
+# Read the database URL from the environment.
+DATABASE_URL = os.environ.get("DATABASE_URL", "sqlite:///./skillverse.db")
 
-engine = create_engine(
-    SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
-)
+_is_sqlite = DATABASE_URL.startswith("sqlite")
+_connect_args = {"check_same_thread": False} if _is_sqlite else {}
+
+if _is_sqlite:
+    engine = create_engine(
+        DATABASE_URL,
+        connect_args=_connect_args,
+    )
+else:
+    engine = create_engine(
+        DATABASE_URL,
+        connect_args=_connect_args,
+        pool_size=5,
+        max_overflow=5,
+        pool_pre_ping=True,
+        pool_recycle=300
+    )
+
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
-
 
 def get_db():
     db = SessionLocal()
