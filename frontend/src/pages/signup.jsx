@@ -1,8 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { GoogleLogin } from '@react-oauth/google'
 import { api, saveSession } from '../api'
-import AuthShell, { Alert, AuthField, SelectField, TextAreaField, PwField, PasswordRules } from '../components/auth/AuthShell'
+import AuthShell, { Alert, AuthField, SelectField, TextAreaField, PwField, PasswordRules, GoogleButton } from '../components/auth/AuthShell'
 
 const GENDERS = ['Male', 'Female', 'Non-binary', 'Prefer not to say']
 
@@ -101,13 +100,12 @@ export default function Signup() {
 
           {error && <div style={{ width: '100%', textAlign: 'left' }}><Alert kind="err">{error}</Alert></div>}
 
-          <div className="gbtn" style={{ width: '100%', maxWidth: 320, padding: 2, overflow: 'hidden' }}>
-            <GoogleLogin
+          <div style={{ width: '100%', maxWidth: 320 }}>
+            <GoogleButton
               onSuccess={handleGoogleSuccess}
               onError={() => setError('Google verification failed. Please try again.')}
-              useOneTap={false}
-              text="continue_with"
-              width="300"
+              label="Verify with Google"
+              width={320}
             />
           </div>
 

@@ -3,12 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import './about.css';
 
 /*
- * The artboard references four images that do not exist in the repo yet:
- *   /assets/hero-learning.png, discover-skills.png, learn-with-others.png,
- *   practice-mastery.png
- * Until they are added, each frame shows the design's own labelled placeholder.
- * To use a real image, drop it in frontend/public/assets/ and put its path in
- * the `img` field below — the placeholder is replaced automatically.
+ * The four photos the artboard calls for already live in frontend/public/assets/
+ * (hero-learning, discover-skills, learn-with-others, practice-mastery .png).
+ * `Framed` renders the real image and falls back to the design's labelled
+ * placeholder only if a file is missing, so a broken path degrades instead of
+ * leaving an empty frame.
  */
 const BLOCKS = [
   {
@@ -45,6 +44,20 @@ const STAGES = [
   ['Develop', 'Sessions turn knowledge into action.', '▲'],
   ['Master', 'Teaching lets you share what you know.', '★'],
 ];
+
+function Framed({ path, label, alt }) {
+  const [failed, setFailed] = React.useState(false);
+  if (failed) return <Placeholder path={path} label={label} />;
+  return (
+    <img
+      src={path}
+      alt={alt || ''}
+      loading="lazy"
+      onError={() => setFailed(true)}
+      style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+    />
+  );
+}
 
 function Placeholder({ path, label }) {
   return (
@@ -89,7 +102,7 @@ export default function AboutSkillVerse() {
           <div className="frame" style={{ width: '100%', maxWidth: 860, marginTop: 26 }}>
             <div className="back" style={{ background: 'var(--acc)' }} />
             <div className="img" style={{ aspectRatio: '16/8' }}>
-              <Placeholder path="/assets/hero-learning.png" label="“People learning together”" />
+              <Framed path="/assets/hero-learning.png" label="“People learning together”" alt="People learning together" />
             </div>
             <span className="sticker" style={{ left: -18, top: 30, width: 60, height: 60, borderRadius: 999, background: '#FBEFC4', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24 }}>★</span>
             <span className="sticker" style={{ right: -10, bottom: 40, padding: '10px 14px', borderRadius: 10, background: '#D6F3EA', fontSize: 14, transform: 'rotate(5deg)' }}>Learn ⇄ Teach</span>
@@ -113,7 +126,7 @@ export default function AboutSkillVerse() {
               </div>
               <div className="frame" style={{ transform: `rotate(${b.tilt})` }}>
                 <div className="back" style={{ background: b.backBg }} />
-                <div className="img"><Placeholder path={b.img} /></div>
+                <div className="img"><Framed path={b.img} alt={b.title} /></div>
               </div>
             </div>
           ))}

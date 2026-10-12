@@ -1,8 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { GoogleLogin } from '@react-oauth/google'
 import { api, saveSession } from '../api'
-import AuthShell, { Alert, AuthField, PwField } from '../components/auth/AuthShell'
+import AuthShell, { Alert, AuthField, PwField, GoogleButton } from '../components/auth/AuthShell'
 
 export default function Login() {
   const navigate = useNavigate()
@@ -100,17 +99,12 @@ export default function Login() {
 
         <div className="divider" style={{ marginTop: 6 }}>or</div>
 
-        {/* Google renders its own button; it sits inside the design's bordered frame */}
-        <div className="gbtn" style={{ padding: 2, overflow: 'hidden' }}>
-          <GoogleLogin
-            onSuccess={handleGoogleSuccess}
-            onError={() => setError('Google Login failed')}
-            theme="outline"
-            size="large"
-            text="continue_with"
-            width="320"
-          />
-        </div>
+        <GoogleButton
+          onSuccess={handleGoogleSuccess}
+          onError={() => setError('Google Login failed')}
+          label="Continue with Google"
+          width={396}
+        />
       </form>
 
       <span style={{ fontSize: 15 }}>

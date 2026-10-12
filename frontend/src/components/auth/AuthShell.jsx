@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { Link } from 'react-router-dom'
+import { GoogleLogin } from '@react-oauth/google'
 import '../../pages/auth.css'
 
 /*
@@ -227,6 +228,43 @@ export function OtpBoxes({ length = 6, value = '', onChange, disabled = false, i
           onKeyDown={(e) => handleKeyDown(e, index)}
         />
       ))}
+    </div>
+  )
+}
+
+const GLogo = () => (
+  <svg width="20" height="20" viewBox="0 0 48 48" aria-hidden="true">
+    <path fill="#4285F4" d="M45.1 24.5c0-1.6-.1-2.8-.4-4H24v7.6h12.1c-.2 2-1.5 5-4.4 7l-.1.3 6.4 5 .4.1c4.1-3.8 6.7-9.4 6.7-16z" />
+    <path fill="#34A853" d="M24 46c5.9 0 10.8-1.9 14.4-5.3l-6.9-5.3c-1.8 1.3-4.3 2.2-7.5 2.2-5.8 0-10.7-3.8-12.4-9.1l-.3.1-6.6 5.1-.1.3C8.1 41 15.5 46 24 46z" />
+    <path fill="#FBBC05" d="M11.6 28.5A13.6 13.6 0 0 1 10.8 24c0-1.6.3-3.1.8-4.5v-.3l-6.9-5.4-.2.1A22 22 0 0 0 2 24c0 3.5.9 6.9 2.5 9.9l7.1-5.4z" />
+    <path fill="#EA4335" d="M24 10.5c4.1 0 6.9 1.8 8.5 3.3l6.2-6C34.8 4.3 29.9 2 24 2 15.5 2 8.1 7 4.5 14.1l7.1 5.4C13.3 14.3 18.2 10.5 24 10.5z" />
+  </svg>
+)
+
+/*
+ * The design draws its own bordered "Continue with Google" button. Google's
+ * real button is rendered inside an iframe and CANNOT be restyled, so the only
+ * way to have both the design and the ID-token flow the backend expects is to
+ * lay Google's button over ours, invisible, and let it take the click.
+ *
+ * `width` must be >= the rendered width of this button, or part of it will not
+ * be clickable. Google caps it at 400px.
+ */
+export function GoogleButton({ onSuccess, onError, label = 'Continue with Google', width = 380, disabled = false }) {
+  return (
+    <div className="gbtn" style={{ position: 'relative', width: '100%' }}>
+      <GLogo />
+      {label}
+      {!disabled && (
+        <span
+          style={{
+            position: 'absolute', inset: 0, overflow: 'hidden', borderRadius: 10,
+            opacity: 0.0001, display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}
+        >
+          <GoogleLogin onSuccess={onSuccess} onError={onError} width={width} />
+        </span>
+      )}
     </div>
   )
 }

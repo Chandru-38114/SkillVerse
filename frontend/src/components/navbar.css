@@ -1,0 +1,80 @@
+/* Navbar — Kit 02, option B "Floating card", from the Navbar design.
+   Scoped under .sv-nav. The navbar renders outside every page's own scope
+   class, so it carries its own. */
+
+.sv-nav{
+  --acc:#FF8A3D; --acch:#FF9D5C; --accd:#C4581A; --accl:#FFE3CF;
+  font-family:Inter,system-ui,sans-serif;color:#29251F;
+  position:sticky;top:0;z-index:40;background:#F8F3E9;
+}
+.sv-nav *{box-sizing:border-box}
+
+.sv-nav .wrap{padding:16px 24px 0}
+.sv-nav .bar{
+  display:flex;align-items:center;justify-content:space-between;gap:16px;
+  background:#FFFDF8;border:2px solid #29251F;border-radius:16px;
+  box-shadow:0 4px 0 #D2BEA0,0 7px 0 #29251F;padding:12px 16px 12px 20px;
+  max-width:1280px;margin:0 auto;
+}
+
+.sv-nav .logo{display:flex;align-items:center;gap:10px;text-decoration:none;color:#29251F;font-size:20px;font-weight:800;letter-spacing:-.3px;white-space:nowrap}
+.sv-nav .mark{width:36px;height:36px;flex:none;border-radius:9px;border:2px solid #29251F;background:var(--acc);display:flex;align-items:center;justify-content:center;box-shadow:0 3px 0 #29251F}
+
+.sv-nav .links{display:flex;align-items:center;gap:6px;list-style:none;margin:0;padding:0}
+.sv-nav .lnk{position:relative;display:inline-flex;align-items:center;gap:6px;min-height:40px;padding:0 14px;border-radius:9px;border:2px solid transparent;background:transparent;font:700 15px Inter,sans-serif;color:#29251F;cursor:pointer;text-decoration:none;transition:background-color 150ms ease,transform 150ms ease,box-shadow 150ms ease;white-space:nowrap}
+.sv-nav .lnk:hover{background:#F0E5D2}
+.sv-nav .lnk.is-active{background:#29251F;color:#FFFDF8;border-color:#29251F}
+.sv-nav .lnk svg.chev{width:14px;height:14px}
+
+.sv-nav .right{display:flex;align-items:center;gap:12px}
+.sv-nav .pts{display:inline-flex;align-items:center;gap:6px;min-height:34px;padding:0 12px;border-radius:999px;border:2px solid #29251F;background:var(--accl);font:800 13px Inter,sans-serif;white-space:nowrap}
+
+.sv-nav .icon{position:relative;width:42px;height:42px;flex:none;border-radius:10px;border:2px solid #29251F;background:#FFFDF8;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 3px 0 #29251F;transition:transform 150ms ease,box-shadow 150ms ease;padding:0}
+.sv-nav .icon:hover{transform:translateY(2px);box-shadow:0 1px 0 #29251F}
+.sv-nav .badge{position:absolute;top:-8px;right:-8px;min-width:22px;height:22px;padding:0 5px;border-radius:999px;border:2px solid #29251F;background:var(--acc);font:800 11px Inter,sans-serif;display:flex;align-items:center;justify-content:center;color:#29251F}
+
+.sv-nav .avatar{display:inline-flex;align-items:center;gap:6px;padding:3px 8px 3px 3px;border-radius:999px;border:2px solid #29251F;background:#FFFDF8;cursor:pointer;font:700 14px Inter,sans-serif;color:#29251F}
+.sv-nav .avatar .face{width:32px;height:32px;flex:none;border-radius:999px;background:#D2BEA0;border:2px solid #29251F;display:flex;align-items:center;justify-content:center;font-weight:800;overflow:hidden;background-size:cover;background-position:center}
+
+.sv-nav .drop{position:absolute;top:calc(100% + 12px);left:0;min-width:230px;z-index:5;background:#FFFDF8;border:2px solid #29251F;border-radius:12px;box-shadow:0 6px 0 #29251F;padding:8px;display:flex;flex-direction:column;gap:2px}
+.sv-nav .drop.right-al{left:auto;right:0}
+.sv-nav .ditem{display:flex;flex-direction:column;gap:2px;padding:10px 12px;border-radius:8px;text-decoration:none;color:#29251F;font:700 14px Inter,sans-serif;background:transparent;border:none;cursor:pointer;text-align:left;width:100%}
+.sv-nav .ditem small{font-weight:500;font-size:12px;color:#6E6455}
+.sv-nav .ditem:hover{background:#F0E5D2}
+.sv-nav .ditem.is-active{background:var(--accl)}
+.sv-nav .ditem.danger{color:#9A2B1E}
+.sv-nav .sep{height:2px;background:#E6D9C3;margin:6px 4px}
+
+.sv-nav .sv-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:40px;padding:0 16px;border:2px solid #29251F;border-radius:9px;font:800 14px Inter,sans-serif;cursor:pointer;text-decoration:none;color:#29251F;transition:transform 180ms ease,box-shadow 180ms ease,background-color 180ms ease}
+.sv-nav .sv-primary{background:var(--acc);box-shadow:inset 0 1px 0 rgba(255,255,255,.45),0 2px 0 var(--accd),0 4px 0 #29251F}
+.sv-nav .sv-primary:hover{background:var(--acch);transform:translateY(2px);box-shadow:0 1px 0 var(--accd),0 2px 0 #29251F}
+.sv-nav .sv-ghost{border-color:transparent;background:transparent}
+.sv-nav .sv-ghost:hover{background:#F0E5D2}
+.sv-nav .sv-btn:active{transform:translateY(4px);box-shadow:none}
+
+.sv-nav .lnk:focus-visible,.sv-nav .icon:focus-visible,.sv-nav .ditem:focus-visible,.sv-nav .sv-btn:focus-visible,.sv-nav .avatar:focus-visible,.sv-nav .logo:focus-visible{outline:3px solid #A58D70;outline-offset:3px}
+
+/* the phone sheet */
+.sv-nav .burger{display:none}
+.sv-nav .sheet{display:none}
+
+@media (max-width:1100px){
+  .sv-nav .desk{display:none !important}
+  .sv-nav .burger{display:inline-flex}
+  .sv-nav .wrap{padding:12px 14px 0}
+  .sv-nav .bar{padding:10px 12px}
+  .sv-nav .sheet.open{
+    display:flex;flex-direction:column;gap:6px;
+    max-width:1280px;margin:10px auto 0;padding:16px;
+    background:#FFFDF8;border:2px solid #29251F;border-radius:16px;
+    box-shadow:0 4px 0 #D2BEA0,0 7px 0 #29251F;
+  }
+  .sv-nav .sheet .lab{font-size:11px;font-weight:700;letter-spacing:.1em;color:#6E6455;padding:10px 12px 2px}
+  .sv-nav .sheet .ditem{font-size:16px}
+  .sv-nav .sheet .ditem.sub{padding-left:22px;font-size:14px}
+  .sv-nav .sheet .ditem.now{background:var(--acc);border:2px solid #29251F}
+}
+
+@media (prefers-reduced-motion:reduce){
+  .sv-nav .sv-btn,.sv-nav .lnk,.sv-nav .icon{transition:none}
+}
