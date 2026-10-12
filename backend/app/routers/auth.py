@@ -138,6 +138,9 @@ def login(payload: schemas.UserLogin, db: Session = Depends(get_db)):
 
     check_login_rate_limit(identifier)
 
+    import time
+    t_start = time.perf_counter()
+
     # Prevent matching `mobile_number IS NULL` or `email IS NULL` by only using provided fields
     conditions = []
     if payload.email:
@@ -145,9 +148,18 @@ def login(payload: schemas.UserLogin, db: Session = Depends(get_db)):
     if payload.mobile_number:
         conditions.append(models.User.mobile_number == payload.mobile_number)
 
+    t_lookup_start = time.perf_counter()
     user = db.query(models.User).filter(or_(*conditions)).first()
+    t_lookup_ms = (time.perf_counter() - t_lookup_start) * 1000.0
 
-    if not user or not auth.verify_password(payload.password, user.hashed_password):
+    t_bcrypt_start = time.perf_counter()
+    password_ok = user and auth.verify_password(payload.password, user.hashed_password)
+    t_bcrypt_ms = (time.perf_counter() - t_bcrypt_start) * 1000.0
+
+    total_ms = (time.perf_counter() - t_start) * 1000.0
+    print(f"[TIMING] Login for '{identifier}': user_lookup={t_lookup_ms:.1f}ms, bcrypt_verify={t_bcrypt_ms:.1f}ms, total={total_ms:.1f}ms")
+
+    if not user or not password_ok:
         record_failed_login(identifier)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

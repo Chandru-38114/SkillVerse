@@ -26,15 +26,33 @@ from .routers import (
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     def init_db():
+        import time
+        t_startup_start = time.perf_counter()
         try:
             Base.metadata.create_all(engine)
-            print("[startup] Database schema ready.")
-            
             
             from sqlalchemy import inspect
             inspector = inspect(engine)
-            sessions_cols = [c['name'] for c in inspector.get_columns('sessions')] if inspector.has_table('sessions') else []
-            users_cols = [c['name'] for c in inspector.get_columns('users')] if inspector.has_table('users') else []
+            
+            # Read columns once per table
+            sessions_cols = set(c['name'] for c in inspector.get_columns('sessions')) if inspector.has_table('sessions') else set()
+            users_cols = set(c['name'] for c in inspector.get_columns('users')) if inspector.has_table('users') else set()
+            reviews_cols = set(c['name'] for c in inspector.get_columns('reviews')) if inspector.has_table('reviews') else set()
+            session_progress_cols = set(c['name'] for c in inspector.get_columns('session_progress')) if inspector.has_table('session_progress') else set()
+            assessment_sessions_cols = set(c['name'] for c in inspector.get_columns('assessment_sessions')) if inspector.has_table('assessment_sessions') else set()
+
+            all_columns_present = (
+                {'scheduled_start', 'scheduled_end'}.issubset(sessions_cols) and
+                {'dob', 'gender'}.issubset(users_cols) and
+                {'session_id'}.issubset(reviews_cols) and
+                {'semantic_summary', 'next_session_plan'}.issubset(session_progress_cols) and
+                {'expires_at', 'violations', 'terminated', 'session_id'}.issubset(assessment_sessions_cols)
+            )
+
+            if all_columns_present:
+                elapsed_ms = (time.perf_counter() - t_startup_start) * 1000.0
+                print(f"[startup] Database schema verified and up-to-date in {elapsed_ms:.1f}ms; skipped migrations.")
+                return
 
             with engine.connect() as conn:
                 if 'scheduled_start' not in sessions_cols:
@@ -44,20 +62,16 @@ async def lifespan(app: FastAPI):
                             conn.execute(text("ALTER TABLE sessions ADD COLUMN scheduled_end TIMESTAMP WITH TIME ZONE;"))
                         print("[startup] Added scheduled_start and scheduled_end (TIMESTAMP WITH TIME ZONE).")
                     except Exception as e:
-                        print(f"[startup] Failed to add scheduled_start/end (TIMESTAMP WITH TIME ZONE): {e}")
                         try:
                             with conn.begin():
                                 conn.execute(text("ALTER TABLE sessions ADD COLUMN scheduled_start DATETIME;"))
                                 conn.execute(text("ALTER TABLE sessions ADD COLUMN scheduled_end DATETIME;"))
                             print("[startup] Added scheduled_start and scheduled_end (DATETIME).")
                         except Exception as e2:
-                            print(f"[startup] Failed to add scheduled_start/end (DATETIME): {e2}")
-                else:
-                    print("[startup] scheduled_start/end columns already exist.")
+                            print(f"[startup] Failed to add scheduled_start/end: {e2}")
 
                 try:
                     with conn.begin():
-                        # Data conversion for existing sessions assuming Asia/Kolkata
                         res = conn.execute(text("SELECT id, session_date, start_time, end_time FROM sessions WHERE scheduled_start IS NULL AND session_date IS NOT NULL"))
                         import datetime as dt
                         import pytz
@@ -78,9 +92,8 @@ async def lifespan(app: FastAPI):
                             except Exception as e:
                                 print("[startup] Failed to migrate session row:", sid, e)
                 except Exception as e:
-                    print("[startup] Migration error on data conversion:", e)
+                    pass
 
-            with engine.connect() as conn:
                 if 'dob' not in users_cols:
                     try:
                         with conn.begin():
@@ -88,8 +101,6 @@ async def lifespan(app: FastAPI):
                         print("[startup] Added dob column.")
                     except Exception as e:
                         print(f"[startup] Failed to add dob column: {e}")
-                else:
-                    print("[startup] dob column already exists.")
 
                 if 'gender' not in users_cols:
                     try:
@@ -98,11 +109,7 @@ async def lifespan(app: FastAPI):
                         print("[startup] Added gender column.")
                     except Exception as e:
                         print(f"[startup] Failed to add gender column: {e}")
-                else:
-                    print("[startup] gender column already exists.")
-                    
-            reviews_cols = [c['name'] for c in inspector.get_columns('reviews')] if inspector.has_table('reviews') else []
-            with engine.connect() as conn:
+
                 if 'session_id' not in reviews_cols:
                     try:
                         with conn.begin():
@@ -110,11 +117,7 @@ async def lifespan(app: FastAPI):
                         print("[startup] Added session_id column to reviews.")
                     except Exception as e:
                         print(f"[startup] Failed to add session_id column: {e}")
-                else:
-                    print("[startup] session_id column already exists in reviews.")
 
-            session_progress_cols = [c['name'] for c in inspector.get_columns('session_progress')] if inspector.has_table('session_progress') else []
-            with engine.connect() as conn:
                 if 'semantic_summary' not in session_progress_cols:
                     try:
                         with conn.begin():
@@ -122,8 +125,6 @@ async def lifespan(app: FastAPI):
                         print("[startup] Added semantic_summary column to session_progress.")
                     except Exception as e:
                         print(f"[startup] Failed to add semantic_summary column: {e}")
-                else:
-                    print("[startup] semantic_summary column already exists in session_progress.")
 
                 if 'next_session_plan' not in session_progress_cols:
                     try:
@@ -132,26 +133,19 @@ async def lifespan(app: FastAPI):
                         print("[startup] Added next_session_plan column to session_progress.")
                     except Exception as e:
                         print(f"[startup] Failed to add next_session_plan column: {e}")
-                else:
-                    print("[startup] next_session_plan column already exists in session_progress.")
 
-            assessment_sessions_cols = [c['name'] for c in inspector.get_columns('assessment_sessions')] if inspector.has_table('assessment_sessions') else []
-            with engine.connect() as conn:
                 if 'expires_at' not in assessment_sessions_cols:
                     try:
                         with conn.begin():
                             conn.execute(text("ALTER TABLE assessment_sessions ADD COLUMN expires_at TIMESTAMP WITH TIME ZONE;"))
                         print("[startup] Added expires_at column (TIMESTAMP WITH TIME ZONE) to assessment_sessions.")
                     except Exception as e:
-                        print(f"[startup] Failed to add expires_at (TIMESTAMP WITH TIME ZONE): {e}")
                         try:
                             with conn.begin():
                                 conn.execute(text("ALTER TABLE assessment_sessions ADD COLUMN expires_at DATETIME;"))
                             print("[startup] Added expires_at column (DATETIME) to assessment_sessions.")
                         except Exception as e2:
-                            print(f"[startup] Failed to add expires_at (DATETIME): {e2}")
-                else:
-                    print("[startup] expires_at column already exists in assessment_sessions.")
+                            print(f"[startup] Failed to add expires_at: {e2}")
 
                 if 'violations' not in assessment_sessions_cols:
                     try:
@@ -160,8 +154,6 @@ async def lifespan(app: FastAPI):
                         print("[startup] Added violations column to assessment_sessions.")
                     except Exception as e:
                         print(f"[startup] Failed to add violations column: {e}")
-                else:
-                    print("[startup] violations column already exists in assessment_sessions.")
 
                 if 'terminated' not in assessment_sessions_cols:
                     try:
@@ -170,8 +162,6 @@ async def lifespan(app: FastAPI):
                         print("[startup] Added terminated column to assessment_sessions.")
                     except Exception as e:
                         print(f"[startup] Failed to add terminated column: {e}")
-                else:
-                    print("[startup] terminated column already exists in assessment_sessions.")
 
                 if 'session_id' not in assessment_sessions_cols:
                     try:
@@ -179,15 +169,15 @@ async def lifespan(app: FastAPI):
                             conn.execute(text("ALTER TABLE assessment_sessions ADD COLUMN session_id INTEGER REFERENCES sessions(id) NULL;"))
                         print("[startup] Added session_id column (with FK) to assessment_sessions.")
                     except Exception as e:
-                        print(f"[startup] Failed to add session_id (with FK): {e}")
                         try:
                             with conn.begin():
                                 conn.execute(text("ALTER TABLE assessment_sessions ADD COLUMN session_id INTEGER;"))
                             print("[startup] Added session_id column (no FK) to assessment_sessions.")
                         except Exception as e2:
-                            print(f"[startup] Failed to add session_id (no FK): {e2}")
-                else:
-                    print("[startup] session_id column already exists in assessment_sessions.")
+                            print(f"[startup] Failed to add session_id: {e2}")
+
+            elapsed_ms = (time.perf_counter() - t_startup_start) * 1000.0
+            print(f"[startup] Database startup checks completed in {elapsed_ms:.1f}ms.")
         except Exception as e:
             print(f"[startup] Database schema creation failed: {e}")
 
