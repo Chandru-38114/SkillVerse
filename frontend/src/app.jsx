@@ -41,6 +41,14 @@ function RootRedirect() {
   return <Navigate to="/dashboard" replace />
 }
 
+function OnboardingRoute() {
+  const location = useLocation()
+  if (location.state?.onboardingToken) {
+    return <Onboarding />
+  }
+  return <ProtectedRoute><Onboarding /></ProtectedRoute>
+}
+
 export default function App() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -80,7 +88,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<RootRedirect />} /><Route path="/landing" element={<Landing />} />
           <Route path="/signup" element={<Signup />} />
-          <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
+          <Route path="/onboarding" element={<OnboardingRoute />} />
           <Route path="/login" element={<Login />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/verify-email" element={<VerifyEmail />} />
