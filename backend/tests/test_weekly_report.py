@@ -166,14 +166,21 @@ class TestWeeklyReportCard(unittest.TestCase):
             created_at=dt.datetime(2026, 10, 4, 16, 0),
         )
 
+        # Seed a review given by user 1 (reviewer_id=1) -> +5 review points
+        rev_given = models.Review(
+            id=3, reviewer_id=1, reviewee_id=2, request_id=1, session_id=1,
+            rating=5, comment="Thanks Bob for the session!",
+            created_at=dt.datetime(2026, 10, 4, 17, 0),
+        )
+
         # Seed completed exchange group
         grp = models.ExchangeGroup(id=10, kind="cycle", status="completed")
         mem1 = models.ExchangeMember(group_id=10, user_id=1, accepted=True)
         mem2 = models.ExchangeMember(group_id=10, user_id=2, accepted=True)
         mem3 = models.ExchangeMember(group_id=10, user_id=3, accepted=True)
 
-        self.db.add_all([req1, sess1, req2, sess2, rev1, rev2, grp, mem1, mem2, mem3])
-        self.user.points = 175  # 100 base + 50 badge + 20 teaching + 5 review
+        self.db.add_all([req1, sess1, req2, sess2, rev1, rev2, rev_given, grp, mem1, mem2, mem3])
+        self.user.points = 175  # 100 initial + 50 badge + 20 teaching + 5 review
         self.db.commit()
 
         # Call get_my_report_card
@@ -218,6 +225,9 @@ class TestWeeklyReportCard(unittest.TestCase):
         self.assertEqual(res.points_breakdown.split["initial"], 100)
         self.assertEqual(res.points_breakdown.split["assessment"], 50)
         self.assertEqual(res.points_breakdown.split["teaching"], 20)
+        self.assertEqual(res.points_breakdown.split["review"], 5)
+        # Sum of split must strictly equal total points
+        self.assertEqual(sum(res.points_breakdown.split.values()), res.points_breakdown.total)
 
         # Verify Reviews Received
         self.assertEqual(res.reviews_received["review_count"], 2)

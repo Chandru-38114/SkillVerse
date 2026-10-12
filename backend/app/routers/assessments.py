@@ -293,4 +293,5 @@ def submit_assessment(
         score=score, level=level, badge=badge,
         weak_topics=weak_topics, study_plan=study_plan,
         violations=violations, terminated=terminated,
+        counted=is_counted,
     )

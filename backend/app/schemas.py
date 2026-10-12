@@ -152,6 +152,7 @@ class AssessmentResult(BaseModel):
     study_plan: List[str]
     violations: int = 0
     terminated: bool = False
+    counted: Optional[bool] = None
 
 
 class AssessmentAttemptOut(BaseModel):

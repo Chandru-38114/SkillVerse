@@ -192,6 +192,8 @@ def get_my_report_card(
         )
 
     # ── 5. Points Breakdown ───────────────────────────────────────────────────
+    total_pts = current_user.points or 0
+
     badges_earned_count = (
         db.query(models.UserSkill)
         .filter(
@@ -201,19 +203,25 @@ def get_my_report_card(
         )
         .count()
     )
-    assessment_points = badges_earned_count * 50
+    raw_assessment = badges_earned_count * 50
 
     reviews_given_count = (
         db.query(models.Review)
         .filter(models.Review.reviewer_id == user_id)
         .count()
     )
-    review_points = reviews_given_count * 5
+    raw_review = reviews_given_count * 5
 
-    teaching_points = teaching_sessions_count * 20
-    initial_points = 100
-    computed_known = initial_points + assessment_points + teaching_points + review_points
-    other_points = max(0, current_user.points - computed_known)
+    initial_points = min(100, total_pts)
+    rem = total_pts - initial_points
+
+    assessment_points = min(raw_assessment, rem)
+    rem -= assessment_points
+
+    review_points = min(raw_review, rem)
+    rem -= review_points
+
+    teaching_points = rem
 
     split = {
         "initial": initial_points,
@@ -221,11 +229,9 @@ def get_my_report_card(
         "teaching": teaching_points,
         "review": review_points,
     }
-    if other_points > 0:
-        split["other"] = other_points
 
     points_breakdown = schemas.PointsBreakdown(
-        total=current_user.points,
+        total=total_pts,
         split=split,
     )
 
