@@ -104,6 +104,27 @@ class AssessmentAttempt(Base):
     created_at = Column(DateTime, default=utc_now)
 
 
+class WeeklyAttempt(Base):
+    """Weekly assessment attempt history for tracking progress over time."""
+    __tablename__ = "weekly_attempts"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    skill_id = Column(Integer, ForeignKey("skills.id"), nullable=False, index=True)
+    score = Column(Float, nullable=False)
+    level_num = Column(Integer, default=0, nullable=False)
+    taken_at = Column(DateTime, default=utc_now, nullable=False)
+    week_start = Column(Date, nullable=False, index=True)  # Monday of that week
+    counted = Column(Boolean, default=False, nullable=False)
+
+    user = relationship("User")
+    skill = relationship("Skill")
+
+    __table_args__ = (
+        Index("ix_weekly_attempts_user_skill_week", "user_id", "skill_id", "week_start"),
+    )
+
+
 class AssessmentSession(Base):
     """One generated Skill Arena attempt. Holds the questions WITH answers so
     scoring happens against the server's copy, never the client's."""

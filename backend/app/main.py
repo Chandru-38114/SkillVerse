@@ -20,7 +20,7 @@ from .database import Base, engine
 from .routers import (
     auth, users, assessments, marketplace, requests, chat, reviews,
     sessions, compiler, whiteboard, materials, progress, certificates,
-    notifications, gamification, exchanges,
+    notifications, gamification, exchanges, report_card, teacher_stats,
 )
 
 @asynccontextmanager
@@ -53,7 +53,8 @@ async def lifespan(app: FastAPI):
                 {'points_awarded'}.issubset(conn_reqs_cols) and
                 inspector.has_table('exchange_groups') and
                 inspector.has_table('exchange_legs') and
-                inspector.has_table('exchange_members')
+                inspector.has_table('exchange_members') and
+                inspector.has_table('weekly_attempts')
             )
 
             def _backfill_level_num():
@@ -219,6 +220,14 @@ async def lifespan(app: FastAPI):
                     except Exception as e:
                         print(f"[startup] Failed to add points_awarded column: {e}")
 
+                if not inspector.has_table('weekly_attempts'):
+                    try:
+                        with conn.begin():
+                            models.WeeklyAttempt.__table__.create(bind=conn, checkfirst=True)
+                        print("[startup] Created weekly_attempts table.")
+                    except Exception as e:
+                        print(f"[startup] Failed to create weekly_attempts table: {e}")
+
             _backfill_level_num()
 
             elapsed_ms = (time.perf_counter() - t_startup_start) * 1000.0
@@ -315,6 +324,8 @@ app.include_router(certificates.router)
 app.include_router(notifications.router)
 app.include_router(gamification.router)
 app.include_router(exchanges.router)
+app.include_router(report_card.router)
+app.include_router(teacher_stats.router)
 
 
 

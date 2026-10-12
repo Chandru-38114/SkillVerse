@@ -224,15 +224,45 @@ def submit_assessment(
     study_plan = coding_feedback + roadmap
 
     # Persist attempt + update the user's skill record
+    db_skill = get_or_create_skill(db, skill_name)
     attempt = models.AssessmentAttempt(
         user_id=current_user.id,
-        skill_id=get_or_create_skill(db, skill_name).id,
+        skill_id=db_skill.id,
         score=score,
         weak_topics=",".join(weak_topics),
     )
     db.add(attempt)
 
-    skill = get_or_create_skill(db, skill_name)
+    # Weekly attempt tracking (Monday of current week)
+    now_utc = utc_now()
+    now_date = now_utc.date()
+    week_start = now_date - dt.timedelta(days=now_date.weekday())  # Monday of that week
+    lvl_num = score_to_level(score)
+
+    existing_counted = (
+        db.query(models.WeeklyAttempt)
+        .filter(
+            models.WeeklyAttempt.user_id == current_user.id,
+            models.WeeklyAttempt.skill_id == db_skill.id,
+            models.WeeklyAttempt.week_start == week_start,
+            models.WeeklyAttempt.counted == True,
+        )
+        .first()
+    )
+    is_counted = (existing_counted is None)
+
+    weekly_attempt = models.WeeklyAttempt(
+        user_id=current_user.id,
+        skill_id=db_skill.id,
+        score=score,
+        level_num=lvl_num,
+        taken_at=now_utc,
+        week_start=week_start,
+        counted=is_counted,
+    )
+    db.add(weekly_attempt)
+
+    skill = db_skill
     user_skill = (
         db.query(models.UserSkill)
         .filter(models.UserSkill.user_id == current_user.id, models.UserSkill.skill_id == skill.id)
@@ -245,7 +275,7 @@ def submit_assessment(
     had_badge_before = bool(user_skill.badge) if hasattr(user_skill, 'badge') else False
 
     user_skill.latest_score = score
-    user_skill.level_num = score_to_level(score)
+    user_skill.level_num = lvl_num
     user_skill.level = level
     user_skill.badge = badge
     user_skill.role = payload.role
