@@ -1,0 +1,229 @@
+/* Report Card & Teacher Stats styles — Scoped under .sv-report-card */
+.sv-report-card {
+  --acc: #FF8A3D;
+  --accd: #C4581A;
+  --accl: #FFE3CF;
+  font-family: Inter, system-ui, -apple-system, sans-serif;
+  color: #29251F;
+  background: #F8F3E9;
+  min-height: 100vh;
+  padding-bottom: 80px;
+}
+
+.sv-report-card * {
+  box-sizing: border-box;
+}
+
+.sv-report-card a {
+  color: #29251F;
+}
+
+.sv-report-card .muted {
+  color: #6E6455;
+}
+
+.sv-report-card .eb {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: #6E6455;
+  text-transform: uppercase;
+}
+
+.sv-report-card .mono {
+  font-family: "JetBrains Mono", ui-monospace, Menlo, monospace;
+}
+
+/* Neo-brutalist buttons */
+.sv-report-card .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 18px;
+  border: 2px solid #29251F;
+  border-radius: 10px;
+  font: 800 14px Inter, sans-serif;
+  color: #29251F;
+  text-decoration: none;
+  cursor: pointer;
+  transition: transform 180ms ease, box-shadow 180ms ease, background 180ms ease;
+  white-space: nowrap;
+}
+
+.sv-report-card .btn-p {
+  background: var(--acc);
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.45), 0 3px 0 var(--accd), 0 5px 0 #29251F;
+}
+
+.sv-report-card .btn-p:hover {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 var(--accd), 0 3px 0 #29251F;
+}
+
+.sv-report-card .btn-s {
+  background: #FFFDF8;
+  box-shadow: 0 3px 0 #D2BEA0, 0 5px 0 #29251F;
+}
+
+.sv-report-card .btn-s:hover {
+  background: #F0E5D2;
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 #D2BEA0, 0 3px 0 #29251F;
+}
+
+/* Cards & Pills */
+.sv-report-card .card {
+  background: #FFFDF8;
+  border: 2px solid #29251F;
+  border-radius: 16px;
+  box-shadow: 0 4px 0 #D2BEA0, 0 7px 0 #29251F;
+}
+
+.sv-report-card .pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 2px solid #29251F;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+  background: #FFFDF8;
+}
+
+/* Tabs */
+.sv-report-card .tab-group {
+  display: flex;
+  gap: 10px;
+  background: #EAE1D2;
+  padding: 6px;
+  border: 2px solid #29251F;
+  border-radius: 14px;
+  width: fit-content;
+}
+
+.sv-report-card .tab-btn {
+  padding: 10px 22px;
+  border-radius: 10px;
+  border: 2px solid transparent;
+  font-weight: 800;
+  font-size: 14px;
+  background: transparent;
+  color: #6E6455;
+  cursor: pointer;
+  transition: all 180ms ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sv-report-card .tab-btn.active {
+  background: #FFFDF8;
+  color: #29251F;
+  border-color: #29251F;
+  box-shadow: 0 3px 0 #29251F;
+}
+
+/* Grid Layouts */
+.sv-report-card .grid2 {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 24px;
+}
+
+.sv-report-card .grid3 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+}
+
+.sv-report-card .grid4 {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+
+/* Metric / Stat box */
+.sv-report-card .metric-card {
+  padding: 18px 20px;
+  border: 2px solid #29251F;
+  border-radius: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* Rating Star Bar */
+.sv-report-card .star-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.sv-report-card .star-track {
+  flex: 1;
+  height: 12px;
+  background: #F0E5D2;
+  border: 2px solid #29251F;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.sv-report-card .star-fill {
+  height: 100%;
+  background: var(--acc);
+  border-right: 2px solid #29251F;
+}
+
+/* Sparkline container */
+.sv-report-card .sparkline-wrap {
+  width: 100%;
+  height: 64px;
+  display: flex;
+  align-items: center;
+}
+
+/* Skeletons */
+.sv-report-card .sk {
+  background: linear-gradient(90deg, #EFE6D6 25%, #F8F1E4 50%, #EFE6D6 75%);
+  background-size: 200% 100%;
+  animation: svShRc 1.4s infinite linear;
+  border-radius: 16px;
+  border: 2px solid #E2D3BB;
+}
+
+@keyframes svShRc {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+/* Responsive Media Queries */
+@media (max-width: 900px) {
+  .sv-report-card .grid3 {
+    grid-template-columns: 1fr;
+  }
+  .sv-report-card .grid2 {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .sv-report-card .grid4 {
+    grid-template-columns: 1fr 1fr;
+  }
+  .sv-report-card .tab-group {
+    width: 100%;
+  }
+  .sv-report-card .tab-btn {
+    flex: 1;
+    justify-content: center;
+    padding: 10px 14px;
+  }
+}

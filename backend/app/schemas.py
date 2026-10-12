@@ -152,6 +152,7 @@ class AssessmentResult(BaseModel):
     study_plan: List[str]
     violations: int = 0
     terminated: bool = False
+    counted: Optional[bool] = None
 
 
 class AssessmentAttemptOut(BaseModel):
@@ -425,4 +426,89 @@ class CertificateOut(BaseModel):
 
 class VerifyOTP(BaseModel):
     otp: str
+
+
+# ── Report Card & Teacher Stats Schemas ──────────────────────────────────────
+
+class SkillOverviewItem(BaseModel):
+    skill_name: str
+    level_num: int
+    best_score: Optional[float] = None
+    counted_weeks: int
+    trend: str  # "up", "down", "flat"
+
+
+class ProgressHistoryEntry(BaseModel):
+    week_start: str  # YYYY-MM-DD
+    score: float
+
+
+class ProgressHistoryItem(BaseModel):
+    skill_name: str
+    history: List[ProgressHistoryEntry]
+
+
+class LearningActivitySummary(BaseModel):
+    sessions_attended: int
+    total_learning_minutes: int
+    distinct_skills_learned: List[str]
+
+
+class TeachingActivitySummary(BaseModel):
+    sessions_given: int
+    total_teaching_minutes: int
+    distinct_skills_taught: List[str]
+
+
+class CompletedExchangeItem(BaseModel):
+    group_id: int
+    kind: str  # "pair" or "cycle"
+    other_members: List[str]  # names only, no sensitive info
+
+
+class PointsBreakdown(BaseModel):
+    total: int
+    split: Optional[Dict[str, int]] = None  # e.g. {"assessment": X, "teaching": Y, "review": Z, "initial": W}
+
+
+class ReviewCommentItem(BaseModel):
+    rating: int
+    comment: str
+    created_at: dt.datetime
+
+
+class ReportCardOut(BaseModel):
+    skills_overview: List[SkillOverviewItem]
+    progress_history: List[ProgressHistoryItem]
+    learning_activity: LearningActivitySummary
+    teaching_activity: TeachingActivitySummary
+    exchange_history: List[CompletedExchangeItem]
+    points_breakdown: PointsBreakdown
+    reviews_received: Dict[str, Any]  # average_rating, review_count, recent_reviews: List[ReviewCommentItem]
+
+
+class StarBreakdown(BaseModel):
+    star_5: int = 0
+    star_4: int = 0
+    star_3: int = 0
+    star_2: int = 0
+    star_1: int = 0
+
+
+class TeacherSkillBreakdownItem(BaseModel):
+    skill_name: str
+    level_num: int
+    sessions_taught: int
+    average_rating: Optional[float] = None
+
+
+class TeacherStatsOut(BaseModel):
+    has_taught: bool
+    teaching_experience: Optional[Dict[str, Any]] = None  # total_hours_taught, teaching_since
+    rating_summary: Optional[Dict[str, Any]] = None       # average_rating, review_count, star_breakdown
+    session_stats: Optional[Dict[str, Any]] = None        # total_sessions_taught, average_session_length
+    students_help: Optional[Dict[str, Any]] = None        # distinct_learners_taught, returning_students_count
+    skill_breakdown: Optional[List[TeacherSkillBreakdownItem]] = None
+    reliability: Optional[Dict[str, Any]] = None          # completion_rate, completed_sessions, cancelled_or_unscheduled, total_accepted_requests
+    recent_reviews: Optional[List[ReviewCommentItem]] = None
 
