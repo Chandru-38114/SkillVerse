@@ -21,6 +21,7 @@ from .routers import (
     auth, users, assessments, marketplace, requests, chat, reviews,
     sessions, compiler, whiteboard, materials, progress, certificates,
     notifications, gamification, exchanges, report_card, teacher_stats,
+    demand,
 )
 
 @asynccontextmanager
@@ -54,7 +55,8 @@ async def lifespan(app: FastAPI):
                 inspector.has_table('exchange_groups') and
                 inspector.has_table('exchange_legs') and
                 inspector.has_table('exchange_members') and
-                inspector.has_table('weekly_attempts')
+                inspector.has_table('weekly_attempts') and
+                inspector.has_table('demand_requests')
             )
 
             def _backfill_level_num():
@@ -326,6 +328,7 @@ app.include_router(gamification.router)
 app.include_router(exchanges.router)
 app.include_router(report_card.router)
 app.include_router(teacher_stats.router)
+app.include_router(demand.router)
 
 
 

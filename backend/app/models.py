@@ -412,3 +412,22 @@ class ExchangeMember(Base):
 
     group = relationship("ExchangeGroup", back_populates="members")
     user = relationship("User", foreign_keys=[user_id])
+
+
+class DemandRequest(Base):
+    """
+    Skill demand requests created when no eligible teacher is available.
+    Tracks requester, skill, learner's level, status ('open'/'fulfilled'/'expired').
+    """
+    __tablename__ = "demand_requests"
+
+    id = Column(Integer, primary_key=True, index=True)
+    requester_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    skill_id = Column(Integer, ForeignKey("skills.id"), nullable=False, index=True)
+    learner_level_num = Column(Integer, nullable=False, default=0)
+    status = Column(String, default="open", nullable=False)  # "open", "fulfilled", "expired"
+    created_at = Column(DateTime, default=utc_now)
+    updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)
+
+    requester = relationship("User", foreign_keys=[requester_id])
+    skill = relationship("Skill", foreign_keys=[skill_id])

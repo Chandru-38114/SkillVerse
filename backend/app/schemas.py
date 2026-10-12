@@ -174,6 +174,12 @@ class SkillBadgeInfo(BaseModel):
     score: Optional[float]
     level_num: Optional[int] = 0
 
+class TeacherPublicSummary(BaseModel):
+    average_rating: Optional[float] = None
+    review_count: int = 0
+    sessions_taught: int = 0
+    teaching_since: str
+
 class MarketplaceUser(BaseModel):
     user_id: int
     name: str
@@ -182,8 +188,11 @@ class MarketplaceUser(BaseModel):
     learning_skills: List[SkillBadgeInfo]
     match_context: Optional[str] = None
     match_score: int = 0
+    teacher_stats: Optional[TeacherPublicSummary] = None
     average_rating: Optional[float] = None
-    review_count: int = 0
+    review_count: Optional[int] = None
+    sessions_taught: Optional[int] = None
+    teaching_since: Optional[str] = None
     connection_statuses: Dict[str, dict] = {}
 
 class ConnectionRequestCreate(BaseModel):
@@ -511,4 +520,49 @@ class TeacherStatsOut(BaseModel):
     skill_breakdown: Optional[List[TeacherSkillBreakdownItem]] = None
     reliability: Optional[Dict[str, Any]] = None          # completion_rate, completed_sessions, cancelled_or_unscheduled, total_accepted_requests
     recent_reviews: Optional[List[ReviewCommentItem]] = None
+
+
+# ── Demand Request Schemas ───────────────────────────────────────────────────
+
+class DemandRequestCreate(BaseModel):
+    skill_id: Optional[int] = None
+    skill_name: Optional[str] = None
+
+
+class DemandRequestOut(BaseModel):
+    id: int
+    requester_id: int
+    skill_id: int
+    skill_name: Optional[str] = None
+    learner_level_num: int
+    status: str
+    created_at: dt.datetime
+
+    class Config:
+        from_attributes = True
+
+
+class DemandTeacherOut(BaseModel):
+    id: int
+    user_id: int
+    name: str
+    college: Optional[str] = ""
+    level_num: int
+    skill_name: str
+
+
+class DemandResponse(BaseModel):
+    status: str
+    message: str
+    teacher: Optional[DemandTeacherOut] = None
+    demand_request: Optional[DemandRequestOut] = None
+    # Top-level helper fields for direct access
+    id: Optional[int] = None
+    user_id: Optional[int] = None
+    requester_id: Optional[int] = None
+    name: Optional[str] = None
+    skill_id: Optional[int] = None
+    skill_name: Optional[str] = None
+    level_num: Optional[int] = None
+    learner_level_num: Optional[int] = None
 

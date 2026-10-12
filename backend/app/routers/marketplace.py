@@ -7,10 +7,11 @@ from .. import models, schemas, auth
 from ..database import get_db
 
 from ..utils.levels import is_eligible_to_teach
+from ..services.teacher_stats_service import get_teacher_public_stats_for_users
 
 router = APIRouter(prefix="/marketplace", tags=["marketplace"])
 
-@router.get("/search", response_model=List[schemas.MarketplaceUser])
+@router.get("/search", response_model=List[schemas.MarketplaceUser], response_model_exclude_none=True)
 def search_partners(
     q: Optional[str] = Query(None, description="Skill name or person name to search for"),
     role: Optional[str] = Query("All", description="All, 'I Want to Learn', 'I Can Teach'"),
@@ -123,20 +124,22 @@ def search_partners(
         else:
             data["match_score"] = len(data["teaching_skills"]) + len(data["learning_skills"]) # baseline activity
 
-    # 5. Bulk query reviews for all matched users
-    reviews_agg = (
-        db.query(
-            models.Review.reviewee_id,
-            func.count(models.Review.id).label("count"),
-            func.avg(models.Review.rating).label("avg")
-        )
-        .filter(models.Review.reviewee_id.in_(matching_user_ids))
-        .group_by(models.Review.reviewee_id)
-        .all()
-    )
-    for r in reviews_agg:
-        users_map[r.reviewee_id]["review_count"] = r.count
-        users_map[r.reviewee_id]["average_rating"] = round(r.avg, 1) if r.avg else None
+    # 5. Teacher stats public summary for matched users (1 grouped query for sessions, 1 for reviews)
+    teacher_summaries = get_teacher_public_stats_for_users(db, list(matching_user_ids))
+    for u_id, u_data in users_map.items():
+        if u_id in teacher_summaries:
+            stats = teacher_summaries[u_id]
+            u_data["teacher_stats"] = schemas.TeacherPublicSummary(**stats)
+            u_data["average_rating"] = stats["average_rating"]
+            u_data["review_count"] = stats["review_count"]
+            u_data["sessions_taught"] = stats["sessions_taught"]
+            u_data["teaching_since"] = stats["teaching_since"]
+        else:
+            u_data["teacher_stats"] = None
+            u_data["average_rating"] = None
+            u_data["review_count"] = None
+            u_data["sessions_taught"] = None
+            u_data["teaching_since"] = None
 
     # 6. Bulk query connection requests between current_user and all matched users
     reqs = (

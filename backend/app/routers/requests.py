@@ -6,6 +6,7 @@ from ..notification_service import create_notification
 
 from .. import models, schemas, auth
 from ..database import get_db
+from ..services.demand_service import fulfill_demand_request_on_connection
 from .users import get_or_create_skill
 
 router = APIRouter(prefix="/requests", tags=["requests"])
@@ -190,6 +191,14 @@ def respond_to_request(
     other_user = req.from_user_id if req.to_user_id == current_user.id else req.to_user_id
     if req.status == "accepted":
         create_notification(db, other_user, "request", "Learning Request Accepted", f"{current_user.name} accepted your request", req.id, "request")
+
+        # Fulfill any open demand requests for this skill between these users
+        fulfill_demand_request_on_connection(
+            db=db,
+            user_a_id=req.from_user_id,
+            user_b_id=req.to_user_id,
+            skill_id=req.skill_id,
+        )
 
         # Check for two-way exchange (Pair Exchange)
         # If the requester offered a skill to teach (learner_can_teach)

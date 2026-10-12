@@ -18,6 +18,7 @@ from ..services.code_grader import grade_coding_answer
 from ..services.learning_plan import build_study_plan
 from ..utils.timezone import utc_now, enforce_utc_iso
 from ..utils.levels import score_to_level
+from ..services.demand_service import notify_requesters_on_teacher_level_qualified
 from .users import get_or_create_skill
 
 router = APIRouter(prefix="/assessments", tags=["assessments"])
@@ -288,6 +289,14 @@ def submit_assessment(
     create_notification(db, current_user.id, "assessment", "Assessment Completed", f"You scored {score}% on {skill.name}", attempt.id, "assessment")
     if badge:
         create_notification(db, current_user.id, "assessment", "Badge Earned", f"You earned a {badge} badge in {skill.name}!", attempt.id, "assessment")
+
+    # Notify any open demand requesters for this skill if this user now qualifies as a teacher
+    notify_requesters_on_teacher_level_qualified(
+        db=db,
+        teacher_id=current_user.id,
+        skill_id=skill.id,
+        new_level_num=lvl_num,
+    )
 
     return schemas.AssessmentResult(
         score=score, level=level, badge=badge,
