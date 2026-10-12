@@ -24,6 +24,9 @@ export default function Marketplace() {
 
   const [results, setResults] = useState([])
   const [mySkills, setMySkills] = useState([])
+  const [circleSuggestions, setCircleSuggestions] = useState([])
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false)
+  const [proposingCycleId, setProposingCycleId] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
@@ -38,7 +41,40 @@ export default function Marketplace() {
   useEffect(() => {
     runSearch('', 'All')
     api.mySkills().then(setMySkills).catch(() => {})
+    fetchCircleSuggestions()
   }, [])
+
+  async function fetchCircleSuggestions() {
+    setLoadingSuggestions(true)
+    try {
+      const data = await api.getExchangeSuggestions()
+      setCircleSuggestions(Array.isArray(data) ? data : [])
+    } catch (_) {
+      setCircleSuggestions([])
+    } finally {
+      setLoadingSuggestions(false)
+    }
+  }
+
+  async function handleProposeCircle(cycle, cycleIdx) {
+    if (proposingCycleId !== null) return
+    setProposingCycleId(cycleIdx)
+    try {
+      const legsPayload = cycle.legs.map(l => ({
+        teacher_id: l.teacher_id,
+        learner_id: l.learner_id,
+        skill_id: l.skill_id
+      }))
+      await api.proposeExchangeCycle(legsPayload)
+      showToast('Skill circle proposed successfully! Check Exchanges to track responses.')
+      // Refresh suggestions
+      fetchCircleSuggestions()
+    } catch (err) {
+      showToast(err.message || 'Failed to propose circle')
+    } finally {
+      setProposingCycleId(null)
+    }
+  }
 
   useEffect(() => () => { if (toastTimer.current) clearTimeout(toastTimer.current) }, [])
 
@@ -254,6 +290,116 @@ export default function Marketplace() {
 
         {error && (
           <div className="card" style={{ padding: '14px 18px', background: '#F6DDD8', borderColor: '#9A2B1E', color: '#9A2B1E', fontWeight: 700 }}>{error}</div>
+        )}
+
+        {/* Skill circle suggestions section */}
+        {circleSuggestions.length > 0 && (
+          <section className="card" style={{ padding: '24px 28px', background: '#FFFDF8', border: '2px solid #29251F', borderRadius: 16, display: 'flex', flexDirection: 'column', gap: 18 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <span style={{ width: 42, height: 42, borderRadius: 12, border: '2px solid #29251F', background: 'var(--acc)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, fontWeight: 900, boxShadow: '0 3px 0 #29251F' }}>🔄</span>
+                <div>
+                  <h2 style={{ margin: 0, fontSize: 22, fontWeight: 900, letterSpacing: '-0.4px' }}>Skill Circle Suggestions</h2>
+                  <p className="muted" style={{ margin: 0, fontSize: 14 }}>No direct match? Learn in a 3-way circular exchange where everyone gives and gets a skill!</p>
+                </div>
+              </div>
+              <span className="pill" style={{ background: '#D6F3EA' }}>{circleSuggestions.length} CIRCLE{circleSuggestions.length === 1 ? '' : 'S'} FOUND</span>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 20 }}>
+              {circleSuggestions.map((cycle, cIdx) => {
+                // cycle has legs: [A->B, B->C, C->A]
+                const legs = cycle.legs || []
+                return (
+                  <div
+                    key={cIdx}
+                    className="card"
+                    style={{
+                      padding: 20,
+                      background: '#FDFBF7',
+                      border: '2px solid #29251F',
+                      borderRadius: 14,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 16,
+                      boxShadow: '0 3px 0 #D2BEA0, 0 5px 0 #29251F'
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span className="eb" style={{ color: '#29251F' }}>3-WAY LOOP (A → B → C → A)</span>
+                      {cycle.total_score && (
+                        <span className="pill" style={{ background: '#FBEFC4', fontSize: 11 }}>★ Score: {cycle.total_score}</span>
+                      )}
+                    </div>
+
+                    {/* Loop Representation */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                      {legs.map((leg, lIdx) => (
+                        <div
+                          key={lIdx}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '10px 14px',
+                            border: '2px solid #29251F',
+                            borderRadius: 10,
+                            background: lIdx === 0 ? '#D6F3EA' : lIdx === 1 ? '#E6DDF6' : '#FBEFC4',
+                            fontSize: 13,
+                            fontWeight: 700,
+                            gap: 8
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                            <span
+                              style={{
+                                width: 28,
+                                height: 28,
+                                flex: 'none',
+                                borderRadius: 999,
+                                border: '2px solid #29251F',
+                                background: '#FFFDF8',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontSize: 12,
+                                fontWeight: 900
+                              }}
+                            >
+                              {(leg.teacher_name || '?')[0]}
+                            </span>
+                            <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 85 }}>
+                              {leg.teacher_id === user?.id ? 'You' : leg.teacher_name}
+                            </span>
+                            <span style={{ color: '#6E6455' }}>teaches</span>
+                            <span className="pill" style={{ background: '#FFFDF8', padding: '0 8px', height: 24, fontSize: 11 }}>
+                              {leg.skill_name}
+                            </span>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <span style={{ fontSize: 13 }}>→</span>
+                            <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 80 }}>
+                              {leg.learner_id === user?.id ? 'You' : leg.learner_name}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    <button
+                      type="button"
+                      className="btn btn-p"
+                      style={{ width: '100%', minHeight: 44, fontSize: 14 }}
+                      disabled={proposingCycleId !== null}
+                      onClick={() => handleProposeCircle(cycle, cIdx)}
+                    >
+                      {proposingCycleId === cIdx ? 'Proposing circle…' : 'Propose circle 🔄'}
+                    </button>
+                  </div>
+                )
+              })}
+            </div>
+          </section>
         )}
 
         {/* results */}

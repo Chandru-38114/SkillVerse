@@ -14,6 +14,7 @@ const NAV = [
     items: [
       { to: '/messages', label: 'Inbox', sub: 'Messages with your partners' },
       { to: '/requests', label: 'Requests', sub: 'Incoming and sent' },
+      { to: '/exchanges', label: 'Exchanges', sub: 'Skill circles & groups' },
       { to: '/sessions', label: 'Sessions', sub: 'Upcoming and past' },
     ],
   },
@@ -27,7 +28,7 @@ const NAV = [
   },
 ]
 
-const CONNECT_ROUTES = ['/messages', '/requests', '/sessions', '/chat']
+const CONNECT_ROUTES = ['/messages', '/requests', '/exchanges', '/sessions', '/chat']
 const JOURNEY_ROUTES = ['/gamification', '/progress', '/assessment']
 
 const Chev = () => (
@@ -157,6 +158,8 @@ export default function Navbar() {
     setNotifOpen(false)
     switch (notif.type) {
       case 'request': navigate('/requests'); break
+      case 'exchange':
+      case 'cycle': navigate('/exchanges'); break
       case 'message': navigate('/messages'); break
       case 'session': navigate('/sessions'); break
       case 'certificate': navigate('/profile'); break

@@ -313,8 +313,11 @@ export const api = {
   // Compiler (Session Room)
   getCompilerState: (sessionId) => request(`/compiler/${sessionId}/state`),
   runCompiler: (sessionId, code) => request(`/compiler/${sessionId}/run`, { method: "POST", body: { code } }),
-  runArenaCode: (code) => request("/compiler/arena/run", { method: "POST", body: { code } }),
-
+  // Exchanges & Circles
+  getExchangeSuggestions: () => request("/exchanges/suggestions", { bypassCache: true }),
+  proposeExchangeCycle: (legs) => request("/exchanges/cycles", { method: "POST", body: { legs } }),
+  getMyExchanges: () => request("/exchanges/mine", { bypassCache: true }),
+  respondToExchangeGroup: (groupId, accept) => request(`/exchanges/${groupId}/respond`, { method: "POST", body: { accept } }),
 };
 
 export function saveSession(token, user) {

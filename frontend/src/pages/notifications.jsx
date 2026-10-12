@@ -13,6 +13,8 @@ const TYPE = {
   badge:       ['🏅', '#FBEFC4', 'View progress'],
   review:      ['★', '#FBEFC4', 'View profile'],
   certificate: ['🎓', '#E6DDF6', 'View profile'],
+  exchange:    ['🔄', '#D6F3EA', 'View exchanges'],
+  cycle:       ['🔄', '#D6F3EA', 'View exchanges'],
 };
 const FALLBACK = ['🔔', '#F0E5D2', 'Open'];
 
@@ -84,6 +86,10 @@ const Notifications = () => {
         break;
       case 'review':
         navigate('/profile');
+        break;
+      case 'exchange':
+      case 'cycle':
+        navigate('/exchanges');
         break;
       default:
         break;

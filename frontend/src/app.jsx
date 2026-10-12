@@ -18,6 +18,7 @@ const Dashboard = lazy(() => import('./pages/dashboard'))
 const Assessment = lazy(() => import('./pages/assessment'))
 const Marketplace = lazy(() => import('./pages/marketplace'))
 const Requests = lazy(() => import('./pages/requests'))
+const Exchanges = lazy(() => import('./pages/exchanges'))
 const Chat = lazy(() => import('./pages/chat'))
 const Sessions = lazy(() => import('./pages/sessions'))
 const SessionRoom = lazy(() => import('./pages/session_room'))
@@ -128,6 +129,10 @@ export default function App() {
             <Route
               path="/requests"
               element={<ProtectedRoute><Requests /></ProtectedRoute>}
+            />
+            <Route
+              path="/exchanges"
+              element={<ProtectedRoute><Exchanges /></ProtectedRoute>}
             />
             <Route
               path="/chat/:requestId"
