@@ -383,6 +383,34 @@ def complete_session(session_id: int, db: Session = Depends(get_db), current_use
         except Exception as e:
             logger.warning("[progress] session summary generation failed for session %s: %s", session_id, e)
 
+    # Hook into exchange legs if this session belongs to an exchange group leg
+    exchange_leg = db.query(models.ExchangeLeg).filter(
+        models.ExchangeLeg.request_id == sess.request_id,
+        models.ExchangeLeg.status != "delivered"
+    ).first()
+    if exchange_leg:
+        exchange_leg.status = "delivered"
+        exchange_leg.delivered_at = utc_now()
+        # Give points to the teacher only then
+        teacher_user = db.query(models.User).filter(models.User.id == exchange_leg.teacher_id).first()
+        if teacher_user:
+            teacher_user.points += 20
+
+        # Mark underlying connection request so complete_request won't award duplicate points
+        conn_req = db.query(models.ConnectionRequest).filter(models.ConnectionRequest.id == sess.request_id).first()
+        if conn_req:
+            conn_req.points_awarded = True
+
+        # Check if all legs in the exchange group are delivered
+        grp = db.query(models.ExchangeGroup).filter(models.ExchangeGroup.id == exchange_leg.group_id).first()
+        if grp:
+            remaining_undelivered = db.query(models.ExchangeLeg).filter(
+                models.ExchangeLeg.group_id == grp.id,
+                models.ExchangeLeg.status != "delivered"
+            ).count()
+            if remaining_undelivered == 0:
+                grp.status = "completed"
+
     db.commit()
 
     return {"status": "ok", "sessions_completed": user_skill.sessions_completed}

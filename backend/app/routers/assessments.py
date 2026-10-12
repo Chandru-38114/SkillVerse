@@ -17,6 +17,7 @@ from ..services.question_generator import (
 from ..services.code_grader import grade_coding_answer
 from ..services.learning_plan import build_study_plan
 from ..utils.timezone import utc_now, enforce_utc_iso
+from ..utils.levels import score_to_level
 from .users import get_or_create_skill
 
 router = APIRouter(prefix="/assessments", tags=["assessments"])
@@ -244,6 +245,7 @@ def submit_assessment(
     had_badge_before = bool(user_skill.badge) if hasattr(user_skill, 'badge') else False
 
     user_skill.latest_score = score
+    user_skill.level_num = score_to_level(score)
     user_skill.level = level
     user_skill.badge = badge
     user_skill.role = payload.role

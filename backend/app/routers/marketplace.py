@@ -6,6 +6,8 @@ from sqlalchemy import or_, and_, desc, func
 from .. import models, schemas, auth
 from ..database import get_db
 
+from ..utils.levels import is_eligible_to_teach
+
 router = APIRouter(prefix="/marketplace", tags=["marketplace"])
 
 @router.get("/search", response_model=List[schemas.MarketplaceUser])
@@ -17,8 +19,8 @@ def search_partners(
 ):
     # 1. Fetch current user's skills for recommendation logic
     my_skills = db.query(models.UserSkill).join(models.Skill).filter(models.UserSkill.user_id == current_user.id).all()
-    my_learning = {s.skill.name.lower() for s in my_skills if s.role == "learning"}
-    my_teaching = {s.skill.name.lower() for s in my_skills if s.role == "teaching"}
+    my_learning = {s.skill.name.lower(): (s.level_num if s.level_num is not None else 0) for s in my_skills if s.role == "learning"}
+    my_teaching = {s.skill.name.lower(): (s.level_num if s.level_num is not None else 0) for s in my_skills if s.role == "teaching"}
 
     # 2. Build the query
     query = (
@@ -72,11 +74,13 @@ def search_partners(
                 "match_context": None
             }
         
+        lvl_num = us.level_num if us.level_num is not None else 0
         skill_info = schemas.SkillBadgeInfo(
             skill_name=us.skill.name,
             level=us.level,
             badge=us.badge,
-            score=us.latest_score
+            score=us.latest_score,
+            level_num=lvl_num
         )
         
         if us.role == "teaching":
@@ -84,14 +88,25 @@ def search_partners(
         else:
             users_map[us.user_id]["learning_skills"].append(skill_info)
 
-    # Calculate deterministic matching score
+    # Calculate deterministic matching score with eligibility rule
     for u_id, data in users_map.items():
-        their_teaching = {s.skill_name.lower() for s in data["teaching_skills"]}
-        their_learning = {s.skill_name.lower() for s in data["learning_skills"]}
-        
-        # Intersection matches
-        i_can_learn_from_them = my_learning.intersection(their_teaching)
-        i_can_teach_them = my_teaching.intersection(their_learning)
+        their_teaching_map = {s.skill_name.lower(): (s.level_num or 0) for s in data["teaching_skills"]}
+        their_learning_map = {s.skill_name.lower(): (s.level_num or 0) for s in data["learning_skills"]}
+
+        # Check eligibility:
+        # i_can_learn_from_them: they teach, I learn
+        # eligible if their_level >= my_level + 2 AND their_level >= 2
+        i_can_learn_from_them = {
+            s_name for s_name, their_lvl in their_teaching_map.items()
+            if s_name in my_learning and is_eligible_to_teach(their_lvl, my_learning[s_name])
+        }
+
+        # i_can_teach_them: I teach, they learn
+        # eligible if my_level >= their_level + 2 AND my_level >= 2
+        i_can_teach_them = {
+            s_name for s_name, their_lvl in their_learning_map.items()
+            if s_name in my_teaching and is_eligible_to_teach(my_teaching[s_name], their_lvl)
+        }
         
         if i_can_learn_from_them and i_can_teach_them:
             data["match_score"] = 100 + len(i_can_learn_from_them) + len(i_can_teach_them)

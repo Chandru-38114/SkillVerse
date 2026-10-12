@@ -20,7 +20,7 @@ from .database import Base, engine
 from .routers import (
     auth, users, assessments, marketplace, requests, chat, reviews,
     sessions, compiler, whiteboard, materials, progress, certificates,
-    notifications, gamification,
+    notifications, gamification, exchanges,
 )
 
 @asynccontextmanager
@@ -40,16 +40,43 @@ async def lifespan(app: FastAPI):
             reviews_cols = set(c['name'] for c in inspector.get_columns('reviews')) if inspector.has_table('reviews') else set()
             session_progress_cols = set(c['name'] for c in inspector.get_columns('session_progress')) if inspector.has_table('session_progress') else set()
             assessment_sessions_cols = set(c['name'] for c in inspector.get_columns('assessment_sessions')) if inspector.has_table('assessment_sessions') else set()
+            user_skills_cols = set(c['name'] for c in inspector.get_columns('user_skills')) if inspector.has_table('user_skills') else set()
+            conn_reqs_cols = set(c['name'] for c in inspector.get_columns('connection_requests')) if inspector.has_table('connection_requests') else set()
 
             all_columns_present = (
                 {'scheduled_start', 'scheduled_end'}.issubset(sessions_cols) and
                 {'dob', 'gender'}.issubset(users_cols) and
                 {'session_id'}.issubset(reviews_cols) and
                 {'semantic_summary', 'next_session_plan'}.issubset(session_progress_cols) and
-                {'expires_at', 'violations', 'terminated', 'session_id'}.issubset(assessment_sessions_cols)
+                {'expires_at', 'violations', 'terminated', 'session_id'}.issubset(assessment_sessions_cols) and
+                {'level_num'}.issubset(user_skills_cols) and
+                {'points_awarded'}.issubset(conn_reqs_cols) and
+                inspector.has_table('exchange_groups') and
+                inspector.has_table('exchange_legs') and
+                inspector.has_table('exchange_members')
             )
 
+            def _backfill_level_num():
+                try:
+                    from .utils.levels import score_to_level
+                    with engine.connect() as conn:
+                        unfilled = conn.execute(text(
+                            "SELECT id, latest_score FROM user_skills WHERE (level_num = 0 OR level_num IS NULL) AND latest_score IS NOT NULL"
+                        )).fetchall()
+                        if unfilled:
+                            with conn.begin():
+                                for r_id, r_score in unfilled:
+                                    new_lvl = score_to_level(r_score)
+                                    conn.execute(
+                                        text("UPDATE user_skills SET level_num = :lvl WHERE id = :id"),
+                                        {"lvl": new_lvl, "id": r_id}
+                                    )
+                            print(f"[startup] Backfilled level_num from latest_score for {len(unfilled)} user_skills rows.")
+                except Exception as e:
+                    print(f"[startup] level_num backfill skipped/failed: {e}")
+
             if all_columns_present:
+                _backfill_level_num()
                 elapsed_ms = (time.perf_counter() - t_startup_start) * 1000.0
                 print(f"[startup] Database schema verified and up-to-date in {elapsed_ms:.1f}ms; skipped migrations.")
                 return
@@ -176,6 +203,24 @@ async def lifespan(app: FastAPI):
                         except Exception as e2:
                             print(f"[startup] Failed to add session_id: {e2}")
 
+                if 'level_num' not in user_skills_cols:
+                    try:
+                        with conn.begin():
+                            conn.execute(text("ALTER TABLE user_skills ADD COLUMN level_num INTEGER NOT NULL DEFAULT 0;"))
+                        print("[startup] Added level_num column to user_skills.")
+                    except Exception as e:
+                        print(f"[startup] Failed to add level_num column: {e}")
+
+                if 'points_awarded' not in conn_reqs_cols:
+                    try:
+                        with conn.begin():
+                            conn.execute(text("ALTER TABLE connection_requests ADD COLUMN points_awarded BOOLEAN NOT NULL DEFAULT FALSE;"))
+                        print("[startup] Added points_awarded column to connection_requests.")
+                    except Exception as e:
+                        print(f"[startup] Failed to add points_awarded column: {e}")
+
+            _backfill_level_num()
+
             elapsed_ms = (time.perf_counter() - t_startup_start) * 1000.0
             print(f"[startup] Database startup checks completed in {elapsed_ms:.1f}ms.")
         except Exception as e:
@@ -267,6 +312,7 @@ app.include_router(reviews.router)
 app.include_router(certificates.router)
 app.include_router(notifications.router)
 app.include_router(gamification.router)
+app.include_router(exchanges.router)
 
 
 

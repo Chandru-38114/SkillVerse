@@ -78,6 +78,7 @@ class UserSkill(Base):
     skill_id = Column(Integer, ForeignKey("skills.id"), nullable=False)
     role = Column(String, default="learning")  # "teaching" or "learning"
     latest_score = Column(Float, nullable=True)
+    level_num = Column(Integer, default=0, nullable=False)
     level = Column(String, default="Unassessed")  # Beginner / Intermediate / Advanced
     badge = Column(String, nullable=True)  # Bronze / Silver / Gold / Expert
     
@@ -130,6 +131,7 @@ class ConnectionRequest(Base):
     skill_id = Column(Integer, ForeignKey("skills.id"), nullable=False)
     message = Column(String, default="")
     status = Column(String, default="pending")  # pending / accepted / declined / completed
+    points_awarded = Column(Boolean, default=False, nullable=False)
     created_at = Column(DateTime, default=utc_now)
 
     # ── Two-way learning context (added for rich requests) ────────────────────
@@ -348,3 +350,44 @@ class Notification(Base):
     user = relationship("User")
 
 
+class ExchangeGroup(Base):
+    __tablename__ = "exchange_groups"
+
+    id = Column(Integer, primary_key=True, index=True)
+    kind = Column(String, nullable=False)  # "pair" or "cycle"
+    status = Column(String, default="proposed", nullable=False)  # "proposed", "active", "completed", "cancelled"
+    created_at = Column(DateTime, default=utc_now)
+
+    legs = relationship("ExchangeLeg", back_populates="group", cascade="all, delete-orphan")
+    members = relationship("ExchangeMember", back_populates="group", cascade="all, delete-orphan")
+
+
+class ExchangeLeg(Base):
+    __tablename__ = "exchange_legs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    group_id = Column(Integer, ForeignKey("exchange_groups.id"), nullable=False)
+    teacher_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    learner_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    skill_id = Column(Integer, ForeignKey("skills.id"), nullable=False)
+    request_id = Column(Integer, ForeignKey("connection_requests.id"), nullable=True)
+    status = Column(String, default="pending", nullable=False)  # "pending", "active", "delivered"
+    delivered_at = Column(DateTime, nullable=True)
+
+    group = relationship("ExchangeGroup", back_populates="legs")
+    teacher = relationship("User", foreign_keys=[teacher_id])
+    learner = relationship("User", foreign_keys=[learner_id])
+    skill = relationship("Skill", foreign_keys=[skill_id])
+    request = relationship("ConnectionRequest", foreign_keys=[request_id])
+
+
+class ExchangeMember(Base):
+    __tablename__ = "exchange_members"
+
+    id = Column(Integer, primary_key=True, index=True)
+    group_id = Column(Integer, ForeignKey("exchange_groups.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    accepted = Column(Boolean, default=False, nullable=False)
+
+    group = relationship("ExchangeGroup", back_populates="members")
+    user = relationship("User", foreign_keys=[user_id])

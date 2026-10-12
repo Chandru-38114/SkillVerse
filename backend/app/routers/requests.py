@@ -171,6 +171,8 @@ def outgoing_requests(
     return [_to_out(r) for r in rows]
 
 
+from ..utils.levels import is_eligible_to_teach
+
 @router.post("/{request_id}/respond", response_model=schemas.ConnectionRequestOut)
 def respond_to_request(
     request_id: int,
@@ -188,6 +190,79 @@ def respond_to_request(
     other_user = req.from_user_id if req.to_user_id == current_user.id else req.to_user_id
     if req.status == "accepted":
         create_notification(db, other_user, "request", "Learning Request Accepted", f"{current_user.name} accepted your request", req.id, "request")
+
+        # Check for two-way exchange (Pair Exchange)
+        # If the requester offered a skill to teach (learner_can_teach)
+        if req.learner_can_teach:
+            reciprocal_skill_name = req.learner_can_teach.split(",")[0].strip()
+            if reciprocal_skill_name:
+                recip_skill = get_or_create_skill(db, reciprocal_skill_name)
+                # Check eligibility for both legs:
+                # Leg 1: current_user (req.to_user_id) teaches req.from_user_id skill req.skill_id
+                t1_us = db.query(models.UserSkill).filter(
+                    models.UserSkill.user_id == req.to_user_id,
+                    models.UserSkill.skill_id == req.skill_id
+                ).first()
+                l1_us = db.query(models.UserSkill).filter(
+                    models.UserSkill.user_id == req.from_user_id,
+                    models.UserSkill.skill_id == req.skill_id
+                ).first()
+                t1_lvl = t1_us.level_num if t1_us and t1_us.level_num is not None else 0
+                l1_lvl = l1_us.level_num if l1_us and l1_us.level_num is not None else 0
+
+                # Leg 2: req.from_user_id teaches current_user (req.to_user_id) recip_skill
+                t2_us = db.query(models.UserSkill).filter(
+                    models.UserSkill.user_id == req.from_user_id,
+                    models.UserSkill.skill_id == recip_skill.id
+                ).first()
+                l2_us = db.query(models.UserSkill).filter(
+                    models.UserSkill.user_id == req.to_user_id,
+                    models.UserSkill.skill_id == recip_skill.id
+                ).first()
+                t2_lvl = t2_us.level_num if t2_us and t2_us.level_num is not None else 0
+                l2_lvl = l2_us.level_num if l2_us and l2_us.level_num is not None else 0
+
+                if is_eligible_to_teach(t1_lvl, l1_lvl) and is_eligible_to_teach(t2_lvl, l2_lvl):
+                    # Create reciprocal connection request
+                    recip_req = models.ConnectionRequest(
+                        from_user_id=req.to_user_id,
+                        to_user_id=req.from_user_id,
+                        skill_id=recip_skill.id,
+                        message=f"Reciprocal exchange for {req.skill.name}",
+                        status="accepted",
+                    )
+                    db.add(recip_req)
+                    db.flush()
+
+                    # Create exchange group of kind "pair"
+                    grp = models.ExchangeGroup(kind="pair", status="active")
+                    db.add(grp)
+                    db.flush()
+
+                    # Exchange members
+                    m1 = models.ExchangeMember(group_id=grp.id, user_id=req.from_user_id, accepted=True)
+                    m2 = models.ExchangeMember(group_id=grp.id, user_id=req.to_user_id, accepted=True)
+                    db.add_all([m1, m2])
+
+                    # Two legs: one in each direction
+                    leg1 = models.ExchangeLeg(
+                        group_id=grp.id,
+                        teacher_id=req.to_user_id,
+                        learner_id=req.from_user_id,
+                        skill_id=req.skill_id,
+                        request_id=req.id,
+                        status="active"
+                    )
+                    leg2 = models.ExchangeLeg(
+                        group_id=grp.id,
+                        teacher_id=req.from_user_id,
+                        learner_id=req.to_user_id,
+                        skill_id=recip_skill.id,
+                        request_id=recip_req.id,
+                        status="active"
+                    )
+                    db.add_all([leg1, leg2])
+                    db.commit()
     else:
         create_notification(db, other_user, "request", "Learning Request Declined", f"{current_user.name} declined your request", req.id, "request")
     return _to_out(req)
@@ -225,17 +300,32 @@ def complete_request(
             detail=f"Only an accepted connection can be completed (current status: {req.status}).",
         )
 
+    # Only allow completion if at least one session for this request has finished/completed
+    finished_session = db.query(models.Session).filter(
+        models.Session.request_id == req.id,
+        models.Session.status == "completed"
+    ).first()
+
+    if not finished_session:
+        raise HTTPException(status_code=400, detail="Hold a session before completing")
+
     req.status = "completed"
 
-    # Award +20 points to both participants.
-    # This block is only reachable when status was 'accepted' (all other
-    # paths are rejected above), so double-rewarding is impossible.
-    learner = db.query(models.User).filter(models.User.id == req.from_user_id).first()
-    teacher = db.query(models.User).filter(models.User.id == req.to_user_id).first()
-    if learner:
-        learner.points += 20
-    if teacher:
-        teacher.points += 20
+    # Award points only once per request
+    if not getattr(req, "points_awarded", False):
+        # If this request is part of an exchange leg, points are handled upon session delivery
+        is_exchange = db.query(models.ExchangeLeg).filter(
+            models.ExchangeLeg.request_id == req.id
+        ).first() is not None
+
+        if not is_exchange:
+            learner = db.query(models.User).filter(models.User.id == req.from_user_id).first()
+            teacher = db.query(models.User).filter(models.User.id == req.to_user_id).first()
+            if learner:
+                learner.points += 20
+            if teacher:
+                teacher.points += 20
+        req.points_awarded = True
 
     db.commit()
     db.refresh(req)

@@ -19,7 +19,7 @@ export default function Signup() {
   const [loading, setLoading] = useState(false)
 
   const passwordRules = [
-    { label: 'Minimum 6 characters', regex: /.{6,}/ },
+    { label: 'Minimum 8 characters', regex: /.{8,}/ },
     { label: 'One uppercase letter', regex: /[A-Z]/ },
     { label: 'One lowercase letter', regex: /[a-z]/ },
     { label: 'One number', regex: /\d/ },

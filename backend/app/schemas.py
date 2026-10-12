@@ -171,6 +171,7 @@ class SkillBadgeInfo(BaseModel):
     level: str
     badge: Optional[str]
     score: Optional[float]
+    level_num: Optional[int] = 0
 
 class MarketplaceUser(BaseModel):
     user_id: int
