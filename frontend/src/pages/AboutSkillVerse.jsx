@@ -14,7 +14,7 @@ const BLOCKS = [
     n: '01',
     title: 'Discover Your Skills',
     text: 'Start with what you want to learn. SkillVerse helps you explore skills, understand where you stand, and find the next step in your learning journey.',
-    img: '/assets/discover-skills.png',
+    img: '/assets/discover-skills.webp',
     backBg: '#D6F3EA',
     tilt: '-2deg',
   },
@@ -22,7 +22,7 @@ const BLOCKS = [
     n: '02',
     title: 'Learn With Others',
     text: 'Learning becomes more meaningful when knowledge is shared. Connect with people who can teach what they know, learn from their experience, and grow together.',
-    img: '/assets/learn-with-others.png',
+    img: '/assets/learn-with-others.webp',
     backBg: '#FBEFC4',
     tilt: '2deg',
   },
@@ -30,7 +30,7 @@ const BLOCKS = [
     n: '03',
     title: 'Practice and Build Mastery',
     text: 'Knowledge grows through practice. SkillVerse gives learners opportunities to apply what they learn, practice with others, complete learning sessions, and steadily develop mastery.',
-    img: '/assets/practice-mastery.png',
+    img: '/assets/practice-mastery.webp',
     backBg: '#E6DDF6',
     tilt: '-1.5deg',
   },
@@ -102,7 +102,7 @@ export default function AboutSkillVerse() {
           <div className="frame" style={{ width: '100%', maxWidth: 860, marginTop: 26 }}>
             <div className="back" style={{ background: 'var(--acc)' }} />
             <div className="img" style={{ aspectRatio: '16/8' }}>
-              <Framed path="/assets/hero-learning.png" label="“People learning together”" alt="People learning together" />
+              <Framed path="/assets/hero-learning.webp" label="“People learning together”" alt="People learning together" />
             </div>
             <span className="sticker" style={{ left: -18, top: 30, width: 60, height: 60, borderRadius: 999, background: '#FBEFC4', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24 }}>★</span>
             <span className="sticker" style={{ right: -10, bottom: 40, padding: '10px 14px', borderRadius: 10, background: '#D6F3EA', fontSize: 14, transform: 'rotate(5deg)' }}>Learn ⇄ Teach</span>
