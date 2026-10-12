@@ -1,12 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import QRCode from 'react-qr-code';
-import { api } from '../api';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
-import { Award } from 'lucide-react';
+import { api } from '../api';
+import './certificate.css';
 
-import SkillBadge from '../components/skillbadge';
+const BADGE_ICON = { Gold: '🥇', Silver: '🥈', Bronze: '🥉', Expert: '🏆' }
 
 export default function CertificateView() {
   const { certId } = useParams();
@@ -15,6 +15,7 @@ export default function CertificateView() {
   const [error, setError] = useState(null);
   const certificateRef = useRef(null);
   const [downloading, setDownloading] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     // Only load from the "my" certificates list right now since the user is viewing their own cert
@@ -36,7 +37,7 @@ export default function CertificateView() {
     try {
       setDownloading(true);
       const element = certificateRef.current;
-      
+
       const canvas = await html2canvas(element, {
         scale: 2,
         useCORS: true,
@@ -47,127 +48,171 @@ export default function CertificateView() {
         windowHeight: element.offsetHeight,
       });
       const imgData = canvas.toDataURL('image/png');
-      
-      const pdf = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: 'a4'
-      });
-      
+
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
       const availablePdfWidth = pdf.internal.pageSize.getWidth();
       const availablePdfHeight = pdf.internal.pageSize.getHeight();
-      
+
       const imgWidth = canvas.width;
       const imgHeight = canvas.height;
-      
-      const scale = Math.min(
-        availablePdfWidth / imgWidth,
-        availablePdfHeight / imgHeight
-      );
-      
+
+      const scale = Math.min(availablePdfWidth / imgWidth, availablePdfHeight / imgHeight);
+
       const finalPdfWidth = imgWidth * scale;
       const finalPdfHeight = imgHeight * scale;
-      
+
       const xOffset = (availablePdfWidth - finalPdfWidth) / 2;
       const yOffset = (availablePdfHeight - finalPdfHeight) / 2;
-      
+
       pdf.addImage(imgData, 'PNG', xOffset, yOffset, finalPdfWidth, finalPdfHeight);
       pdf.save(`SkillVerse_Certificate_${cert.skill_name.replace(/\s+/g, '_')}.pdf`);
     } catch (err) {
       console.error("Failed to generate PDF", err);
-      alert("Failed to generate PDF. Please try again.");
+      setError("Failed to generate PDF. Please try again.");
     } finally {
       setDownloading(false);
     }
   };
 
-  if (loading) return <div className="p-8 text-center text-ink/50">Loading certificate...</div>;
-  if (error) return <div className="p-8 text-center text-clay font-bold">{error}</div>;
+  const handleCopy = async () => {
+    if (!cert) return
+    try {
+      await navigator.clipboard.writeText(`${window.location.origin}/verify-certificate/${cert.certificate_id}`)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 3000)
+    } catch {
+      setCopied(false)
+    }
+  }
+
+  if (loading) return (
+    <div className="sv-cert" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 40 }}>
+      <p className="muted" style={{ fontWeight: 700 }}>Loading certificate…</p>
+    </div>
+  );
+
+  if (error && !cert) return (
+    <div className="sv-cert" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 40 }}>
+      <div className="card" style={{ maxWidth: 480, padding: 30, textAlign: 'center', display: 'flex', flexDirection: 'column', gap: 14, alignItems: 'center' }}>
+        <span style={{ width: 72, height: 72, borderRadius: 20, border: '2px solid #29251F', background: '#F6DDD8', color: '#9A2B1E', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 30, fontWeight: 900, boxShadow: '0 5px 0 #29251F' }}>!</span>
+        <h1 style={{ margin: 0, fontSize: 24, fontWeight: 900 }}>Certificate not available</h1>
+        <p className="muted" style={{ margin: 0, fontSize: 15 }}>{error}</p>
+        <Link to="/progress" className="btn btn-p">Back to Progress</Link>
+      </div>
+    </div>
+  );
+
   if (!cert) return null;
 
   const verifyUrl = `${window.location.origin}/verify-certificate/${cert.certificate_id}`;
-  const issueDate = new Date(cert.issue_date).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
+  const issueDate = new Date(cert.issue_date).toLocaleDateString('en-GB', { year: 'numeric', month: 'long', day: 'numeric' });
 
   return (
-    <div className="min-h-screen bg-paper py-8 sm:py-12 px-4 sm:px-6 flex flex-col items-center">
-      {/* Action Bar */}
-      <div className="w-full max-w-4xl flex flex-wrap gap-4 justify-between items-center mb-8 print:hidden">
-        <Link to="/progress" className="btn-secondary">Back to Progress</Link>
-        <div className="flex gap-4">
-          <button onClick={() => window.print()} className="btn-secondary">
-            Print
-          </button>
-          <button onClick={handleDownloadPdf} disabled={downloading} className="btn-primary">
-            {downloading ? "Generating PDF..." : "Download PDF"}
-          </button>
-        </div>
-      </div>
+    <div className="sv-cert">
+      <div style={{ maxWidth: 1180, margin: '0 auto', padding: '36px clamp(16px, 3vw, 32px) 0', display: 'flex', flexDirection: 'column', gap: 26 }}>
+        <Link to="/progress" className="noprint" style={{ fontWeight: 800, fontSize: 14, alignSelf: 'flex-start' }}>← Back to Progress</Link>
 
-      {/* Certificate Frame - Wrapper with responsive aspect ratio */}
-      <div className="w-full max-w-3xl mx-auto shadow-2xl print:shadow-none print:w-full print:max-w-none">
-        <div 
-          ref={certificateRef}
-          className="bg-white p-8 sm:p-12 md:p-16 relative overflow-hidden aspect-[210/297] flex flex-col print:p-0 print:h-screen"
-        >
-          {/* Inner Border to ensure html2canvas captures it completely without cropping */}
-          <div className="absolute inset-0 border-[16px] border-brand/5 pointer-events-none z-50 print:hidden"></div>
+        <div className="lay">
+          <div style={{ display: 'flex', justifyContent: 'center' }}>
+            <article className="doc" ref={certificateRef} aria-label="Certificate of Achievement">
+              <div className="frame" aria-hidden="true" />
+              <div className="inner">
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 900, fontSize: '4cqw' }}>
+                  <span style={{ width: '5cqw', height: '5cqw', borderRadius: '1.2cqw', border: '2px solid #29251F', background: 'var(--acc)' }} />
+                  SkillVerse
+                </div>
+                <span style={{ fontSize: '1.7cqw', fontWeight: 800, letterSpacing: '.25em', color: '#6E6455', marginTop: '1cqw' }}>BETTER SKILLS. A BRIGHTER FUTURE.</span>
 
-          {/* Background decorations */}
-          <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-brand/5 rounded-bl-[100px] -z-0"></div>
-          <div className="absolute bottom-0 left-0 w-[300px] h-[300px] bg-brand/5 rounded-tr-[100px] -z-0"></div>
-          
-          <div className="relative z-10 text-center flex flex-col h-full justify-between">
-            {/* Header */}
-            <div className="mt-6 mb-10">
-              <h2 className="font-display text-3xl md:text-4xl text-brandInk font-bold tracking-tight mb-2">SkillVerse</h2>
-              <p className="text-[10px] md:text-xs font-bold text-brandInk/60 tracking-[0.2em] uppercase">Better Skills. A Brighter Future.</p>
-            </div>
-            
-            <div className="flex-1 flex flex-col justify-center">
-              <h1 className="font-display text-4xl sm:text-5xl md:text-6xl text-ink font-semibold mb-10 tracking-tight leading-tight">
-                Certificate of<br />Achievement
-              </h1>
-              
-              <p className="text-lg md:text-xl text-ink/70 font-medium mb-3">This is to certify that</p>
-              <p className="font-display text-3xl sm:text-4xl md:text-5xl text-brandInk font-bold mb-8 border-b-2 border-brand/20 inline-block px-10 pb-2 mx-auto">
-                {cert.user_name}
-              </p>
-              
-              <p className="text-lg md:text-xl text-ink/70 font-medium mb-4 mx-auto max-w-md">has successfully completed the skill assessment and achieved</p>
-              
-              <div className="mb-10">
-                <span className="font-display text-3xl md:text-4xl text-ink font-bold leading-tight">
-                  Mastery in {cert.skill_name}
+                <h1 className="serif" style={{ margin: '7cqw 0 0', fontSize: '7.4cqw', lineHeight: 1.05, fontWeight: 800 }}>Certificate of<br />Achievement</h1>
+
+                <span style={{ marginTop: '5cqw', fontSize: '2.6cqw', fontWeight: 600, color: '#6E6455' }}>This is to certify that</span>
+                <span className="serif" style={{ marginTop: '2cqw', fontSize: '6.4cqw', fontWeight: 800, padding: '0 4cqw 1.2cqw', borderBottom: '3px solid #29251F' }}>{cert.user_name}</span>
+
+                <span style={{ marginTop: '3.6cqw', fontSize: '2.6cqw', fontWeight: 600, color: '#6E6455', maxWidth: '70%' }}>has completed the SkillVerse assessment and peer sessions, and achieved</span>
+                <span style={{ marginTop: '2.4cqw', fontSize: '4.8cqw', fontWeight: 900 }}>Mastery in {cert.skill_name}</span>
+
+                <div style={{ marginTop: '4cqw', display: 'flex', gap: '2cqw', flexWrap: 'wrap', justifyContent: 'center', fontSize: '2.2cqw', fontWeight: 800 }}>
+                  {cert.badge && <span style={{ padding: '.8cqw 2cqw', border: '2px solid #29251F', borderRadius: 999, background: '#FBEFC4' }}>{BADGE_ICON[cert.badge] || '🏅'} {cert.badge} badge</span>}
+                  {cert.level && <span style={{ padding: '.8cqw 2cqw', border: '2px solid #29251F', borderRadius: 999 }}>{cert.level} level</span>}
+                  <span style={{ padding: '.8cqw 2cqw', border: '2px solid #29251F', borderRadius: 999 }}>{cert.sessions_completed} session{cert.sessions_completed === 1 ? '' : 's'}</span>
+                </div>
+
+                <span className="seal" aria-hidden="true" style={{ position: 'absolute', right: '6cqw', top: '33%', width: '15cqw', height: '15cqw', borderRadius: 999, border: '3px solid #29251F', background: 'var(--acc)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', transform: 'rotate(-12deg)', boxShadow: '0 4px 0 #29251F', fontWeight: 900, fontSize: '1.9cqw', letterSpacing: '.08em', lineHeight: 1.15 }}>
+                  <span style={{ fontSize: '4cqw' }}>✓</span>VERIFIED
                 </span>
-              </div>
-              
-              <div className="mb-10 flex justify-center">
-                 <div className="inline-flex items-center gap-3 bg-white px-6 py-3 rounded-full border border-brand/10 shadow-sm z-20">
-                   <SkillBadge badge={cert.badge || 'Expert'} size="lg" />
-                   <span className="text-base md:text-lg font-bold text-ink/70">Verified Badge</span>
-                 </div>
-              </div>
-            </div>
-            
-            {/* Footer Area */}
-            <div className="flex justify-between items-end pt-8 relative border-t border-ink/10 mt-auto">
-              <div className="text-left flex flex-col gap-6">
-                <div>
-                  <p className="text-[10px] text-brandInk uppercase font-bold tracking-widest mb-1">Issued On</p>
-                  <p className="font-medium text-base md:text-lg text-ink">{issueDate}</p>
-                </div>
-                <div>
-                  <p className="text-[10px] text-brandInk uppercase font-bold tracking-widest mb-1">Certificate ID</p>
-                  <p className="text-xs md:text-sm text-ink/80 font-mono font-bold bg-brand/5 px-2.5 py-1 rounded-md inline-block">{cert.certificate_id}</p>
+
+                <div style={{ marginTop: 'auto', width: '100%', paddingTop: '3cqw', borderTop: '2px solid #29251F', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', textAlign: 'left', gap: '3cqw' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2.2cqw' }}>
+                    <div>
+                      <div style={{ fontSize: '1.6cqw', fontWeight: 800, letterSpacing: '.12em', color: '#6E6455' }}>ISSUED ON</div>
+                      <div style={{ fontSize: '2.6cqw', fontWeight: 800 }}>{issueDate}</div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '1.6cqw', fontWeight: 800, letterSpacing: '.12em', color: '#6E6455' }}>CERTIFICATE ID</div>
+                      <div className="mono" style={{ fontSize: '2.4cqw', padding: '.4cqw 1.4cqw', border: '2px solid #29251F', borderRadius: 6, display: 'inline-block' }}>{cert.certificate_id}</div>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1cqw' }}>
+                    <span style={{ width: 64, height: 64, border: '2px solid #29251F', background: '#FFFDF8', padding: 4, display: 'block' }}>
+                      <QRCode value={verifyUrl} size={52} style={{ width: '100%', height: '100%' }} />
+                    </span>
+                    <span style={{ fontSize: '1.5cqw', fontWeight: 800, letterSpacing: '.12em' }}>SCAN TO VERIFY</span>
+                  </div>
                 </div>
               </div>
-              
-              <div className="flex flex-col items-center bg-white p-3 rounded-xl shadow-sm border border-brand/10 z-10">
-                <QRCode value={verifyUrl} size={80} className="w-16 h-16 md:w-20 md:h-20" />
-                <p className="text-[8px] md:text-[9px] text-brandInk font-bold uppercase tracking-widest mt-2">Scan to verify</p>
-              </div>
-            </div>
+            </article>
           </div>
+
+          <aside className="noprint" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <span className="pill" style={{ alignSelf: 'flex-start', background: '#D6F3EA' }}>✓ VERIFIED CERTIFICATE</span>
+              <h2 style={{ margin: 0, fontSize: 34, fontWeight: 900, lineHeight: 1.05 }}>{cert.skill_name} · Mastery</h2>
+              <span className="muted" style={{ fontWeight: 600 }}>Share it anywhere — anyone can check it’s real.</span>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <button type="button" className="btn btn-p" style={{ width: '100%' }} onClick={handleDownloadPdf} disabled={downloading}>
+                ⇩ {downloading ? 'Generating PDF…' : 'Download PDF'}
+              </button>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <button type="button" className="btn btn-s" onClick={() => window.print()}>🖨 Print</button>
+                <button type="button" className="btn btn-s" onClick={handleCopy}>{copied ? '✓ Copied' : '🔗 Copy link'}</button>
+              </div>
+            </div>
+
+            {copied && (
+              <div style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '10px 14px', border: '2px solid #29251F', borderRadius: 12, background: '#D6F3EA', fontWeight: 700, fontSize: 14 }}>
+                ✓ Verification link copied
+              </div>
+            )}
+
+            {error && (
+              <div style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '10px 14px', border: '2px solid #9A2B1E', borderRadius: 12, background: '#F6DDD8', color: '#9A2B1E', fontWeight: 700, fontSize: 14 }}>
+                {error}
+              </div>
+            )}
+
+            <section className="card" style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <span className="eb" style={{ color: '#29251F' }}>DETAILS</span>
+              <dl className="dl">
+                <dt>RECIPIENT</dt><dd>{cert.user_name}</dd>
+                <dt>SKILL</dt><dd>{cert.skill_name}</dd>
+                <dt>LEVEL · BADGE</dt><dd>{cert.level} · {cert.badge}</dd>
+                <dt>SESSIONS</dt><dd className="mono">{cert.sessions_completed}</dd>
+                <dt>ISSUED</dt><dd>{issueDate}</dd>
+                <dt>ID</dt><dd className="mono">{cert.certificate_id}</dd>
+              </dl>
+            </section>
+
+            <section style={{ padding: '16px 18px', border: '2px dashed #29251F', borderRadius: 14, display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <strong>How verification works</strong>
+              <span style={{ fontSize: 14, fontWeight: 600, lineHeight: 1.5 }}>
+                The QR code and link open a public page on SkillVerse that confirms this ID, name and skill straight from our records.
+              </span>
+              <span className="mono" style={{ fontSize: 12, wordBreak: 'break-all' }}>{verifyUrl}</span>
+            </section>
+          </aside>
         </div>
       </div>
     </div>

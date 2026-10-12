@@ -265,8 +265,8 @@ export default function Profile() {
               {certificates.length > 0 ? certificates.map(c => (
                 <Link to={`/certificate/${c.certificate_id}`} className="card" key={c.certificate_id} style={{ padding: '16px 18px', display: 'flex', alignItems: 'center', gap: 14, textDecoration: 'none', boxShadow: '0 3px 0 #29251F', borderLeft: '10px solid #F5C542' }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <strong style={{ fontSize: 16 }}>{c.skill} · {c.level}</strong>
-                    <div className="mono muted" style={{ fontSize: 12 }}>{c.certificate_id} · {shortDate(c.created_at || c.issued_at)}</div>
+                    <strong style={{ fontSize: 16 }}>{c.skill_name} · {c.level}</strong>
+                    <div className="mono muted" style={{ fontSize: 12 }}>{c.certificate_id} · {shortDate(c.issue_date)}</div>
                   </div>
                   <span style={{ fontWeight: 800 }}>View →</span>
                 </Link>

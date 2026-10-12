@@ -1,160 +1,211 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
+import './about.css';
+
+/*
+ * The artboard references four images that do not exist in the repo yet:
+ *   /assets/hero-learning.png, discover-skills.png, learn-with-others.png,
+ *   practice-mastery.png
+ * Until they are added, each frame shows the design's own labelled placeholder.
+ * To use a real image, drop it in frontend/public/assets/ and put its path in
+ * the `img` field below — the placeholder is replaced automatically.
+ */
+const BLOCKS = [
+  {
+    n: '01',
+    title: 'Discover Your Skills',
+    text: 'Start with what you want to learn. SkillVerse helps you explore skills, understand where you stand, and find the next step in your learning journey.',
+    img: '/assets/discover-skills.png',
+    backBg: '#D6F3EA',
+    tilt: '-2deg',
+  },
+  {
+    n: '02',
+    title: 'Learn With Others',
+    text: 'Learning becomes more meaningful when knowledge is shared. Connect with people who can teach what they know, learn from their experience, and grow together.',
+    img: '/assets/learn-with-others.png',
+    backBg: '#FBEFC4',
+    tilt: '2deg',
+  },
+  {
+    n: '03',
+    title: 'Practice and Build Mastery',
+    text: 'Knowledge grows through practice. SkillVerse gives learners opportunities to apply what they learn, practice with others, complete learning sessions, and steadily develop mastery.',
+    img: '/assets/practice-mastery.png',
+    backBg: '#E6DDF6',
+    tilt: '-1.5deg',
+  },
+];
+
+const TILE_BG = ['var(--accl)', '#D6F3EA', '#FBEFC4', '#E6DDF6'];
+
+const STAGES = [
+  ['Discover', 'Assessments reveal where you are.', '⌕'],
+  ['Practice', 'Connections help you learn with others.', '⇄'],
+  ['Develop', 'Sessions turn knowledge into action.', '▲'],
+  ['Master', 'Teaching lets you share what you know.', '★'],
+];
+
+function Placeholder({ path, label }) {
+  return (
+    <div className="ph">
+      <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#6E6455" strokeWidth="1.8" aria-hidden="true">
+        <rect x="3" y="4" width="18" height="16" rx="2" />
+        <circle cx="9" cy="10" r="2" />
+        <path d="m21 17-5-5-8 8" />
+      </svg>
+      {path}
+      {label && <><br />{label}</>}
+    </div>
+  );
+}
 
 export default function AboutSkillVerse() {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen bg-paper text-ink font-body">
-      {/* Navigation */}
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <button
-          onClick={() => navigate(-1)}
-          className="flex items-center text-ink/70 hover:text-brandInk transition-colors font-medium"
-        >
-          <ArrowLeft className="w-5 h-5 mr-2" />
+    <div className="sv-about">
+      <div className="wrap" style={{ paddingTop: 28 }}>
+        <button type="button" className="btn" onClick={() => navigate(-1)}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M19 12H5" /><path d="m12 19-7-7 7-7" />
+          </svg>
           Back
         </button>
       </div>
 
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pb-24">
-        
-        {/* HERO SECTION */}
-        <section className="mt-8 mb-20 text-center">
-          <h1 className="text-4xl md:text-5xl font-heading font-bold text-ink mb-4">
-            SkillVerse
-          </h1>
-          <h2 className="text-2xl md:text-3xl font-medium text-ink/80 mb-8">
-            Better Skills. A Brighter Future.
-          </h2>
-          <p className="text-xl md:text-2xl font-light text-brandInk mb-12 max-w-2xl mx-auto">
-            "Learning is better when you learn with people."
-          </p>
-          <div className="rounded-2xl overflow-hidden shadow-xl mb-12 bg-white">
-            <img 
-              src="/assets/hero-learning.png" 
-              alt="People learning together"
-              className="w-full h-[400px] md:h-[500px] object-cover object-center"
-            />
+      {/* HERO */}
+      <section style={{ padding: '56px 0 96px', backgroundImage: 'radial-gradient(#D9CBB2 1.6px, transparent 1.6px)', backgroundSize: '26px 26px' }}>
+        <div className="wrap" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 28, textAlign: 'center' }}>
+          <span className="eyebrow">About</span>
+          <h1 style={{ margin: 0, fontSize: 'clamp(64px, 11vw, 140px)', lineHeight: .9, fontWeight: 900, letterSpacing: '-4px' }}>SkillVerse</h1>
+          <h2 style={{ margin: 0, fontSize: 'clamp(22px, 3vw, 32px)', fontWeight: 800 }}><span className="mark">Better Skills. A Brighter Future.</span></h2>
+
+          <div className="card" style={{ position: 'relative', padding: '18px 26px', borderRadius: 18, maxWidth: 560, transform: 'rotate(-1deg)' }}>
+            <p style={{ margin: 0, fontSize: 20, lineHeight: 1.45, fontWeight: 700 }}>“Learning is better when you learn with people.”</p>
+            <span aria-hidden="true" style={{ position: 'absolute', left: 44, bottom: -14, width: 22, height: 22, background: '#FFFDF8', borderRight: '2px solid #29251F', borderBottom: '2px solid #29251F', transform: 'rotate(45deg)' }} />
           </div>
-          <p className="text-lg md:text-xl text-ink/80 max-w-3xl mx-auto leading-relaxed">
+
+          <div className="frame" style={{ width: '100%', maxWidth: 860, marginTop: 26 }}>
+            <div className="back" style={{ background: 'var(--acc)' }} />
+            <div className="img" style={{ aspectRatio: '16/8' }}>
+              <Placeholder path="/assets/hero-learning.png" label="“People learning together”" />
+            </div>
+            <span className="sticker" style={{ left: -18, top: 30, width: 60, height: 60, borderRadius: 999, background: '#FBEFC4', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24 }}>★</span>
+            <span className="sticker" style={{ right: -10, bottom: 40, padding: '10px 14px', borderRadius: 10, background: '#D6F3EA', fontSize: 14, transform: 'rotate(5deg)' }}>Learn ⇄ Teach</span>
+          </div>
+
+          <p className="body" style={{ maxWidth: 720, marginTop: 18, fontSize: 20 }}>
             SkillVerse is a peer-to-peer learning platform where people discover skills, connect with others, practice together, and turn learning into real progress.
           </p>
-        </section>
+        </div>
+      </section>
 
-        {/* DISCOVER YOUR SKILLS */}
-        <section className="mb-20 grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
-          <div className="order-2 md:order-1">
-            <h2 className="text-3xl font-heading font-bold mb-6 text-brandInk">Discover Your Skills</h2>
-            <p className="text-lg text-ink/80 leading-relaxed">
-              Start with what you want to learn. SkillVerse helps you explore skills, understand where you stand, and find the next step in your learning journey.
+      {/* THREE ALTERNATING */}
+      <section style={{ padding: '96px 0', background: '#FFFDF8', borderTop: '2px solid #29251F', borderBottom: '2px solid #29251F' }}>
+        <div className="wrap" style={{ display: 'flex', flexDirection: 'column', gap: 120 }}>
+          {BLOCKS.map((b, i) => (
+            <div className="alt" key={b.n} style={i % 2 === 1 ? { flexDirection: 'row-reverse' } : undefined}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+                <span className="num" style={{ alignSelf: 'flex-start' }}>{b.n}</span>
+                <h2 className="h2">{b.title}</h2>
+                <p className="body">{b.text}</p>
+              </div>
+              <div className="frame" style={{ transform: `rotate(${b.tilt})` }}>
+                <div className="back" style={{ background: b.backBg }} />
+                <div className="img"><Placeholder path={b.img} /></div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* GAMEPLAY LOOP */}
+      <section style={{ padding: '104px 0' }}>
+        <div className="wrap" style={{ display: 'flex', flexDirection: 'column', gap: 52 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, textAlign: 'center' }}>
+            <span className="eyebrow">How it feels</span>
+            <h2 className="h2">Learning is the Gameplay</h2>
+            <p className="body" style={{ maxWidth: 760 }}>
+              SkillVerse turns learning into an active journey. Assessments reveal where you are. Connections help you learn with others. Practice sessions turn knowledge into action. Teaching lets you share what you know.
             </p>
           </div>
-          <div className="order-1 md:order-2 rounded-2xl overflow-hidden shadow-lg bg-white">
-            <img 
-              src="/assets/discover-skills.png" 
-              alt="Discovering skills"
-              className="w-full h-[300px] object-cover object-center"
-            />
-          </div>
-        </section>
 
-        {/* LEARN WITH OTHERS */}
-        <section className="mb-20 grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
-          <div className="rounded-2xl overflow-hidden shadow-lg bg-white">
-            <img 
-              src="/assets/learn-with-others.png" 
-              alt="Learn with others"
-              className="w-full h-[300px] object-cover object-center"
-            />
+          <div className="loop" role="list" aria-label="Discover, Practice, Develop, Master">
+            {STAGES.map(([name, sub, icon], i) => (
+              <div className="card stage" role="listitem" key={name}>
+                <span className="tile" style={{ background: TILE_BG[i] }}>{icon}</span>
+                <strong style={{ fontSize: 20, fontWeight: 900 }}>{name}</strong>
+                <span className="muted" style={{ fontSize: 14, lineHeight: 1.5 }}>{sub}</span>
+                {i < 3 && (
+                  <span className="arr" aria-hidden="true">
+                    <svg width="28" height="20" viewBox="0 0 28 20" fill="none">
+                      <path d="M1 10h23M17 3l8 7-8 7" stroke="#29251F" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </span>
+                )}
+              </div>
+            ))}
           </div>
-          <div>
-            <h2 className="text-3xl font-heading font-bold mb-6 text-brandInk">Learn With Others</h2>
-            <p className="text-lg text-ink/80 leading-relaxed">
-              Learning becomes more meaningful when knowledge is shared. Connect with people who can teach what they know, learn from their experience, and grow together.
+
+          <div aria-hidden="true" style={{ alignSelf: 'center', display: 'inline-flex', alignItems: 'center', gap: 10, padding: '10px 16px', borderRadius: 999, border: '2px dashed #8C8273', color: '#6E6455', fontSize: 14, fontWeight: 700 }}>
+            ↺ Then teach it — and start the loop on a new skill
+          </div>
+        </div>
+      </section>
+
+      {/* VERIFIED MASTERY + CERTIFICATES */}
+      <section style={{ padding: '0 0 104px' }}>
+        <div className="wrap" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 460px), 1fr))', gap: 36, alignItems: 'stretch' }}>
+
+          <div className="card" style={{ padding: 32, display: 'flex', flexDirection: 'column', gap: 18 }}>
+            <span className="eyebrow">Progress you can prove</span>
+            <h2 className="h2" style={{ fontSize: 'clamp(28px, 3vw, 36px)' }}>From Learning to Verified Mastery</h2>
+            <p className="body" style={{ fontSize: 16 }}>
+              SkillVerse is designed around progress that comes from actual learning activity. As learners develop their skills through assessment, practice, learning sessions, and continued progress, they can reach Mastery.
             </p>
+            <div className="stairs" role="img" aria-label="Four steps rising from Discover to Master" style={{ marginTop: 'auto', paddingTop: 12 }}>
+              <div className="stair" style={{ height: 70, background: '#FFFDF8' }}><span style={{ fontSize: 13 }}>Discover</span></div>
+              <div className="stair" style={{ height: 110, background: '#FBEFC4' }}><span style={{ fontSize: 13 }}>Practice</span></div>
+              <div className="stair" style={{ height: 150, background: '#D6F3EA' }}><span style={{ fontSize: 13 }}>Develop</span></div>
+              <div className="stair" style={{ height: 190, background: 'var(--acc)' }}><span style={{ fontSize: 22 }}>★</span><span style={{ fontSize: 13 }}>Master</span></div>
+            </div>
           </div>
-        </section>
 
-        {/* PRACTICE AND BUILD MASTERY */}
-        <section className="mb-24 grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
-          <div className="order-2 md:order-1">
-            <h2 className="text-3xl font-heading font-bold mb-6 text-brandInk">Practice and Build Mastery</h2>
-            <p className="text-lg text-ink/80 leading-relaxed">
-              Knowledge grows through practice. SkillVerse gives learners opportunities to apply what they learn, practice with others, complete learning sessions, and steadily develop mastery.
+          <div className="card" style={{ padding: 32, display: 'flex', flexDirection: 'column', gap: 18, background: 'var(--accl)' }}>
+            <span className="eyebrow">Recognition</span>
+            <h2 className="h2" style={{ fontSize: 'clamp(28px, 3vw, 36px)' }}>SkillVerse Certificates</h2>
+            <p className="body" style={{ fontSize: 16 }}>
+              When a learner reaches verified Mastery in a skill, SkillVerse can issue a certificate recognizing that achievement. Each certificate includes a unique certificate ID and QR verification so its authenticity can be checked online.
             </p>
+            <div aria-hidden="true" style={{ marginTop: 'auto', position: 'relative', alignSelf: 'center', width: '100%', maxWidth: 360, background: '#FFFDF8', border: '2px solid #29251F', borderRadius: 10, padding: 8, boxShadow: '0 6px 0 #29251F', transform: 'rotate(-2deg)' }}>
+              <div style={{ border: '1.5px solid #29251F', borderRadius: 6, padding: 18, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, textAlign: 'center' }}>
+                <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '.14em' }}>SKILLVERSE</span>
+                <strong style={{ fontSize: 18, fontWeight: 900 }}>Certificate of Achievement</strong>
+                <span className="muted" style={{ fontSize: 12 }}>Mastery in Python · Gold</span>
+                <div style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', paddingTop: 10, borderTop: '1.5px solid #29251F', marginTop: 6 }}>
+                  <span style={{ font: "700 12px 'JetBrains Mono', ui-monospace, monospace" }}>SKV-4F9A2C1E</span>
+                  <span style={{ width: 44, height: 44, border: '1.5px solid #29251F', backgroundImage: 'repeating-linear-gradient(0deg, #29251F 0 4px, transparent 4px 8px), repeating-linear-gradient(90deg, #29251F 0 4px, transparent 4px 8px)', backgroundBlendMode: 'multiply', opacity: .85 }} />
+                </div>
+              </div>
+              <span className="sticker" style={{ right: -16, top: -16, padding: '6px 10px', borderRadius: 8, background: '#D6F3EA', fontSize: 12, transform: 'rotate(8deg)' }}>✓ Verifiable</span>
+            </div>
           </div>
-          <div className="order-1 md:order-2 rounded-2xl overflow-hidden shadow-lg bg-white">
-            <img 
-              src="/assets/practice-mastery.png" 
-              alt="Hands-on practice"
-              className="w-full h-[300px] object-cover object-center"
-            />
+        </div>
+      </section>
+
+      {/* FINAL */}
+      <section style={{ padding: '0 0 96px' }}>
+        <div className="wrap">
+          <div style={{ background: '#29251F', color: '#FFFDF8', borderRadius: 24, padding: 'clamp(44px, 7vw, 88px) 24px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 22, textAlign: 'center', boxShadow: '0 6px 0 var(--acc), 0 10px 0 #29251F', backgroundImage: 'radial-gradient(#4A443A 1.6px, transparent 1.6px)', backgroundSize: '26px 26px' }}>
+            <p style={{ margin: 0, fontSize: 'clamp(20px, 2.6vw, 28px)', lineHeight: 1.4, fontWeight: 700, maxWidth: 760 }}>
+              “Learn with people. Practice with purpose. Build skills that move you forward.”
+            </p>
+            <h2 style={{ margin: '12px 0 0', fontSize: 'clamp(48px, 8vw, 96px)', lineHeight: .9, fontWeight: 900, letterSpacing: '-3px' }}>SkillVerse</h2>
+            <p style={{ margin: 0, fontSize: 18, fontWeight: 800, color: 'var(--acc)' }}>Better Skills. A Brighter Future.</p>
           </div>
-        </section>
-
-        {/* LEARNING IS THE GAMEPLAY */}
-        <section className="mb-24 text-center max-w-3xl mx-auto">
-          <h2 className="text-3xl font-heading font-bold mb-6 text-ink">Learning is the Gameplay</h2>
-          <p className="text-lg text-ink/80 leading-relaxed mb-12">
-            SkillVerse turns learning into an active journey. Assessments reveal where you are. Connections help you learn with others. Practice sessions turn knowledge into action. Teaching lets you share what you know. Each meaningful learning activity moves your journey forward.
-          </p>
-          
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-6 font-medium text-brandInk text-lg">
-            <div className="w-full sm:w-auto px-6 py-3 bg-white rounded-full shadow-sm border border-brand/10 text-center">Discover</div>
-            <div className="hidden sm:block text-brandInk/50">→</div>
-            <div className="sm:hidden text-brandInk/50">↓</div>
-            <div className="w-full sm:w-auto px-6 py-3 bg-white rounded-full shadow-sm border border-brand/10 text-center">Practice</div>
-            <div className="hidden sm:block text-brandInk/50">→</div>
-            <div className="sm:hidden text-brandInk/50">↓</div>
-            <div className="w-full sm:w-auto px-6 py-3 bg-white rounded-full shadow-sm border border-brand/10 text-center">Develop</div>
-            <div className="hidden sm:block text-brandInk/50">→</div>
-            <div className="sm:hidden text-brandInk/50">↓</div>
-            <div className="w-full sm:w-auto px-6 py-3 bg-white rounded-full shadow-sm border border-brand/10 text-center">Master</div>
-          </div>
-        </section>
-
-        {/* FROM LEARNING TO VERIFIED MASTERY */}
-        <section className="mb-24 max-w-3xl mx-auto bg-white p-8 md:p-12 rounded-3xl shadow-sm border border-brand/5">
-          <h2 className="text-3xl font-heading font-bold mb-6 text-ink text-center">From Learning to Verified Mastery</h2>
-          <p className="text-lg text-ink/80 leading-relaxed text-center mb-10">
-            SkillVerse is designed around progress that comes from actual learning activity. As learners develop their skills through assessment, practice, learning sessions, and continued progress, they can reach Mastery.
-          </p>
-          
-          <div className="flex flex-col items-center justify-center space-y-4 font-medium text-ink">
-            <div className="w-48 text-center py-4 bg-paper rounded-xl">Discover</div>
-            <div className="text-brandInk/50">↓</div>
-            <div className="w-48 text-center py-4 bg-paper rounded-xl">Practice</div>
-            <div className="text-brandInk/50">↓</div>
-            <div className="w-48 text-center py-4 bg-paper rounded-xl">Develop</div>
-            <div className="text-brandInk/50">↓</div>
-            <div className="w-48 text-center py-4 bg-brand text-white rounded-xl shadow-md">Master</div>
-          </div>
-        </section>
-
-        {/* SKILLVERSE CERTIFICATES */}
-        <section className="mb-24 text-center max-w-3xl mx-auto">
-          <h2 className="text-3xl font-heading font-bold mb-6 text-brandInk">SkillVerse Certificates</h2>
-          <p className="text-lg text-ink/80 leading-relaxed">
-            When a learner reaches verified Mastery in a skill, SkillVerse can issue a certificate recognizing that achievement. Each certificate includes a unique certificate ID and QR verification so its authenticity can be checked online.
-          </p>
-        </section>
-
-        {/* FINAL BRAND SECTION */}
-        <section className="text-center pt-12 border-t border-brand/10">
-          <p className="text-xl md:text-2xl font-medium text-ink/90 mb-12 max-w-2xl mx-auto">
-            "Learn with people. Practice with purpose. Build skills that move you forward."
-          </p>
-          <h2 className="text-4xl font-heading font-bold text-ink mb-3">
-            SkillVerse
-          </h2>
-          <p className="text-xl text-brandInk">
-            Better Skills. A Brighter Future.
-          </p>
-        </section>
-
-      </main>
+        </div>
+      </section>
     </div>
   );
 }
