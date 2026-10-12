@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { api, getSessionUser, saveSession } from '../api'
-import PasswordInput from '../components/PasswordInput'
+import AuthShell, { Alert, AuthField, SelectField, TextAreaField, PwField, PasswordRules } from '../components/auth/AuthShell'
+
+const GENDERS = ['Male', 'Female', 'Non-binary', 'Prefer not to say']
 
 export default function Onboarding() {
   const navigate = useNavigate()
@@ -10,7 +12,7 @@ export default function Onboarding() {
   const onboardingToken = location.state?.onboardingToken
 
   const [form, setForm] = useState({
-    name: '', mobile_number: '', college: '', country: '', 
+    name: '', mobile_number: '', college: '', country: '',
     dob: '', gender: '', bio: '', password: '', confirm_password: ''
   })
   const [error, setError] = useState('')
@@ -40,7 +42,7 @@ export default function Onboarding() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    
+
     if (onboardingToken) {
       if (form.password !== form.confirm_password) {
         setError("Passwords do not match.")
@@ -57,10 +59,10 @@ export default function Onboarding() {
       setError('College/Organization is required.')
       return
     }
-    
+
     setError('')
     setLoading(true)
-    
+
     try {
       if (onboardingToken) {
         const { access_token, user: newUser } = await api.completeGoogle(onboardingToken, form)
@@ -88,82 +90,70 @@ export default function Onboarding() {
 
   if (!user && !onboardingToken) return null
 
+  const displayName = onboardingToken ? (form.name || 'there') : (user?.name || 'there')
+  const collegeMissing = !!error && !form.college.trim()
+
   return (
-    <div className="min-h-[calc(100vh-73px)] flex items-center justify-center px-4 sm:px-6 py-10 sm:py-16 bg-transparent">
-      <div className="w-full max-w-md">
-        <div className="mb-6 text-center">
-          <h1 className="text-2xl font-bold text-ink">
-            {onboardingToken ? 'Complete your account' : `Welcome, ${user?.name}!`}
-          </h1>
-          <p className="text-ink/60 text-sm mt-2">Let's finish setting up your profile.</p>
+    <AuthShell
+      eyebrow="ALMOST THERE"
+      title="Tell peers who you are."
+      text="A complete profile helps the right learning partners find you."
+      steps={['Sign in', 'Finish your profile', 'Find your first match']}
+      current={1}
+    >
+      <form className="card" onSubmit={handleSubmit} style={{ width: '100%', maxWidth: 620, padding: 32, display: 'flex', flexDirection: 'column', gap: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <span style={{ width: 64, height: 64, flex: 'none', borderRadius: 999, border: '2px solid #29251F', background: '#D2BEA0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, fontWeight: 900, boxShadow: '0 4px 0 #29251F' }}>
+            {(displayName || '?')[0].toUpperCase()}
+          </span>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <h2 style={{ margin: 0, fontSize: 28, fontWeight: 900 }}>
+              {onboardingToken ? 'Complete your account' : `Welcome, ${displayName}!`}
+            </h2>
+            <span className="muted">Let’s finish setting up your profile.</span>
+          </div>
         </div>
 
-        <div className="card p-4 sm:p-6 sm:p-8 bg-surface/40 backdrop-blur-md rounded-xl shadow-[0_0_30px_rgba(34,211,238,0.1)] border border-line/10">
-          {error && <div className="text-red-500 text-sm mb-4 bg-red-50 p-3 rounded">{error}</div>}
-          
-          <form onSubmit={handleSubmit} className="space-y-4">
-            
-            {onboardingToken && (
-              <Field id="name" label="Full name" value={form.name} onChange={(v) => update('name', v)} required />
-            )}
-            
-            <Field id="mobile_number" label="Mobile Number" type="tel" value={form.mobile_number} onChange={(v) => update('mobile_number', v)} />
-            <Field id="college" label="College / Organization" value={form.college} onChange={(v) => update('college', v)} required />
-            
-            <Field id="dob" label="Date of Birth" type="date" value={form.dob} onChange={(v) => update('dob', v)} />
-            <div>
-              <label className="field-label">Gender</label>
-              <select className="input" value={form.gender} onChange={(e) => update('gender', e.target.value)}>
-                <option value="" disabled>Select Gender</option>
-                <option value="Male">Male</option>
-                <option value="Female">Female</option>
-                <option value="Non-binary">Non-binary</option>
-                <option value="Prefer not to say">Prefer not to say</option>
-              </select>
+        {error && <Alert kind="err">{error}</Alert>}
+
+        <div className="grp">
+          <span style={{ fontSize: 12, fontWeight: 800, letterSpacing: '.1em', color: '#6E6455' }}>ABOUT YOU</span>
+          <div className="row2">
+            {onboardingToken
+              ? <AuthField id="name" label="Full name" value={form.name} onChange={(v) => update('name', v)} required />
+              : <AuthField id="name-locked" label="Full name" value={user?.name || ''} onChange={() => {}} disabled />}
+            <AuthField id="mobile_number" label="Mobile Number" type="tel" placeholder="+91…" value={form.mobile_number} onChange={(v) => update('mobile_number', v)} />
+          </div>
+          <div className="row2">
+            <AuthField id="dob" label="Date of Birth" type="date" value={form.dob} onChange={(v) => update('dob', v)} />
+            <SelectField id="gender" label="Gender" value={form.gender} onChange={(v) => update('gender', v)} options={GENDERS} placeholder="Select Gender" />
+          </div>
+        </div>
+
+        <div className="grp">
+          <span style={{ fontSize: 12, fontWeight: 800, letterSpacing: '.1em', color: '#6E6455' }}>WHERE YOU LEARN</span>
+          <div className="row2">
+            <AuthField id="college" label="College / Organization" value={form.college} onChange={(v) => update('college', v)} invalid={collegeMissing} required />
+            <AuthField id="country" label="Country" value={form.country} onChange={(v) => update('country', v)} />
+          </div>
+          <TextAreaField id="bio" label="Bio" placeholder="What you teach and what you’re learning" value={form.bio} onChange={(v) => update('bio', v)} />
+        </div>
+
+        {onboardingToken && (
+          <div className="grp">
+            <span style={{ fontSize: 12, fontWeight: 800, letterSpacing: '.1em', color: '#6E6455' }}>SECURITY · ONLY FOR GOOGLE SIGN-UPS</span>
+            <div className="row2">
+              <PwField id="password" label="Create Password" value={form.password} onChange={(v) => update('password', v)} required />
+              <PwField id="confirm_password" label="Confirm Password" value={form.confirm_password} onChange={(v) => update('confirm_password', v)} invalid={!!form.confirm_password && form.password !== form.confirm_password} required />
             </div>
-            
-            <Field id="country" label="Country" value={form.country} onChange={(v) => update('country', v)} />
-            <Field id="bio" label="Bio" value={form.bio} onChange={(v) => update('bio', v)} />
+            {form.password && <PasswordRules rules={passwordRules} password={form.password} />}
+          </div>
+        )}
 
-            {onboardingToken && (
-              <>
-                <div className="pt-2 pb-2 border-t border-line" />
-                <Field id="password" label="Create Password" type="password" value={form.password} onChange={(v) => update('password', v)} required />
-                
-                {form.password && (
-                  <div className="bg-surface/60 backdrop-blur-md border border-brand/20 p-3 rounded-lg text-sm space-y-1">
-                    {passwordRules.map((rule, idx) => (
-                      <div key={idx} className={`flex items-center space-x-2 ${rule.regex.test(form.password) ? 'text-moss' : 'text-ink/40'}`}>
-                        <span>{rule.regex.test(form.password) ? '✓' : '○'}</span>
-                        <span>{rule.label}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                
-                <Field id="confirm_password" label="Confirm Password" type="password" value={form.confirm_password} onChange={(v) => update('confirm_password', v)} required />
-              </>
-            )}
-
-            <button type="submit" disabled={loading} className="btn-primary w-full py-2.5 text-base mt-4">
-              {loading ? 'Saving...' : 'Complete Setup'}
-            </button>
-          </form>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function Field({ id, label, value, onChange, type = 'text', required = false }) {
-  return (
-    <div>
-      <label className="field-label" htmlFor={id}>{label}{required && <span className="text-clay ml-1">*</span>}</label>
-      {type === 'password' ? (
-        <PasswordInput id={id} value={value} required={required} onChange={(e) => onChange(e.target.value)} />
-      ) : (
-        <input id={id} className="input" type={type} value={value} required={required} onChange={(e) => onChange(e.target.value)} onClick={(e) => { if (type === 'date' && e.target.showPicker) { e.target.showPicker(); } }} />
-      )}
-    </div>
+        <button type="submit" className="btn btn-p full" disabled={loading}>
+          {loading ? 'Saving…' : 'Save and continue'}
+        </button>
+      </form>
+    </AuthShell>
   )
 }

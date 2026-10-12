@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import SkillVerseLogo from '../components/SkillVerseLogo'
-import OTPInput from '../components/OTPInput'
 import { api, getSessionUser, saveSession, getToken } from '../api'
+import AuthShell, { Alert, OtpBoxes } from '../components/auth/AuthShell'
 
 export default function VerifyEmail() {
   const navigate = useNavigate()
@@ -63,7 +62,6 @@ export default function VerifyEmail() {
       setTimeout(() => navigate('/dashboard'), 1500)
     } catch (err) {
       setError(err.message)
-      // Auto-clear on error for easy re-typing
       setOtp('')
     } finally {
       setLoading(false)
@@ -73,49 +71,60 @@ export default function VerifyEmail() {
   if (!user) return null
 
   return (
-    <div className="min-h-[calc(100vh-73px)] flex items-center justify-center px-4 sm:px-6 py-10 sm:py-16">
-      <div className="w-full max-w-md">
-        <SkillVerseLogo />
-        <div className="card p-5 sm:p-8 text-center mt-6">
-          <h2 className="text-2xl font-display mb-2">Verify your email</h2>
-          <p className="text-ink/60 mb-6 text-sm">
-            We sent a verification code to <span className="font-semibold text-ink">{user.email}</span>
-          </p>
+    <AuthShell
+      eyebrow="ALMOST IN"
+      title="Confirm it’s you."
+      text="Enter the 6-digit code we emailed you to unlock your account."
+      steps={['Log in', 'Verify your email', 'Go to your dashboard']}
+      current={1}
+    >
+      <form className="card" onSubmit={handleVerify} style={{ width: '100%', maxWidth: 480, padding: 36, display: 'flex', flexDirection: 'column', gap: 18 }}>
+        <span style={{ width: 64, height: 64, borderRadius: 16, border: '2px solid #29251F', background: 'var(--accl)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 0 #29251F' }}>
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#29251F" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M3 8l7.9 5.3a2 2 0 0 0 2.2 0L21 8" />
+            <rect x="3" y="5" width="18" height="14" rx="2" />
+          </svg>
+        </span>
 
-          {devOtp && (
-            <div className="mb-6 p-4 border border-dashed border-clay rounded-md bg-clay/5 text-center">
-              <p className="text-xs font-semibold text-clay uppercase tracking-wider mb-2">Development OTP</p>
-              <p className="text-3xl font-display tracking-[0.2em] text-ink">{devOtp}</p>
-              <p className="text-xs text-ink/60 mt-2">Use this code to continue.</p>
-            </div>
-          )}
-
-          {error && <p className="alert-error mb-4">{error}</p>}
-          {message && <p className="p-3 bg-moss/10 text-moss rounded-md mb-4 text-sm font-medium">{message}</p>}
-
-          <form onSubmit={handleVerify} className="space-y-6">
-            <div className="flex flex-col items-center">
-              <label className="text-sm font-semibold text-ink/70 mb-3">Enter 6-digit code</label>
-              <OTPInput value={otp} onChange={setOtp} disabled={loading} />
-            </div>
-            
-            <button type="submit" disabled={loading || otp.length < 6} className="btn-primary w-full py-3">
-              {loading ? 'Verifying...' : 'Verify Email'}
-            </button>
-          </form>
-
-          <div className="mt-8 pt-6 border-t border-line">
-            <p className="text-sm text-ink/60 mb-3">Didn't receive the code?</p>
-            <button 
-              onClick={handleRequestOTP} 
-              disabled={loading || cooldown > 0} 
-              className="btn-secondary w-full transition-all disabled:opacity-50"
-            >
-              {cooldown > 0 ? `Resend Code in ${cooldown}s` : 'Resend Code'}
-            </button>
-          </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <h2 style={{ margin: 0, fontSize: 28, fontWeight: 900 }}>Verify your email</h2>
+          <span className="muted" style={{ fontSize: 15 }}>
+            We sent a verification code to <strong style={{ color: '#29251F' }}>{user.email}</strong>
+          </span>
         </div>
-      </div>
-    </div>
+
+        {devOtp && (
+          <Alert kind="info">
+            <strong>Development OTP</strong><br />
+            <span style={{ font: "700 18px 'JetBrains Mono', ui-monospace, monospace" }}>{devOtp}</span><br />
+            <span style={{ fontSize: 13 }}>Use this code to continue.</span>
+          </Alert>
+        )}
+
+        {error && <Alert kind="err">{error}</Alert>}
+        {message && <Alert kind="ok">{message}</Alert>}
+
+        <fieldset style={{ border: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <legend className="fl" style={{ padding: '0 0 10px' }}>Enter 6-digit code</legend>
+          <OtpBoxes value={otp} onChange={setOtp} disabled={loading} invalid={!!error} />
+        </fieldset>
+
+        <button type="submit" className="btn btn-p full" disabled={loading || otp.length < 6}>
+          {loading ? 'Verifying…' : 'Verify email'}
+        </button>
+
+        <div style={{ display: 'flex', justifyContent: 'center', gap: 6, fontSize: 14, flexWrap: 'wrap' }}>
+          <span className="muted">Didn’t receive the code?</span>
+          <button
+            type="button"
+            onClick={handleRequestOTP}
+            disabled={loading || cooldown > 0}
+            style={{ fontWeight: 800, background: 'transparent', border: 'none', cursor: cooldown > 0 ? 'not-allowed' : 'pointer', color: cooldown > 0 ? '#6E6455' : '#29251F', padding: 0 }}
+          >
+            {cooldown > 0 ? `Resend in ${cooldown}s` : 'Resend'}
+          </button>
+        </div>
+      </form>
+    </AuthShell>
   )
 }

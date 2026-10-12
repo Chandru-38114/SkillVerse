@@ -61,7 +61,7 @@ export default function App() {
     }
   }, []);
 
-  const authRoutes = ['/login', '/signup', '/verify-email', '/forgot-password', '/reset-password', '/verify-certificate/'];
+  const authRoutes = ['/login', '/signup', '/verify-email', '/forgot-password', '/reset-password', '/verify-certificate/', '/onboarding'];
   const isAuthRoute = authRoutes.some(path => location.pathname.startsWith(path)) || location.pathname === '/' || location.pathname === '/landing';
 
   if (!authChecked) {

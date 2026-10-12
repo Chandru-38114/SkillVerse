@@ -1,9 +1,8 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import SkillVerseLogo from '../components/SkillVerseLogo'
-import PasswordInput from '../components/PasswordInput'
 import { GoogleLogin } from '@react-oauth/google'
 import { api, saveSession } from '../api'
+import AuthShell, { Alert, AuthField, PwField } from '../components/auth/AuthShell'
 
 export default function Login() {
   const navigate = useNavigate()
@@ -14,7 +13,6 @@ export default function Login() {
 
   async function handleSubmit(e) {
     e.preventDefault()
-    console.log('[LOGIN] handleSubmit triggered, preventing default')
     setError('')
     setLoading(true)
     try {
@@ -24,26 +22,18 @@ export default function Login() {
         mobile_number: isEmail ? null : identifier,
         password
       }
-      console.log('[LOGIN] Payload prepared, calling api.login...')
       const { access_token, user } = await api.login(payload)
-      console.log('[LOGIN] api.login succeeded, saving session...')
       saveSession(access_token, user)
       if (!user.is_email_verified) {
-        console.log('[LOGIN] Navigating to /verify-email')
         navigate('/verify-email')
-      } else {
-        console.log('[LOGIN] Navigating to /dashboard')
-        if (!user.college || user.college.trim() === '') {
+      } else if (!user.college || user.college.trim() === '') {
         navigate('/onboarding')
       } else {
         navigate('/dashboard')
       }
-      }
     } catch (err) {
-      console.error('[LOGIN] Error caught in handleSubmit:', err)
       setError(err.message || 'Login failed')
     } finally {
-      console.log('[LOGIN] Finally block reached, setting loading false')
       setLoading(false)
     }
   }
@@ -51,7 +41,7 @@ export default function Login() {
   async function handleGoogleSuccess(credentialResponse) {
     try {
       const res = await api.googleAuth(credentialResponse.credential)
-      
+
       if (res.onboarding_required) {
         navigate('/onboarding', { state: { onboardingToken: res.onboarding_token } })
       } else {
@@ -69,77 +59,63 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-[calc(100vh-73px)] flex items-center justify-center px-4 sm:px-4 sm:px-6 py-10 sm:py-16">
-      <div className="w-full max-w-md">
-        {/* Logo mark */}
-        <SkillVerseLogo />
-        <div className="mb-6 text-center"><p className="text-ink/50 text-sm">Welcome back</p></div>
-
-        <div className="card">
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <div>
-              <label className="field-label" htmlFor="identifier">Email or Mobile Number</label>
-              <input
-                id="identifier"
-                className="input"
-                type="text"
-                placeholder="you@example.com or +1234567890"
-                value={identifier}
-                onChange={(e) => setIdentifier(e.target.value)}
-                required
-              />
-            </div>
-            <div>
-              <div className="flex justify-between items-center mb-1">
-                <label className="field-label mb-0" htmlFor="password">Password</label>
-                <Link to="/forgot-password" className="text-xs text-moss hover:underline">
-                  Forgot Password?
-                </Link>
-              </div>
-                <PasswordInput
-                  id="password"
-                  placeholder="********"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  autoComplete="current-password"
-                />
-            </div>
-
-            {error && <p className="alert-error">{error}</p>}
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="btn-primary w-full"
-            >
-              {loading ? 'Signing in...' : 'Sign In'}
-            </button>
-          </form>
-
-          <div className="mt-6 flex flex-col items-center">
-            <div className="w-full flex items-center justify-between mb-6 relative">
-              <hr className="w-full border-line" />
-              <span className="px-3 text-xs text-ink/40 bg-white absolute left-1/2 -translate-x-1/2">OR</span>
-            </div>
-            
-            <GoogleLogin
-              onSuccess={handleGoogleSuccess}
-              onError={() => setError('Google Login failed')}
-              theme="outline"
-              size="large"
-              shape="pill"
-            />
-          </div>
-
-          <p className="mt-6 text-center text-sm text-ink/60">
-            Don't have an account?{' '}
-            <Link to="/signup" className="text-moss font-medium hover:underline">
-              Sign up
-            </Link>
-          </p>
+    <AuthShell
+      eyebrow="WELCOME BACK"
+      title="Pick up where you left off."
+      text="Your sessions, requests and progress are waiting for you."
+      steps={['Check your requests', 'Join your next session', 'Keep your streak going']}
+      current={-1}
+    >
+      <form className="card" onSubmit={handleSubmit} style={{ width: '100%', maxWidth: 460, padding: 32, display: 'flex', flexDirection: 'column', gap: 18 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <h2 style={{ margin: 0, fontSize: 30, fontWeight: 900 }}>Log in</h2>
+          <span className="muted">Welcome back</span>
         </div>
-      </div>
-    </div>
+
+        {error && <Alert kind="err">{error}</Alert>}
+
+        <AuthField
+          id="identifier"
+          label="Email or Mobile Number"
+          placeholder="you@example.com or +1234567890"
+          value={identifier}
+          onChange={setIdentifier}
+          invalid={!!error}
+          required
+        />
+
+        <PwField
+          id="password"
+          label="Password"
+          value={password}
+          onChange={setPassword}
+          invalid={!!error}
+          required
+          right={<Link to="/forgot-password" style={{ fontSize: 13, fontWeight: 700 }}>Forgot password?</Link>}
+        />
+
+        <button type="submit" className="btn btn-p full" style={{ marginTop: 4 }} disabled={loading}>
+          {loading ? 'Signing in…' : 'Log In'}
+        </button>
+
+        <div className="divider" style={{ marginTop: 6 }}>or</div>
+
+        {/* Google renders its own button; it sits inside the design's bordered frame */}
+        <div className="gbtn" style={{ padding: 2, overflow: 'hidden' }}>
+          <GoogleLogin
+            onSuccess={handleGoogleSuccess}
+            onError={() => setError('Google Login failed')}
+            theme="outline"
+            size="large"
+            text="continue_with"
+            width="320"
+          />
+        </div>
+      </form>
+
+      <span style={{ fontSize: 15 }}>
+        New to SkillVerse? <Link to="/signup" style={{ fontWeight: 800 }}>Create an account</Link>
+      </span>
+    </AuthShell>
   )
 }
