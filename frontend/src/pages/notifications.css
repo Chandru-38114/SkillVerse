@@ -1,0 +1,59 @@
+/* Notifications — component styles from the NotificationsV2 design.
+   Scoped under .sv-notif so the design's .card / .btn / .item cannot collide
+   with the app's classes of the same name. */
+
+.sv-notif{
+  --acc:#FF8A3D; --accd:#C4581A; --accl:#FFE3CF;
+  font-family:Inter,system-ui,sans-serif;color:#29251F;background:#F8F3E9;
+  min-height:100vh;padding-bottom:80px;
+}
+.sv-notif *{box-sizing:border-box}
+.sv-notif a{color:#29251F}
+
+.sv-notif .muted{color:#6E6455}
+.sv-notif .eb{font-size:12px;font-weight:800;letter-spacing:.1em;color:#6E6455}
+.sv-notif .mono{font-family:"JetBrains Mono",ui-monospace,Menlo,monospace}
+
+.sv-notif .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:42px;padding:0 16px;border:2px solid #29251F;border-radius:10px;font:800 14px Inter,sans-serif;color:#29251F;text-decoration:none;cursor:pointer;transition:transform 180ms ease,box-shadow 180ms ease;white-space:nowrap}
+.sv-notif .btn-p{background:var(--acc);box-shadow:inset 0 2px 0 rgba(255,255,255,.45),0 3px 0 var(--accd),0 5px 0 #29251F}
+.sv-notif .btn-p:hover{transform:translateY(2px);box-shadow:0 1px 0 var(--accd),0 3px 0 #29251F}
+.sv-notif .btn-s{background:#FFFDF8;box-shadow:0 3px 0 #D2BEA0,0 5px 0 #29251F}
+.sv-notif .btn-s:hover{background:#F0E5D2;transform:translateY(2px);box-shadow:0 1px 0 #D2BEA0,0 3px 0 #29251F}
+.sv-notif .btn:focus-visible,.sv-notif a:focus-visible,.sv-notif button:focus-visible{outline:3px solid #A58D70;outline-offset:3px}
+
+.sv-notif .card{background:#FFFDF8;border:2px solid #29251F;border-radius:16px;box-shadow:0 4px 0 #D2BEA0,0 7px 0 #29251F}
+
+.sv-notif .seg{display:inline-flex;padding:4px;gap:4px;border:2px solid #29251F;border-radius:12px;background:#F0E5D2;box-shadow:inset 0 3px 0 #E2D3BB}
+.sv-notif .seg button{min-height:38px;padding:0 16px;border-radius:8px;border:2px solid transparent;background:transparent;font:800 14px Inter,sans-serif;cursor:pointer;color:#29251F;display:inline-flex;align-items:center;gap:8px}
+.sv-notif .seg button.on{background:#FFFDF8;border-color:#29251F;box-shadow:0 3px 0 #29251F}
+
+.sv-notif .cnt{min-width:22px;height:22px;padding:0 6px;border-radius:999px;border:2px solid #29251F;background:var(--acc);font:700 11px "JetBrains Mono",ui-monospace,monospace;display:inline-flex;align-items:center;justify-content:center}
+
+.sv-notif .item{display:flex;gap:14px;align-items:flex-start;width:100%;padding:16px 18px;border:none;border-bottom:2px dashed #E2D3BB;background:transparent;text-align:left;font:inherit;color:inherit;cursor:pointer;position:relative}
+.sv-notif .item:last-child{border-bottom:none}
+.sv-notif .item:hover{background:#F8F3E9}
+.sv-notif .item.un{background:#FFFDF8}
+.sv-notif .item.un::before{content:"";position:absolute;left:0;top:10px;bottom:10px;width:6px;border-radius:0 6px 6px 0;background:var(--acc)}
+
+.sv-notif .ic{width:44px;height:44px;flex:none;border-radius:12px;border:2px solid #29251F;display:flex;align-items:center;justify-content:center;font-size:18px}
+.sv-notif .dot{width:12px;height:12px;flex:none;border-radius:999px;border:2px solid #29251F;background:var(--acc);margin-top:6px}
+.sv-notif .mk{font:800 12px Inter,sans-serif;padding:4px 8px;border:2px solid #29251F;border-radius:8px;background:#FFFDF8;cursor:pointer;white-space:nowrap;color:#29251F}
+.sv-notif .mk:hover{background:#F0E5D2}
+
+.sv-notif .sk{background:linear-gradient(90deg,#EFE6D6 25%,#F8F1E4 50%,#EFE6D6 75%);background-size:200% 100%;animation:svShNo 1.4s infinite linear;border-radius:14px;border:2px solid #E2D3BB}
+@keyframes svShNo{to{background-position:-200% 0}}
+
+@keyframes svSlideLNo{from{opacity:0;transform:translateX(-14px)}to{opacity:1;transform:translateX(0)}}
+@keyframes svPopNo{0%{opacity:0;scale:.82}70%{opacity:1;scale:1.04}100%{opacity:1;scale:1}}
+@keyframes svPulseNo{0%,100%{box-shadow:0 0 0 0 rgba(255,138,61,0)}50%{box-shadow:0 0 0 5px rgba(255,138,61,.35)}}
+
+@media (prefers-reduced-motion:no-preference){
+  .sv-notif .item{animation:svSlideLNo .5s both}
+  .sv-notif .item:nth-child(2){animation-delay:.28s}
+  .sv-notif .item:nth-child(3){animation-delay:.36s}
+  .sv-notif .item:nth-child(4){animation-delay:.44s}
+  .sv-notif .item:nth-child(5){animation-delay:.52s}
+  .sv-notif .item:nth-child(6){animation-delay:.60s}
+  .sv-notif .ic{animation:svPopNo .5s both}
+  .sv-notif .item.un .ic{animation:svPopNo .5s both,svPulseNo 2.4s 1s infinite}
+}

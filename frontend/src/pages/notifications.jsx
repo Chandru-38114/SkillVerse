@@ -1,13 +1,29 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { api } from '../api';
-import BackButton from '../components/BackButton';
-import { Bell, MessageSquare, Hand, Calendar, Award, CheckCircle, Star } from 'lucide-react';
+import './notifications.css';
+
+// icon, badge colour, and the words on the "go" line — from the design
+const TYPE = {
+  message:     ['💬', '#E6DDF6', 'Open chat'],
+  request:     ['✋', '#D6F3EA', 'View requests'],
+  accepted:    ['✓', '#D6F3EA', 'Open chat'],
+  session:     ['📅', '#FBEFC4', 'View sessions'],
+  assessment:  ['✓', '#FFE3CF', 'View progress'],
+  badge:       ['🏅', '#FBEFC4', 'View progress'],
+  review:      ['★', '#FBEFC4', 'View profile'],
+  certificate: ['🎓', '#E6DDF6', 'View profile'],
+};
+const FALLBACK = ['🔔', '#F0E5D2', 'Open'];
 
 const Notifications = () => {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [permission, setPermission] = useState(Notification.permission);
+  const [permission, setPermission] = useState(
+    typeof Notification !== 'undefined' ? Notification.permission : 'denied'
+  );
+  const [bannerDismissed, setBannerDismissed] = useState(false);
+  const [filter, setFilter] = useState('all');
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -49,7 +65,7 @@ const Notifications = () => {
       await api.markNotificationRead(notif.id).catch(console.error);
       setNotifications(notifications.map(n => n.id === notif.id ? { ...n, is_read: true } : n));
     }
-    
+
     switch (notif.type) {
       case 'request':
         navigate('/requests');
@@ -76,24 +92,12 @@ const Notifications = () => {
 
   const requestBrowserPermission = async () => {
     if (!("Notification" in window)) {
-      alert("This browser does not support desktop notification");
+      setPermission('unsupported');
       return;
     }
     const result = await Notification.requestPermission();
     setPermission(result);
   };
-
-  const getIcon = (type) => {
-    switch (type) {
-      case 'message': return <MessageSquare className="w-5 h-5 text-brandInk" />;
-      case 'request': return <Hand className="w-5 h-5 text-moss" />;
-      case 'session': return <Calendar className="w-5 h-5 text-gold" />;
-      case 'certificate': return <Award className="w-5 h-5 text-purple-500" />;
-      case 'assessment': return <CheckCircle className="w-5 h-5 text-moss" />;
-      case 'review': return <Star className="w-5 h-5 text-gold" />;
-      default: return <Bell className="w-5 h-5 text-ink/40" />;
-    }
-  }
 
   const formatTimeAgo = (dateStr) => {
     const d = new Date(dateStr);
@@ -103,88 +107,124 @@ const Notifications = () => {
     if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
     if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
     if (diff < 604800) return `${Math.floor(diff / 86400)}d ago`;
-    return d.toLocaleDateString();
+    return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
   };
 
-  if (loading) return (
-    <div className="max-w-3xl mx-auto px-4 py-8">
-      <div className="skeleton h-8 w-1/4 mb-8"></div>
-      <div className="space-y-4">
-        {[...Array(5)].map((_, i) => <div key={i} className="skeleton h-20 w-full rounded-xl"></div>)}
-      </div>
-    </div>
-  );
+  const isToday = (dateStr) => {
+    const d = new Date(dateStr);
+    const now = new Date();
+    return d.toDateString() === now.toDateString();
+  };
+
+  const unread = notifications.filter(n => !n.is_read).length;
+  const visible = filter === 'unread' ? notifications.filter(n => !n.is_read) : notifications;
+
+  const groups = [
+    ['TODAY', visible.filter(n => isToday(n.created_at))],
+    ['EARLIER', visible.filter(n => !isToday(n.created_at))],
+  ].filter(g => g[1].length > 0);
+
+  const showBanner = !loading && !bannerDismissed && permission === 'default';
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-6 sm:py-8">
-      <BackButton to="/dashboard" className="mb-4" />
-      
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-6 sm:mb-8 gap-4">
-        <div>
-          <h1 className="font-display text-3xl font-bold tracking-tight text-ink mb-1">Notifications</h1>
-          <p className="text-sm text-ink/50">Stay updated on your learning journey</p>
-        </div>
-        <div className="flex gap-2 w-full sm:w-auto">
-          {permission !== 'granted' && (
-            <button 
-              onClick={requestBrowserPermission}
-              className="flex-1 sm:flex-none btn-secondary text-xs px-3 py-1.5"
-            >
-              Enable Alerts
-            </button>
-          )}
-          {notifications.some(n => !n.is_read) && (
-            <button 
-              onClick={handleMarkAllRead}
-              className="flex-1 sm:flex-none btn-secondary text-xs px-3 py-1.5"
-            >
-              Mark all read
-            </button>
-          )}
-        </div>
-      </div>
+    <div className="sv-notif">
+      <div style={{ maxWidth: 820, margin: '0 auto', padding: '40px clamp(16px, 3vw, 32px) 0', display: 'flex', flexDirection: 'column', gap: 22 }}>
 
-      <div className="bg-surface rounded-2xl border border-line shadow-elev-1 overflow-hidden">
-        {notifications.length === 0 ? (
-          <div className="p-12 flex flex-col items-center justify-center text-center">
-            <div className="w-16 h-16 rounded-full bg-ink/5 flex items-center justify-center mb-4">
-              <Bell className="w-8 h-8 text-ink/20" />
+        <Link to="/dashboard" style={{ fontWeight: 800, fontSize: 14, alignSelf: 'flex-start' }}>← Back to Dashboard</Link>
+
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 16, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <span className="eb">INBOX</span>
+            <h1 style={{ margin: 0, fontSize: 48, fontWeight: 900, lineHeight: 1 }}>Notifications</h1>
+            <span className="muted" style={{ fontWeight: 600 }}>Stay updated on your learning journey</span>
+          </div>
+          {unread > 0 && (
+            <button type="button" className="btn btn-s" onClick={handleMarkAllRead}>✓ Mark all read</button>
+          )}
+        </div>
+
+        {showBanner && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 16px', border: '2px solid #29251F', borderRadius: 14, background: '#FBEFC4', flexWrap: 'wrap' }}>
+            <span className="ic" style={{ background: '#FFFDF8' }} aria-hidden="true">🔔</span>
+            <div style={{ flex: 1, minWidth: 200 }}>
+              <strong>Get alerts on this device</strong>
+              <div style={{ fontSize: 13, fontWeight: 600 }}>See new requests and messages even when SkillVerse is in another tab.</div>
             </div>
-            <h3 className="font-bold text-lg mb-1">All caught up!</h3>
-            <p className="text-sm text-ink/50">You have no new notifications.</p>
+            <button type="button" className="btn btn-p" onClick={requestBrowserPermission}>Enable alerts</button>
+            <button type="button" aria-label="Dismiss" onClick={() => setBannerDismissed(true)} style={{ border: 'none', background: 'transparent', fontSize: 18, fontWeight: 900, cursor: 'pointer' }}>×</button>
+          </div>
+        )}
+
+        <div className="seg" role="group" aria-label="Filter" style={{ alignSelf: 'flex-start' }}>
+          {[['all', 'All'], ['unread', 'Unread']].map(([key, label]) => (
+            <button
+              key={key}
+              type="button"
+              className={filter === key ? 'on' : ''}
+              aria-pressed={filter === key}
+              onClick={() => setFilter(key)}
+            >
+              {label}
+              {key === 'unread' && unread > 0 && <span className="cnt">{unread}</span>}
+            </button>
+          ))}
+        </div>
+
+        {loading ? (
+          <>
+            <div className="sk" style={{ height: 76 }} />
+            <div className="sk" style={{ height: 76 }} />
+            <div className="sk" style={{ height: 76 }} />
+            <div className="sk" style={{ height: 76 }} />
+          </>
+        ) : groups.length === 0 ? (
+          <div className="card" style={{ padding: '52px 28px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, textAlign: 'center', borderStyle: 'dashed', boxShadow: 'none' }}>
+            <span style={{ width: 80, height: 80, borderRadius: 22, border: '2px solid #29251F', background: '#D6F3EA', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 34, transform: 'rotate(-5deg)', boxShadow: '0 5px 0 #29251F' }}>✓</span>
+            <h2 style={{ margin: '6px 0 0', fontSize: 24, fontWeight: 900 }}>
+              {filter === 'unread' && notifications.length > 0 ? 'No unread notifications' : 'All caught up!'}
+            </h2>
+            <p className="muted" style={{ margin: 0, fontSize: 15 }}>
+              {filter === 'unread' && notifications.length > 0 ? 'You’ve read everything. Nice.' : 'You have no notifications yet.'}
+            </p>
           </div>
         ) : (
-          <div className="divide-y divide-line">
-            {notifications.map(notif => (
-              <div 
-                key={notif.id} 
-                onClick={() => handleNotificationClick(notif)}
-                className={`p-4 sm:p-5 cursor-pointer hover:bg-paper transition-colors flex items-start gap-4 ${!notif.is_read ? 'bg-brandLight/5' : ''}`}
-              >
-                <div className="shrink-0 mt-1">
-                  {getIcon(notif.type)}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex justify-between items-start gap-2 mb-1">
-                    <h3 className={`text-sm font-semibold truncate ${!notif.is_read ? 'text-ink' : 'text-ink/70'}`}>
-                      {notif.title}
-                    </h3>
-                    <span className="text-[10px] font-medium text-ink/40 shrink-0 whitespace-nowrap mt-0.5">
-                      {formatTimeAgo(notif.created_at)}
-                    </span>
-                  </div>
-                  <p className={`text-sm leading-relaxed break-words ${!notif.is_read ? 'text-ink/80' : 'text-ink/60'}`}>
-                    {notif.message}
-                  </p>
-                </div>
-                {!notif.is_read && (
-                  <div className="shrink-0 flex flex-col items-center gap-2">
-                    <div className="w-2.5 h-2.5 bg-brand rounded-full mt-2 shadow-[0_0_8px_rgba(23,96,255,0.4)]"></div>
-                  </div>
-                )}
+          groups.map(([label, items]) => (
+            <section key={label} aria-label={label} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <span className="eb">{label}</span>
+              <div className="card" style={{ overflow: 'hidden', padding: 0 }}>
+                {items.map(notif => {
+                  const [icon, bg, go] = TYPE[notif.type] || FALLBACK;
+                  const un = !notif.is_read;
+                  return (
+                    <button
+                      key={notif.id}
+                      type="button"
+                      className={`item${un ? ' un' : ''}`}
+                      onClick={() => handleNotificationClick(notif)}
+                    >
+                      <span className="ic" style={{ background: bg }} aria-hidden="true">{icon}</span>
+                      <span style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 3 }}>
+                        <span style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
+                          <strong style={{ fontSize: 15, fontWeight: un ? 900 : 700, color: un ? '#29251F' : '#4A443A' }}>{notif.title}</strong>
+                          <span className="mono" style={{ fontSize: 11, color: '#6E6455', whiteSpace: 'nowrap' }}>{formatTimeAgo(notif.created_at)}</span>
+                        </span>
+                        <span style={{ fontSize: 14, lineHeight: 1.45, fontWeight: un ? 600 : 500, color: un ? '#29251F' : '#6E6455' }}>{notif.message}</span>
+                        <span style={{ fontSize: 12, fontWeight: 800, marginTop: 2 }}>{go} →</span>
+                      </span>
+                      {un && (
+                        <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8 }}>
+                          <span className="dot" aria-label="Unread" />
+                          {/* a span, not a nested <button> — the row is already
+                              a button, and activating it marks the item read */}
+                          <span className="mk" onClick={(e) => handleMarkRead(e, notif.id)}>Mark read</span>
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
-            ))}
-          </div>
+            </section>
+          ))
         )}
       </div>
     </div>

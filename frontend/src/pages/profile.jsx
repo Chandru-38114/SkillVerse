@@ -1,22 +1,53 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { Settings, MapPin, Building, Trophy, Star, CheckCircle, ArrowRight } from "lucide-react";
 import { api } from "../api";
-import Avatar from "../components/ui/Avatar";
+import "./profile.css";
 
-function SkillBadge({ badge }) {
-  if (!badge) return null;
-  return (
-    <span className="inline-flex items-center gap-1.5 bg-goldLight text-gold px-2 py-1 rounded-md text-[10px] font-bold border border-gold/20 shadow-sm">
-      <CheckCircle className="w-3.5 h-3.5 text-brandInk" /> Verified
-    </span>
-  );
+// Mirrors routers/gamification.py — keep these in step with the backend.
+const MILESTONES = [
+  [100, 'Getting Started'],
+  [200, 'Novice Learner'],
+  [500, 'Rising Star'],
+  [1000, 'SkillVerse Expert'],
+  [5000, 'SkillVerse Legend'],
+]
+
+function rankTitle(points) {
+  let title = 'Explorer'
+  for (const [threshold, name] of MILESTONES) {
+    if (points >= threshold) title = name
+  }
+  return title
+}
+
+const BADGE_ICON = { Gold: '🥇', Silver: '🥈', Bronze: '🥉', Expert: '🏆' }
+const BADGE_BG = { Gold: '#FBEFC4', Silver: '#F0E5D2', Bronze: '#FFE3CF', Expert: '#E6DDF6' }
+
+function stars(n) {
+  const filled = Math.max(0, Math.min(5, Math.round(n || 0)))
+  return '★★★★★'.slice(0, filled) + '☆☆☆☆☆'.slice(0, 5 - filled)
+}
+
+function shortDate(iso) {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (isNaN(d)) return ''
+  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+}
+
+function monthYear(iso) {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (isNaN(d)) return ''
+  return d.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })
 }
 
 export default function Profile() {
   const [user, setUser] = useState(null);
   const [skills, setSkills] = useState([]);
   const [gamification, setGamification] = useState(null);
+  const [reviews, setReviews] = useState([]);
+  const [certificates, setCertificates] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -30,6 +61,15 @@ export default function Profile() {
         setUser(u);
         setSkills(s || []);
         setGamification(g);
+
+        // The design shows reviews and certificates on the profile, so both are
+        // fetched here. Neither is fatal if it fails.
+        const [r, c] = await Promise.all([
+          u?.id ? api.getUserReviews(u.id).catch(() => []) : Promise.resolve([]),
+          api.getMyCertificates().catch(() => []),
+        ]);
+        setReviews(r || []);
+        setCertificates(c || []);
       } catch (err) {
         console.error(err);
       } finally {
@@ -40,141 +80,201 @@ export default function Profile() {
   }, []);
 
   if (loading) return (
-    <div className="page-narrow pb-20 flex items-center justify-center min-h-[50vh]">
-      <div className="w-8 h-8 border-4 border-brand border-t-transparent rounded-full animate-spin"></div>
+    <div className="sv-profile">
+      <div style={{ maxWidth: 1160, margin: '0 auto', padding: '40px clamp(16px, 3vw, 32px) 0', display: 'flex', flexDirection: 'column', gap: 28 }}>
+        <div className="sk" style={{ height: 300 }} />
+        <div className="grid2">
+          <div className="sk" style={{ height: 340 }} />
+          <div className="sk" style={{ height: 340 }} />
+        </div>
+      </div>
     </div>
   );
-  
-  if (!user) return <div className="page-narrow pb-20 text-center text-clay mt-12">Failed to load profile data</div>;
+
+  if (!user) return (
+    <div className="sv-profile">
+      <div style={{ maxWidth: 1160, margin: '0 auto', padding: '40px clamp(16px, 3vw, 32px)' }}>
+        <div className="card" style={{ padding: 32, textAlign: 'center', fontWeight: 700 }}>Failed to load profile data</div>
+      </div>
+    </div>
+  );
 
   const learningSkills = skills.filter(s => s.role === 'learning');
   const teachingSkills = skills.filter(s => s.role === 'teaching');
+  const verifiedCount = skills.filter(s => s.badge).length;
+  const sessionsDone = skills.reduce((sum, s) => sum + (s.sessions_completed || 0), 0);
+  const points = gamification?.total_points ?? user.points ?? 0;
+
+  const reviewCount = reviews.length;
+  const avgRating = reviewCount
+    ? reviews.reduce((sum, r) => sum + (r.rating || 0), 0) / reviewCount
+    : 0;
+
+  const EmptyBox = ({ children }) => (
+    <div style={{ padding: 22, border: '2px dashed #29251F', borderRadius: 14, textAlign: 'center', display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'center', fontWeight: 700 }}>
+      {children}
+    </div>
+  )
 
   return (
-    <div className="page-narrow pb-20 space-y-8">
-      
-      {/* Header Actions */}
-      <div className="flex justify-between items-center mb-2">
-        <h1 className="text-2xl font-bold font-display text-ink">My Profile</h1>
-        <Link to="/settings" className="btn-secondary px-3 py-1.5 text-xs flex items-center gap-2">
-          <Settings className="w-4 h-4" />
-          Settings
-        </Link>
-      </div>
+    <div className="sv-profile">
+      <div style={{ maxWidth: 1160, margin: '0 auto', padding: '40px clamp(16px, 3vw, 32px) 0', display: 'flex', flexDirection: 'column', gap: 28 }}>
 
-      {/* Identity Card */}
-      <section className="card p-6 md:p-10 border border-line bg-surface shadow-sm text-center sm:text-left flex flex-col sm:flex-row items-center sm:items-start gap-8">
-        <Avatar url={user.profile_picture_url} name={user.name} size="xl" className="shadow-md" />
-        
-        <div className="flex-1 space-y-3 w-full">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
           <div>
-            <h2 className="text-3xl font-display font-bold text-ink">{user.name}</h2>
-            
-            <div className="flex flex-wrap items-center justify-center sm:justify-start gap-4 mt-2 text-sm text-clay font-medium">
-              {user.college && (
-                <span className="flex items-center gap-1.5">
-                  <Building className="w-4 h-4" /> {user.college}
-                </span>
-              )}
-              {user.country && (
-                <span className="flex items-center gap-1.5">
-                  <MapPin className="w-4 h-4" /> {user.country}
-                </span>
+            <span className="eb">MY PROFILE</span>
+            <div className="muted" style={{ fontSize: 14, fontWeight: 600, marginTop: 4 }}>This is how learning partners see you.</div>
+          </div>
+          <Link to="/settings" className="btn btn-s">⚙ Edit in Settings</Link>
+        </div>
+
+        {/* identity */}
+        <section className="card" style={{ overflow: 'hidden' }}>
+          <div style={{ height: 92, background: 'var(--acc)', borderBottom: '2px solid #29251F', backgroundImage: 'radial-gradient(rgba(41,37,31,.18) 1.6px, transparent 1.6px)', backgroundSize: '22px 22px' }} />
+          <div className="idc" style={{ padding: '0 32px 28px', display: 'flex', gap: 28, alignItems: 'flex-end' }}>
+            <span style={{
+              width: 132, height: 132, flex: 'none', marginTop: -66, borderRadius: 999, border: '3px solid #29251F',
+              background: user.profile_picture_url ? `#D2BEA0 url(${user.profile_picture_url}) center/cover no-repeat` : '#D2BEA0',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 52, fontWeight: 900, boxShadow: '0 5px 0 #29251F'
+            }}>
+              {user.profile_picture_url ? '' : (user.name || '?')[0].toUpperCase()}
+            </span>
+
+            <div style={{ flex: 1, minWidth: 0, paddingTop: 18, display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div className="meta" style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                <h1 style={{ margin: 0, fontSize: 38, fontWeight: 900, lineHeight: 1.05 }}>{user.name}</h1>
+                {verifiedCount > 0 && (
+                  <span className="pill" style={{ background: '#D6F3EA' }}>✓ {verifiedCount} verified skill{verifiedCount === 1 ? '' : 's'}</span>
+                )}
+              </div>
+
+              <div className="meta" style={{ display: 'flex', gap: 16, flexWrap: 'wrap', fontSize: 14, fontWeight: 700 }}>
+                {user.college && <span>🏛 {user.college}</span>}
+                {user.country && <span>📍 {user.country}</span>}
+                {user.created_at && <span className="muted">Member since {monthYear(user.created_at)}</span>}
+              </div>
+
+              {user.bio ? (
+                <p style={{ margin: 0, fontSize: 16, lineHeight: 1.6, maxWidth: 640, fontWeight: 500 }}>{user.bio}</p>
+              ) : (
+                <Link to="/settings" style={{ alignSelf: 'flex-start', padding: '10px 14px', border: '2px dashed #29251F', borderRadius: 12, fontWeight: 700, fontSize: 14, textDecoration: 'none' }}>
+                  + Add a short bio so partners know what you teach and learn
+                </Link>
               )}
             </div>
           </div>
-          
-          {user.bio ? (
-            <p className="text-ink/80 text-sm leading-relaxed max-w-2xl mt-4">
-              {user.bio}
-            </p>
-          ) : (
-            <p className="text-clay/60 text-sm italic mt-4">No bio provided. Add one in Settings to tell others what you're learning and teaching.</p>
-          )}
-        </div>
-      </section>
 
-      {/* Grid: Growth & Skills */}
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
-        
-        {/* Left Column (Growth) */}
-        <div className="md:col-span-5 space-y-8">
-          <section className="card p-6 border border-line bg-surface shadow-sm">
-            <h3 className="text-xs font-bold text-clay uppercase tracking-wider mb-6 flex items-center gap-2">
-              <Trophy className="w-4 h-4 text-gold" /> Growth & Points
-            </h3>
-            
-            <div className="flex flex-col items-center text-center">
-              <p className="text-5xl text-ink font-bold mb-1">{gamification?.total_points || user.points || 0}</p>
-              <p className="text-xs font-bold text-gold uppercase tracking-wider mb-6">Total Points</p>
-              
-              <div className="w-full text-left">
-                <p className="text-[10px] font-bold text-gold uppercase tracking-wider mb-1">Next Milestone</p>
-                <div className="flex justify-between items-end mb-2">
-                  <h4 className="font-bold text-ink">{gamification?.next_milestone_title || "Level Up"}</h4>
-                  <p className="text-xs text-ink/50 font-semibold">{gamification?.total_points || user.points || 0} / {gamification?.next_milestone_points || 500}</p>
-                </div>
-                <div className="w-full bg-line/40 h-2 rounded-full overflow-hidden">
-                  <div 
-                    className="bg-gold h-full rounded-full transition-all duration-700 ease-out" 
-                    style={{ width: `${Math.min(100, (((gamification?.total_points || user.points || 0) / (gamification?.next_milestone_points || 500)) * 100))}%` }} 
-                  />
-                </div>
-              </div>
+          <div className="stats" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, padding: '0 32px 28px' }}>
+            <div className="stat" style={{ background: '#FBEFC4' }}>
+              <span className="mono" style={{ fontSize: 26 }}>{reviewCount ? `★ ${avgRating.toFixed(1)}` : '—'}</span>
+              <span style={{ fontSize: 12, fontWeight: 800 }}>{reviewCount ? `from ${reviewCount} review${reviewCount === 1 ? '' : 's'}` : 'no reviews yet'}</span>
             </div>
-          </section>
-        </div>
+            <div className="stat" style={{ background: '#D6F3EA' }}>
+              <span className="mono" style={{ fontSize: 26 }}>{sessionsDone}</span>
+              <span style={{ fontSize: 12, fontWeight: 800 }}>sessions completed</span>
+            </div>
+            <div className="stat" style={{ background: '#E6DDF6' }}>
+              <span className="mono" style={{ fontSize: 26 }}>{verifiedCount}</span>
+              <span style={{ fontSize: 12, fontWeight: 800 }}>verified badges</span>
+            </div>
+            <div className="stat" style={{ background: 'var(--accl)' }}>
+              <span className="mono" style={{ fontSize: 26 }}>{points}</span>
+              <span style={{ fontSize: 12, fontWeight: 800 }}>XP · {rankTitle(points)}</span>
+            </div>
+          </div>
+        </section>
 
-        {/* Right Column (Skills) */}
-        <div className="md:col-span-7 space-y-8">
-          
-          <section>
-            <h3 className="text-xs font-bold text-clay uppercase tracking-wider mb-4 px-1">Learning Skills</h3>
-            {learningSkills.length > 0 ? (
-              <div className="space-y-4">
-                {learningSkills.map(s => (
-                  <div key={s.id} className="card p-5 border border-line bg-surface shadow-sm flex flex-col gap-3">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h4 className="font-bold text-ink text-base">{s.skill_name}</h4>
-                        <p className="text-xs text-clay font-medium capitalize mt-0.5">{s.level} {s.badge && '• Verified'}</p>
+        <div className="grid2">
+          {/* left */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 28, minWidth: 0 }}>
+            <section aria-labelledby="sv-ct" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <h2 id="sv-ct" style={{ margin: 0, fontSize: 22, fontWeight: 900 }}>Can teach</h2>
+              {teachingSkills.length > 0 ? teachingSkills.map(s => (
+                <div className="teach" key={s.id}>
+                  <span style={{ width: 52, height: 52, flex: 'none', borderRadius: 14, border: '2px solid #29251F', background: BADGE_BG[s.badge] || '#F0E5D2', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>
+                    {BADGE_ICON[s.badge] || '📘'}
+                  </span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <strong style={{ fontSize: 17 }}>{s.skill_name}</strong>
+                    <div className="muted" style={{ fontSize: 13, fontWeight: 700 }}>
+                      {s.level}{s.badge ? ` · ${s.badge} badge` : ''}
+                    </div>
+                  </div>
+                  <span className="mono" style={{ fontSize: 20 }}>{s.progress_percentage || 0}%</span>
+                </div>
+              )) : (
+                <EmptyBox>
+                  <span>Get a verified badge so learners can find you.</span>
+                  <Link to="/assessment" className="btn btn-p">Take a Skill Challenge</Link>
+                </EmptyBox>
+              )}
+            </section>
+
+            <section aria-labelledby="sv-lr" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <h2 id="sv-lr" style={{ margin: 0, fontSize: 22, fontWeight: 900 }}>Currently learning</h2>
+              {learningSkills.length > 0 ? (
+                <div className="card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 16, boxShadow: '0 3px 0 #29251F' }}>
+                  {learningSkills.map(s => {
+                    const pct = s.progress_percentage || 0
+                    return (
+                      <div key={s.id} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                          <strong>{s.skill_name}</strong>
+                          <span className="pill" style={{ height: 24, fontSize: 11, background: pct > 0 ? '#FBEFC4' : '#FFFDF8' }}>
+                            {pct > 0 ? 'Practicing' : 'Discovered'}
+                          </span>
+                        </div>
+                        <div className="bar"><span style={{ width: `${Math.max(pct, 2)}%` }} /></div>
                       </div>
-                      <span className="text-xs font-bold text-brandInk bg-brand/10 px-2 py-1 rounded-md">
-                        {s.progress_percentage || 0}%
-                      </span>
-                    </div>
-                    <div className="w-full bg-line/50 rounded-full h-1 overflow-hidden">
-                      <div className="bg-brand h-full rounded-full transition-all duration-700 ease-out" style={{ width: `${s.progress_percentage || 0}%` }} />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="card p-6 border border-line border-dashed text-center bg-surface">
-                <p className="text-sm text-clay mb-2">You aren't tracking any learning skills yet.</p>
-                <Link to="/marketplace" className="text-xs font-semibold text-brandInk hover:underline">Find a partner to start learning</Link>
-              </div>
-            )}
-          </section>
+                    )
+                  })}
+                </div>
+              ) : (
+                <EmptyBox>
+                  <span>You aren’t tracking any learning skills yet.</span>
+                  <Link to="/marketplace" className="btn btn-s">Find a partner to start learning</Link>
+                </EmptyBox>
+              )}
+            </section>
+          </div>
 
-          <section>
-            <h3 className="text-xs font-bold text-clay uppercase tracking-wider mb-4 px-1">Teaching Skills</h3>
-            {teachingSkills.length > 0 ? (
-              <div className="flex flex-wrap gap-3">
-                {teachingSkills.map(s => (
-                  <div key={s.id} className="bg-surface border border-line px-5 py-3 rounded-xl flex items-center gap-3 shadow-sm">
-                    <span className="font-semibold text-sm text-ink">{s.skill_name}</span>
-                    {s.badge && <SkillBadge badge={s.badge} />}
-                  </div>
-                ))}
+          {/* right */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 28, minWidth: 0 }}>
+            <section aria-labelledby="sv-rv" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                <h2 id="sv-rv" style={{ margin: 0, fontSize: 22, fontWeight: 900 }}>What partners say</h2>
+                {reviewCount > 0 && (
+                  <span className="pill" style={{ background: '#FBEFC4' }}>★ {avgRating.toFixed(1)} · {reviewCount} review{reviewCount === 1 ? '' : 's'}</span>
+                )}
               </div>
-            ) : (
-              <div className="card p-6 border border-line border-dashed text-center bg-surface">
-                <p className="text-sm text-clay">You haven't added any teaching skills yet.</p>
-              </div>
-            )}
-          </section>
+              {reviewCount > 0 ? reviews.map((r, i) => (
+                <figure className="card" key={r.id || i} style={{ margin: 0, padding: 18, display: 'flex', flexDirection: 'column', gap: 10, boxShadow: '0 3px 0 #29251F' }}>
+                  <span aria-label={`${r.rating} out of 5 stars`} style={{ letterSpacing: 2, fontSize: 16 }}>{stars(r.rating)}</span>
+                  {r.comment && <blockquote style={{ margin: 0, fontSize: 15, fontWeight: 600, lineHeight: 1.55 }}>{r.comment}</blockquote>}
+                  <figcaption style={{ fontSize: 13, fontWeight: 800 }}>
+                    — {r.reviewer_name || 'A partner'} <span className="mono muted" style={{ fontWeight: 700 }}>· {shortDate(r.created_at)}</span>
+                  </figcaption>
+                </figure>
+              )) : (
+                <EmptyBox>No reviews yet. They appear here after your first sessions.</EmptyBox>
+              )}
+            </section>
 
+            <section aria-labelledby="sv-cf" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <h2 id="sv-cf" style={{ margin: 0, fontSize: 22, fontWeight: 900 }}>Certificates</h2>
+              {certificates.length > 0 ? certificates.map(c => (
+                <Link to={`/certificate/${c.certificate_id}`} className="card" key={c.certificate_id} style={{ padding: '16px 18px', display: 'flex', alignItems: 'center', gap: 14, textDecoration: 'none', boxShadow: '0 3px 0 #29251F', borderLeft: '10px solid #F5C542' }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <strong style={{ fontSize: 16 }}>{c.skill} · {c.level}</strong>
+                    <div className="mono muted" style={{ fontSize: 12 }}>{c.certificate_id} · {shortDate(c.created_at || c.issued_at)}</div>
+                  </div>
+                  <span style={{ fontWeight: 800 }}>View →</span>
+                </Link>
+              )) : (
+                <EmptyBox>Reach Mastery in a skill to earn a verifiable certificate.</EmptyBox>
+              )}
+            </section>
+          </div>
         </div>
       </div>
     </div>

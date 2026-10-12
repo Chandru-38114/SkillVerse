@@ -1,0 +1,77 @@
+/* Settings — component styles from the SettingsV2 design.
+   Scoped under .sv-settings so the design's .card / .in / .btn cannot collide
+   with the app's classes of the same name. */
+
+.sv-settings{
+  --acc:#FF8A3D; --accd:#C4581A; --accl:#FFE3CF;
+  font-family:Inter,system-ui,sans-serif;color:#29251F;background:#F8F3E9;
+  min-height:100vh;padding-bottom:80px;position:relative;
+}
+.sv-settings *{box-sizing:border-box}
+.sv-settings a{color:#29251F}
+
+.sv-settings .muted{color:#6E6455}
+.sv-settings .eb{font-size:12px;font-weight:800;letter-spacing:.1em;color:#6E6455}
+.sv-settings .mono{font-family:"JetBrains Mono",ui-monospace,Menlo,monospace}
+
+.sv-settings .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:46px;padding:0 20px;border:2px solid #29251F;border-radius:10px;font:800 15px Inter,sans-serif;color:#29251F;text-decoration:none;cursor:pointer;transition:transform 180ms ease,box-shadow 180ms ease;white-space:nowrap}
+.sv-settings .btn-p{background:var(--acc);box-shadow:inset 0 2px 0 rgba(255,255,255,.45),0 3px 0 var(--accd),0 5px 0 #29251F}
+.sv-settings .btn-p:hover:not(:disabled){transform:translateY(2px);box-shadow:0 1px 0 var(--accd),0 3px 0 #29251F}
+.sv-settings .btn-s{background:#FFFDF8;box-shadow:0 3px 0 #D2BEA0,0 5px 0 #29251F}
+.sv-settings .btn-s:hover:not(:disabled){background:#F0E5D2;transform:translateY(2px);box-shadow:0 1px 0 #D2BEA0,0 3px 0 #29251F}
+.sv-settings .btn-d{background:#E2533A;color:#FFFDF8;box-shadow:0 3px 0 #9A2B1E,0 5px 0 #29251F}
+.sv-settings .btn-q{background:transparent;border-color:transparent;color:#9A2B1E;min-height:40px;padding:0 10px;box-shadow:none}
+.sv-settings .btn-q:hover:not(:disabled){background:#F6DDD8;transform:none;box-shadow:none}
+.sv-settings .btn:disabled{background:#EDE6D8;color:#8C8273;border-color:#B9AE9C;box-shadow:none;transform:none;cursor:not-allowed}
+.sv-settings .btn:focus-visible,.sv-settings a:focus-visible,.sv-settings button:focus-visible,.sv-settings .in:focus-visible{outline:3px solid #A58D70;outline-offset:3px}
+
+.sv-settings .card{background:#FFFDF8;border:2px solid #29251F;border-radius:16px;box-shadow:0 4px 0 #D2BEA0,0 7px 0 #29251F}
+
+.sv-settings .f{display:flex;flex-direction:column;gap:7px;min-width:0}
+.sv-settings .fl{font-size:14px;font-weight:700}
+.sv-settings .in{width:100%;min-height:48px;padding:0 14px;border:2px solid #29251F;border-radius:10px;background:#FFFDF8;color:#29251F;font:500 15px Inter,sans-serif;box-shadow:inset 0 3px 0 #EADFCC}
+.sv-settings .in[disabled]{background:#F0E5D2;color:#6E6455;border-style:dashed;box-shadow:none}
+.sv-settings textarea.in{padding:12px 14px;min-height:100px;resize:vertical;line-height:1.5}
+.sv-settings select.in{appearance:none;-webkit-appearance:none;padding-right:42px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2329251F' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center}
+
+.sv-settings .row2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+
+.sv-settings .nav a,.sv-settings .nav button{display:flex;align-items:center;gap:10px;padding:11px 14px;border:2px solid transparent;border-radius:12px;font:800 15px Inter,sans-serif;text-decoration:none;background:transparent;color:#29251F;cursor:pointer;width:100%;text-align:left}
+.sv-settings .nav a:hover,.sv-settings .nav button:hover{background:#F0E5D2}
+.sv-settings .nav a.on,.sv-settings .nav button.on{background:#FFFDF8;border-color:#29251F;box-shadow:0 3px 0 #29251F}
+
+.sv-settings .alert{display:flex;gap:10px;align-items:center;padding:12px 14px;border:2px solid #29251F;border-radius:12px;font:600 14px Inter,sans-serif}
+.sv-settings .ai{width:24px;height:24px;flex:none;border-radius:999px;border:2px solid #29251F;background:#FFFDF8;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px}
+
+.sv-settings .rule{display:flex;gap:8px;align-items:center;font-size:13px;font-weight:600}
+.sv-settings .dot{width:20px;height:20px;flex:none;border-radius:999px;border:2px solid #29251F;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:800}
+
+.sv-settings .sw{width:52px;height:30px;border-radius:999px;border:2px dashed #B9AE9C;background:#F0E5D2;position:relative;flex:none}
+.sv-settings .sw span{position:absolute;left:3px;top:3px;width:20px;height:20px;border-radius:999px;background:#D2BEA0}
+
+.sv-settings .layout{display:grid;grid-template-columns:240px minmax(0,1fr);gap:32px;align-items:start}
+
+@media (max-width:900px){
+  .sv-settings .layout{grid-template-columns:1fr}
+  .sv-settings .nav{flex-direction:row !important;overflow-x:auto;position:static !important}
+  .sv-settings .nav a,.sv-settings .nav button{white-space:nowrap;width:auto}
+}
+@media (max-width:600px){
+  .sv-settings .row2{grid-template-columns:1fr}
+  .sv-settings .avr{flex-direction:column;text-align:center}
+}
+
+@keyframes svSlideLSe{from{opacity:0;transform:translateX(-14px)}to{opacity:1;transform:translateX(0)}}
+@keyframes svPopSe{0%{opacity:0;scale:.82}70%{opacity:1;scale:1.04}100%{opacity:1;scale:1}}
+
+@media (prefers-reduced-motion:no-preference){
+  .sv-settings .nav a,.sv-settings .nav button{animation:svSlideLSe .45s both}
+  .sv-settings .nav > *:nth-child(2){animation-delay:.22s}
+  .sv-settings .nav > *:nth-child(3){animation-delay:.29s}
+  .sv-settings .nav > *:nth-child(4){animation-delay:.36s}
+  .sv-settings .nav > *:nth-child(5){animation-delay:.43s}
+  .sv-settings .rule{animation:svPopSe .4s both}
+  .sv-settings .rule:nth-child(2){animation-delay:.56s}
+  .sv-settings .rule:nth-child(3){animation-delay:.62s}
+  .sv-settings .rule:nth-child(4){animation-delay:.68s}
+}
