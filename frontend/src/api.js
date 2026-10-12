@@ -343,3 +343,9 @@ export const getAvatarUrl = (url) => {
   if (url.startsWith("http")) return url;
   return `${BASE_URL}${url}`;
 };
+
+export function prewarmServer() {
+  try {
+    fetch(`${BASE_URL}/`, { method: "GET" }).catch(() => {});
+  } catch (e) {}
+}

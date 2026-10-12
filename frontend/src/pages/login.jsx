@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { api, saveSession } from '../api'
+import { api, saveSession, prewarmServer } from '../api'
 import AuthShell, { Alert, AuthField, PwField, GoogleButton } from '../components/auth/AuthShell'
 
 export default function Login() {
@@ -9,6 +9,25 @@ export default function Login() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [googleLoading, setGoogleLoading] = useState(false)
+  const [slowServerMessage, setSlowServerMessage] = useState(false)
+
+  useEffect(() => {
+    prewarmServer()
+  }, [])
+
+  useEffect(() => {
+    let timer
+    if (loading || googleLoading) {
+      setSlowServerMessage(false)
+      timer = setTimeout(() => {
+        setSlowServerMessage(true)
+      }, 6000)
+    } else {
+      setSlowServerMessage(false)
+    }
+    return () => clearTimeout(timer)
+  }, [loading, googleLoading])
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -38,6 +57,8 @@ export default function Login() {
   }
 
   async function handleGoogleSuccess(credentialResponse) {
+    setError('')
+    setGoogleLoading(true)
     try {
       const res = await api.googleAuth(credentialResponse.credential)
 
@@ -54,6 +75,8 @@ export default function Login() {
       }
     } catch (err) {
       setError(err.message || 'Google authentication failed')
+    } finally {
+      setGoogleLoading(false)
     }
   }
 
@@ -72,6 +95,11 @@ export default function Login() {
         </div>
 
         {error && <Alert kind="err">{error}</Alert>}
+        {slowServerMessage && (
+          <Alert kind="info">
+            Waking up the server, this can take up to a minute. Please don't refresh.
+          </Alert>
+        )}
 
         <AuthField
           id="identifier"
@@ -80,6 +108,7 @@ export default function Login() {
           value={identifier}
           onChange={setIdentifier}
           invalid={!!error}
+          disabled={loading || googleLoading}
           required
         />
 
@@ -89,11 +118,12 @@ export default function Login() {
           value={password}
           onChange={setPassword}
           invalid={!!error}
+          disabled={loading || googleLoading}
           required
           right={<Link to="/forgot-password" style={{ fontSize: 13, fontWeight: 700 }}>Forgot password?</Link>}
         />
 
-        <button type="submit" className="btn btn-p full" style={{ marginTop: 4 }} disabled={loading}>
+        <button type="submit" className="btn btn-p full" style={{ marginTop: 4 }} disabled={loading || googleLoading}>
           {loading ? 'Signing in…' : 'Log In'}
         </button>
 
@@ -102,8 +132,9 @@ export default function Login() {
         <GoogleButton
           onSuccess={handleGoogleSuccess}
           onError={() => setError('Google Login failed')}
-          label="Continue with Google"
+          label={googleLoading ? "Signing you in..." : "Continue with Google"}
           width={396}
+          disabled={loading || googleLoading}
         />
       </form>
 

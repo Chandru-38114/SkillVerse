@@ -5,6 +5,7 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import Lenis from 'lenis'
 import { initLanding } from './landingAnimations'
 import markup from './landingMarkup'
+import { prewarmServer } from '../../api'
 import './landing.css'
 
 gsap.registerPlugin(ScrollTrigger)
@@ -14,6 +15,7 @@ export default function Landing() {
   const rootRef = useRef(null)
 
   useEffect(() => {
+    prewarmServer()
     document.body.classList.add('sv-landing')
     window.scrollTo(0, 0)
 

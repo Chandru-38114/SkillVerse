@@ -252,7 +252,16 @@ const GLogo = () => (
  */
 export function GoogleButton({ onSuccess, onError, label = 'Continue with Google', width = 380, disabled = false }) {
   return (
-    <div className="gbtn" style={{ position: 'relative', width: '100%' }}>
+    <div
+      className="gbtn"
+      style={{
+        position: 'relative',
+        width: '100%',
+        opacity: disabled ? 0.6 : 1,
+        pointerEvents: disabled ? 'none' : 'auto',
+        cursor: disabled ? 'not-allowed' : 'pointer'
+      }}
+    >
       <GLogo />
       {label}
       {!disabled && (
