@@ -125,7 +125,10 @@ export default function Profile() {
             <span className="eb">MY PROFILE</span>
             <div className="muted" style={{ fontSize: 14, fontWeight: 600, marginTop: 4 }}>This is how learning partners see you.</div>
           </div>
-          <Link to="/settings" className="btn btn-s">⚙ Edit in Settings</Link>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            <Link to="/report-card" className="btn btn-p">📊 Report Card</Link>
+            <Link to="/settings" className="btn btn-s">⚙ Edit in Settings</Link>
+          </div>
         </div>
 
         {/* identity */}

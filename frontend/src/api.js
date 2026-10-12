@@ -318,6 +318,10 @@ export const api = {
   proposeExchangeCycle: (legs) => request("/exchanges/cycles", { method: "POST", body: { legs } }),
   getMyExchanges: () => request("/exchanges/mine", { bypassCache: true }),
   respondToExchangeGroup: (groupId, accept) => request(`/exchanges/${groupId}/respond`, { method: "POST", body: { accept } }),
+
+  // Report Card & Teacher Stats (private)
+  getMyReportCard: () => request("/report-card/me", { bypassCache: true }),
+  getMyTeacherStats: () => request("/teacher-stats/me", { bypassCache: true }),
 };
 
 export function saveSession(token, user) {

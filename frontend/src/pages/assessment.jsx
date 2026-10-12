@@ -725,6 +725,24 @@ export default function Assessment() {
               <p className="muted" style={{ margin: 0, fontSize: 16, lineHeight: 1.55 }}>
                 Your score, level and badge are now on your profile. Peers searching for {skillName} can see your verified badge.
               </p>
+              {result.counted !== undefined && (
+                <div style={{
+                  padding: '10px 14px',
+                  borderRadius: 12,
+                  border: '2px solid #29251F',
+                  background: result.counted ? '#D6F3EA' : '#FBEFC4',
+                  boxShadow: '0 3px 0 #29251F',
+                  fontWeight: 800,
+                  fontSize: 13,
+                  alignSelf: 'flex-start',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                }}>
+                  <span>{result.counted ? '📅' : 'ℹ️'}</span>
+                  <span>{result.counted ? 'This is your counted attempt for this week' : "This updates your level but isn't a new counted week"}</span>
+                </div>
+              )}
             </div>
           </div>
 

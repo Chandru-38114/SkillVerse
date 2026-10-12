@@ -27,6 +27,7 @@ const CertificateView = lazy(() => import('./pages/CertificateView'))
 const VerifyCertificate = lazy(() => import('./pages/VerifyCertificate'))
 const AboutSkillVerse = lazy(() => import('./pages/AboutSkillVerse'))
 const Profile = lazy(() => import('./pages/profile'))
+const ReportCard = lazy(() => import('./pages/report_card'))
 const Settings = lazy(() => import('./pages/settings'))
 const Messages = lazy(() => import('./pages/messages'))
 const Notifications = lazy(() => import('./pages/notifications'))
@@ -169,6 +170,10 @@ export default function App() {
             <Route
               path="/quest-review/:sessionId"
               element={<ProtectedRoute><QuestReview /></ProtectedRoute>}
+            />
+            <Route
+              path="/report-card"
+              element={<ProtectedRoute><ReportCard /></ProtectedRoute>}
             />
             <Route path="/gamification" element={<ProtectedRoute><Gamification /></ProtectedRoute>} />
           </Routes>
