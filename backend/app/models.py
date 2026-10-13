@@ -468,3 +468,177 @@ class LoungeComment(Base):
 
     post = relationship("LoungePost", back_populates="comments")
     author = relationship("User", foreign_keys=[author_id])
+
+
+# ── Study Circles (Teacher-only scheduled study groups) ──────────────────────
+
+class StudyCircle(Base):
+    """
+    Teacher-only small-group scheduled study sessions.
+    """
+    __tablename__ = "study_circles"
+
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String, nullable=False)
+    description = Column(Text, nullable=False)
+    host_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    skill_id = Column(Integer, ForeignKey("skills.id", ondelete="SET NULL"), nullable=True, index=True)
+    scheduled_at = Column(DateTime, nullable=False)
+    max_participants = Column(Integer, default=8, nullable=False)
+    status = Column(String, default="scheduled", nullable=False)  # scheduled, completed, cancelled
+    created_at = Column(DateTime, default=utc_now, nullable=False)
+
+    host = relationship("User", foreign_keys=[host_id])
+    skill = relationship("Skill", foreign_keys=[skill_id])
+    participants = relationship(
+        "StudyCircleParticipant",
+        back_populates="circle",
+        cascade="all, delete-orphan",
+    )
+
+
+class StudyCircleParticipant(Base):
+    """
+    Participants in a study circle.
+    """
+    __tablename__ = "study_circle_participants"
+
+    id = Column(Integer, primary_key=True, index=True)
+    circle_id = Column(Integer, ForeignKey("study_circles.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    joined_at = Column(DateTime, default=utc_now, nullable=False)
+
+    circle = relationship("StudyCircle", back_populates="participants")
+    user = relationship("User", foreign_keys=[user_id])
+
+    __table_args__ = (
+        UniqueConstraint("circle_id", "user_id", name="uix_study_circle_participant"),
+    )
+
+
+# ── Ask-a-Senior (Teacher-only Q&A) ──────────────────────────────────────────
+
+class SeniorQuestion(Base):
+    """
+    Teacher Q&A questions asked to more senior mentors.
+    """
+    __tablename__ = "senior_questions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    author_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    body = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=utc_now, nullable=False)
+    status = Column(String, default="open", nullable=False)  # open, answered
+
+    author = relationship("User", foreign_keys=[author_id])
+    answers = relationship(
+        "SeniorAnswer",
+        back_populates="question",
+        cascade="all, delete-orphan",
+        order_by="SeniorAnswer.created_at.asc()",
+    )
+
+
+class SeniorAnswer(Base):
+    """
+    Answers posted to Ask-a-Senior questions.
+    """
+    __tablename__ = "senior_answers"
+
+    id = Column(Integer, primary_key=True, index=True)
+    question_id = Column(Integer, ForeignKey("senior_questions.id", ondelete="CASCADE"), nullable=False, index=True)
+    author_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    body = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=utc_now, nullable=False)
+
+    question = relationship("SeniorQuestion", back_populates="answers")
+    author = relationship("User", foreign_keys=[author_id])
+
+
+# ── Weekly Challenges (Rotating prompt teachers respond to) ───────────────────
+
+class WeeklyChallenge(Base):
+    """
+    Rotating weekly pedagogy / teaching challenge prompts.
+    """
+    __tablename__ = "weekly_challenges"
+
+    id = Column(Integer, primary_key=True, index=True)
+    prompt = Column(Text, nullable=False)
+    week_start = Column(Date, nullable=False, index=True)  # Monday date
+    created_at = Column(DateTime, default=utc_now, nullable=False)
+
+    responses = relationship(
+        "WeeklyChallengeResponse",
+        back_populates="challenge",
+        cascade="all, delete-orphan",
+    )
+
+    __table_args__ = (
+        UniqueConstraint("week_start", name="uix_weekly_challenges_week_start"),
+    )
+
+
+class WeeklyChallengeResponse(Base):
+    """
+    Teacher responses to weekly challenges. Unique per teacher per week.
+    """
+    __tablename__ = "weekly_challenge_responses"
+
+    id = Column(Integer, primary_key=True, index=True)
+    challenge_id = Column(Integer, ForeignKey("weekly_challenges.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    body = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=utc_now, nullable=False)
+
+    challenge = relationship("WeeklyChallenge", back_populates="responses")
+    user = relationship("User", foreign_keys=[user_id])
+
+    __table_args__ = (
+        UniqueConstraint("challenge_id", "user_id", name="uix_weekly_challenge_user_response"),
+    )
+
+
+# ── Hackathons (Teacher-organized community events) ───────────────────────────
+
+class Hackathon(Base):
+    """
+    Teacher-organized community hackathon events.
+    """
+    __tablename__ = "hackathons"
+
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String, nullable=False)
+    description = Column(Text, nullable=False)
+    host_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    starts_at = Column(DateTime, nullable=False)
+    ends_at = Column(DateTime, nullable=False)
+    status = Column(String, default="upcoming", nullable=False)  # upcoming, active, completed, cancelled
+    created_at = Column(DateTime, default=utc_now, nullable=False)
+
+    host = relationship("User", foreign_keys=[host_id])
+    participants = relationship(
+        "HackathonParticipant",
+        back_populates="hackathon",
+        cascade="all, delete-orphan",
+    )
+
+
+class HackathonParticipant(Base):
+    """
+    Teacher participants in hackathons.
+    """
+    __tablename__ = "hackathon_participants"
+
+    id = Column(Integer, primary_key=True, index=True)
+    hackathon_id = Column(Integer, ForeignKey("hackathons.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    joined_at = Column(DateTime, default=utc_now, nullable=False)
+
+    hackathon = relationship("Hackathon", back_populates="participants")
+    user = relationship("User", foreign_keys=[user_id])
+
+    __table_args__ = (
+        UniqueConstraint("hackathon_id", "user_id", name="uix_hackathon_participant"),
+    )
+

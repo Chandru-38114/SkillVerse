@@ -631,3 +631,237 @@ class LoungePostOut(BaseModel):
 class LoungePostDetailOut(LoungePostOut):
     comments: List[LoungeCommentOut] = []
 
+
+# ── Study Circles Schemas ───────────────────────────────────────────────────
+
+class StudyCircleCreate(BaseModel):
+    title: str
+    description: str
+    skill_id: Optional[int] = None
+    scheduled_at: dt.datetime
+    max_participants: Optional[int] = 8
+
+    @field_validator("title")
+    @classmethod
+    def validate_title(cls, v: str) -> str:
+        s = v.strip() if isinstance(v, str) else ""
+        if not s:
+            raise ValueError("Title cannot be blank.")
+        if len(s) > 200:
+            raise ValueError("Title cannot exceed 200 characters.")
+        return s
+
+    @field_validator("description")
+    @classmethod
+    def validate_description(cls, v: str) -> str:
+        s = v.strip() if isinstance(v, str) else ""
+        if not s:
+            raise ValueError("Description cannot be blank.")
+        if len(s) > 2000:
+            raise ValueError("Description cannot exceed 2000 characters.")
+        return s
+
+    @field_validator("max_participants")
+    @classmethod
+    def validate_max_participants(cls, v: Optional[int]) -> int:
+        val = v if v is not None else 8
+        if val < 2 or val > 50:
+            raise ValueError("Max participants must be between 2 and 50.")
+        return val
+
+
+class StudyCircleParticipantOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    circle_id: int
+    user_id: int
+    user_name: str
+    user_college: Optional[str] = ""
+    user_avatar_url: Optional[str] = None
+    joined_at: dt.datetime
+
+
+class StudyCircleOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    title: str
+    description: str
+    host_id: int
+    host_name: str
+    host_college: Optional[str] = ""
+    host_avatar_url: Optional[str] = None
+    skill_id: Optional[int] = None
+    skill_name: Optional[str] = None
+    scheduled_at: dt.datetime
+    max_participants: int
+    status: str
+    created_at: dt.datetime
+    participant_count: int = 0
+    is_joined: bool = False
+    is_host: bool = False
+    participants: List[StudyCircleParticipantOut] = []
+
+
+# ── Ask-a-Senior Schemas ─────────────────────────────────────────────────────
+
+class SeniorQuestionCreate(BaseModel):
+    body: str
+
+    @field_validator("body")
+    @classmethod
+    def validate_body(cls, v: str) -> str:
+        s = v.strip() if isinstance(v, str) else ""
+        if not s:
+            raise ValueError("Question body cannot be blank.")
+        if len(s) > 3000:
+            raise ValueError("Question body cannot exceed 3000 characters.")
+        return s
+
+
+class SeniorAnswerCreate(BaseModel):
+    body: str
+
+    @field_validator("body")
+    @classmethod
+    def validate_body(cls, v: str) -> str:
+        s = v.strip() if isinstance(v, str) else ""
+        if not s:
+            raise ValueError("Answer body cannot be blank.")
+        if len(s) > 3000:
+            raise ValueError("Answer body cannot exceed 3000 characters.")
+        return s
+
+
+class SeniorAnswerOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    question_id: int
+    author_id: int
+    author_name: str
+    author_college: Optional[str] = ""
+    author_avatar_url: Optional[str] = None
+    body: str
+    created_at: dt.datetime
+
+
+class SeniorQuestionOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    author_id: int
+    author_name: str
+    author_college: Optional[str] = ""
+    author_avatar_url: Optional[str] = None
+    body: str
+    status: str
+    created_at: dt.datetime
+    answer_count: int = 0
+
+
+class SeniorQuestionDetailOut(SeniorQuestionOut):
+    answers: List[SeniorAnswerOut] = []
+
+
+# ── Weekly Challenges Schemas ────────────────────────────────────────────────
+
+class WeeklyChallengeOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    prompt: str
+    week_start: dt.date
+    created_at: dt.datetime
+    response_count: int = 0
+    has_responded: bool = False
+
+
+class WeeklyChallengeResponseCreate(BaseModel):
+    body: str
+
+    @field_validator("body")
+    @classmethod
+    def validate_body(cls, v: str) -> str:
+        s = v.strip() if isinstance(v, str) else ""
+        if not s:
+            raise ValueError("Response body cannot be blank.")
+        if len(s) > 3000:
+            raise ValueError("Response body cannot exceed 3000 characters.")
+        return s
+
+
+class WeeklyChallengeResponseOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    challenge_id: int
+    user_id: int
+    user_name: str
+    user_college: Optional[str] = ""
+    user_avatar_url: Optional[str] = None
+    body: str
+    created_at: dt.datetime
+
+
+# ── Hackathons Schemas ───────────────────────────────────────────────────────
+
+class HackathonCreate(BaseModel):
+    title: str
+    description: str
+    starts_at: dt.datetime
+    ends_at: dt.datetime
+
+    @field_validator("title")
+    @classmethod
+    def validate_title(cls, v: str) -> str:
+        s = v.strip() if isinstance(v, str) else ""
+        if not s:
+            raise ValueError("Title cannot be blank.")
+        if len(s) > 200:
+            raise ValueError("Title cannot exceed 200 characters.")
+        return s
+
+    @field_validator("description")
+    @classmethod
+    def validate_description(cls, v: str) -> str:
+        s = v.strip() if isinstance(v, str) else ""
+        if not s:
+            raise ValueError("Description cannot be blank.")
+        if len(s) > 3000:
+            raise ValueError("Description cannot exceed 3000 characters.")
+        return s
+
+
+class HackathonParticipantOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    hackathon_id: int
+    user_id: int
+    user_name: str
+    user_college: Optional[str] = ""
+    user_avatar_url: Optional[str] = None
+    joined_at: dt.datetime
+
+
+class HackathonOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    title: str
+    description: str
+    host_id: int
+    host_name: str
+    host_college: Optional[str] = ""
+    host_avatar_url: Optional[str] = None
+    starts_at: dt.datetime
+    ends_at: dt.datetime
+    status: str
+    created_at: dt.datetime
+    participant_count: int = 0
+    is_joined: bool = False
+    is_host: bool = False
+
+

@@ -58,7 +58,15 @@ async def lifespan(app: FastAPI):
                 inspector.has_table('weekly_attempts') and
                 inspector.has_table('demand_requests') and
                 inspector.has_table('lounge_posts') and
-                inspector.has_table('lounge_comments')
+                inspector.has_table('lounge_comments') and
+                inspector.has_table('study_circles') and
+                inspector.has_table('study_circle_participants') and
+                inspector.has_table('senior_questions') and
+                inspector.has_table('senior_answers') and
+                inspector.has_table('weekly_challenges') and
+                inspector.has_table('weekly_challenge_responses') and
+                inspector.has_table('hackathons') and
+                inspector.has_table('hackathon_participants')
             )
 
             def _backfill_level_num():
@@ -255,6 +263,70 @@ async def lifespan(app: FastAPI):
                         print("[startup] Created lounge_comments table.")
                     except Exception as e:
                         print(f"[startup] Failed to create lounge_comments table: {e}")
+
+                if not inspector.has_table('study_circles'):
+                    try:
+                        with conn.begin():
+                            models.StudyCircle.__table__.create(bind=conn, checkfirst=True)
+                        print("[startup] Created study_circles table.")
+                    except Exception as e:
+                        print(f"[startup] Failed to create study_circles table: {e}")
+
+                if not inspector.has_table('study_circle_participants'):
+                    try:
+                        with conn.begin():
+                            models.StudyCircleParticipant.__table__.create(bind=conn, checkfirst=True)
+                        print("[startup] Created study_circle_participants table.")
+                    except Exception as e:
+                        print(f"[startup] Failed to create study_circle_participants table: {e}")
+
+                if not inspector.has_table('senior_questions'):
+                    try:
+                        with conn.begin():
+                            models.SeniorQuestion.__table__.create(bind=conn, checkfirst=True)
+                        print("[startup] Created senior_questions table.")
+                    except Exception as e:
+                        print(f"[startup] Failed to create senior_questions table: {e}")
+
+                if not inspector.has_table('senior_answers'):
+                    try:
+                        with conn.begin():
+                            models.SeniorAnswer.__table__.create(bind=conn, checkfirst=True)
+                        print("[startup] Created senior_answers table.")
+                    except Exception as e:
+                        print(f"[startup] Failed to create senior_answers table: {e}")
+
+                if not inspector.has_table('weekly_challenges'):
+                    try:
+                        with conn.begin():
+                            models.WeeklyChallenge.__table__.create(bind=conn, checkfirst=True)
+                        print("[startup] Created weekly_challenges table.")
+                    except Exception as e:
+                        print(f"[startup] Failed to create weekly_challenges table: {e}")
+
+                if not inspector.has_table('weekly_challenge_responses'):
+                    try:
+                        with conn.begin():
+                            models.WeeklyChallengeResponse.__table__.create(bind=conn, checkfirst=True)
+                        print("[startup] Created weekly_challenge_responses table.")
+                    except Exception as e:
+                        print(f"[startup] Failed to create weekly_challenge_responses table: {e}")
+
+                if not inspector.has_table('hackathons'):
+                    try:
+                        with conn.begin():
+                            models.Hackathon.__table__.create(bind=conn, checkfirst=True)
+                        print("[startup] Created hackathons table.")
+                    except Exception as e:
+                        print(f"[startup] Failed to create hackathons table: {e}")
+
+                if not inspector.has_table('hackathon_participants'):
+                    try:
+                        with conn.begin():
+                            models.HackathonParticipant.__table__.create(bind=conn, checkfirst=True)
+                        print("[startup] Created hackathon_participants table.")
+                    except Exception as e:
+                        print(f"[startup] Failed to create hackathon_participants table: {e}")
 
             _backfill_level_num()
 
