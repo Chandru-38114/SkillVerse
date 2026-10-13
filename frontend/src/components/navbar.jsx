@@ -9,6 +9,7 @@ import './navbar.css'
 const NAV = [
   { id: 'home', to: '/dashboard', label: 'Home' },
   { id: 'discover', to: '/marketplace', label: 'Discover' },
+  { id: 'community', to: '/community', label: 'Community' },
   {
     id: 'connect', to: '/messages', label: 'Connect',
     items: [
@@ -348,6 +349,7 @@ export default function Navbar() {
               <ul className="links desk">
                 <li><Link to="/landing" className="lnk">How it works</Link></li>
                 <li><Link to="/marketplace" className="lnk">Explore Skills</Link></li>
+                <li><Link to="/community" className={`lnk${location.pathname.startsWith('/community') ? ' is-active' : ''}`}>Community</Link></li>
                 <li><Link to="/about-skillverse" className={`lnk${location.pathname.startsWith('/about') ? ' is-active' : ''}`}>About</Link></li>
               </ul>
               <div className="right">
@@ -363,14 +365,15 @@ export default function Navbar() {
           <div className={`sheet${sheetOpen ? ' open' : ''}`}>
             <Link to="/dashboard" className={`ditem${location.pathname.startsWith('/dashboard') ? ' now' : ''}`}>Home</Link>
             <Link to="/marketplace" className={`ditem${location.pathname.startsWith('/marketplace') ? ' now' : ''}`}>Discover</Link>
+            <Link to="/community" className={`ditem${location.pathname.startsWith('/community') ? ' now' : ''}`}>Community</Link>
 
             <span className="lab">CONNECT</span>
-            {NAV[2].items.map(it => (
+            {(NAV.find(n => n.id === 'connect')?.items || []).map(it => (
               <Link key={it.to} to={it.to} className={`ditem sub${location.pathname.startsWith(it.to) ? ' now' : ''}`}>{it.label}</Link>
             ))}
 
             <span className="lab">JOURNEY</span>
-            {NAV[3].items.map(it => (
+            {(NAV.find(n => n.id === 'journey')?.items || []).map(it => (
               <Link key={it.to} to={it.to} className={`ditem sub${location.pathname.startsWith(it.to) ? ' now' : ''}`}>{it.label}</Link>
             ))}
 

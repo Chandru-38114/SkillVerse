@@ -33,6 +33,7 @@ const Messages = lazy(() => import('./pages/messages'))
 const Notifications = lazy(() => import('./pages/notifications'))
 const Gamification = lazy(() => import('./pages/gamification'))
 const QuestReview = lazy(() => import('./pages/quest_review'))
+const Community = lazy(() => import('./pages/community'))
 
 import { api, saveSession, clearSession } from './api'
 import { getSessionUser, getToken } from './api'
@@ -176,6 +177,7 @@ export default function App() {
               element={<ProtectedRoute><ReportCard /></ProtectedRoute>}
             />
             <Route path="/gamification" element={<ProtectedRoute><Gamification /></ProtectedRoute>} />
+            <Route path="/community" element={<ProtectedRoute><Community /></ProtectedRoute>} />
           </Routes>
         </Suspense>
       </div>

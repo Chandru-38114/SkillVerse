@@ -1,0 +1,499 @@
+/* ── Teachers-Only Community Styles (Warm Paper + Neo-Brutalist) ───────────── */
+.sv-community {
+  --acc: #FF8A3D;
+  --accd: #C4581A;
+  --accl: #FFE3CF;
+  --mint: #2EA879;
+  --mintd: #1F7D59;
+  --mintl: #D6F3EA;
+  --gold: #FFC043;
+  --goldl: #FFF1CC;
+  --ink: #29251F;
+  --paper: #F8F3E9;
+  --card: #FFFDF8;
+  --border: #29251F;
+  --shadow: #D2BEA0;
+  --muted: #6E6455;
+  --danger: #E03131;
+  --dangerl: #FFE8E8;
+
+  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  color: var(--ink);
+  min-height: 100vh;
+  padding-bottom: 80px;
+}
+
+.sv-community * {
+  box-sizing: border-box;
+}
+
+.sv-comm-wrap {
+  width: 100%;
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: 24px 16px;
+}
+
+/* ── Typography & Helpers ─────────────────────────────────────────────────── */
+.sv-comm-header {
+  margin-bottom: 24px;
+}
+
+.sv-comm-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.sv-comm-title {
+  font-size: 28px;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.sv-comm-sub {
+  color: var(--muted);
+  font-size: 15px;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.sv-comm-mono {
+  font-family: "JetBrains Mono", ui-monospace, Menlo, monospace;
+}
+
+/* ── Neo-Brutalist Buttons ─────────────────────────────────────────────────── */
+.sv-comm-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 0 16px;
+  border: 2px solid var(--border);
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--ink);
+  text-decoration: none;
+  cursor: pointer;
+  background: var(--card);
+  box-shadow: 0 3px 0 var(--shadow), 0 5px 0 var(--border);
+  transition: transform 140ms ease, box-shadow 140ms ease, background 140ms ease;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.sv-comm-btn:hover:not(:disabled) {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 var(--shadow), 0 3px 0 var(--border);
+}
+
+.sv-comm-btn:active:not(:disabled) {
+  transform: translateY(4px);
+  box-shadow: 0 0 0 var(--shadow), 0 1px 0 var(--border);
+}
+
+.sv-comm-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: 0 2px 0 var(--shadow), 0 3px 0 var(--border);
+}
+
+.sv-comm-btn-p {
+  background: var(--acc);
+  color: #FFFFFF;
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.35), 0 3px 0 var(--accd), 0 5px 0 var(--border);
+}
+.sv-comm-btn-p:hover:not(:disabled) {
+  box-shadow: 0 1px 0 var(--accd), 0 3px 0 var(--border);
+}
+
+.sv-comm-btn-mint {
+  background: var(--mint);
+  color: #FFFFFF;
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.35), 0 3px 0 var(--mintd), 0 5px 0 var(--border);
+}
+.sv-comm-btn-mint:hover:not(:disabled) {
+  box-shadow: 0 1px 0 var(--mintd), 0 3px 0 var(--border);
+}
+
+.sv-comm-btn-danger {
+  background: var(--dangerl);
+  color: var(--danger);
+}
+.sv-comm-btn-danger:hover:not(:disabled) {
+  background: #FFD6D6;
+}
+
+.sv-comm-btn-sm {
+  min-height: 32px;
+  padding: 0 10px;
+  font-size: 12px;
+  border-radius: 8px;
+  box-shadow: 0 2px 0 var(--shadow), 0 3px 0 var(--border);
+}
+.sv-comm-btn-sm:hover:not(:disabled) {
+  transform: translateY(1px);
+  box-shadow: 0 1px 0 var(--shadow), 0 2px 0 var(--border);
+}
+
+/* ── Cards & Containers ────────────────────────────────────────────────────── */
+.sv-comm-card {
+  background: var(--card);
+  border: 2px solid var(--border);
+  border-radius: 16px;
+  box-shadow: 0 4px 0 var(--shadow), 0 7px 0 var(--border);
+  padding: 20px;
+  margin-bottom: 20px;
+  position: relative;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.sv-comm-card-compact {
+  padding: 16px;
+}
+
+/* ── Pills & Badges ────────────────────────────────────────────────────────── */
+.sv-comm-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 2px solid var(--border);
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+  background: var(--card);
+}
+
+.sv-comm-pill-mint {
+  background: var(--mintl);
+  color: var(--mintd);
+}
+
+.sv-comm-pill-gold {
+  background: var(--goldl);
+  color: #8C5B00;
+}
+
+.sv-comm-pill-orange {
+  background: var(--accl);
+  color: var(--accd);
+}
+
+.sv-comm-pill-dark {
+  background: var(--ink);
+  color: #FFFDF8;
+}
+
+/* ── Tabs Bar ──────────────────────────────────────────────────────────────── */
+.sv-comm-tabs-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 4px 2px 14px 2px;
+  margin-bottom: 24px;
+  scrollbar-width: none;
+}
+.sv-comm-tabs-bar::-webkit-scrollbar {
+  display: none;
+}
+
+.sv-comm-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 16px;
+  border: 2px solid var(--border);
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--ink);
+  background: var(--card);
+  box-shadow: 0 2px 0 var(--shadow), 0 4px 0 var(--border);
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: all 120ms ease;
+}
+
+.sv-comm-tab-btn:hover {
+  transform: translateY(1px);
+  background: #FFF9ED;
+}
+
+.sv-comm-tab-btn.is-active {
+  background: var(--ink);
+  color: #FFFDF8;
+  box-shadow: 0 1px 0 var(--shadow), 0 3px 0 var(--border);
+  transform: translateY(1px);
+}
+
+/* ── Author Header (Post / Comment / Circle) ───────────────────────────────── */
+.sv-comm-author {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.sv-comm-author-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.sv-comm-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  border: 2px solid var(--border);
+  background: #D2BEA0;
+  background-size: cover;
+  background-position: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+  font-size: 16px;
+  color: var(--ink);
+  flex-shrink: 0;
+}
+
+.sv-comm-avatar-sm {
+  width: 30px;
+  height: 30px;
+  font-size: 13px;
+}
+
+.sv-comm-author-name {
+  font-weight: 800;
+  font-size: 15px;
+  line-height: 1.2;
+}
+
+.sv-comm-author-meta {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* ── Composer / Form Inputs ────────────────────────────────────────────────── */
+.sv-comm-textarea {
+  width: 100%;
+  min-height: 100px;
+  padding: 12px 14px;
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  background: #FFFDF8;
+  font-family: inherit;
+  font-size: 14px;
+  color: var(--ink);
+  resize: vertical;
+  line-height: 1.5;
+  outline: none;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+.sv-comm-textarea:focus {
+  border-color: var(--acc);
+  box-shadow: 0 0 0 3px var(--accl);
+}
+
+.sv-comm-input {
+  width: 100%;
+  height: 42px;
+  padding: 0 14px;
+  border: 2px solid var(--border);
+  border-radius: 10px;
+  background: #FFFDF8;
+  font-family: inherit;
+  font-size: 14px;
+  color: var(--ink);
+  outline: none;
+  transition: border-color 150ms ease;
+}
+.sv-comm-input:focus {
+  border-color: var(--acc);
+  box-shadow: 0 0 0 3px var(--accl);
+}
+
+.sv-comm-composer-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.sv-comm-charcount {
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.sv-comm-charcount.warn {
+  color: var(--danger);
+}
+
+/* ── Post Body ─────────────────────────────────────────────────────────────── */
+.sv-comm-body {
+  font-size: 15px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  margin: 8px 0 14px 0;
+  color: #24201A;
+}
+
+/* ── Post Footer ──────────────────────────────────────────────────────────── */
+.sv-comm-post-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 12px;
+  border-top: 2px solid #EFE6D5;
+  margin-top: 12px;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+/* ── Comments Section ─────────────────────────────────────────────────────── */
+.sv-comm-comments-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 16px;
+  padding-left: 12px;
+  border-left: 3px solid #E4D7C2;
+}
+
+.sv-comm-comment-item {
+  background: #FDF9EE;
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 14px;
+}
+
+/* ── Modals / Expanders ───────────────────────────────────────────────────── */
+.sv-comm-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(41, 37, 31, 0.65);
+  backdrop-filter: blur(3px);
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.sv-comm-modal {
+  width: 100%;
+  max-width: 580px;
+  max-height: 90vh;
+  overflow-y: auto;
+  background: var(--card);
+  border: 2px solid var(--border);
+  border-radius: 18px;
+  box-shadow: 0 8px 0 var(--shadow), 0 14px 0 var(--border);
+  padding: 24px;
+  position: relative;
+}
+
+/* ── Locked Explainer Card (Access Gate) ──────────────────────────────────── */
+.sv-comm-locked-card {
+  max-width: 620px;
+  margin: 60px auto;
+  text-align: center;
+  padding: 40px 24px;
+  background: #FFFDF8;
+  border: 2px solid var(--border);
+  border-radius: 20px;
+  box-shadow: 0 6px 0 var(--shadow), 0 10px 0 var(--border);
+}
+
+.sv-comm-lock-icon {
+  width: 72px;
+  height: 72px;
+  margin: 0 auto 20px auto;
+  background: var(--goldl);
+  border: 2px solid var(--border);
+  border-radius: 20px;
+  box-shadow: 0 3px 0 var(--shadow), 0 5px 0 var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ── Loading, Empty, and Error States ─────────────────────────────────────── */
+.sv-comm-empty {
+  text-align: center;
+  padding: 48px 20px;
+  background: #FFFDF8;
+  border: 2px dashed #C8B9A0;
+  border-radius: 16px;
+  color: var(--muted);
+  margin: 20px 0;
+}
+
+.sv-comm-empty-icon {
+  font-size: 36px;
+  margin-bottom: 12px;
+}
+
+.sv-comm-error-banner {
+  background: var(--dangerl);
+  border: 2px solid var(--danger);
+  border-radius: 10px;
+  padding: 10px 14px;
+  color: var(--danger);
+  font-weight: 700;
+  font-size: 13px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+/* ── Mobile Viewport adjustments (375px+) ─────────────────────────────────── */
+@media (max-width: 640px) {
+  .sv-comm-wrap {
+    padding: 16px 12px;
+  }
+  .sv-comm-title {
+    font-size: 22px;
+  }
+  .sv-comm-card {
+    padding: 16px 12px;
+    border-radius: 14px;
+  }
+  .sv-comm-tab-btn {
+    padding: 0 12px;
+    font-size: 12px;
+  }
+  .sv-comm-author {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .sv-comm-author-left {
+    width: 100%;
+  }
+}

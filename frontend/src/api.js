@@ -12,6 +12,7 @@ const inFlight = new Map();
 function isRealtime(path) {
   return path.includes("/unread-count") ||
          path.includes("/notifications") ||
+         path.includes("/community") ||
          path.match(/\/requests\/status/) ||
          path.includes("/requests/incoming") ||
          path.includes("/sessions/upcoming") ||
@@ -330,6 +331,68 @@ export const api = {
   // Teacher Badges
   getTeacherBadges: (userId) => request(userId ? `/badges/user/${userId}` : "/badges/me", { bypassCache: true }),
   getBadgeDefinitions: () => request("/badges/definitions"),
+
+  // Community (Teachers-only)
+  getCommunityAccess: () => request("/community/access", { bypassCache: true }),
+  getLoungePosts: (limit = 20, offset = 0) =>
+    request(`/community/lounge/posts?limit=${limit}&offset=${offset}`, { bypassCache: true }),
+  createLoungePost: (body) =>
+    request("/community/lounge/posts", { method: "POST", body: { body } }),
+  getLoungePostDetail: (id) =>
+    request(`/community/lounge/posts/${id}`, { bypassCache: true }),
+  createLoungeComment: (postId, body) =>
+    request(`/community/lounge/posts/${postId}/comments`, { method: "POST", body: { body } }),
+  deleteLoungePost: (id) =>
+    request(`/community/lounge/posts/${id}`, { method: "DELETE" }),
+  deleteLoungeComment: (id) =>
+    request(`/community/lounge/comments/${id}`, { method: "DELETE" }),
+
+  getStudyCircles: (limit = 20, offset = 0, status_filter = "scheduled") => {
+    let url = `/community/study-circles?limit=${limit}&offset=${offset}`;
+    if (status_filter) url += `&status_filter=${encodeURIComponent(status_filter)}`;
+    return request(url, { bypassCache: true });
+  },
+  createStudyCircle: (data) =>
+    request("/community/study-circles", { method: "POST", body: data }),
+  joinStudyCircle: (circleId) =>
+    request(`/community/study-circles/${circleId}/join`, { method: "POST" }),
+  leaveStudyCircle: (circleId) =>
+    request(`/community/study-circles/${circleId}/leave`, { method: "POST" }),
+  completeStudyCircle: (circleId) =>
+    request(`/community/study-circles/${circleId}/complete`, { method: "POST" }),
+  deleteStudyCircle: (circleId) =>
+    request(`/community/study-circles/${circleId}`, { method: "DELETE" }),
+
+  getSeniorQuestions: (limit = 20, offset = 0, status_filter = null) => {
+    let url = `/community/ask-senior/questions?limit=${limit}&offset=${offset}`;
+    if (status_filter) url += `&status_filter=${encodeURIComponent(status_filter)}`;
+    return request(url, { bypassCache: true });
+  },
+  createSeniorQuestion: (body) =>
+    request("/community/ask-senior/questions", { method: "POST", body: { body } }),
+  getSeniorQuestionDetail: (questionId) =>
+    request(`/community/ask-senior/questions/${questionId}`, { bypassCache: true }),
+  createSeniorAnswer: (questionId, body) =>
+    request(`/community/ask-senior/questions/${questionId}/answers`, { method: "POST", body: { body } }),
+
+  getCurrentWeeklyChallenge: () =>
+    request("/community/weekly-challenge/current", { bypassCache: true }),
+  respondToWeeklyChallenge: (body) =>
+    request("/community/weekly-challenge/current/respond", { method: "POST", body: { body } }),
+  getWeeklyChallengeResponses: (limit = 20, offset = 0) =>
+    request(`/community/weekly-challenge/current/responses?limit=${limit}&offset=${offset}`, { bypassCache: true }),
+
+  getHackathons: (limit = 20, offset = 0, status_filter = null) => {
+    let url = `/community/hackathons?limit=${limit}&offset=${offset}`;
+    if (status_filter) url += `&status_filter=${encodeURIComponent(status_filter)}`;
+    return request(url, { bypassCache: true });
+  },
+  createHackathon: (data) =>
+    request("/community/hackathons", { method: "POST", body: data }),
+  joinHackathon: (hackathonId) =>
+    request(`/community/hackathons/${hackathonId}/join`, { method: "POST" }),
+  completeHackathon: (hackathonId) =>
+    request(`/community/hackathons/${hackathonId}/complete`, { method: "POST" }),
 };
 
 export function saveSession(token, user) {
