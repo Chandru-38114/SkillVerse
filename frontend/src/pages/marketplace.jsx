@@ -159,12 +159,13 @@ export default function Marketplace() {
 
   function handleSearchSubmit(e) {
     e.preventDefault()
-    if (query.trim()) {
-      setSearchParams({ q: query.trim() })
+    const trimmed = query.trim()
+    const currentQ = searchParams.get('q') || ''
+    if (trimmed !== currentQ) {
+      setSearchParams(trimmed ? { q: trimmed } : {})
     } else {
-      setSearchParams({})
+      runSearch(trimmed, activeFilter)
     }
-    runSearch(query, activeFilter)
   }
 
   function handleFilterChange(filter) {
@@ -204,8 +205,12 @@ export default function Marketplace() {
 
   const handleCategoryClick = (category) => {
     setQuery(category)
-    setSearchParams({ q: category })
-    runSearch(category, activeFilter)
+    const currentQ = searchParams.get('q') || ''
+    if (category !== currentQ) {
+      setSearchParams({ q: category })
+    } else {
+      runSearch(category, activeFilter)
+    }
   }
 
   async function handleDemandRequest() {
@@ -276,7 +281,6 @@ export default function Marketplace() {
 
   function clearAll() {
     setQuery('')
-    setSearchParams({})
     setActiveFilter('All')
     setProficiency('All')
     setDemandSuccess('')
@@ -284,7 +288,11 @@ export default function Marketplace() {
     setDemandError('')
     setDemandMessage('')
     setDemandRequestSent(false)
-    runSearch('', 'All')
+    if (searchParams.get('q')) {
+      setSearchParams({})
+    } else {
+      runSearch('', 'All')
+    }
   }
 
   return (
