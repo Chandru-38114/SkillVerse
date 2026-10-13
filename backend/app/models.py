@@ -642,3 +642,23 @@ class HackathonParticipant(Base):
         UniqueConstraint("hackathon_id", "user_id", name="uix_hackathon_participant"),
     )
 
+
+class UserBadge(Base):
+    """
+    Badges awarded to users (e.g. teacher badges, achievement badges).
+    """
+    __tablename__ = "user_badges"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    badge_id = Column(String, nullable=False, index=True)
+    earned_at = Column(DateTime, default=utc_now, nullable=False)
+
+    user = relationship("User")
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "badge_id", name="uix_user_badges_user_badge"),
+        Index("ix_user_badges_user_badge", "user_id", "badge_id"),
+    )
+
+

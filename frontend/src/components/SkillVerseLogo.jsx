@@ -1,52 +1,88 @@
-export default function SkillVerseLogo({ className = "", compact = false }) {
+import React from 'react';
+
+export function SkillVerseMark({ className = "w-12 h-12" }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 100 100"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-label="SkillVerse Mark"
+    >
+      {/* Top stroke outline */}
+      <path
+        d="M74,30 C74,18 54,14 42,20 C32,25 32,36 44,40"
+        stroke="#29251F"
+        strokeWidth="20"
+        strokeLinecap="round"
+        fill="none"
+      />
+      {/* Bottom stroke outline */}
+      <path
+        d="M44,40 C56,44 68,48 68,60 C68,72 46,76 34,70"
+        stroke="#29251F"
+        strokeWidth="20"
+        strokeLinecap="round"
+        fill="none"
+      />
+      {/* Top stroke color */}
+      <path
+        d="M74,30 C74,18 54,14 42,20 C32,25 32,36 44,40"
+        stroke="#FF8A3D"
+        strokeWidth="13"
+        strokeLinecap="round"
+        fill="none"
+      />
+      {/* Bottom stroke color */}
+      <path
+        d="M44,40 C56,44 68,48 68,60 C68,72 46,76 34,70"
+        stroke="#6CCFB0"
+        strokeWidth="13"
+        strokeLinecap="round"
+        fill="none"
+      />
+      {/* Top arrowhead */}
+      <polygon
+        points="66,26 78,10 82,26"
+        fill="#FF8A3D"
+        stroke="#29251F"
+        strokeWidth="3"
+        strokeLinejoin="round"
+      />
+      {/* Bottom arrowhead */}
+      <polygon
+        points="42,76 22,90 28,68"
+        fill="#6CCFB0"
+        stroke="#29251F"
+        strokeWidth="3"
+        strokeLinejoin="round"
+      />
+      {/* Center node */}
+      <circle
+        cx="44"
+        cy="40"
+        r="8"
+        fill="#FBEFC4"
+        stroke="#29251F"
+        strokeWidth="3"
+      />
+    </svg>
+  );
+}
+
+export default function SkillVerseLogo({ className = "", compact = false, iconOnly = false }) {
+  if (iconOnly) {
+    return <SkillVerseMark className={className || "w-10 h-10"} />;
+  }
+
   return (
     <div className={`flex flex-col items-center justify-center space-y-3 ${compact ? 'mb-0' : 'mb-8'} ${className}`}>
-      {/* Light-First Geometric 'S+V' Node Logo */}
+      {/* S-Monogram Mark with soft shadow */}
       <div className="relative flex items-center justify-center">
-        {/* Soft shadow/glow behind the logo */}
-        <div className="absolute inset-0 bg-brand/10 blur-xl rounded-full scale-125"></div>
-        
-        <svg
-          className={`relative z-10 ${compact ? 'w-10 h-10' : 'w-16 h-16'}`}
-          viewBox="0 0 48 48"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          {/* Subtle node grid background */}
-          <circle cx="24" cy="24" r="22" className="stroke-line" strokeWidth="1" strokeDasharray="2 6" />
-          
-          {/* Node Connections (V) */}
-          <path
-            d="M 12 14 L 24 36 L 36 14"
-            className="stroke-brandLight"
-            strokeWidth="4"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-          
-          {/* S Path representing a journey */}
-          <path
-            d="M 34 14 C 34 14 28 8 24 16 C 20 24 34 26 24 36 C 18 42 12 36 12 36"
-            className="stroke-brand"
-            strokeWidth="4"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-          
-          {/* Learning Nodes */}
-          {/* Top nodes */}
-          <circle cx="12" cy="14" r="3.5" className="fill-brand drop-shadow-sm" />
-          <circle cx="34" cy="14" r="3.5" className="fill-brand2 drop-shadow-sm" />
-          
-          {/* Middle node */}
-          <circle cx="24" cy="25" r="3" className="fill-white stroke-accent stroke-2 drop-shadow-sm" />
-          
-          {/* Bottom node */}
-          <circle cx="24" cy="36" r="3.5" className="fill-brand drop-shadow-sm" />
-          <circle cx="12" cy="36" r="3" className="fill-gold drop-shadow-sm" />
-        </svg>
+        <div className="absolute inset-0 bg-brand/10 blur-xl rounded-full scale-125" aria-hidden="true" />
+        <SkillVerseMark className={`relative z-10 ${compact ? 'w-10 h-10' : 'w-16 h-16'}`} />
       </div>
-      
+
       {/* Wordmark and Tagline */}
       {!compact && (
         <div className="text-center animate-fade-in stagger-1">

@@ -566,7 +566,6 @@ class DemandResponse(BaseModel):
     level_num: Optional[int] = None
     learner_level_num: Optional[int] = None
 
-
 # ── Community Lounge Schemas ────────────────────────────────────────────────
 
 class CommunityAccessOut(BaseModel):
@@ -865,3 +864,24 @@ class HackathonOut(BaseModel):
     is_host: bool = False
 
 
+# ── Teacher Badge Schemas ───────────────────────────────────────────────────
+
+class TeacherBadgeOut(BaseModel):
+    id: str
+    name: str
+    tier: str
+    description: str
+    icon: str
+    earned: bool = True
+    earned_at: Optional[str] = None
+
+
+class TeacherBadgeDefinitionOut(BaseModel):
+    id: str
+    name: str
+    tier: str
+    description: str
+    icon: str
+    computable: bool
+    stubbed: Optional[bool] = False
+    stub_reason: Optional[str] = None

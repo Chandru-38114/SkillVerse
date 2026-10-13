@@ -37,11 +37,30 @@ const Chev = () => (
   </svg>
 )
 
-const LogoMark = () => (
-  <span className="mark">
-    <svg width="22" height="22" viewBox="0 0 48 48" fill="none" aria-hidden="true">
-      <path d="M14 34 L14 18 C14 13 20 12 24 16 C28 20 34 19 34 14 L34 30" stroke="#29251F" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M14 34 L24 44 L34 30" stroke="#29251F" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
+export const LogoMark = () => (
+  <span className="mark" aria-hidden="true">
+    <svg width="22" height="22" viewBox="0 0 100 100" fill="none" aria-hidden="true">
+      {/* Top stroke: white */}
+      <path
+        d="M74,30 C74,18 54,14 42,20 C32,25 32,36 44,40"
+        stroke="#FFFFFF"
+        strokeWidth="13"
+        strokeLinecap="round"
+      />
+      {/* Top arrowhead: white */}
+      <polygon points="66,26 78,10 82,26" fill="#FFFFFF" />
+      {/* Bottom stroke: white at 65% opacity */}
+      <path
+        d="M44,40 C56,44 68,48 68,60 C68,72 46,76 34,70"
+        stroke="#FFFFFF"
+        strokeOpacity="0.65"
+        strokeWidth="13"
+        strokeLinecap="round"
+      />
+      {/* Bottom arrowhead: white at 65% opacity */}
+      <polygon points="42,76 22,90 28,68" fill="#FFFFFF" fillOpacity="0.65" />
+      {/* Center node: white with orange ring */}
+      <circle cx="44" cy="40" r="8" fill="#FFFFFF" stroke="#FF8A3D" strokeWidth="3" />
     </svg>
   </span>
 )
@@ -192,7 +211,7 @@ export default function Navbar() {
       <div className="wrap">
         <div className="bar">
           <Link to={user ? '/dashboard' : '/'} className="logo" aria-label="SkillVerse home">
-            <LogoMark />SkillVerse
+            <LogoMark />Skill<span className="text-transparent bg-clip-text bg-gradient-to-r from-brand to-brand2">Verse</span>
           </Link>
 
           {user ? (

@@ -21,7 +21,7 @@ from .routers import (
     auth, users, assessments, marketplace, requests, chat, reviews,
     sessions, compiler, whiteboard, materials, progress, certificates,
     notifications, gamification, exchanges, report_card, teacher_stats,
-    demand, community,
+    demand, community, badges,
 )
 
 @asynccontextmanager
@@ -66,7 +66,8 @@ async def lifespan(app: FastAPI):
                 inspector.has_table('weekly_challenges') and
                 inspector.has_table('weekly_challenge_responses') and
                 inspector.has_table('hackathons') and
-                inspector.has_table('hackathon_participants')
+                inspector.has_table('hackathon_participants') and
+                inspector.has_table('user_badges')
             )
 
             def _backfill_level_num():
@@ -328,6 +329,14 @@ async def lifespan(app: FastAPI):
                     except Exception as e:
                         print(f"[startup] Failed to create hackathon_participants table: {e}")
 
+                if not inspector.has_table('user_badges'):
+                    try:
+                        with conn.begin():
+                            models.UserBadge.__table__.create(bind=conn, checkfirst=True)
+                        print("[startup] Created user_badges table.")
+                    except Exception as e:
+                        print(f"[startup] Failed to create user_badges table: {e}")
+
             _backfill_level_num()
 
             elapsed_ms = (time.perf_counter() - t_startup_start) * 1000.0
@@ -428,6 +437,7 @@ app.include_router(report_card.router)
 app.include_router(teacher_stats.router)
 app.include_router(demand.router)
 app.include_router(community.router)
+app.include_router(badges.router)
 
 
 
