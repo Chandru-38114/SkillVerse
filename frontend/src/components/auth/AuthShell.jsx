@@ -14,12 +14,15 @@ export default function AuthShell({ eyebrow, title, text, steps = [], current = 
       <aside className="side" style={{ flex: '0 0 44%', padding: '48px 56px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: 32 }}>
         <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none', color: '#FFFDF8', fontSize: 22, fontWeight: 900 }}>
           <span style={{ width: 40, height: 40, borderRadius: 10, border: '2px solid #FFFDF8', background: 'var(--acc)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <svg width="24" height="24" viewBox="0 0 48 48" fill="none" aria-hidden="true">
-              <path d="M14 34 L14 18 C14 13 20 12 24 16 C28 20 34 19 34 14 L34 30" stroke="#29251F" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
-              <path d="M14 34 L24 44 L34 30" stroke="#29251F" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
+            <svg width="24" height="24" viewBox="0 0 100 100" fill="none" aria-hidden="true">
+              <path d="M74,30 C74,18 54,14 42,20 C32,25 32,36 44,40" stroke="#FFFFFF" strokeWidth="13" strokeLinecap="round" />
+              <polygon points="66,26 78,10 82,26" fill="#FFFFFF" />
+              <path d="M44,40 C56,44 68,48 68,60 C68,72 46,76 34,70" stroke="#FFFFFF" strokeOpacity="0.65" strokeWidth="13" strokeLinecap="round" />
+              <polygon points="42,76 22,90 28,68" fill="#FFFFFF" fillOpacity="0.65" />
+              <circle cx="44" cy="40" r="8" fill="#FFFFFF" stroke="#FF8A3D" strokeWidth="3" />
             </svg>
           </span>
-          SkillVerse
+          <span>Skill<span className="text-transparent bg-clip-text bg-gradient-to-r from-brand to-brand2">Verse</span></span>
         </Link>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 22, position: 'relative', zIndex: 1 }}>
@@ -54,8 +57,16 @@ export default function AuthShell({ eyebrow, title, text, steps = [], current = 
 
       <main style={{ flex: 1, padding: '48px clamp(16px, 5vw, 72px)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 22 }}>
         <div className="mobhead" style={{ alignItems: 'center', gap: 10, fontSize: 20, fontWeight: 900 }}>
-          <span style={{ width: 36, height: 36, borderRadius: 9, border: '2px solid #29251F', background: 'var(--acc)', boxShadow: '0 3px 0 #29251F' }} />
-          SkillVerse
+          <span style={{ width: 36, height: 36, borderRadius: 9, border: '2px solid #29251F', background: 'var(--acc)', boxShadow: '0 3px 0 #29251F', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <svg width="22" height="22" viewBox="0 0 100 100" fill="none" aria-hidden="true">
+              <path d="M74,30 C74,18 54,14 42,20 C32,25 32,36 44,40" stroke="#FFFFFF" strokeWidth="13" strokeLinecap="round" />
+              <polygon points="66,26 78,10 82,26" fill="#FFFFFF" />
+              <path d="M44,40 C56,44 68,48 68,60 C68,72 46,76 34,70" stroke="#FFFFFF" strokeOpacity="0.65" strokeWidth="13" strokeLinecap="round" />
+              <polygon points="42,76 22,90 28,68" fill="#FFFFFF" fillOpacity="0.65" />
+              <circle cx="44" cy="40" r="8" fill="#FFFFFF" stroke="#FF8A3D" strokeWidth="3" />
+            </svg>
+          </span>
+          <span>Skill<span className="text-transparent bg-clip-text bg-gradient-to-r from-brand to-brand2">Verse</span></span>
         </div>
         {children}
       </main>

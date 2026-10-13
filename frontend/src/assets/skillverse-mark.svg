@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none" aria-label="SkillVerse Mark">
+  <!-- Top stroke outline -->
+  <path d="M74,30 C74,18 54,14 42,20 C32,25 32,36 44,40" stroke="#29251F" stroke-width="20" stroke-linecap="round" fill="none" />
+  <!-- Bottom stroke outline -->
+  <path d="M44,40 C56,44 68,48 68,60 C68,72 46,76 34,70" stroke="#29251F" stroke-width="20" stroke-linecap="round" fill="none" />
+  <!-- Top stroke color -->
+  <path d="M74,30 C74,18 54,14 42,20 C32,25 32,36 44,40" stroke="#FF8A3D" stroke-width="13" stroke-linecap="round" fill="none" />
+  <!-- Bottom stroke color -->
+  <path d="M44,40 C56,44 68,48 68,60 C68,72 46,76 34,70" stroke="#6CCFB0" stroke-width="13" stroke-linecap="round" fill="none" />
+  <!-- Top arrowhead -->
+  <polygon points="66,26 78,10 82,26" fill="#FF8A3D" stroke="#29251F" stroke-width="3" stroke-linejoin="round" />
+  <!-- Bottom arrowhead -->
+  <polygon points="42,76 22,90 28,68" fill="#6CCFB0" stroke="#29251F" stroke-width="3" stroke-linejoin="round" />
+  <!-- Center node -->
+  <circle cx="44" cy="40" r="8" fill="#FBEFC4" stroke="#29251F" stroke-width="3" />
+</svg>

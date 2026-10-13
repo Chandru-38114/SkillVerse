@@ -68,7 +68,7 @@ def evaluate_achievements(user: models.User, db: Session) -> list[dict]:
         "title": "Assessment Pioneer",
         "description": "Completed your first skill assessment",
         "earned": bool(has_assessment),
-        "icon": "??",
+        "icon": "🎯",
         "earned_at": has_assessment.created_at.isoformat() if has_assessment else None
     })
     
@@ -79,7 +79,7 @@ def evaluate_achievements(user: models.User, db: Session) -> list[dict]:
         "title": "Badge Earner",
         "description": "Earned a skill badge",
         "earned": bool(has_badge),
-        "icon": "??",
+        "icon": "🏅",
         "earned_at": has_badge.updated_at.isoformat() if has_badge and getattr(has_badge, 'updated_at', None) else None
     })
     
@@ -93,7 +93,7 @@ def evaluate_achievements(user: models.User, db: Session) -> list[dict]:
         "title": "First Session",
         "description": "Completed your first learning session",
         "earned": bool(has_session),
-        "icon": "??",
+        "icon": "🤝",
         "earned_at": has_session.updated_at.isoformat() if has_session else None
     })
     
@@ -107,7 +107,7 @@ def evaluate_achievements(user: models.User, db: Session) -> list[dict]:
         "title": "Knowledge Exchange",
         "description": "Completed 5 learning sessions",
         "earned": session_count >= 5,
-        "icon": "??",
+        "icon": "🔄",
         "earned_at": None # We don't track exact time of 5th session easily
     })
     
@@ -118,7 +118,7 @@ def evaluate_achievements(user: models.User, db: Session) -> list[dict]:
         "title": "Feedback Giver",
         "description": "Submitted your first review",
         "earned": bool(has_review),
-        "icon": "?",
+        "icon": "💬",
         "earned_at": has_review.created_at.isoformat() if has_review else None
     })
     
@@ -128,7 +128,7 @@ def evaluate_achievements(user: models.User, db: Session) -> list[dict]:
         "title": "Rising Star",
         "description": "Earned 500 points",
         "earned": user.points >= 500,
-        "icon": "??",
+        "icon": "🌟",
         "earned_at": None
     })
     

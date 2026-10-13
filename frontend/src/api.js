@@ -326,6 +326,10 @@ export const api = {
   // Demand Requests
   requestDemand: ({ skill_id, skill_name }) => request("/demand/request", { method: "POST", body: { skill_id, skill_name } }),
   getMyDemandRequests: () => request("/demand/mine", { bypassCache: true }),
+
+  // Teacher Badges
+  getTeacherBadges: (userId) => request(userId ? `/badges/user/${userId}` : "/badges/me", { bypassCache: true }),
+  getBadgeDefinitions: () => request("/badges/definitions"),
 };
 
 export function saveSession(token, user) {

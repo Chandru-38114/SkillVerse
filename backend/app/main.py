@@ -21,7 +21,7 @@ from .routers import (
     auth, users, assessments, marketplace, requests, chat, reviews,
     sessions, compiler, whiteboard, materials, progress, certificates,
     notifications, gamification, exchanges, report_card, teacher_stats,
-    demand,
+    demand, badges,
 )
 
 @asynccontextmanager
@@ -329,6 +329,7 @@ app.include_router(exchanges.router)
 app.include_router(report_card.router)
 app.include_router(teacher_stats.router)
 app.include_router(demand.router)
+app.include_router(badges.router)
 
 
 
