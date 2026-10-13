@@ -23,6 +23,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func, or_
 
 from .. import models
+from .teacher_stats_service import get_teacher_public_stats_for_users
 
 
 def utc_now() -> datetime:
@@ -139,35 +140,22 @@ def check_centurion(db: Session, user_id: int) -> bool:
 
 
 def check_five_star_mentor(db: Session, user_id: int) -> bool:
-    """4.8+ rating over 10+ sessions (completed sessions taught >= 10 and avg review rating >= 4.8)."""
-    completed_sessions = (
-        db.query(models.Session)
-        .filter(
-            models.Session.tutor_id == user_id,
-            models.Session.status == "completed",
-        )
-        .count()
-    )
-    if completed_sessions < 10:
+    """4.8+ rating over 10+ sessions (completed sessions taught >= 10 and avg review rating >= 4.8).
+    Reuses get_teacher_public_stats_for_users so badge logic matches report card and marketplace stats exactly without drift.
+    """
+    stats_map = get_teacher_public_stats_for_users(db, [user_id])
+    stats = stats_map.get(user_id)
+    if not stats:
         return False
 
-    review_stats = (
-        db.query(
-            func.count(models.Review.id),
-            func.avg(models.Review.rating),
-        )
-        .filter(models.Review.reviewee_id == user_id)
-        .first()
-    )
-    if not review_stats:
-        return False
+    sessions_taught = stats.get("sessions_taught", 0)
+    avg_rating = stats.get("average_rating")
 
-    count, avg_rating = review_stats
-    if not count or count == 0 or avg_rating is None:
+    if sessions_taught < 10 or avg_rating is None:
         return False
 
     # Check 4.8+ rating threshold
-    return round(float(avg_rating), 2) >= 4.80
+    return avg_rating >= 4.8
 
 
 def check_circle_builder(db: Session, user_id: int) -> bool:
