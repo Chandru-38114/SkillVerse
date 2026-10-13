@@ -15,8 +15,34 @@ const TYPE = {
   certificate: ['🎓', '#E6DDF6', 'View profile'],
   exchange:    ['🔄', '#D6F3EA', 'View exchanges'],
   cycle:       ['🔄', '#D6F3EA', 'View exchanges'],
+  demand_request:    ['📢', '#FBEFC4', 'View demand'],
+  teacher_available: ['🎉', '#D6F3EA', 'Find teacher'],
 };
 const FALLBACK = ['🔔', '#F0E5D2', 'Open'];
+
+function extractSkillFromDemandMessage(msg) {
+  if (!msg) return '';
+  const m = msg.match(/wants to learn\s+([^.]+?)\./i);
+  return m ? m[1].trim() : '';
+}
+
+function extractSkillFromTeacherAvailableMessage(msg) {
+  if (!msg) return '';
+  const m = msg.match(/available for\s+([^!]+)!/i);
+  return m ? m[1].trim() : '';
+}
+
+function getNotificationAction(notif) {
+  if (notif.type === 'demand_request') {
+    const isUnverified = notif.message && notif.message.toLowerCase().includes('assessment');
+    return isUnverified ? 'Take assessment to confirm' : 'Start connection request';
+  }
+  if (notif.type === 'teacher_available') {
+    return 'Find teacher in Marketplace';
+  }
+  const [, , go] = TYPE[notif.type] || FALLBACK;
+  return go;
+}
 
 const Notifications = () => {
   const [notifications, setNotifications] = useState([]);
@@ -91,6 +117,21 @@ const Notifications = () => {
       case 'cycle':
         navigate('/exchanges');
         break;
+      case 'demand_request': {
+        const isUnverified = notif.message && notif.message.toLowerCase().includes('assessment');
+        const skill = extractSkillFromDemandMessage(notif.message);
+        if (isUnverified) {
+          navigate(skill ? `/assessment?skill=${encodeURIComponent(skill)}` : '/assessment');
+        } else {
+          navigate(skill ? `/marketplace?q=${encodeURIComponent(skill)}` : '/marketplace');
+        }
+        break;
+      }
+      case 'teacher_available': {
+        const skill = extractSkillFromTeacherAvailableMessage(notif.message);
+        navigate(skill ? `/marketplace?q=${encodeURIComponent(skill)}` : '/marketplace');
+        break;
+      }
       default:
         break;
     }
@@ -199,7 +240,8 @@ const Notifications = () => {
               <span className="eb">{label}</span>
               <div className="card" style={{ overflow: 'hidden', padding: 0 }}>
                 {items.map(notif => {
-                  const [icon, bg, go] = TYPE[notif.type] || FALLBACK;
+                  const [icon, bg] = TYPE[notif.type] || FALLBACK;
+                  const go = getNotificationAction(notif);
                   const un = !notif.is_read;
                   return (
                     <button

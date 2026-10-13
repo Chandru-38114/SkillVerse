@@ -322,6 +322,10 @@ export const api = {
   // Report Card & Teacher Stats (private)
   getMyReportCard: () => request("/report-card/me", { bypassCache: true }),
   getMyTeacherStats: () => request("/teacher-stats/me", { bypassCache: true }),
+
+  // Demand Requests
+  requestDemand: ({ skill_id, skill_name }) => request("/demand/request", { method: "POST", body: { skill_id, skill_name } }),
+  getMyDemandRequests: () => request("/demand/mine", { bypassCache: true }),
 };
 
 export function saveSession(token, user) {

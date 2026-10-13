@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo, useRef } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { api, getSessionUser } from '../api'
 import './marketplace.css'
 
@@ -18,7 +18,9 @@ function defaultForm() {
 }
 
 export default function Marketplace() {
-  const [query, setQuery] = useState('')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const initialQ = searchParams.get('q') || ''
+  const [query, setQuery] = useState(initialQ)
   const [activeFilter, setActiveFilter] = useState('All') // 'All', 'I Want to Learn', 'I Can Teach'
   const [proficiency, setProficiency] = useState('All') // 'All', 'Intermediate', 'Advanced', 'Expert'
 
@@ -30,6 +32,15 @@ export default function Marketplace() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
+  // Demand request states
+  const [demandLoading, setDemandLoading] = useState(false)
+  const [demandSuccess, setDemandSuccess] = useState('')
+  const [demandTeacher, setDemandTeacher] = useState(null)
+  const [demandError, setDemandError] = useState('')
+  const [demandMessage, setDemandMessage] = useState('')
+  const [demandSubmitting, setDemandSubmitting] = useState(false)
+  const [demandRequestSent, setDemandRequestSent] = useState(false)
+
   const [statusMap, setStatusMap] = useState({})
   const [formMap, setFormMap] = useState({})
   const [ratingsMap, setRatingsMap] = useState({})
@@ -39,10 +50,12 @@ export default function Marketplace() {
   const toastTimer = useRef(null)
 
   useEffect(() => {
-    runSearch('', 'All')
+    const qFromUrl = searchParams.get('q') || ''
+    setQuery(qFromUrl)
+    runSearch(qFromUrl, activeFilter)
     api.mySkills().then(setMySkills).catch(() => {})
     fetchCircleSuggestions()
-  }, [])
+  }, [searchParams])
 
   async function fetchCircleSuggestions() {
     setLoadingSuggestions(true)
@@ -87,6 +100,11 @@ export default function Marketplace() {
   async function runSearch(skillQuery, roleFilter) {
     setLoading(true)
     setError('')
+    setDemandSuccess('')
+    setDemandTeacher(null)
+    setDemandError('')
+    setDemandMessage('')
+    setDemandRequestSent(false)
     try {
       const data = await api.searchTeachers(skillQuery, roleFilter)
       setResults(data)
@@ -141,6 +159,11 @@ export default function Marketplace() {
 
   function handleSearchSubmit(e) {
     e.preventDefault()
+    if (query.trim()) {
+      setSearchParams({ q: query.trim() })
+    } else {
+      setSearchParams({})
+    }
     runSearch(query, activeFilter)
   }
 
@@ -181,7 +204,50 @@ export default function Marketplace() {
 
   const handleCategoryClick = (category) => {
     setQuery(category)
+    setSearchParams({ q: category })
     runSearch(category, activeFilter)
+  }
+
+  async function handleDemandRequest() {
+    const skillToRequest = query.trim()
+    if (!skillToRequest) return
+    setDemandLoading(true)
+    setDemandError('')
+    setDemandSuccess('')
+    setDemandTeacher(null)
+    setDemandRequestSent(false)
+    try {
+      const res = await api.requestDemand({ skill_name: skillToRequest })
+      if (res.status === 'teacher_available' && res.teacher) {
+        setDemandTeacher(res.teacher)
+        showToast(res.message || `An eligible teacher (${res.teacher.name}) is already available!`)
+      } else {
+        setDemandSuccess("We'll notify you when someone qualifies")
+        showToast("We'll notify you when someone qualifies")
+      }
+    } catch (err) {
+      setDemandError(err.message || 'Failed to submit demand request')
+    } finally {
+      setDemandLoading(false)
+    }
+  }
+
+  async function handleSendDemandTeacherRequest() {
+    if (!demandTeacher || demandSubmitting) return
+    setDemandSubmitting(true)
+    try {
+      await api.sendRequest({
+        to_user_id: demandTeacher.user_id,
+        skill_name: demandTeacher.skill_name,
+        message: demandMessage
+      })
+      setDemandRequestSent(true)
+      showToast(`Connection request sent to ${demandTeacher.name}!`)
+    } catch (err) {
+      setDemandError(err.message || 'Failed to send connection request')
+    } finally {
+      setDemandSubmitting(false)
+    }
   }
 
   const filteredResults = useMemo(() => {
@@ -210,8 +276,14 @@ export default function Marketplace() {
 
   function clearAll() {
     setQuery('')
+    setSearchParams({})
     setActiveFilter('All')
     setProficiency('All')
+    setDemandSuccess('')
+    setDemandTeacher(null)
+    setDemandError('')
+    setDemandMessage('')
+    setDemandRequestSent(false)
     runSearch('', 'All')
   }
 
@@ -411,18 +483,135 @@ export default function Marketplace() {
             <div className="sk" style={{ height: 460 }} />
           </div>
         ) : filteredResults.length === 0 ? (
-          <div className="card" style={{ maxWidth: 720, margin: '0 auto', width: '100%', padding: '48px 32px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14, textAlign: 'center', borderStyle: 'dashed', boxShadow: 'none' }}>
-            <span style={{ width: 80, height: 80, borderRadius: 22, border: '2px solid #29251F', background: '#FBEFC4', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 34, transform: 'rotate(-5deg)', boxShadow: '0 5px 0 #29251F' }}>?</span>
-            <h2 style={{ margin: '6px 0 0', fontSize: 26, fontWeight: 900 }}>No partners found{query ? ` for "${query}"` : ''}</h2>
-            <p className="muted" style={{ margin: 0, fontSize: 16 }}>
-              {activeFilter === 'I Want to Learn' ? 'Try adjusting your filters, no one currently teaches those skills.'
-                : activeFilter === 'I Can Teach' ? 'No partners are currently looking to learn those skills.'
-                  : 'Adjust your search or clear filters to see more results.'}
-            </p>
-            {(activeFilter !== 'All' || proficiency !== 'All' || query) && (
-              <button type="button" className="btn btn-s" style={{ marginTop: 8 }} onClick={clearAll}>Clear All Filters</button>
-            )}
-          </div>
+          demandTeacher ? (
+            <div style={{ maxWidth: 680, margin: '0 auto', width: '100%', display: 'flex', flexDirection: 'column', gap: 20 }}>
+              <div className="card" style={{ padding: '16px 20px', background: '#D6F3EA', borderColor: '#29251F', display: 'flex', alignItems: 'center', gap: 14, boxShadow: '0 3px 0 #29251F' }}>
+                <span style={{ width: 36, height: 36, flex: 'none', borderRadius: 999, border: '2px solid #29251F', background: '#FFFDF8', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: 18 }}>✓</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <strong style={{ fontSize: 15, display: 'block', color: '#29251F' }}>Eligible Teacher Found!</strong>
+                  <span style={{ fontSize: 13, color: '#4A443A' }}>An eligible teacher is already available for <strong>{demandTeacher.skill_name}</strong>. Connect with them directly below:</span>
+                </div>
+              </div>
+
+              <article className="card" style={{ display: 'flex', flexDirection: 'column', position: 'relative' }}>
+                <span className="pill stamp" style={{ position: 'absolute', top: -14, right: 20, height: 32, transform: 'rotate(3deg)', boxShadow: '0 3px 0 #29251F', background: 'var(--acc)' }}>
+                  ★ ELIGIBLE TEACHER
+                </span>
+                <div style={{ padding: 26, display: 'flex', flexDirection: 'column', gap: 18, flex: 1 }}>
+                  <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+                    <span style={{
+                      width: 68, height: 68, flex: 'none', borderRadius: 999, border: '2px solid #29251F',
+                      background: '#E6DDF6',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26, fontWeight: 900, boxShadow: '0 4px 0 #29251F'
+                    }}>
+                      {(demandTeacher.name || '?')[0]}
+                    </span>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, minWidth: 0 }}>
+                      <h3 style={{ margin: 0, fontSize: 22, fontWeight: 900 }}>{demandTeacher.name}</h3>
+                      {demandTeacher.college && <span className="eb" style={{ fontSize: 11 }}>{demandTeacher.college}</span>}
+                      <span className="pill" style={{ alignSelf: 'flex-start', background: '#D6F3EA' }}>
+                        {demandTeacher.level_num ? `LEVEL ${demandTeacher.level_num}` : 'QUALIFIED'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div style={{ padding: 14, border: '2px solid #29251F', borderRadius: 14, background: '#D6F3EA', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <span className="eb" style={{ color: '#29251F' }}>CAN TEACH</span>
+                    <span className="srow">
+                      {demandTeacher.skill_name}
+                      <span className="lv" style={{ background: '#FFFDF8' }}>
+                        {demandTeacher.level_num ? `LVL ${demandTeacher.level_num}` : 'ELIGIBLE'}
+                      </span>
+                    </span>
+                  </div>
+                </div>
+
+                <div style={{ padding: '20px 26px 24px', borderTop: '2px solid #29251F', background: '#F0E5D2', borderRadius: '0 0 14px 14px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <span className="eb" style={{ color: '#29251F' }}>CONNECT REQUEST</span>
+                  {demandRequestSent ? (
+                    <div style={{ minHeight: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, border: '2px dashed #29251F', borderRadius: 10, background: '#D6F3EA', fontWeight: 800 }}>
+                      <span>✓</span> Connection Request Sent!
+                    </div>
+                  ) : (
+                    <>
+                      <input
+                        className="in"
+                        placeholder={`Hi ${(demandTeacher.name || '').split(' ')[0]}, let's connect!`}
+                        aria-label="Message (optional)"
+                        value={demandMessage}
+                        onChange={(e) => setDemandMessage(e.target.value)}
+                      />
+                      <button
+                        type="button"
+                        onClick={handleSendDemandTeacherRequest}
+                        disabled={demandSubmitting}
+                        className="btn btn-p"
+                        style={{ width: '100%' }}
+                      >
+                        {demandSubmitting ? 'Sending…' : 'Send Connection Request'}
+                      </button>
+                    </>
+                  )}
+                </div>
+              </article>
+              <button type="button" className="btn btn-s" style={{ alignSelf: 'center' }} onClick={clearAll}>
+                ← Back to All Teachers
+              </button>
+            </div>
+          ) : demandSuccess ? (
+            <div className="card" style={{ maxWidth: 640, margin: '0 auto', width: '100%', padding: '44px 28px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, textAlign: 'center' }}>
+              <span style={{ width: 72, height: 72, borderRadius: 20, border: '2px solid #29251F', background: '#D6F3EA', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, boxShadow: '0 4px 0 #29251F' }}>
+                ✓
+              </span>
+              <h2 style={{ margin: 0, fontSize: 24, fontWeight: 900 }}>We'll notify you when someone qualifies</h2>
+              <p className="muted" style={{ margin: 0, fontSize: 15, maxWidth: 480 }}>
+                We've registered your interest in <strong>{query.trim()}</strong> and notified qualified community members. You'll get an alert as soon as a teacher is available.
+              </p>
+              <button type="button" className="btn btn-s" style={{ marginTop: 8 }} onClick={clearAll}>
+                Search Other Skills
+              </button>
+            </div>
+          ) : (
+            <div className="card" style={{ maxWidth: 720, margin: '0 auto', width: '100%', padding: '48px 32px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, textAlign: 'center', borderStyle: 'dashed', boxShadow: 'none' }}>
+              <span style={{ width: 80, height: 80, borderRadius: 22, border: '2px solid #29251F', background: '#FBEFC4', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 34, transform: 'rotate(-5deg)', boxShadow: '0 5px 0 #29251F' }}>
+                🔍
+              </span>
+              <h2 style={{ margin: '6px 0 0', fontSize: 26, fontWeight: 900 }}>
+                No teacher available right now{query.trim() ? ` for "${query.trim()}"` : ''}
+              </h2>
+              <p className="muted" style={{ margin: 0, fontSize: 16, maxWidth: 520 }}>
+                {query.trim()
+                  ? `No verified teacher is currently available for "${query.trim()}". Request this skill and we'll notify you as soon as someone qualifies!`
+                  : activeFilter === 'I Want to Learn' ? 'No one currently teaches those skills with your selected filters.'
+                    : activeFilter === 'I Can Teach' ? 'No partners are currently looking to learn those skills.'
+                      : 'Adjust your search or clear filters to see more results.'}
+              </p>
+
+              {demandError && (
+                <div className="card" style={{ width: '100%', maxWidth: 480, padding: '12px 16px', background: '#F6DDD8', borderColor: '#9A2B1E', color: '#9A2B1E', fontWeight: 700, fontSize: 14 }}>
+                  {demandError}
+                </div>
+              )}
+
+              <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center', marginTop: 8 }}>
+                {query.trim() && (
+                  <button
+                    type="button"
+                    className="btn btn-p"
+                    disabled={demandLoading}
+                    onClick={handleDemandRequest}
+                  >
+                    {demandLoading ? 'Checking availability…' : "Notify me when one's available"}
+                  </button>
+                )}
+                {(activeFilter !== 'All' || proficiency !== 'All' || query) && (
+                  <button type="button" className="btn btn-s" onClick={clearAll}>
+                    Clear All Filters
+                  </button>
+                )}
+              </div>
+            </div>
+          )
         ) : (
           <>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -482,6 +671,15 @@ export default function Marketplace() {
                           <span className="pill" style={{ alignSelf: 'flex-start', background: hasRating ? '#FBEFC4' : '#F0E5D2' }}>
                             {hasRating ? `★ ${ratings.average_rating.toFixed(1)} (${ratings.review_count})` : 'NEW MEMBER'}
                           </span>
+                          {teacher.teacher_stats && teacher.teacher_stats.sessions_taught > 0 && (
+                            <span style={{ fontSize: 13, fontWeight: 700, color: '#4A443A', marginTop: 2 }}>
+                              {[
+                                teacher.teacher_stats.average_rating && teacher.teacher_stats.review_count > 0 ? `★${Number(teacher.teacher_stats.average_rating).toFixed(1)}` : null,
+                                teacher.teacher_stats.review_count > 0 ? `${teacher.teacher_stats.review_count} review${teacher.teacher_stats.review_count === 1 ? '' : 's'}` : null,
+                                `${teacher.teacher_stats.sessions_taught} session${teacher.teacher_stats.sessions_taught === 1 ? '' : 's'}`
+                              ].filter(Boolean).join(' · ')}
+                            </span>
+                          )}
                         </div>
                       </div>
 
