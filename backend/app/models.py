@@ -431,3 +431,40 @@ class DemandRequest(Base):
 
     requester = relationship("User", foreign_keys=[requester_id])
     skill = relationship("Skill", foreign_keys=[skill_id])
+
+
+class LoungePost(Base):
+    """
+    Community Lounge posts visible only to qualified teachers.
+    """
+    __tablename__ = "lounge_posts"
+
+    id = Column(Integer, primary_key=True, index=True)
+    author_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    body = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=utc_now, nullable=False)
+    edited_at = Column(DateTime, nullable=True)
+
+    author = relationship("User", foreign_keys=[author_id])
+    comments = relationship(
+        "LoungeComment",
+        back_populates="post",
+        cascade="all, delete-orphan",
+        order_by="LoungeComment.created_at.asc()",
+    )
+
+
+class LoungeComment(Base):
+    """
+    Comments on Community Lounge posts.
+    """
+    __tablename__ = "lounge_comments"
+
+    id = Column(Integer, primary_key=True, index=True)
+    post_id = Column(Integer, ForeignKey("lounge_posts.id", ondelete="CASCADE"), nullable=False, index=True)
+    author_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    body = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=utc_now, nullable=False)
+
+    post = relationship("LoungePost", back_populates="comments")
+    author = relationship("User", foreign_keys=[author_id])

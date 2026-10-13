@@ -101,3 +101,12 @@ def get_teacher_public_stats_for_users(db: Session, user_ids: List[int]) -> Dict
         }
 
     return result
+
+
+def check_user_has_taught(db: Session, user_id: int) -> bool:
+    """
+    Checks if a user has taught at least one completed session.
+    Reuses get_teacher_public_stats_for_users to guarantee identical qualification criteria.
+    """
+    stats = get_teacher_public_stats_for_users(db, [user_id])
+    return user_id in stats and stats[user_id].get("sessions_taught", 0) > 0

@@ -21,7 +21,7 @@ from .routers import (
     auth, users, assessments, marketplace, requests, chat, reviews,
     sessions, compiler, whiteboard, materials, progress, certificates,
     notifications, gamification, exchanges, report_card, teacher_stats,
-    demand,
+    demand, community,
 )
 
 @asynccontextmanager
@@ -56,7 +56,9 @@ async def lifespan(app: FastAPI):
                 inspector.has_table('exchange_legs') and
                 inspector.has_table('exchange_members') and
                 inspector.has_table('weekly_attempts') and
-                inspector.has_table('demand_requests')
+                inspector.has_table('demand_requests') and
+                inspector.has_table('lounge_posts') and
+                inspector.has_table('lounge_comments')
             )
 
             def _backfill_level_num():
@@ -230,6 +232,30 @@ async def lifespan(app: FastAPI):
                     except Exception as e:
                         print(f"[startup] Failed to create weekly_attempts table: {e}")
 
+                if not inspector.has_table('demand_requests'):
+                    try:
+                        with conn.begin():
+                            models.DemandRequest.__table__.create(bind=conn, checkfirst=True)
+                        print("[startup] Created demand_requests table.")
+                    except Exception as e:
+                        print(f"[startup] Failed to create demand_requests table: {e}")
+
+                if not inspector.has_table('lounge_posts'):
+                    try:
+                        with conn.begin():
+                            models.LoungePost.__table__.create(bind=conn, checkfirst=True)
+                        print("[startup] Created lounge_posts table.")
+                    except Exception as e:
+                        print(f"[startup] Failed to create lounge_posts table: {e}")
+
+                if not inspector.has_table('lounge_comments'):
+                    try:
+                        with conn.begin():
+                            models.LoungeComment.__table__.create(bind=conn, checkfirst=True)
+                        print("[startup] Created lounge_comments table.")
+                    except Exception as e:
+                        print(f"[startup] Failed to create lounge_comments table: {e}")
+
             _backfill_level_num()
 
             elapsed_ms = (time.perf_counter() - t_startup_start) * 1000.0
@@ -329,6 +355,7 @@ app.include_router(exchanges.router)
 app.include_router(report_card.router)
 app.include_router(teacher_stats.router)
 app.include_router(demand.router)
+app.include_router(community.router)
 
 
 

@@ -566,3 +566,68 @@ class DemandResponse(BaseModel):
     level_num: Optional[int] = None
     learner_level_num: Optional[int] = None
 
+
+# ── Community Lounge Schemas ────────────────────────────────────────────────
+
+class CommunityAccessOut(BaseModel):
+    has_taught: bool
+
+
+class LoungePostCreate(BaseModel):
+    body: str
+
+    @field_validator("body")
+    @classmethod
+    def validate_body(cls, v: str) -> str:
+        s = v.strip() if isinstance(v, str) else ""
+        if not s:
+            raise ValueError("Post body cannot be blank.")
+        if len(s) > 2000:
+            raise ValueError("Post body cannot exceed 2000 characters.")
+        return s
+
+
+class LoungeCommentCreate(BaseModel):
+    body: str
+
+    @field_validator("body")
+    @classmethod
+    def validate_body(cls, v: str) -> str:
+        s = v.strip() if isinstance(v, str) else ""
+        if not s:
+            raise ValueError("Comment body cannot be blank.")
+        if len(s) > 1000:
+            raise ValueError("Comment body cannot exceed 1000 characters.")
+        return s
+
+
+class LoungeCommentOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    post_id: int
+    author_id: int
+    author_name: str
+    author_college: Optional[str] = ""
+    author_avatar_url: Optional[str] = None
+    body: str
+    created_at: dt.datetime
+
+
+class LoungePostOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    author_id: int
+    author_name: str
+    author_college: Optional[str] = ""
+    author_avatar_url: Optional[str] = None
+    body: str
+    created_at: dt.datetime
+    edited_at: Optional[dt.datetime] = None
+    comment_count: int = 0
+
+
+class LoungePostDetailOut(LoungePostOut):
+    comments: List[LoungeCommentOut] = []
+
