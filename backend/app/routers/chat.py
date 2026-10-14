@@ -267,9 +267,26 @@ def get_inbox(
     
     for req in reqs:
         other_user_id = req.to_user_id if req.from_user_id == current_user.id else req.from_user_id
-        if other_user_id not in canonical_reqs:
+        existing = canonical_reqs.get(other_user_id)
+        if existing is None:
             canonical_reqs[other_user_id] = req
             pair_req_ids[other_user_id] = []
+        else:
+            # Prefer a still-accepted (schedulable) request over a completed one,
+            # and among same-status requests prefer the most recently created —
+            # otherwise the inbox gets stuck on a stale, already-completed request
+            # (and its old skill name) forever, blocking new scheduling.
+            e_dt = existing.created_at
+            r_dt = req.created_at
+            if e_dt and r_dt:
+                if e_dt.tzinfo is not None and r_dt.tzinfo is None:
+                    e_dt = e_dt.replace(tzinfo=None)
+                elif e_dt.tzinfo is None and r_dt.tzinfo is not None:
+                    r_dt = r_dt.replace(tzinfo=None)
+            existing_rank = (existing.status == "accepted", e_dt, existing.id)
+            new_rank = (req.status == "accepted", r_dt, req.id)
+            if new_rank > existing_rank:
+                canonical_reqs[other_user_id] = req
         pair_req_ids[other_user_id].append(req.id)
         req_to_other_user[req.id] = other_user_id
 
