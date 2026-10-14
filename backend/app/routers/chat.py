@@ -1,7 +1,8 @@
 from typing import List, Optional
 import asyncio
+import copy
 import logging
-from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect, Query, File, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, WebSocket, WebSocketDisconnect, Query, File, UploadFile
 import uuid
 import mimetypes
 from fastapi.responses import RedirectResponse
@@ -221,22 +222,30 @@ def _serialize_message(msg: models.Message) -> dict:
     }
 
 
-async def _broadcast_message_update(request_id: int, msg: models.Message) -> None:
-    """Broadcast a message_update event to all participants in a conversation."""
+def _pair_room(db: Session, request_id: int) -> str:
+    """Chat room id shared by both participants of a request."""
+    req = db.query(models.ConnectionRequest).filter(models.ConnectionRequest.id == request_id).first()
+    if not req:
+        return str(request_id)
+    u1, u2 = min(req.from_user_id, req.to_user_id), max(req.from_user_id, req.to_user_id)
+    return f"pair_{u1}_{u2}"
+
+
+async def _broadcast(room_id: str, payload: dict) -> None:
+    """Send a live event to everyone in a chat room. Scheduled with FastAPI
+    BackgroundTasks from the REST routes: those are sync `def` routes running in
+    a worker thread, where asyncio.get_running_loop() fails — which silently
+    broke live read receipts, edits, deletes and reactions."""
     try:
-        db = SessionLocal()
-        req = db.query(models.ConnectionRequest).filter(models.ConnectionRequest.id == request_id).first()
-        room_id = str(request_id)
-        if req:
-            u1, u2 = min(req.from_user_id, req.to_user_id), max(req.from_user_id, req.to_user_id)
-            room_id = f"pair_{u1}_{u2}"
-        db.close()
-        await chat_manager.broadcast(room_id, {
-            "type": "message_update",
-            "message": _serialize_message(msg),
-        })
+        await chat_manager.broadcast(room_id, payload)
     except Exception:
-        pass  # Never let a failed broadcast crash the REST response
+        logger.warning("chat broadcast to %s failed", room_id, exc_info=True)
+
+
+def _queue_message_update(background_tasks: BackgroundTasks, db: Session, msg: models.Message) -> None:
+    # Serialize NOW, while the DB session is open; the task runs after the response.
+    background_tasks.add_task(_broadcast, _pair_room(db, msg.request_id),
+                              {"type": "message_update", "message": _serialize_message(msg)})
 
 
 from sqlalchemy import or_, and_, desc, func
@@ -400,6 +409,7 @@ def get_inbox(
 @router.post("/{request_id}/read")
 def mark_conversation_read(
     request_id: int,
+    background_tasks: BackgroundTasks,
     current_user: models.User = Depends(auth.get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -431,18 +441,13 @@ def mark_conversation_read(
 
     db.commit()
 
-    try:
-        room_id = f"pair_{min(current_user.id, other_user_id)}_{max(current_user.id, other_user_id)}"
-        import asyncio
-        loop = asyncio.get_running_loop()
-        loop.create_task(chat_manager.broadcast(room_id, {
-            "type": "messages_read",
-            "request_id": request_id,
-            "reader_id": current_user.id,
-            "message_ids": msg_ids
-        }))
-    except Exception:
-        pass
+    room_id = f"pair_{min(current_user.id, other_user_id)}_{max(current_user.id, other_user_id)}"
+    background_tasks.add_task(_broadcast, room_id, {
+        "type": "messages_read",
+        "request_id": request_id,
+        "reader_id": current_user.id,
+        "message_ids": msg_ids,
+    })
 
     return {"detail": "Messages marked as read", "message_ids": msg_ids}
 
@@ -477,6 +482,7 @@ def list_messages(
 def send_message(
     request_id: int,
     payload: schemas.MessageCreate,
+    background_tasks: BackgroundTasks,
     current_user: models.User = Depends(auth.get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -488,6 +494,9 @@ def send_message(
     req = db.query(models.ConnectionRequest).filter(models.ConnectionRequest.id == request_id).first()
     other_user_id = req.to_user_id if req.from_user_id == current_user.id else req.from_user_id
     create_notification(db, other_user_id, "message", "New Message", f"{current_user.name} sent you a message", request_id, "chat")
+    # Messages sent over REST (forwarding, or while the socket reconnects) must
+    # also reach a partner who is online right now.
+    background_tasks.add_task(_broadcast, _pair_room(db, request_id), {**_serialize_message(msg), "type": "message"})
     return msg
 
 
@@ -657,6 +666,7 @@ def _get_message_authorized(db: Session, message_id: int, user_id: int) -> model
 def edit_message(
     message_id: int,
     payload: schemas.MessageEdit,
+    background_tasks: BackgroundTasks,
     current_user: models.User = Depends(auth.get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -675,18 +685,14 @@ def edit_message(
     db.refresh(msg)
 
     # Broadcast real-time update to both participants
-    import asyncio
-    try:
-        loop = asyncio.get_running_loop()
-        loop.create_task(_broadcast_message_update(msg.request_id, msg))
-    except Exception:
-        pass
+    _queue_message_update(background_tasks, db, msg)
     return msg
 
 
 @router.delete("/messages/{message_id}")
 def delete_message_for_everyone(
     message_id: int,
+    background_tasks: BackgroundTasks,
     current_user: models.User = Depends(auth.get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -703,12 +709,7 @@ def delete_message_for_everyone(
     db.refresh(msg)
 
     # Broadcast real-time update to both participants
-    import asyncio
-    try:
-        loop = asyncio.get_running_loop()
-        loop.create_task(_broadcast_message_update(request_id, msg))
-    except Exception:
-        pass
+    _queue_message_update(background_tasks, db, msg)
     return {"detail": "Message deleted", "id": message_id, "request_id": request_id}
 
 
@@ -736,12 +737,15 @@ def delete_message_for_me(
 def toggle_reaction(
     message_id: int,
     payload: schemas.ReactionUpdate,
+    background_tasks: BackgroundTasks,
     current_user: models.User = Depends(auth.get_current_user),
     db: Session = Depends(get_db),
 ):
     msg = _get_message_authorized(db, message_id, current_user.id)
-    new_meta = dict(msg.message_metadata or {})
-    reactions = dict(new_meta.get("reactions", {}))
+    # Deep copy: a shallow copy shares the inner lists with the value SQLAlchemy
+    # remembers, so removing a reaction left old == new and nothing was saved.
+    new_meta = copy.deepcopy(msg.message_metadata or {})
+    reactions = new_meta.get("reactions", {})
 
     emoji = payload.emoji
     user_id = current_user.id
@@ -764,12 +768,7 @@ def toggle_reaction(
     db.refresh(msg)
 
     # Broadcast real-time update to both participants
-    import asyncio
-    try:
-        loop = asyncio.get_running_loop()
-        loop.create_task(_broadcast_message_update(msg.request_id, msg))
-    except Exception:
-        pass
+    _queue_message_update(background_tasks, db, msg)
     return {
         "id": msg.id,
         "request_id": msg.request_id,

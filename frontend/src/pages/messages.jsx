@@ -283,7 +283,8 @@ export default function Messages() {
           setMessages(data.messages)
           setLoadingMessages(false)
         } else if (data.type === 'message') {
-          setMessages(prev => [...prev, data])
+          // Skip a message we already have (e.g. our own REST send echoed back).
+          setMessages(prev => (prev || []).some(m => m.id === data.id) ? prev : [...(prev || []), data])
           api.markMessagesRead(reqId).then(() => loadInbox(false)).catch(console.error)
         } else if (data.type === 'message_update') {
           setMessages(prev => prev ? prev.map(m => m.id === data.message.id ? data.message : m) : null)
@@ -415,7 +416,7 @@ export default function Messages() {
       ws.send(JSON.stringify({ content: text, metadata }))
     } else {
       try {
-        const msg = await api.sendMessage(selectedRequestId, text)
+        const msg = await api.sendMessage(selectedRequestId, text, metadata)
         setMessages(prev => [...prev, msg])
       } catch (err) {
         showToast(err.message || 'Failed to send message')
