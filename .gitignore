@@ -32,3 +32,12 @@ create_zip.py
 
 # Evaluation suite scratch data (throwaway SQLite files, not for the repo)
 eval/tmp/
+
+# Logs and throwaway scripts (keep the repo root clean)
+*.log
+*.sqlite
+/scratch*
+/temp_*
+/patch*.py
+/fix*.py
+/fix*.js

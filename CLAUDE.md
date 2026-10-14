@@ -23,8 +23,12 @@ Student team project (final year). Keep solutions simple and readable over cleve
 8. Both reassess; skill profiles update. (Post-session reassessment is still planned.)
 
 ## Repos and branches
-- Main repo: `Chandru-38114/SkillVerse`. **All work happens on branch `phase2-websocket-chat`.**
-  `main` is an old September skeleton — do not use it as a reference.
+- Main repo: `Chandru-38114/SkillVerse`. **All work happens on `main`.**
+  `phase2-websocket-chat` was merged into `main` on 2026-10-13 and is now behind it —
+  do not develop on it or use it as a reference.
+- One-off maintenance scripts live in `scripts/` (run from the repo root, e.g.
+  `python scripts/run_migrations.py`). Do not add throwaway fix/patch/test scripts
+  to the repo root.
 - `Chandru-38114/AI-Api-Application` — a separate Next.js prototype that first held the
   Gemini question-generation logic. Its generation logic has already been ported into this
   backend. Treat it as reference only; do not import from it.
