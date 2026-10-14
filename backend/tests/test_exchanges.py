@@ -219,6 +219,7 @@ class TestExchangeGroupsAndCycles(unittest.TestCase):
             end_time="11:00",
             status="scheduled",
             started_at=datetime.datetime(2026, 10, 12, 10, 0),  # participants joined the room
+            both_joined_at=datetime.datetime(2026, 10, 12, 10, 1),  # tutor and learner were both there
         )
         self.db.add(sess)
         self.db.commit()
@@ -280,6 +281,7 @@ class TestExchangeGroupsAndCycles(unittest.TestCase):
             end_time="11:00",
             status="scheduled",
             started_at=datetime.datetime(2026, 10, 12, 10, 0),  # participants joined the room
+            both_joined_at=datetime.datetime(2026, 10, 12, 10, 1),  # tutor and learner were both there
         )
         self.db.add(sess)
         self.db.commit()

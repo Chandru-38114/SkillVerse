@@ -7,7 +7,9 @@ from ..notification_service import create_notification
 
 from .. import models, schemas, auth
 from ..database import get_db
-from ..utils.progress_utils import compute_skill_stage
+from ..services.course_rules import (
+    FINAL_PASS_SCORE, SESSIONS_FOR_FINAL, find_course, is_course_finished, user_course,
+)
 
 router = APIRouter(prefix="/certificates", tags=["certificates"])
 
@@ -20,46 +22,48 @@ def generate_certificate(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
-    skill = db.query(models.Skill).filter(models.Skill.name.ilike(payload.skill_name)).first()
+    skill = find_course(db, " ".join((payload.skill_name or "").split()))
     if not skill:
         raise HTTPException(status_code=404, detail="Skill not found")
 
-    us = db.query(models.UserSkill).filter(
-        models.UserSkill.user_id == current_user.id,
-        models.UserSkill.skill_id == skill.id
-    ).first()
+    us = user_course(db, current_user.id, skill.id)
 
     if not us:
         raise HTTPException(status_code=400, detail="You do not have this skill registered.")
 
-    assessments = db.query(models.AssessmentAttempt).filter(
-        models.AssessmentAttempt.user_id == current_user.id,
-        models.AssessmentAttempt.skill_id == skill.id
-    ).count()
+    # A certificate means the course is finished: the learner completed the
+    # required sessions AND then passed the final Skill Arena challenge
+    # (progress 100%). A badge alone is not enough any more.
+    if us.role != "learning":
+        raise HTTPException(status_code=400, detail="Certificates are for learners who complete a course. You teach this course.")
+    if not is_course_finished(us):
+        done = us.sessions_completed or 0
+        if done < SESSIONS_FOR_FINAL:
+            msg = f"Complete {SESSIONS_FOR_FINAL - done} more session(s), then pass the final challenge to earn this certificate."
+        else:
+            msg = f"Pass the final Skill Arena challenge with {FINAL_PASS_SCORE}% or more to earn this certificate."
+        raise HTTPException(status_code=400, detail=msg)
 
-    stage, _, _ = compute_skill_stage(assessments, us.sessions_completed, us.badge, us.level, us.total_learning_minutes)
-
-    if stage != "Mastery":
-        raise HTTPException(status_code=400, detail="You must reach Mastery stage to earn this certificate.")
-
-    # Prevent duplicate generation for the same skill and same badge
+    # One certificate per finished course.
     existing_cert = db.query(models.Certificate).filter(
         models.Certificate.user_id == current_user.id,
         models.Certificate.skill_id == skill.id,
-        models.Certificate.badge == us.badge
     ).first()
 
     if existing_cert:
-        raise HTTPException(status_code=400, detail="You have already generated a certificate for this achievement.")
+        raise HTTPException(status_code=400, detail="You have already generated a certificate for this course.")
 
     cert = models.Certificate(
         certificate_id=generate_cert_id(),
         user_id=current_user.id,
         skill_id=skill.id,
         level=us.level,
-        badge=us.badge,
+        # The badge column is required; a finished course without a badge
+        # (possible if the final score was 60 but the badge rules change)
+        # still gets a certificate.
+        badge=us.badge or "Completed",
         sessions_completed=us.sessions_completed,
-        progress_percentage=us.progress_percentage
+        progress_percentage=100
     )
 
     db.add(cert)

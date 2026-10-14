@@ -12,13 +12,17 @@ from .. import models, schemas, auth
 from ..database import get_db
 from ..data.questions import get_questions_for_skill, QUESTION_BANK
 from ..services.question_generator import (
-    GenerationError, canonical_level, canonical_skill, generate_assessment, sanitize,
+    GenerationError, canonical_level, generate_assessment, sanitize,
 )
 from ..services.code_grader import grade_coding_answer
 from ..services.learning_plan import build_study_plan
 from ..utils.timezone import utc_now, enforce_utc_iso
 from ..utils.levels import score_to_level
-from ..utils.progress_utils import compute_progress_percentage
+from ..utils.progress_utils import progress_for
+from ..services.course_rules import (
+    FINAL_PASS_SCORE, MAX_COURSES, SESSIONS_FOR_FINAL, TEACH_MIN_SCORE,
+    clean_course_name, course_count, ensure_can_add_course, find_course, user_course,
+)
 from ..services.demand_service import notify_requesters_on_teacher_level_qualified
 from .users import get_or_create_skill
 
@@ -46,10 +50,15 @@ async def start_assessment(
     """Generate a fresh assessment with Gemini and store it (with answers) server-side.
     Returns the attempt id and the questions WITHOUT answers. Falls back to the
     hand-written bank if AI generation is unavailable for a skill that has one."""
-    skill = canonical_skill(payload.skill_name)
-    if not skill:
-        raise HTTPException(status_code=400, detail="Skill name is required")
+    skill = clean_course_name(payload.skill_name)  # 400 for an unusable name
     level = canonical_level(payload.level)
+
+    # Course rules before spending an AI call: a NEW course needs a free slot
+    # (max 4 courses). Retakes of an existing course are always allowed.
+    existing_skill = find_course(db, skill)
+    existing_row = user_course(db, current_user.id, existing_skill.id) if existing_skill else None
+    if existing_row is None:
+        ensure_can_add_course(db, current_user.id)
 
     now = utc_now()
     active = (
@@ -230,6 +239,19 @@ def submit_assessment(
 
     # Persist attempt + update the user's skill record
     db_skill = get_or_create_skill(db, skill_name)
+    # Did this user ever reach a badge score in this course before? Points for
+    # a first badge are given once per course, even if the course is removed
+    # and added again.
+    had_badge_before = (
+        db.query(models.AssessmentAttempt)
+        .filter(
+            models.AssessmentAttempt.user_id == current_user.id,
+            models.AssessmentAttempt.skill_id == db_skill.id,
+            models.AssessmentAttempt.score >= 40,
+        )
+        .first()
+        is not None
+    )
     attempt = models.AssessmentAttempt(
         user_id=current_user.id,
         skill_id=db_skill.id,
@@ -268,25 +290,72 @@ def submit_assessment(
     db.add(weekly_attempt)
 
     skill = db_skill
-    user_skill = (
-        db.query(models.UserSkill)
-        .filter(models.UserSkill.user_id == current_user.id, models.UserSkill.skill_id == skill.id)
-        .first()
-    )
+    # The SERVER decides the role (the client only says which goal it chose):
+    # - a teacher stays a teacher (a teacher can never become a learner of
+    #   the same course);
+    # - a learner becomes a teacher only with the "teach" goal and a score of
+    #   at least TEACH_MIN_SCORE;
+    # - a new course needs a free slot (max MAX_COURSES).
+    wants_to_teach = (payload.role or "").strip().lower() == "teaching"
+    # An attempt ended for rule violations (or submitted late) never makes
+    # anyone a tutor.
+    can_promote = not terminated
+    user_skill = user_course(db, current_user.id, skill.id)
+    outcome = None
     if not user_skill:
-        user_skill = models.UserSkill(user_id=current_user.id, skill_id=skill.id, role=payload.role)
+        if course_count(db, current_user.id) >= MAX_COURSES:
+            # The slot was free at /start but the user filled it meanwhile.
+            # The attempt is still recorded; no course row is created.
+            db.commit()
+            return schemas.AssessmentResult(
+                score=score, level=level, badge=badge, weak_topics=weak_topics, study_plan=study_plan,
+                violations=violations, terminated=terminated, counted=is_counted, role=None,
+                outcome_message=f"You already have {MAX_COURSES} courses, so {skill.name} was not added.",
+            )
+        new_role = "teaching" if (wants_to_teach and can_promote and score >= TEACH_MIN_SCORE) else "learning"
+        user_skill = models.UserSkill(user_id=current_user.id, skill_id=skill.id, role=new_role)
         db.add(user_skill)
+        if wants_to_teach and new_role == "learning":
+            outcome = (f"You need {TEACH_MIN_SCORE}% to teach {skill.name}. "
+                       f"We added it to your learning courses — learn, then try again.")
+        elif new_role == "teaching":
+            outcome = f"You are now a verified tutor for {skill.name}."
+    elif user_skill.role == "learning" and wants_to_teach:
+        if can_promote and score >= TEACH_MIN_SCORE:
+            user_skill.role = "teaching"
+            outcome = f"Great work! You moved from learner to tutor for {skill.name}."
+        else:
+            outcome = f"You need {TEACH_MIN_SCORE}% to teach {skill.name}. You are still learning it."
 
-    had_badge_before = bool(user_skill.badge) if hasattr(user_skill, 'badge') else False
+    # Final challenge: a learner who has done the required sessions and now
+    # passes finishes the course (100% progress, certificate unlocked). An
+    # Arena attempt taken BEFORE those sessions doesn't count.
+    course_completed_now = False
+    if (
+        user_skill.role == "learning"
+        and user_skill.course_completed_at is None
+        and (user_skill.sessions_completed or 0) >= SESSIONS_FOR_FINAL
+        and score >= FINAL_PASS_SCORE
+        and not terminated
+    ):
+        user_skill.course_completed_at = utc_now()
+        course_completed_now = True
+        outcome = f"You passed the final challenge and completed {skill.name}! Your certificate is ready on the Progress page."
+    elif (
+        user_skill.role == "learning"
+        and user_skill.course_completed_at is None
+        and (user_skill.sessions_completed or 0) >= SESSIONS_FOR_FINAL
+        and not outcome
+    ):
+        outcome = f"You need {FINAL_PASS_SCORE}% in this final challenge to complete {skill.name}. You can try again."
 
     user_skill.latest_score = score
     user_skill.level_num = lvl_num
     user_skill.level = level
     user_skill.badge = badge
-    user_skill.role = payload.role
-    user_skill.progress_percentage = compute_progress_percentage(user_skill.sessions_completed or 0, badge)
+    user_skill.progress_percentage = progress_for(user_skill)
 
-    # Award points for completing a certification ONLY if they did not already have a badge for this skill
+    # Points for a first badge in this course — once per course, ever.
     if badge and not had_badge_before:
         current_user.points += 50
 
@@ -295,17 +364,20 @@ def submit_assessment(
     if badge:
         create_notification(db, current_user.id, "assessment", "Badge Earned", f"You earned a {badge} badge in {skill.name}!", attempt.id, "assessment")
 
-    # Notify any open demand requesters for this skill if this user now qualifies as a teacher
-    notify_requesters_on_teacher_level_qualified(
-        db=db,
-        teacher_id=current_user.id,
-        skill_id=skill.id,
-        new_level_num=lvl_num,
-    )
+    # Tell open demand requesters a tutor is available — only when this user
+    # actually TEACHES the course (a learner's score must not trigger it).
+    if user_skill.role == "teaching":
+        notify_requesters_on_teacher_level_qualified(
+            db=db,
+            teacher_id=current_user.id,
+            skill_id=skill.id,
+            new_level_num=lvl_num,
+        )
 
     return schemas.AssessmentResult(
         score=score, level=level, badge=badge,
         weak_topics=weak_topics, study_plan=study_plan,
         violations=violations, terminated=terminated,
-        counted=is_counted,
+        counted=is_counted, role=user_skill.role,
+        course_completed=course_completed_now, outcome_message=outcome,
     )

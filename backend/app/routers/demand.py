@@ -18,6 +18,7 @@ from ..database import get_db
 from ..utils.levels import is_eligible_to_teach
 from ..utils.timezone import utc_now
 from ..notification_service import create_notification
+from ..services.course_rules import clean_course_name, find_course, user_course
 
 router = APIRouter(prefix="/demand", tags=["demand"])
 
@@ -39,7 +40,7 @@ def create_demand_request(
     if payload.skill_id:
         skill = db.query(models.Skill).filter(models.Skill.id == payload.skill_id).first()
     if not skill and payload.skill_name:
-        skill = db.query(models.Skill).filter(models.Skill.name.ilike(payload.skill_name.strip())).first()
+        skill = find_course(db, clean_course_name(payload.skill_name))
 
     if not skill:
         raise HTTPException(
@@ -48,14 +49,13 @@ def create_demand_request(
         )
 
     # ── 2. Determine learner's level ──────────────────────────────────────────
-    learner_us = (
-        db.query(models.UserSkill)
-        .filter(
-            models.UserSkill.user_id == current_user.id,
-            models.UserSkill.skill_id == skill.id,
+    learner_us = user_course(db, current_user.id, skill.id)
+    # A teacher of this course can't ask for a tutor in it (one role per course).
+    if learner_us and learner_us.role == "teaching":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"You teach {skill.name}, so you can't request a tutor for it.",
         )
-        .first()
-    )
     learner_level_num = (
         learner_us.level_num
         if (learner_us and learner_us.level_num is not None)

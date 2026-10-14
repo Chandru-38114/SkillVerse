@@ -224,6 +224,9 @@ export default function QuestReview() {
                   </div>
                 )}
 
+                {isTutor ? (
+                  <p className="text-sm text-clay">The knowledge check is for {peerName || 'your learner'} — it tests what they learned in this session.</p>
+                ) : (
                 <div className="card p-5 flex flex-col sm:flex-row sm:items-center gap-4 justify-between">
                   <div className="flex items-start gap-3">
                     <div className="w-10 h-10 bg-brand/10 text-brandInk rounded-full flex items-center justify-center flex-shrink-0">
@@ -238,6 +241,7 @@ export default function QuestReview() {
                     Start the check
                   </button>
                 </div>
+                )}
                 <p className="text-xs text-clay mt-4 text-center">
                   This is practice - it does not change your verified skill level.
                 </p>

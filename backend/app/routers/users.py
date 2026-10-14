@@ -9,6 +9,8 @@ from sqlalchemy.orm import Session
 from .. import models, schemas, auth
 from ..database import get_db
 from ..supabase_client import get_supabase
+from ..services.course_rules import ensure_learning_course, get_or_create_course
+from ..utils.progress_utils import progress_for
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +44,9 @@ def update_me(
     db: Session = Depends(get_db)
 ):
     if req.name is not None:
-        current_user.name = req.name
+        if not req.name.strip():
+            raise HTTPException(status_code=400, detail="Name can't be empty.")
+        current_user.name = req.name.strip()[:80]
     if req.bio is not None:
         current_user.bio = req.bio
     if req.college is not None:
@@ -289,7 +293,9 @@ def get_my_skills(
             id=r.id, skill_id=r.skill_id, skill_name=r.skill.name, role=r.role,
             latest_score=r.latest_score, level=r.level, badge=r.badge,
             sessions_completed=r.sessions_completed or 0,
-            progress_percentage=r.progress_percentage or 0,
+            # Computed from the current rule, so rows saved under the old
+            # rule (badge = 100%) show the right value too.
+            progress_percentage=progress_for(r),
         )
         for r in rows
     ]
@@ -305,26 +311,19 @@ def add_skill(
     current_user: models.User = Depends(auth.get_current_user),
     db: Session = Depends(get_db),
 ):
-    # Only allow manual addition of learning skills. Teaching requires assessment.
+    # Only learning courses can be added by hand. Teaching needs the Skill Arena.
     if req.role != "learning":
-        from fastapi import HTTPException
-        raise HTTPException(status_code=400, detail="Only learning skills can be added manually. Take an assessment to teach.")
+        raise HTTPException(status_code=400, detail="Only learning courses can be added manually. Pass the Skill Arena to teach.")
 
     skill = get_or_create_skill(db, req.skill_name)
-    us = db.query(models.UserSkill).filter_by(user_id=current_user.id, skill_id=skill.id, role=req.role).first()
-    if not us:
-        us = models.UserSkill(
-            user_id=current_user.id,
-            skill_id=skill.id,
-            role=req.role,
-            level="Unassessed"
-        )
-        db.add(us)
-        db.commit()
-        db.refresh(us)
+    # Refuses a course you teach and a 5th course (services/course_rules.py).
+    us = ensure_learning_course(db, current_user.id, skill)
+    db.commit()
+    db.refresh(us)
     return schemas.UserSkillOut(
         id=us.id, skill_id=us.skill_id, skill_name=skill.name, role=us.role,
         latest_score=us.latest_score, level=us.level, badge=us.badge,
+        sessions_completed=us.sessions_completed or 0, progress_percentage=progress_for(us),
     )
 
 @router.delete("/me/skills/{skill_id}")
@@ -335,19 +334,17 @@ def remove_skill(
 ):
     us = db.query(models.UserSkill).filter_by(id=skill_id, user_id=current_user.id).first()
     if not us:
-        from fastapi import HTTPException
         raise HTTPException(status_code=404, detail="Skill not found")
+    # A verified teaching course can't be removed: removing it and adding the
+    # same course back as a learner would break "a teacher can't learn the
+    # course they teach".
+    if us.role == "teaching":
+        raise HTTPException(status_code=400, detail="You can't remove a course you teach.")
     db.delete(us)
     db.commit()
     return {"detail": "Skill removed"}
 
 
 def get_or_create_skill(db: Session, skill_name: str) -> models.Skill:
-    name = skill_name.strip()
-    skill = db.query(models.Skill).filter(models.Skill.name.ilike(name)).first()
-    if not skill:
-        skill = models.Skill(name=name)
-        db.add(skill)
-        db.commit()
-        db.refresh(skill)
-    return skill
+    """Validated, canonical course (see services/course_rules.py)."""
+    return get_or_create_course(db, skill_name)

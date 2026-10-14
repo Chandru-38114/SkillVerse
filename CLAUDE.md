@@ -21,6 +21,7 @@ Student team project (final year). Keep solutions simple and readable over cleve
    code compiler, notes, materials.
 7. AI summarises the session into revision notes.
 8. Both reassess; skill profiles update. (Post-session reassessment is still planned.)
+   A course is finished after 5 sessions + a passed final Skill Arena (60%+) → certificate.
 
 ## Repos and branches
 - Main repo: `Chandru-38114/SkillVerse`. **All work happens on `main`.**
@@ -74,8 +75,8 @@ frontend/src/
   Each is tagged with a topic from `SKILL_TOPICS`, which drives weak-topic analysis.
 - Invalid AI output (duplicate options, bad answer index) is dropped; options are shuffled;
   if one model fails, the next in `GEMINI_MODELS` is tried.
-- If AI is unavailable: Python and JavaScript fall back to the static bank
-  (response says `"source": "bank"`), other skills return 503.
+- If AI is unavailable: Python, Java, DSA and Web Development fall back to the static bank
+  (response says `"source": "bank"`), other courses return 503.
 - The AI layer is deliberately isolated in `services/question_generator.py` because the
   team is training its own models (Qwen2.5-3B for written answers, BGE-M3 embeddings)
   to replace the Gemini API calls later. Keep that file the only place AI is called from.
@@ -115,8 +116,31 @@ Frontend uses `VITE_API_URL`. Never hardcode or print secrets.
 - Frontend: `npm run build` must succeed.
 - Only commit the files relevant to the task; leave unrelated files untouched.
 
+## Course rules (round 3 — all in `backend/app/services/course_rules.py`)
+- **One role per course.** A user teaches OR learns a course, never both. A teacher can't
+  request, learn or "add as learning" a course they teach, and can't remove a taught course.
+- **Learner → teacher:** Skill Arena with the "teach" goal and **60%+** (not on a terminated
+  attempt). The server decides the role on submit; the client's `role` is only the goal.
+- **Max 4 courses** per user (teaching + learning). Any course name is allowed (the AI writes
+  the questions); names are cleaned by `clean_course_name` (letters, digits, `+ # . / & -`).
+- **Requests:** sender = learner, receiver = tutor. The receiver must teach the course and be
+  2+ levels above (`teaching_problem`). "Teach in return" must be a course the sender teaches.
+- **Progress:** 16% per completed session, capped at 80% after 5 sessions. 100% only after the
+  learner then passes the **final Skill Arena with 60%+** (`user_skills.course_completed_at`).
+  A badge alone is not 100% any more.
+- **Certificate:** learners only, only at 100% (sessions + final), one per course.
+- **Sessions:** 15 min – 3 h, up to 60 days ahead. The room opens 15 min before the start
+  (socket closes 4425 earlier). A session counts only when tutor AND learner were both in the
+  room (`sessions.both_joined_at`); otherwise it ends as Missed. Only such sessions can be
+  completed, never before their start. Times can't be changed after someone joined; a session
+  both joined can't be cancelled. The post-session knowledge check is for the learner only.
+- Old data with two rows for one course: `python scripts/fix_course_roles.py` (dry run), then
+  `--apply`. Tests: `backend/tests/test_course_rules.py`.
+
 ## Known gaps / roadmap
-- Post-session reassessment, tutor ranking, knowledge-gap recommendations: not built yet.
-- Coding questions are not auto-graded.
+- Post-session reassessment (Feature 1), tutor ranking, knowledge-gap recommendations: not built yet.
+- Coding questions ARE auto-graded (`services/code_grader.py`); fallback question banks exist
+  for Python, Java, DSA and Web Development.
+- Forgot-password needs real email delivery on production (`email_service.py` only logs).
 - Team-trained models (Qwen2.5-3B, BGE-M3) will replace the Gemini API later.
 - A UI/UX redesign is planned; the current UI is functional but plain.

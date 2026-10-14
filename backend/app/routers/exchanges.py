@@ -16,7 +16,7 @@ from .. import models, auth
 from ..database import get_db
 from ..notification_service import create_notification
 from ..services.cycles import find_cycle_suggestions_for_user
-from ..utils.levels import is_eligible_to_teach
+from ..services.course_rules import ensure_learning_course, teaching_problem
 from .requests import accepted_request_for_leg
 
 router = APIRouter(prefix="/exchanges", tags=["exchanges"])
@@ -146,21 +146,13 @@ def propose_cycle(
                 detail=f"User already has an active or proposed cycle for skill ID {leg.skill_id}."
             )
 
-        # Check eligibility rule: teacher level >= learner level + 2 and teacher level >= 2
-        t_us = db.query(models.UserSkill).filter(
-            models.UserSkill.user_id == leg.teacher_id,
-            models.UserSkill.skill_id == leg.skill_id
-        ).first()
-        l_us = db.query(models.UserSkill).filter(
-            models.UserSkill.user_id == leg.learner_id,
-            models.UserSkill.skill_id == leg.skill_id
-        ).first()
-        t_lvl = t_us.level_num if t_us and t_us.level_num is not None else 0
-        l_lvl = l_us.level_num if l_us and l_us.level_num is not None else 0
-        if not is_eligible_to_teach(t_lvl, l_lvl):
+        # Course rules: the teacher teaches this course, the learner doesn't,
+        # and the teacher is at least two levels above the learner.
+        problem = teaching_problem(db, leg.teacher_id, leg.learner_id, leg.skill_id)
+        if problem:
             raise HTTPException(
                 status_code=400,
-                detail=f"Teacher {leg.teacher_id} is not eligible to teach skill {leg.skill_id} to learner {leg.learner_id}."
+                detail=f"Teacher {leg.teacher_id} can't teach skill {leg.skill_id} to learner {leg.learner_id}: {problem}"
             )
 
     # Create ExchangeGroup
@@ -261,6 +253,17 @@ def respond_to_cycle(
     all_accepted = all(m.accepted for m in all_members)
 
     if all_accepted:
+        # Re-check the course rules now (roles can change while a proposal
+        # waits) and make sure every learner has the course on their list.
+        for leg in grp.legs:
+            problem = teaching_problem(db, leg.teacher_id, leg.learner_id, leg.skill_id)
+            if problem:
+                member.accepted = False
+                db.commit()
+                raise HTTPException(status_code=400, detail=f"This exchange can't start: {problem}")
+            skill_row = db.query(models.Skill).filter(models.Skill.id == leg.skill_id).first()
+            if skill_row:
+                ensure_learning_course(db, leg.learner_id, skill_row)
         grp.status = "active"
         # Create one connection request per leg and link it
         for leg in grp.legs:

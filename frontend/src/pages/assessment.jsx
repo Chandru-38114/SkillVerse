@@ -297,7 +297,7 @@ export default function Assessment() {
     setLoading(true)
     setError('')
     try {
-      const res = await api.startAssessment(skillToStart.trim(), level)
+      const res = await api.startAssessment(skillToStart.trim(), level, role)
       setQuestions(res.questions)
       setAttemptId(res.attempt_id)
       const prefill = {}
@@ -410,7 +410,8 @@ export default function Assessment() {
 
             <label style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               <span style={{ fontWeight: 700, fontSize: 14 }}>Skill name</span>
-              <input className="in" value={skillName} onChange={e => setSkillName(e.target.value)} placeholder="e.g. Python, Java, DSA, Web Development" />
+              <input className="in" value={skillName} maxLength={50} onChange={e => setSkillName(e.target.value)} placeholder="e.g. Python, Java, DSA, Web Development" />
+              <span className="muted" style={{ fontSize: 13 }}>Any course works — you can have up to 4 courses in total.</span>
             </label>
 
             <fieldset style={{ border: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -429,11 +430,11 @@ export default function Assessment() {
               <div className="two" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <button type="button" onClick={() => setRole('teaching')} aria-pressed={role === 'teaching'} className={`choice${role === 'teaching' ? ' on' : ''}`}>
                   <span style={{ fontSize: 22 }}>🎓</span><strong>I want to teach it</strong>
-                  <span className="muted" style={{ fontSize: 13 }}>Get a verified teaching badge</span>
+                  <span className="muted" style={{ fontSize: 13 }}>Score 60%+ to become a tutor</span>
                 </button>
                 <button type="button" onClick={() => setRole('learning')} aria-pressed={role === 'learning'} className={`choice${role === 'learning' ? ' on' : ''}`}>
                   <span style={{ fontSize: 22 }}>📚</span><strong>I’m learning it</strong>
-                  <span className="muted" style={{ fontSize: 13 }}>See where I stand as a learner</span>
+                  <span className="muted" style={{ fontSize: 13 }}>Find my level — or take the final challenge after 5 sessions</span>
                 </button>
               </div>
             </fieldset>
@@ -730,7 +731,13 @@ export default function Assessment() {
               <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
                 {result.badge && <span className="pill" style={{ background: '#FBEFC4', height: 36, fontSize: 14 }}>🥇 {result.badge} badge</span>}
                 {result.level && <span className="pill" style={{ height: 36, fontSize: 14 }}>{result.level}</span>}
+                {result.role && <span className="pill" style={{ height: 36, fontSize: 14, background: result.role === 'teaching' ? '#D6F3EA' : '#E6DDF6' }}>{result.role === 'teaching' ? '🎓 Tutor' : '📚 Learner'}</span>}
               </div>
+              {result.outcome_message && (
+                <div style={{ padding: '12px 14px', border: '2px solid #29251F', borderRadius: 12, background: result.course_completed ? '#D6F3EA' : '#FBEFC4', fontWeight: 800, fontSize: 15, lineHeight: 1.45 }}>
+                  {result.outcome_message}
+                </div>
+              )}
               <p className="muted" style={{ margin: 0, fontSize: 16, lineHeight: 1.55 }}>
                 Your score, level and badge are now on your profile. Peers searching for {skillName} can see your verified badge.
               </p>

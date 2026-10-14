@@ -181,6 +181,10 @@ export default function Marketplace() {
   }
 
   const [submitting, setSubmitting] = useState(false)
+  const myTeachingCourses = useMemo(
+    () => new Set((mySkills || []).filter(s => s.role === 'teaching').map(s => String(s.skill_name).toLowerCase())),
+    [mySkills]
+  )
 
   async function sendRequest(teacher, skillName) {
     if (submitting) return;
@@ -654,9 +658,12 @@ export default function Marketplace() {
                   });
                   displaySkills = Array.from(combined.values());
                 }
+                // One role per course: you can't ask to LEARN a course you teach
+                // (the server refuses it too).
+                displaySkills = displaySkills.filter(s => !(s.intent === 'learn' && myTeachingCourses.has(String(s.skill_name).toLowerCase())))
 
                 let targetSkill = form.target_skill;
-                if (!targetSkill && displaySkills.length > 0) {
+                if ((!targetSkill || !displaySkills.some(s => s.skill_name === targetSkill)) && displaySkills.length > 0) {
                   targetSkill = displaySkills[0].skill_name;
                 }
 
@@ -735,6 +742,7 @@ export default function Marketplace() {
                         submitting={submitting}
                         onFormChange={(field, value) => updateForm(teacher.user_id, field, value)}
                         onSend={() => sendRequest(teacher, targetSkill)}
+                        teachOptions={(mySkills || []).filter(s => s.role === 'teaching').map(s => s.skill_name)}
                       />
                     </div>
                   </article>
@@ -757,7 +765,7 @@ export default function Marketplace() {
   )
 }
 
-function RequestControl({ rel, teacher, targetSkill, form, displaySkills, onFormChange, onSend, submitting }) {
+function RequestControl({ rel, teacher, targetSkill, form, displaySkills, onFormChange, onSend, submitting, teachOptions = [] }) {
   const selectedSkillIntent = displaySkills.find(s => s.skill_name === targetSkill)?.intent;
   const isTeachingThem = selectedSkillIntent === 'teach';
 
@@ -826,7 +834,11 @@ function RequestControl({ rel, teacher, targetSkill, form, displaySkills, onForm
               </select>
               <input className="in" aria-label="Topics I want to improve" placeholder="Topics to improve, e.g. Loops, Recursion" value={form.learner_topics} onChange={(e) => onFormChange('learner_topics', e.target.value)} />
               <input className="in" aria-label="My goal" placeholder="My goal, e.g. crack placement coding rounds" value={form.learner_goals} onChange={(e) => onFormChange('learner_goals', e.target.value)} />
-              <input className="in" aria-label="Skills I can teach in return" placeholder="I can teach in return, e.g. Java" value={form.learner_can_teach} onChange={(e) => onFormChange('learner_can_teach', e.target.value)} />
+              {/* Only courses you really teach can be offered in return. */}
+              <select className="in" aria-label="A course I can teach in return" value={form.learner_can_teach} onChange={(e) => onFormChange('learner_can_teach', e.target.value)} disabled={teachOptions.length === 0}>
+                <option value="">{teachOptions.length === 0 ? 'Teach in return: pass the Skill Arena as a tutor first' : 'I can teach in return… (optional)'}</option>
+                {teachOptions.map(n => <option key={n} value={n}>{n}</option>)}
+              </select>
               {form.learner_can_teach.trim() && (
                 <select className="in" aria-label="My level in that skill" value={form.learner_teach_proficiency} onChange={(e) => onFormChange('learner_teach_proficiency', e.target.value)}>
                   <option value="">My level in that skill…</option>

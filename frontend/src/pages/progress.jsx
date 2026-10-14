@@ -6,13 +6,9 @@ import './progress.css'
 const STAGES = ['Discovered', 'Baseline Established', 'Practicing', 'Developing', 'Mastery']
 const STAGE_SHORT = ['DISCOVERED', 'BASELINE', 'PRACTICING', 'DEVELOPING', 'MASTERY']
 
-const STAGE_WIDTH = {
-  'Discovered': '10%',
-  'Baseline Established': '25%',
-  'Practicing': '50%',
-  'Developing': '75%',
-  'Mastery': '100%',
-}
+// The bar shows the server's progress_percentage: 16% per completed session
+// (5 sessions = 80%), 100% only after passing the final challenge.
+const barWidth = (skill) => `${Math.max(0, Math.min(100, skill.progress_percentage || 0))}%`
 
 const BADGE_FILL = { Gold: 'var(--acc)', Silver: '#D6F3EA', Bronze: '#FBEFC4' }
 
@@ -145,14 +141,17 @@ export default function Progress() {
                   <div key={s} className="hd"><span>{s}</span><span style={{ display: 'none' }}>{i + 1}</span></div>
                 ))}
                 {progressData.map(skill => {
-                  const reached = STAGES.indexOf(skill.stage)
+                  // Teachers don't walk the learner stages: show the row as
+                  // complete with a tutor mark.
+                  const teaching = skill.role === 'teaching'
+                  const reached = teaching ? STAGES.length - 1 : STAGES.indexOf(skill.stage)
                   return (
                     <div key={skill.id} style={{ display: 'contents' }}>
-                      <div className="nm">{skill.skill_name}</div>
+                      <div className="nm">{skill.skill_name}{teaching ? ' (tutor)' : ''}</div>
                       {STAGES.map((st, i) => (
                         <div key={st}>
                           {i === reached
-                            ? <span className="tok" aria-label={`${skill.skill_name}: ${st}`}>★</span>
+                            ? <span className="tok" aria-label={`${skill.skill_name}: ${teaching ? 'Teaching' : st}`}>{teaching ? '🎓' : '★'}</span>
                             : <span className="seg" style={{ background: i < reached ? 'var(--acc)' : '#F0E5D2' }} />}
                         </div>
                       ))}
@@ -169,8 +168,9 @@ export default function Progress() {
                   <h2 id="sv-skills" style={{ margin: 0, fontSize: 26, fontWeight: 900 }}>Your skills</h2>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                     {progressData.map(skill => {
-                      const certForSkill = certificates.find(c => c.skill_name === skill.skill_name && c.badge === skill.badge)
-                      const isEligible = skill.stage === 'Mastery'
+                      const certForSkill = certificates.find(c => c.skill_name === skill.skill_name)
+                      const teaching = skill.role === 'teaching'
+                      const isEligible = !teaching && skill.stage === 'Mastery' && skill.progress_percentage >= 100
                       return (
                         <div key={skill.id} className="card" style={{ padding: 22, display: 'flex', flexDirection: 'column', gap: 14 }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
@@ -183,13 +183,18 @@ export default function Progress() {
                               </div>
                             </div>
                             {skill.latest_score != null && (
-                              <span className="mono" style={{ fontSize: 26, fontWeight: 700 }}>{Math.round(skill.latest_score)}%</span>
+                              <span className="mono" style={{ fontSize: 26, fontWeight: 700 }} title="Latest Skill Arena score">{Math.round(skill.latest_score)}%</span>
                             )}
                           </div>
 
-                          <div style={{ height: 14, borderRadius: 999, border: '2px solid #29251F', background: '#F0E5D2', overflow: 'hidden' }}>
-                            <span style={{ display: 'block', height: '100%', width: STAGE_WIDTH[skill.stage] || '0%', background: 'var(--acc)', borderRight: '2px solid #29251F' }} />
-                          </div>
+                          {!teaching && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                              <div style={{ flex: 1, height: 14, borderRadius: 999, border: '2px solid #29251F', background: '#F0E5D2', overflow: 'hidden' }}>
+                                <span style={{ display: 'block', height: '100%', width: barWidth(skill), background: 'var(--acc)', borderRight: skill.progress_percentage > 0 ? '2px solid #29251F' : 'none' }} />
+                              </div>
+                              <span className="mono" style={{ fontWeight: 800, fontSize: 14 }}>{skill.progress_percentage || 0}%</span>
+                            </div>
+                          )}
 
                           {skill.what_happened && <p className="muted" style={{ margin: 0, fontSize: 15, lineHeight: 1.55 }}>{skill.what_happened}</p>}
                           <p style={{ margin: 0, fontSize: 15, lineHeight: 1.55, fontWeight: 600 }}>
@@ -210,8 +215,11 @@ export default function Progress() {
                               >
                                 {generating ? 'Generating…' : 'Generate certificate'}
                               </button>
-                            ) : (
-                              <span className="btn btn-g" aria-disabled="true">Certificate at Mastery</span>
+                            ) : teaching ? null : (
+                              <span className="btn btn-g" aria-disabled="true">Certificate at 100%</span>
+                            )}
+                            {!teaching && skill.stage === 'Developing' && (
+                              <Link to={`/assessment?skill=${encodeURIComponent(skill.skill_name)}&role=learning`} className="btn btn-p">Take the final challenge</Link>
                             )}
                             <Link to={`/marketplace?q=${encodeURIComponent(skill.skill_name)}`} className="btn btn-s">Find a partner</Link>
                           </div>
@@ -296,7 +304,7 @@ export default function Progress() {
                 <section className="card" style={{ padding: 20, background: '#FBEFC4', display: 'flex', flexDirection: 'column', gap: 8 }}>
                   <span className="eb" style={{ color: '#29251F' }}>★ KEEP GOING</span>
                   <p style={{ margin: 0, fontWeight: 700, lineHeight: 1.5, fontSize: 15 }}>
-                    Reach Mastery in a skill and SkillVerse issues a certificate anyone can verify.
+                    Complete 5 sessions (80%), then pass the final challenge with 60%+ to reach 100% — SkillVerse then issues a certificate anyone can verify.
                   </p>
                 </section>
               </aside>

@@ -46,12 +46,12 @@ async def lifespan(app: FastAPI):
             conn_reqs_cols = set(c['name'] for c in inspector.get_columns('connection_requests')) if inspector.has_table('connection_requests') else set()
 
             all_columns_present = (
-                {'scheduled_start', 'scheduled_end', 'started_at'}.issubset(sessions_cols) and
+                {'scheduled_start', 'scheduled_end', 'started_at', 'both_joined_at'}.issubset(sessions_cols) and
                 {'dob', 'gender'}.issubset(users_cols) and
                 {'session_id'}.issubset(reviews_cols) and
                 {'semantic_summary', 'next_session_plan'}.issubset(session_progress_cols) and
                 {'expires_at', 'violations', 'terminated', 'session_id'}.issubset(assessment_sessions_cols) and
-                {'level_num'}.issubset(user_skills_cols) and
+                {'level_num', 'course_completed_at'}.issubset(user_skills_cols) and
                 {'points_awarded'}.issubset(conn_reqs_cols) and
                 inspector.has_table('exchange_groups') and
                 inspector.has_table('exchange_legs') and
@@ -123,6 +123,24 @@ async def lifespan(app: FastAPI):
                             break
                         except Exception as e:
                             print(f"[startup] Could not add sessions.started_at as {col_type}: {e}")
+
+                # New in round 3: both_joined_at (sessions) and course_completed_at
+                # (user_skills). Same pattern as started_at: try the Postgres type,
+                # then the SQLite one.
+                for table, column, existing in (
+                    ("sessions", "both_joined_at", sessions_cols),
+                    ("user_skills", "course_completed_at", user_skills_cols),
+                ):
+                    if column in existing:
+                        continue
+                    for col_type in ("TIMESTAMP WITH TIME ZONE", "DATETIME"):
+                        try:
+                            with conn.begin():
+                                conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {column} {col_type};"))
+                            print(f"[startup] Added {table}.{column} ({col_type}).")
+                            break
+                        except Exception as e:
+                            print(f"[startup] Could not add {table}.{column} as {col_type}: {e}")
 
                 try:
                     with conn.begin():

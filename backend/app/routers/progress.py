@@ -13,7 +13,8 @@ from ..database import get_db
 from ..services.summarization import generate_session_summary
 from ..services.question_generator import GenerationError, SKILL_TOPICS, canonical_skill, generate_session_quiz, sanitize
 from ..services.learning_plan import build_next_session_plan
-from ..utils.progress_utils import compute_skill_stage, compute_progress_percentage
+from ..utils.progress_utils import progress_for, stage_for
+from ..services.course_rules import user_course
 from .assessments import level_for_score
 
 router = APIRouter(prefix="/progress", tags=["progress"])
@@ -89,7 +90,7 @@ def get_my_progress(db: Session = Depends(get_db), current_user: models.User = D
                 updated_at=h.updated_at
             ))
         
-        stage, what_happened, next_milestone = compute_skill_stage(assessments, us.sessions_completed, us.badge, us.level, us.total_learning_minutes)
+        stage, what_happened, next_milestone = stage_for(us, assessments)
         
         us_out = schemas.UserSkillProgressOut(
             id=us.id,
@@ -99,8 +100,8 @@ def get_my_progress(db: Session = Depends(get_db), current_user: models.User = D
             latest_score=us.latest_score,
             level=us.level,
             badge=us.badge,
-            progress_percentage=us.progress_percentage,
-            sessions_completed=us.sessions_completed,
+            progress_percentage=progress_for(us),
+            sessions_completed=us.sessions_completed or 0,
             total_learning_minutes=us.total_learning_minutes,
             assessment_count=assessments,
             stage=stage,
@@ -118,10 +119,7 @@ def get_skill_progress(skill_name: str, db: Session = Depends(get_db), current_u
     if not skill:
         raise HTTPException(status_code=404, detail="Skill not found")
         
-    user_skill = db.query(models.UserSkill).filter(
-        models.UserSkill.user_id == current_user.id,
-        models.UserSkill.skill_id == skill.id
-    ).order_by(models.UserSkill.role.asc()).first()
+    user_skill = user_course(db, current_user.id, skill.id)
     
     if not user_skill:
         raise HTTPException(status_code=404, detail="User skill not found")
@@ -137,7 +135,7 @@ def get_skill_progress(skill_name: str, db: Session = Depends(get_db), current_u
         models.SessionProgress.duration_minutes > 0
     ).order_by(models.SessionProgress.created_at.desc()).all()
     
-    stage, what_happened, next_milestone = compute_skill_stage(assessments, user_skill.sessions_completed, user_skill.badge, user_skill.level, user_skill.total_learning_minutes)
+    stage, what_happened, next_milestone = stage_for(user_skill, assessments)
     
     return schemas.UserSkillProgressOut(
         id=user_skill.id,
@@ -147,8 +145,8 @@ def get_skill_progress(skill_name: str, db: Session = Depends(get_db), current_u
         latest_score=user_skill.latest_score,
         level=user_skill.level,
         badge=user_skill.badge,
-        progress_percentage=user_skill.progress_percentage,
-        sessions_completed=user_skill.sessions_completed,
+        progress_percentage=progress_for(user_skill),
+        sessions_completed=user_skill.sessions_completed or 0,
         total_learning_minutes=user_skill.total_learning_minutes,
         assessment_count=assessments,
         stage=stage,
@@ -319,8 +317,21 @@ def complete_session(session_id: int, db: Session = Depends(get_db), current_use
     # before started_at existed are still accepted.
     if sess.status == "cancelled":
         raise HTTPException(status_code=400, detail="This session was cancelled.")
-    if sess.started_at is None and sess.status != "completed":
-        raise HTTPException(status_code=400, detail="Join the session in the Learning Arena before completing it.")
+    # Legacy: sessions completed before join tracking existed have neither
+    # started_at nor both_joined_at; they stay completable.
+    legacy_completed = sess.status == "completed" and sess.started_at is None
+    if not legacy_completed:
+        if sess.both_joined_at is None:
+            raise HTTPException(
+                status_code=400,
+                detail="Both you and your partner need to join the Learning Arena before the session can be completed.",
+            )
+        start = sess.scheduled_start
+        if start is not None:
+            if start.tzinfo is None:
+                start = start.replace(tzinfo=dt.timezone.utc)
+            if utc_now() < start:
+                raise HTTPException(status_code=400, detail="This session hasn't started yet.")
 
     prog = db.query(models.SessionProgress).filter(
         models.SessionProgress.session_id == session_id,
@@ -347,22 +358,24 @@ def complete_session(session_id: int, db: Session = Depends(get_db), current_use
     if not db_skill:
         raise HTTPException(status_code=400, detail="Skill not found")
         
-    user_skill = db.query(models.UserSkill).filter(
-        models.UserSkill.user_id == current_user.id,
-        models.UserSkill.skill_id == db_skill.id
-    ).first()
-
+    # The session counts toward the course in the role the user had in it:
+    # the tutor's teaching course, the learner's learning course. Old data can
+    # hold the wrong role (e.g. a "learner" row for the tutor) — then the
+    # course progress is left alone instead of counting a taught session as
+    # learning progress.
+    my_role = "teaching" if current_user.id == sess.tutor_id else "learning"
+    user_skill = user_course(db, current_user.id, db_skill.id)
     if not user_skill:
-        role = "teaching" if current_user.id == sess.tutor_id else "learning"
         user_skill = models.UserSkill(
             user_id=current_user.id,
             skill_id=db_skill.id,
-            role=role,
+            role=my_role,
             level="Unassessed"
         )
         db.add(user_skill)
         db.commit()
         db.refresh(user_skill)
+    counts_for_course = user_skill.role == my_role
 
     if not prog:
         prog = models.SessionProgress(
@@ -373,15 +386,16 @@ def complete_session(session_id: int, db: Session = Depends(get_db), current_use
         db.add(prog)
         
     prog.level_before = user_skill.level
-    prog.progress_percentage_before = user_skill.progress_percentage
+    prog.progress_percentage_before = progress_for(user_skill)
     prog.duration_minutes = duration
-    
-    user_skill.sessions_completed = (user_skill.sessions_completed or 0) + 1
-    user_skill.total_learning_minutes = (user_skill.total_learning_minutes or 0) + duration
-    # Derived from the stage rules (5 sessions -> final challenge, badge -> 100%)
-    # so dashboard/profile/review bars stop showing 0% after real sessions.
-    user_skill.progress_percentage = compute_progress_percentage(user_skill.sessions_completed, user_skill.badge)
-    
+
+    if counts_for_course:
+        user_skill.sessions_completed = (user_skill.sessions_completed or 0) + 1
+        user_skill.total_learning_minutes = (user_skill.total_learning_minutes or 0) + duration
+    # 16% per session up to 80% (5 sessions); 100% only after the final
+    # challenge is passed (see utils/progress_utils.py).
+    user_skill.progress_percentage = progress_for(user_skill)
+
     prog.level_after = user_skill.level
     prog.progress_percentage_after = user_skill.progress_percentage
     
@@ -436,6 +450,9 @@ async def start_session_quiz(session_id: int, db: Session = Depends(get_db), cur
 
     if current_user.id not in [sess.tutor_id, sess.learner_id]:
         raise HTTPException(status_code=403, detail="Not authorized")
+    # The knowledge check is for the learner of the session, not the tutor.
+    if current_user.id != sess.learner_id:
+        raise HTTPException(status_code=403, detail="The knowledge check is for the learner of this session.")
 
     if sess.status != "completed":
         raise HTTPException(status_code=400, detail="This session has not been completed yet")

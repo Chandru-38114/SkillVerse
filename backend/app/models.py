@@ -86,7 +86,11 @@ class UserSkill(Base):
     progress_percentage = Column(Integer, default=0)
     sessions_completed = Column(Integer, default=0)
     total_learning_minutes = Column(Integer, default=0)
-    
+    # Set when a learner passes the final Skill Arena after the required
+    # sessions (services/course_rules.py). Progress is 100% only then, and
+    # only then can a certificate be issued.
+    course_completed_at = Column(DateTime(timezone=True), nullable=True)
+
     updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)
 
     user = relationship("User", back_populates="user_skills")
@@ -257,6 +261,9 @@ class Session(Base):
     status = Column(String, default="scheduled", nullable=False)
     # Set the first time a participant connects to the Learning Arena.
     started_at = Column(DateTime(timezone=True), nullable=True)
+    # Set when tutor AND learner have both been in the room. Only such a
+    # session can be completed (one person alone can't farm progress).
+    both_joined_at = Column(DateTime(timezone=True), nullable=True)
     notes  = Column(Text, nullable=True)            # optional notes / agenda
 
     created_at = Column(DateTime, default=utc_now)

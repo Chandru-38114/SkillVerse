@@ -187,6 +187,7 @@ class AssessmentSubmit(BaseModel):
 class AssessmentStart(BaseModel):
     skill_name: str
     level: Optional[str] = None
+    role: Optional[str] = None  # the arena goal ("teaching" / "learning"), checked before questions are made
 
 
 class AssessmentResult(BaseModel):
@@ -198,6 +199,10 @@ class AssessmentResult(BaseModel):
     violations: int = 0
     terminated: bool = False
     counted: Optional[bool] = None
+    # What the attempt did to the user's course (decided by the server).
+    role: Optional[str] = None             # "teaching" or "learning" after this attempt
+    course_completed: bool = False         # True when this was a passed final challenge
+    outcome_message: Optional[str] = None  # one plain sentence for the result screen
 
 
 class AssessmentAttemptOut(UTCOut):
@@ -280,7 +285,7 @@ class ConnectionRequestOut(UTCOut):
 
 
 class MessageCreate(BaseModel):
-    content: str
+    content: str = Field(..., max_length=5000)
     metadata: Optional[Dict[str, Any]] = Field(default_factory=dict)
 
 
@@ -319,7 +324,7 @@ class InboxConversationOut(UTCOut):
 
 
 class MessageEdit(BaseModel):
-    content: str
+    content: str = Field(..., min_length=1, max_length=5000)
 
 
 class ReactionUpdate(BaseModel):
@@ -345,7 +350,7 @@ class ReviewCreate(BaseModel):
     """Client sends only rating + optional comment.
     reviewer / reviewee / request are derived server-side."""
     rating: int          # 1–5, validated in the router
-    comment: Optional[str] = ""
+    comment: Optional[str] = Field("", max_length=1000)
 
 
 class ReviewOut(UTCOut):
@@ -434,9 +439,11 @@ class SessionOut(UTCOut):
 # "?"? Progress History "?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?"?
 
 class SessionProgressUpdate(BaseModel):
-    topics_discussed: Optional[str] = None
-    topics_completed: Optional[str] = None
-    learning_notes: Optional[str] = None
+    topics_discussed: Optional[str] = Field(None, max_length=1000)
+    topics_completed: Optional[str] = Field(None, max_length=1000)
+    learning_notes: Optional[str] = Field(None, max_length=10000)
+    # Accepted for old clients but ignored: the AI summary is written by the
+    # server only.
     semantic_summary: Optional[str] = None
 
 class SessionProgressOut(UTCOut):

@@ -7,7 +7,10 @@ from ..notification_service import create_notification
 from .. import models, schemas, auth
 from ..database import get_db
 from ..services.demand_service import fulfill_demand_request_on_connection
-from .users import get_or_create_skill
+from ..services.course_rules import (
+    MAX_COURSES, clean_course_name, course_count, ensure_learning_course, find_course,
+    teaching_problem, user_course,
+)
 
 router = APIRouter(prefix="/requests", tags=["requests"])
 
@@ -99,7 +102,39 @@ def create_request(
     current_user: models.User = Depends(auth.get_current_user),
     db: Session = Depends(get_db),
 ):
-    skill = get_or_create_skill(db, payload.skill_name)
+    # The sender is always the LEARNER and the receiver the TUTOR. Check the
+    # course rules before anything is saved:
+    # - the receiver exists, isn't you, and teaches this course;
+    # - you don't teach it yourself (a teacher can't learn their own course);
+    # - the tutor is at least two levels above you (level-based learning);
+    # - the course counts toward your 4-course limit.
+    if payload.to_user_id == current_user.id:
+        raise HTTPException(status_code=400, detail="You can't send a request to yourself.")
+    to_user = db.query(models.User).filter(models.User.id == payload.to_user_id).first()
+    if not to_user:
+        raise HTTPException(status_code=404, detail="User not found")
+    skill = find_course(db, clean_course_name(payload.skill_name))
+    if not skill:
+        raise HTTPException(status_code=404, detail="Nobody teaches this course yet.")
+    me_row = user_course(db, current_user.id, skill.id)
+    if me_row and me_row.role == "teaching":
+        raise HTTPException(status_code=403, detail=f"You teach {skill.name}, so you can't request it as a learner.")
+    problem = teaching_problem(db, payload.to_user_id, current_user.id, skill.id)
+    if problem:
+        raise HTTPException(status_code=403, detail=problem)
+
+    # "I can teach in return" must be a course the sender really teaches;
+    # anything else is refused (it can create an automatic pair exchange).
+    can_teach = (payload.learner_can_teach or "").split(",")[0].strip()
+    if can_teach:
+        offered = find_course(db, clean_course_name(can_teach)) if len(can_teach) <= 50 else None
+        offered_row = user_course(db, current_user.id, offered.id) if offered else None
+        if not offered_row or offered_row.role != "teaching":
+            raise HTTPException(
+                status_code=400,
+                detail=f"You can only offer to teach a course you teach (pass the Skill Arena for {can_teach} first).",
+            )
+        payload.learner_can_teach = offered.name
 
     existing = _find_active_request(db, current_user.id, payload.to_user_id, skill.id)
     if existing:
@@ -114,17 +149,23 @@ def create_request(
             detail="A connection request is already pending with this user for this skill.",
         )
 
+    # Adds the course to the learner's list if needed (max 4 courses).
+    ensure_learning_course(db, current_user.id, skill)
+
+    def _short(v, n):
+        return v.strip()[:n] if isinstance(v, str) and v.strip() else None
+
     req = models.ConnectionRequest(
         from_user_id=current_user.id,
         to_user_id=payload.to_user_id,
         skill_id=skill.id,
-        message=payload.message or "",
+        message=(payload.message or "")[:500],
         # Two-way learning context
-        learner_current_level=payload.learner_current_level,
-        learner_topics=payload.learner_topics,
-        learner_goals=payload.learner_goals,
-        learner_can_teach=payload.learner_can_teach,
-        learner_teach_proficiency=payload.learner_teach_proficiency,
+        learner_current_level=_short(payload.learner_current_level, 30),
+        learner_topics=_short(payload.learner_topics, 300),
+        learner_goals=_short(payload.learner_goals, 500),
+        learner_can_teach=_short(payload.learner_can_teach, 50),
+        learner_teach_proficiency=_short(payload.learner_teach_proficiency, 30),
     )
     db.add(req)
     db.commit()
@@ -202,7 +243,6 @@ def outgoing_requests(
     return [_to_out(r) for r in rows]
 
 
-from ..utils.levels import is_eligible_to_teach
 
 @router.post("/{request_id}/respond", response_model=schemas.ConnectionRequestOut)
 def respond_to_request(
@@ -220,6 +260,13 @@ def respond_to_request(
     # completed one and award completion points twice).
     if req.status != "pending":
         raise HTTPException(status_code=400, detail=f"This request was already {req.status}.")
+
+    if accept:
+        # Roles may have changed since the request was sent (e.g. the learner
+        # became a tutor of this course). Re-check before accepting.
+        problem = teaching_problem(db, req.to_user_id, req.from_user_id, req.skill_id)
+        if problem:
+            raise HTTPException(status_code=400, detail=f"This request can't be accepted any more: {problem}")
 
     req.status = "accepted" if accept else "declined"
     db.commit()
@@ -240,34 +287,17 @@ def respond_to_request(
         # If the requester offered a skill to teach (learner_can_teach)
         if req.learner_can_teach:
             reciprocal_skill_name = req.learner_can_teach.split(",")[0].strip()
-            if reciprocal_skill_name:
-                recip_skill = get_or_create_skill(db, reciprocal_skill_name)
-                # Check eligibility for both legs:
-                # Leg 1: current_user (req.to_user_id) teaches req.from_user_id skill req.skill_id
-                t1_us = db.query(models.UserSkill).filter(
-                    models.UserSkill.user_id == req.to_user_id,
-                    models.UserSkill.skill_id == req.skill_id
-                ).first()
-                l1_us = db.query(models.UserSkill).filter(
-                    models.UserSkill.user_id == req.from_user_id,
-                    models.UserSkill.skill_id == req.skill_id
-                ).first()
-                t1_lvl = t1_us.level_num if t1_us and t1_us.level_num is not None else 0
-                l1_lvl = l1_us.level_num if l1_us and l1_us.level_num is not None else 0
-
-                # Leg 2: req.from_user_id teaches current_user (req.to_user_id) recip_skill
-                t2_us = db.query(models.UserSkill).filter(
-                    models.UserSkill.user_id == req.from_user_id,
-                    models.UserSkill.skill_id == recip_skill.id
-                ).first()
-                l2_us = db.query(models.UserSkill).filter(
-                    models.UserSkill.user_id == req.to_user_id,
-                    models.UserSkill.skill_id == recip_skill.id
-                ).first()
-                t2_lvl = t2_us.level_num if t2_us and t2_us.level_num is not None else 0
-                l2_lvl = l2_us.level_num if l2_us and l2_us.level_num is not None else 0
-
-                if is_eligible_to_teach(t1_lvl, l1_lvl) and is_eligible_to_teach(t2_lvl, l2_lvl):
+            recip_skill = find_course(db, reciprocal_skill_name) if reciprocal_skill_name else None
+            if recip_skill:
+                # Leg 1: current_user (to_user) teaches from_user req.skill_id.
+                # Leg 2: from_user teaches current_user recip_skill. Both legs
+                # must follow the course rules (roles + levels); leg 2 also
+                # needs current_user to be able to take that course.
+                leg2_ok = teaching_problem(db, req.from_user_id, req.to_user_id, recip_skill.id) is None
+                if leg2_ok and user_course(db, req.to_user_id, recip_skill.id) is None:
+                    leg2_ok = course_count(db, req.to_user_id) < MAX_COURSES
+                if leg2_ok:
+                    ensure_learning_course(db, req.to_user_id, recip_skill)
                     # Create reciprocal connection request
                     recip_req = accepted_request_for_leg(
                         db, learner_id=req.to_user_id, teacher_id=req.from_user_id,
