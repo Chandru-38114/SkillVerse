@@ -95,108 +95,123 @@ export default function VideoChat({ sessionId, children, onLeave }) {
 
         if (ignore) return
 
-        console.log('[WebRTC] Creating RTCPeerConnection...')
-        pc = new RTCPeerConnection(iceConfig)
-        pcRef.current = pc
+        let pendingCandidates = []
 
-        pc.oniceconnectionstatechange = async () => {
-          console.log('[WebRTC-Diag] ICE state:', pc.iceConnectionState)
-          if (pc.iceConnectionState === 'disconnected') {
-            console.log('[WebRTC-Diag] ICE connection disconnected, waiting for reconnect...')
-          } else if (pc.iceConnectionState === 'failed') {
-            console.log('[WebRTC-Diag] ICE connection failed. Evaluating restart...')
-            
-            const remoteUserId = remoteUserIdRef.current
+        // Builds a fresh RTCPeerConnection. Called once at start and again
+        // whenever the partner leaves or rejoins: renegotiating on the old
+        // connection reused its transceivers and the partner's video stayed blank.
+        const buildPeerConnection = () => {
+          console.log('[WebRTC] Creating RTCPeerConnection...')
+          if (pcRef.current) {
+            try { pcRef.current.close() } catch { /* already closed */ }
+          }
+          const thisPc = new RTCPeerConnection(iceConfig)
+          pc = thisPc
+          pcRef.current = thisPc
+          pendingCandidates = []
+          iceRestartInProgressRef.current = false
 
-            if (!isComponentMounted.current || ignore || pc !== pcRef.current) return
+          thisPc.oniceconnectionstatechange = async () => {
+            console.log('[WebRTC-Diag] ICE state:', thisPc.iceConnectionState)
+            if (thisPc.iceConnectionState === 'disconnected') {
+              console.log('[WebRTC-Diag] ICE connection disconnected, waiting for reconnect...')
+            } else if (thisPc.iceConnectionState === 'failed') {
+              console.log('[WebRTC-Diag] ICE connection failed. Evaluating restart...')
             
-            // Do not restart if session is functionally over
-            setStatus(s => {
-               if (s === 'ended' || s === 'disconnected') return s
-               if (ws && ws.readyState !== WebSocket.OPEN) return s
+              const remoteUserId = remoteUserIdRef.current
+
+              if (!isComponentMounted.current || ignore || thisPc !== pcRef.current) return
+            
+              // Do not restart if session is functionally over
+              setStatus(s => {
+                 if (s === 'ended' || s === 'disconnected') return s
+                 if (ws && ws.readyState !== WebSocket.OPEN) return s
                
-               if (remoteUserId && Number(currentUser?.id) > Number(remoteUserId)) {
-                 if (iceRestartInProgressRef.current) {
-                   console.log('[WebRTC-Diag] ICE restart already in progress, ignoring.')
-                   return s
+                 if (remoteUserId && Number(currentUser?.id) > Number(remoteUserId)) {
+                   if (iceRestartInProgressRef.current) {
+                     console.log('[WebRTC-Diag] ICE restart already in progress, ignoring.')
+                     return s
+                   }
+                 
+                   console.log('[WebRTC-Diag] Designated caller initiating ICE restart...')
+                   iceRestartInProgressRef.current = true
+                 
+                   thisPc.createOffer({ iceRestart: true })
+                     .then(offer => {
+                       return thisPc.setLocalDescription(offer).then(() => offer)
+                     })
+                     .then(offer => {
+                       if (ws && ws.readyState === WebSocket.OPEN && !ignore) {
+                         ws.send(JSON.stringify({ type: 'offer', offer }))
+                       }
+                     })
+                     .catch(e => {
+                       console.error('[WebRTC-Diag] ICE restart failed:', e)
+                       iceRestartInProgressRef.current = false
+                     })
                  }
-                 
-                 console.log('[WebRTC-Diag] Designated caller initiating ICE restart...')
-                 iceRestartInProgressRef.current = true
-                 
-                 pc.createOffer({ iceRestart: true })
-                   .then(offer => {
-                     return pc.setLocalDescription(offer).then(() => offer)
-                   })
-                   .then(offer => {
-                     if (ws && ws.readyState === WebSocket.OPEN && !ignore) {
-                       ws.send(JSON.stringify({ type: 'offer', offer }))
-                     }
-                   })
-                   .catch(e => {
-                     console.error('[WebRTC-Diag] ICE restart failed:', e)
-                     iceRestartInProgressRef.current = false
-                   })
-               }
-               return s
-            })
-          } else if (pc.iceConnectionState === 'connected' || pc.iceConnectionState === 'completed') {
-            if (iceRestartInProgressRef.current) {
-              console.log('[WebRTC-Diag] ICE connection restored. Resetting restart guard.')
-              iceRestartInProgressRef.current = false
+                 return s
+              })
+            } else if (thisPc.iceConnectionState === 'connected' || thisPc.iceConnectionState === 'completed') {
+              if (iceRestartInProgressRef.current) {
+                console.log('[WebRTC-Diag] ICE connection restored. Resetting restart guard.')
+                iceRestartInProgressRef.current = false
+              }
             }
           }
-        }
 
-        pc.onconnectionstatechange = () => {
-          console.log('[WebRTC-Diag] Connection State:', pc.connectionState)
-          if (pc.connectionState === 'connected') {
-            pc.getStats(null).then(stats => {
-              stats.forEach(report => {
-                if (report.type === 'transport' && report.state === 'connected') {
-                  const localCandidate = stats.get(report.localCertificateId || report.localCandidateId);
-                  const remoteCandidate = stats.get(report.remoteCertificateId || report.remoteCandidateId);
-                  console.log('[WebRTC-Diag] Selected Pair:', 
-                    localCandidate?.candidateType, '-to-', remoteCandidate?.candidateType);
-                }
+          thisPc.onconnectionstatechange = () => {
+            console.log('[WebRTC-Diag] Connection State:', thisPc.connectionState)
+            if (thisPc.connectionState === 'connected') {
+              thisPc.getStats(null).then(stats => {
+                stats.forEach(report => {
+                  if (report.type === 'transport' && report.state === 'connected') {
+                    const localCandidate = stats.get(report.localCertificateId || report.localCandidateId);
+                    const remoteCandidate = stats.get(report.remoteCertificateId || report.remoteCandidateId);
+                    console.log('[WebRTC-Diag] Selected Pair:', 
+                      localCandidate?.candidateType, '-to-', remoteCandidate?.candidateType);
+                  }
+                });
               });
-            });
-            setStatus('connected')
+              setStatus('connected')
+            }
           }
-        }
-        pc.onsignalingstatechange = () => {
-          console.log('[WebRTC-Diag] Signaling State:', pc.signalingState)
-        }
-        pc.onicegatheringstatechange = () => {
-          console.log('[WebRTC-Diag] ICE Gathering State:', pc.iceGatheringState)
-        }
-
-        if (localStream) {
-          localStream.getTracks().forEach((track) => pc.addTrack(track, localStream))
-        }
-
-        pc.ontrack = (event) => {
-          console.log('[WebRTC-Diag] remote track received', event.track.kind, 'readyState:', event.track.readyState)
-          if (event.streams && event.streams[0]) {
-            setRemoteStream(new MediaStream(event.streams[0].getTracks()))
-            setStatus('connected')
+          thisPc.onsignalingstatechange = () => {
+            console.log('[WebRTC-Diag] Signaling State:', thisPc.signalingState)
           }
+          thisPc.onicegatheringstatechange = () => {
+            console.log('[WebRTC-Diag] ICE Gathering State:', thisPc.iceGatheringState)
+          }
+
+          if (localStream) {
+            localStream.getTracks().forEach((track) => thisPc.addTrack(track, localStream))
+          }
+
+          thisPc.ontrack = (event) => {
+            console.log('[WebRTC-Diag] remote track received', event.track.kind, 'readyState:', event.track.readyState)
+            if (event.streams && event.streams[0]) {
+              setRemoteStream(new MediaStream(event.streams[0].getTracks()))
+              setStatus('connected')
+            }
+          }
+
+
+          thisPc.onicecandidate = (event) => {
+            if (event.candidate) {
+              console.log(`[WebRTC-Diag] Generated ICE candidate: ${event.candidate.type} (${event.candidate.protocol})`)
+              if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ type: 'candidate', candidate: event.candidate }))
+              }
+            }
+          }
+
+
         }
+        buildPeerConnection()
 
         const token = localStorage.getItem('skillverse_token')
         const wsUrl = (import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000')
           .replace('http', 'ws') + `/sessions/ws/${sessionId}?token=${token}`
-
-        let pendingCandidates = []
-
-        pc.onicecandidate = (event) => {
-          if (event.candidate) {
-            console.log(`[WebRTC-Diag] Generated ICE candidate: ${event.candidate.type} (${event.candidate.protocol})`)
-            if (ws && ws.readyState === WebSocket.OPEN) {
-              ws.send(JSON.stringify({ type: 'candidate', candidate: event.candidate }))
-            }
-          }
-        }
 
         console.log('[WebRTC] Connecting to signaling server...')
         ws = new WebSocket(wsUrl)
@@ -234,6 +249,12 @@ export default function VideoChat({ sessionId, children, onLeave }) {
 
               if (data.type === 'peer_joined') {
                 console.log('[WebRTC-Diag] peer joined')
+                // Partner (re)joined: start from a clean connection if the old
+                // one was already negotiated with their previous visit.
+                if (pc.remoteDescription || pc.signalingState !== 'stable') {
+                  buildPeerConnection()
+                  setRemoteStream(null)
+                }
                 setStatus(s => s === 'ended' || s === 'disconnected' ? s : 'connecting')
                 ws.send(JSON.stringify({ type: 'hello', userId: currentUser?.id }))
               } else if (data.type === 'hello') {
@@ -331,9 +352,11 @@ export default function VideoChat({ sessionId, children, onLeave }) {
                 console.log('[WebRTC] Peer disconnected (temporary network drop)')
                 setStatus(s => s === 'ended' || s === 'disconnected' ? s : 'connecting')
               } else if (data.type === 'peer_left') {
-                console.log('[WebRTC] Peer left permanently')
-                setStatus('disconnected')
+                console.log('[WebRTC] Peer left')
                 setRemoteStream(null)
+                // Ready for them to come back with a fresh connection.
+                buildPeerConnection()
+                setStatus(s => s === 'ended' ? s : 'waiting')
               }
             } catch (err) {
               console.error('[WebRTC] Signaling processing error:', err)
