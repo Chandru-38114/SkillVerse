@@ -271,7 +271,8 @@ function LoungeSection({ currentUser, setBannerError }) {
     api.getLoungePosts(15, newOffset)
       .then(data => {
         if (append) {
-          setPosts(prev => [...prev, ...data])
+          // Skip any post we already show (safety net for shifted pages).
+          setPosts(prev => [...prev, ...data.filter(d => !prev.some(p => p.id === d.id))])
         } else {
           setPosts(data)
         }
@@ -297,6 +298,7 @@ function LoungeSection({ currentUser, setBannerError }) {
     api.createLoungePost(postBody.trim())
       .then(newPost => {
         setPosts(prev => [newPost, ...prev])
+        setOffset(o => o + 1)  // the new post shifts the server's pages by one
         setPostBody('')
         setPosting(false)
         setRateLimitSeconds(30)
@@ -319,6 +321,7 @@ function LoungeSection({ currentUser, setBannerError }) {
     api.deleteLoungePost(id)
       .then(() => {
         setPosts(prev => prev.filter(p => p.id !== id))
+        setOffset(o => Math.max(0, o - 1))
         if (activePostDetail?.id === id) {
           setActivePostDetail(null)
         }
@@ -721,8 +724,8 @@ function StudyCirclesSection({ currentUser, setBannerError }) {
           </button>
           <button
             type="button"
-            className={`sv-comm-pill ${statusFilter === '' ? 'sv-comm-pill-dark' : ''}`}
-            onClick={() => setStatusFilter('')}
+            className={`sv-comm-pill ${statusFilter === 'all' ? 'sv-comm-pill-dark' : ''}`}
+            onClick={() => setStatusFilter('all')}
             style={{ cursor: 'pointer' }}
           >
             All Circles

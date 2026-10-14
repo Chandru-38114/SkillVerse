@@ -17,6 +17,7 @@ Lounge Feed:
 from typing import List, Optional
 import datetime as dt
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 
@@ -135,6 +136,9 @@ def get_lounge_posts(
         limit = limit.default or 20
     if hasattr(offset, "default"):
         offset = offset.default or 0
+    # Negative values made Postgres error (500); huge limits dumped the table.
+    limit = max(1, min(100, int(limit)))
+    offset = max(0, int(offset))
     if hasattr(skip, "default"):
         skip = skip.default
 
@@ -432,11 +436,16 @@ def list_study_circles(
         limit = limit.default or 20
     if hasattr(offset, "default"):
         offset = offset.default or 0
+    # Negative values made Postgres error (500); huge limits dumped the table.
+    limit = max(1, min(100, int(limit)))
+    offset = max(0, int(offset))
     if hasattr(status_filter, "default"):
         status_filter = status_filter.default
 
     query = db.query(models.StudyCircle)
-    if isinstance(status_filter, str) and status_filter:
+    if status_filter == "all":
+        pass  # "All Circles" — every status
+    elif isinstance(status_filter, str) and status_filter:
         query = query.filter(models.StudyCircle.status == status_filter)
     else:
         query = query.filter(models.StudyCircle.status == "scheduled")
@@ -495,7 +504,8 @@ def join_study_circle(
     Join a study circle.
     Enforces capacity (max_participants) and prevents duplicate joins.
     """
-    circle = db.query(models.StudyCircle).filter(models.StudyCircle.id == circle_id).first()
+    # Lock the circle row (Postgres) so two joins can't both pass the capacity check.
+    circle = db.query(models.StudyCircle).filter(models.StudyCircle.id == circle_id).with_for_update().first()
     if not circle:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -506,6 +516,12 @@ def join_study_circle(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Cannot join a completed or cancelled study circle.",
+        )
+
+    if circle.host_id == current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="You are hosting this study circle.",
         )
 
     existing = (
@@ -539,7 +555,12 @@ def join_study_circle(
         joined_at=utc_now(),
     )
     db.add(participant)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        # Double-click: the unique (circle, user) constraint fired.
+        db.rollback()
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="You have already joined this study circle.")
     db.refresh(circle)
     return _serialize_study_circle(
         circle,
@@ -710,6 +731,9 @@ def list_senior_questions(
         limit = limit.default or 20
     if hasattr(offset, "default"):
         offset = offset.default or 0
+    # Negative values made Postgres error (500); huge limits dumped the table.
+    limit = max(1, min(100, int(limit)))
+    offset = max(0, int(offset))
     if hasattr(status_filter, "default"):
         status_filter = status_filter.default
 
@@ -766,7 +790,9 @@ def create_senior_answer(
         created_at=utc_now(),
     )
     db.add(answer)
-    question.status = "answered"
+    # A follow-up by the person who asked must not close their own question.
+    if current_user.id != question.author_id:
+        question.status = "answered"
     db.commit()
     db.refresh(answer)
 
@@ -980,6 +1006,9 @@ def list_weekly_challenge_responses(
         limit = limit.default or 20
     if hasattr(offset, "default"):
         offset = offset.default or 0
+    # Negative values made Postgres error (500); huge limits dumped the table.
+    limit = max(1, min(100, int(limit)))
+    offset = max(0, int(offset))
 
     challenge = _get_or_create_current_weekly_challenge(db)
     responses = (
@@ -1008,6 +1037,19 @@ def list_weekly_challenge_responses(
 
 # ── Hackathons (Teacher-organized events) ─────────────────────────────────────
 
+def _effective_hackathon_status(h: models.Hackathon) -> str:
+    """'active' while it is running, based on the clock (stored status never
+    becomes 'active')."""
+    if h.status in ("completed", "cancelled"):
+        return h.status
+    now_naive = utc_now().replace(tzinfo=None)
+    start = h.starts_at.replace(tzinfo=None) if h.starts_at else None
+    end = h.ends_at.replace(tzinfo=None) if h.ends_at else None
+    if start and end and start <= now_naive < end:
+        return "active"
+    return h.status
+
+
 def _serialize_hackathon(
     hackathon: models.Hackathon,
     current_user_id: int,
@@ -1029,7 +1071,7 @@ def _serialize_hackathon(
         host_avatar_url=host.profile_picture_url if host else None,
         starts_at=hackathon.starts_at,
         ends_at=hackathon.ends_at,
-        status=hackathon.status,
+        status=_effective_hackathon_status(hackathon),
         created_at=hackathon.created_at,
         participant_count=part_count,
         is_joined=joined,
@@ -1083,11 +1125,25 @@ def list_hackathons(
         limit = limit.default or 20
     if hasattr(offset, "default"):
         offset = offset.default or 0
+    # Negative values made Postgres error (500); huge limits dumped the table.
+    limit = max(1, min(100, int(limit)))
+    offset = max(0, int(offset))
     if hasattr(status_filter, "default"):
         status_filter = status_filter.default
 
+    # Nothing ever sets status="active", so "active"/"upcoming" are worked out
+    # from starts_at/ends_at (stored as naive UTC).
+    now_naive = utc_now().replace(tzinfo=None)
     query = db.query(models.Hackathon)
-    if isinstance(status_filter, str) and status_filter:
+    if status_filter == "active":
+        query = query.filter(
+            models.Hackathon.status.notin_(["completed", "cancelled"]),
+            models.Hackathon.starts_at <= now_naive,
+            models.Hackathon.ends_at > now_naive,
+        )
+    elif status_filter == "upcoming":
+        query = query.filter(models.Hackathon.status == "upcoming", models.Hackathon.starts_at > now_naive)
+    elif isinstance(status_filter, str) and status_filter:
         query = query.filter(models.Hackathon.status == status_filter)
 
     hackathons = (
