@@ -30,5 +30,5 @@ requests==2.32.3
 websockets
 supabase>=2.3.0
 pytz
-google-generativeai
 google-genai
+cryptography>=42  # used directly by app/auth.py (Fernet tokens)

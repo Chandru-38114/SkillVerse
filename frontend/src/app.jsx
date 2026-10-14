@@ -178,6 +178,10 @@ export default function App() {
             />
             <Route path="/gamification" element={<ProtectedRoute><Gamification /></ProtectedRoute>} />
             <Route path="/community" element={<ProtectedRoute><Community /></ProtectedRoute>} />
+            {/* The reset step lives on the forgot-password page */}
+            <Route path="/reset-password" element={<Navigate to="/forgot-password" replace />} />
+            {/* Unknown addresses used to show a blank page */}
+            <Route path="*" element={<NotFound />} />
           </Routes>
         </Suspense>
       </div>
@@ -185,5 +189,15 @@ export default function App() {
   )
 }
 
-
-
+function NotFound() {
+  return (
+    <div style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+      <div style={{ maxWidth: 440, textAlign: 'center', padding: 32, background: '#FFFDF8', border: '2px solid #29251F', borderRadius: 16, boxShadow: '0 4px 0 #D2BEA0, 0 7px 0 #29251F', display: 'flex', flexDirection: 'column', gap: 12, alignItems: 'center' }}>
+        <span style={{ fontSize: 40 }} aria-hidden="true">🧭</span>
+        <h1 style={{ margin: 0, fontSize: 26, fontWeight: 900, color: '#29251F' }}>Page not found</h1>
+        <p style={{ margin: 0, color: '#6E6455', fontWeight: 600 }}>That link doesn't lead anywhere in SkillVerse.</p>
+        <a href="/" style={{ marginTop: 6, padding: '12px 22px', border: '2px solid #29251F', borderRadius: 10, background: 'var(--acc, #FF8A3D)', color: '#29251F', fontWeight: 800, textDecoration: 'none', boxShadow: '0 4px 0 #29251F' }}>Go home</a>
+      </div>
+    </div>
+  )
+}

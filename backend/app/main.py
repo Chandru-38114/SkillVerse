@@ -74,18 +74,20 @@ async def lifespan(app: FastAPI):
             def _backfill_level_num():
                 try:
                     from .utils.levels import score_to_level
-                    with engine.connect() as conn:
+                    # One transaction for the SELECT and the UPDATEs. (In SQLAlchemy 2.0
+                    # the SELECT already starts a transaction, so the old nested
+                    # conn.begin() always raised and the backfill never ran.)
+                    with engine.begin() as conn:
                         unfilled = conn.execute(text(
                             "SELECT id, latest_score FROM user_skills WHERE (level_num = 0 OR level_num IS NULL) AND latest_score IS NOT NULL"
                         )).fetchall()
+                        for r_id, r_score in unfilled:
+                            new_lvl = score_to_level(r_score)
+                            conn.execute(
+                                text("UPDATE user_skills SET level_num = :lvl WHERE id = :id"),
+                                {"lvl": new_lvl, "id": r_id}
+                            )
                         if unfilled:
-                            with conn.begin():
-                                for r_id, r_score in unfilled:
-                                    new_lvl = score_to_level(r_score)
-                                    conn.execute(
-                                        text("UPDATE user_skills SET level_num = :lvl WHERE id = :id"),
-                                        {"lvl": new_lvl, "id": r_id}
-                                    )
                             print(f"[startup] Backfilled level_num from latest_score for {len(unfilled)} user_skills rows.")
                 except Exception as e:
                     print(f"[startup] level_num backfill skipped/failed: {e}")
