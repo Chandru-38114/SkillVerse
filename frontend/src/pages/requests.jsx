@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api, getSessionUser } from '../api'
 import './requests.css'
@@ -71,13 +71,20 @@ export default function Requests() {
 
   useEffect(() => { load() }, [])
 
+  // Ignore extra clicks while a response is in flight (a second call now gets
+  // "already accepted" from the server and showed a false error).
+  const respondingRef = useRef(null)
   async function respond(id, accept) {
+    if (respondingRef.current) return
+    respondingRef.current = id
     setError('')
     try {
       await api.respondToRequest(id, accept)
       load()
     } catch (err) {
       setError(err.message)
+    } finally {
+      respondingRef.current = null
     }
   }
 

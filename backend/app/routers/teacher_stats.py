@@ -95,14 +95,20 @@ def get_my_teacher_stats(
         .order_by(models.Review.created_at.desc())
         .all()
     )
-    # If some reviews don't have session_id set (older rows), check if request has tutor
-    if not teacher_reviews:
-        teacher_reviews = (
-            db.query(models.Review)
-            .filter(models.Review.reviewee_id == user_id)
-            .order_by(models.Review.created_at.desc())
-            .all()
+    # Older reviews without session_id: count them only if this user was the
+    # request's tutor (to_user). The old fallback counted every review the user
+    # ever received, including ones received as a learner.
+    legacy_reviews = (
+        db.query(models.Review)
+        .join(models.ConnectionRequest, models.ConnectionRequest.id == models.Review.request_id)
+        .filter(
+            models.Review.reviewee_id == user_id,
+            models.Review.session_id.is_(None),
+            models.ConnectionRequest.to_user_id == user_id,
         )
+        .all()
+    )
+    teacher_reviews = sorted(list(teacher_reviews) + legacy_reviews, key=lambda r: r.created_at or 0, reverse=True)
 
     review_count = len(teacher_reviews)
     average_rating = (

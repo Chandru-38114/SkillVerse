@@ -7,7 +7,7 @@ Avoids N+1 queries by utilizing grouped aggregation.
 """
 from typing import Dict, List, Any, Optional
 from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy import and_, func, or_
 
 from .. import models
 
@@ -77,7 +77,18 @@ def get_teacher_public_stats_for_users(db: Session, user_ids: List[int]) -> Dict
             func.count(models.Review.id).label("count"),
             func.avg(models.Review.rating).label("avg"),
         )
-        .filter(models.Review.reviewee_id.in_(tutor_ids))
+        # Only reviews received AS A TUTOR: the review's session was taught by
+        # the reviewee, or (older rows without session_id) the request's tutor
+        # (to_user) is the reviewee. Reviews received as a learner don't count.
+        .outerjoin(models.Session, models.Session.id == models.Review.session_id)
+        .outerjoin(models.ConnectionRequest, models.ConnectionRequest.id == models.Review.request_id)
+        .filter(
+            models.Review.reviewee_id.in_(tutor_ids),
+            or_(
+                models.Session.tutor_id == models.Review.reviewee_id,
+                and_(models.Review.session_id.is_(None), models.ConnectionRequest.to_user_id == models.Review.reviewee_id),
+            ),
+        )
         .group_by(models.Review.reviewee_id)
         .all()
     )

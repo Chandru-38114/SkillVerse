@@ -147,7 +147,8 @@ def create_demand_request(
             models.DemandRequest.requester_id == current_user.id,
             models.DemandRequest.skill_id == skill.id,
             models.DemandRequest.status.in_(["fulfilled", "expired"]),
-            models.DemandRequest.created_at >= cutoff,
+            # Time it was fulfilled/expired (updated_at), not when it was opened.
+            models.DemandRequest.updated_at >= cutoff,
         )
         .first()
     )
