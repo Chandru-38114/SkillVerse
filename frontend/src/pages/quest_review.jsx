@@ -125,7 +125,7 @@ export default function QuestReview() {
       setStep('quiz')
     } catch (err) {
       clearInterval(loadingTimerRef.current)
-      if (err.message && err.message.includes("wasn't enough recorded")) {
+      if (err.message && (err.message.includes("wasn't enough recorded") || err.message.includes("already completed"))) {
         setQuizSkipMessage(err.message)
         setStep('intro')
       } else {

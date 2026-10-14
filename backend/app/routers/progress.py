@@ -282,6 +282,28 @@ def update_session_notes(session_id: int, payload: schemas.SessionProgressUpdate
     return {"status": "ok"}
 
 
+
+def _try_generate_summary(db: Session, sess: models.Session, prog: models.SessionProgress, user_id: int) -> None:
+    """Generate the AI session summary for this participant (and copy it to the
+    partner's progress row). Never raises; leaves semantic_summary empty on failure."""
+    try:
+        messages = db.query(models.Message).filter(models.Message.request_id == sess.request_id).order_by(models.Message.created_at).all()
+        chat_history = "\n".join([f"{msg.sender_id}: {msg.content}" for msg in messages])
+        wb = db.query(models.WhiteboardState).filter(models.WhiteboardState.session_id == sess.id).first()
+        comp = db.query(models.CompilerState).filter(models.CompilerState.session_id == sess.id).first()
+        summary = generate_session_summary(chat_history, wb.state if wb else "", comp.code if comp else "")
+        if summary and not summary.startswith("Error"):
+            prog.semantic_summary = summary
+            other_user_id = sess.learner_id if user_id == sess.tutor_id else sess.tutor_id
+            other_prog = db.query(models.SessionProgress).filter(
+                models.SessionProgress.session_id == sess.id,
+                models.SessionProgress.user_id == other_user_id,
+            ).first()
+            if other_prog and not other_prog.semantic_summary:
+                other_prog.semantic_summary = summary
+    except Exception as e:
+        logger.warning("[progress] session summary generation failed for session %s: %s", sess.id, e)
+
 @router.post("/session/{session_id}/complete")
 def complete_session(session_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
     sess = db.query(models.Session).filter(models.Session.id == session_id).first()
@@ -367,32 +389,9 @@ def complete_session(session_id: int, db: Session = Depends(get_db), current_use
     if sess.status != "completed":
         sess.status = "completed"
         
-    # Attempt LLM Summarization
+    # Attempt LLM Summarization (retried later by quiz/start if this fails)
     if not prog.semantic_summary:
-        try:
-            messages = db.query(models.Message).filter(models.Message.request_id == sess.request_id).order_by(models.Message.created_at).all()
-            chat_history = "\n".join([f"{msg.sender_id}: {msg.content}" for msg in messages])
-            
-            wb = db.query(models.WhiteboardState).filter(models.WhiteboardState.session_id == session_id).first()
-            whiteboard_state = wb.state if wb else ""
-            
-            comp = db.query(models.CompilerState).filter(models.CompilerState.session_id == session_id).first()
-            compiler_code = comp.code if comp else ""
-            
-            summary = generate_session_summary(chat_history, whiteboard_state, compiler_code)
-            if summary and not summary.startswith("Error"):
-                prog.semantic_summary = summary
-                
-                # Also save the semantic summary for the other participant if their progress record exists
-                other_user_id = sess.learner_id if current_user.id == sess.tutor_id else sess.tutor_id
-                other_prog = db.query(models.SessionProgress).filter(
-                    models.SessionProgress.session_id == session_id,
-                    models.SessionProgress.user_id == other_user_id
-                ).first()
-                if other_prog:
-                    other_prog.semantic_summary = summary
-        except Exception as e:
-            logger.warning("[progress] session summary generation failed for session %s: %s", session_id, e)
+        _try_generate_summary(db, sess, prog, current_user.id)
 
     # Hook into exchange legs if this session belongs to an exchange group leg
     exchange_leg = db.query(models.ExchangeLeg).filter(
@@ -445,8 +444,25 @@ async def start_session_quiz(session_id: int, db: Session = Depends(get_db), cur
         models.SessionProgress.session_id == session_id,
         models.SessionProgress.user_id == current_user.id,
     ).first()
-    if not prog or not prog.semantic_summary:
-        raise HTTPException(status_code=409, detail="The session summary is not ready yet")
+    if not prog:
+        raise HTTPException(status_code=409, detail="Complete the session first.")
+
+    # One knowledge check per person per session.
+    done = db.query(models.AssessmentSession).filter(
+        models.AssessmentSession.user_id == current_user.id,
+        models.AssessmentSession.session_id == session_id,
+        models.AssessmentSession.submitted_at.isnot(None),
+    ).first()
+    if done:
+        raise HTTPException(status_code=409, detail="You've already completed the knowledge check for this session.")
+
+    # If the summary failed when the session was completed (AI busy), try again
+    # now instead of saying "not ready" forever.
+    if not prog.semantic_summary:
+        await run_in_threadpool(_try_generate_summary, db, sess, prog, current_user.id)
+        db.commit()
+    if not prog.semantic_summary:
+        raise HTTPException(status_code=503, detail="The AI summary isn't available right now. Please try again in a minute.")
 
     active = db.query(models.AssessmentSession).filter(
         models.AssessmentSession.user_id == current_user.id,
@@ -544,8 +560,9 @@ def submit_session_quiz(session_id: int, payload: SessionQuizSubmit, db: Session
         sess.skill, prog.semantic_summary or "", score, missed_topics, weak_topics,
     )
 
-    prog.progress_percentage_after = int(score)
-    prog.level_after = level_for_score(score)
+    # The quiz is formative only: it must not overwrite the session's real
+    # progress snapshot (progress_percentage_after / level_after). The score
+    # is returned to the page; only the next-session plan is stored here.
     prog.next_session_plan = "\n".join(next_session_plan)
 
     db.commit()
