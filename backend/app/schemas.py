@@ -3,6 +3,21 @@ import datetime as dt
 from typing import Dict, Any, Optional, List, Union
 from pydantic import BaseModel, Field, EmailStr, Field, model_validator, ConfigDict
 
+
+class UTCOut(BaseModel):
+    """Base for API responses. The database stores UTC, but SQLite (and some
+    naive columns) return datetimes without a timezone, and browsers then read
+    them as local time — notifications, chat and community times showed up
+    5h30m off in India. Mark every naive datetime field as UTC."""
+
+    @model_validator(mode="after")
+    def _mark_datetimes_utc(self):
+        for name in type(self).model_fields:
+            v = getattr(self, name, None)
+            if isinstance(v, dt.datetime) and v.tzinfo is None:
+                object.__setattr__(self, name, v.replace(tzinfo=dt.timezone.utc))
+        return self
+
 class UserCreate(BaseModel):
     name: str
     email: EmailStr
@@ -72,7 +87,7 @@ class ResetPassword(BaseModel):
             raise ValueError('Password must contain at least 8 characters, one uppercase letter, one lowercase letter, one number, and one special character.')
         return v
 
-class UserOut(BaseModel):
+class UserOut(UTCOut):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
@@ -140,7 +155,7 @@ class GoogleOnboardingComplete(BaseModel):
         return self
 
 
-class UserSkillOut(BaseModel):
+class UserSkillOut(UTCOut):
     id: int
     skill_id: int
     skill_name: str
@@ -185,7 +200,7 @@ class AssessmentResult(BaseModel):
     counted: Optional[bool] = None
 
 
-class AssessmentAttemptOut(BaseModel):
+class AssessmentAttemptOut(UTCOut):
     id: int
     user_id: int
     skill_id: int
@@ -239,7 +254,7 @@ class ConnectionRequestCreate(BaseModel):
     learner_teach_proficiency: Optional[str] = None  # e.g. "Intermediate"
 
 
-class ConnectionRequestOut(BaseModel):
+class ConnectionRequestOut(UTCOut):
     id: int
     from_user_id: int
     from_user_name: str
@@ -269,7 +284,7 @@ class MessageCreate(BaseModel):
     metadata: Optional[Dict[str, Any]] = Field(default_factory=dict)
 
 
-class MessageOut(BaseModel):
+class MessageOut(UTCOut):
     id: int
     sender_id: int
     content: str
@@ -280,7 +295,7 @@ class MessageOut(BaseModel):
     class Config:
         from_attributes = True
 
-class InboxConversationOut(BaseModel):
+class InboxConversationOut(UTCOut):
     request_id: int
     other_user_id: int
     other_user_name: str
@@ -310,7 +325,7 @@ class MessageEdit(BaseModel):
 class ReactionUpdate(BaseModel):
     emoji: str
 
-class NotificationOut(BaseModel):
+class NotificationOut(UTCOut):
     id: int
     user_id: int
     type: str
@@ -333,7 +348,7 @@ class ReviewCreate(BaseModel):
     comment: Optional[str] = ""
 
 
-class ReviewOut(BaseModel):
+class ReviewOut(UTCOut):
     id: int
     reviewer_id: int
     reviewer_name: str
@@ -391,7 +406,7 @@ class SessionUpdate(BaseModel):
         return v.astimezone(dt.timezone.utc) if v else v
 
 
-class SessionOut(BaseModel):
+class SessionOut(UTCOut):
     id:           int
     request_id:   int
     tutor_id:     int
@@ -424,7 +439,7 @@ class SessionProgressUpdate(BaseModel):
     learning_notes: Optional[str] = None
     semantic_summary: Optional[str] = None
 
-class SessionProgressOut(BaseModel):
+class SessionProgressOut(UTCOut):
     id: int
     session_id: int
     user_id: int
@@ -461,7 +476,7 @@ class UserSkillProgressOut(UserSkillOut):
 class CertificateGenerateRequest(BaseModel):
     skill_name: str
 
-class CertificateOut(BaseModel):
+class CertificateOut(UTCOut):
     id: int
     certificate_id: str
     user_id: int
@@ -530,7 +545,7 @@ class ReviewCommentItem(BaseModel):
     created_at: dt.datetime
 
 
-class ReportCardOut(BaseModel):
+class ReportCardOut(UTCOut):
     skills_overview: List[SkillOverviewItem]
     progress_history: List[ProgressHistoryItem]
     learning_activity: LearningActivitySummary
@@ -555,7 +570,7 @@ class TeacherSkillBreakdownItem(BaseModel):
     average_rating: Optional[float] = None
 
 
-class TeacherStatsOut(BaseModel):
+class TeacherStatsOut(UTCOut):
     has_taught: bool
     teaching_experience: Optional[Dict[str, Any]] = None  # total_hours_taught, teaching_since
     rating_summary: Optional[Dict[str, Any]] = None       # average_rating, review_count, star_breakdown
@@ -573,7 +588,7 @@ class DemandRequestCreate(BaseModel):
     skill_name: Optional[str] = None
 
 
-class DemandRequestOut(BaseModel):
+class DemandRequestOut(UTCOut):
     id: int
     requester_id: int
     skill_id: int
@@ -586,7 +601,7 @@ class DemandRequestOut(BaseModel):
         from_attributes = True
 
 
-class DemandTeacherOut(BaseModel):
+class DemandTeacherOut(UTCOut):
     id: int
     user_id: int
     name: str
@@ -612,7 +627,7 @@ class DemandResponse(BaseModel):
 
 # ── Community Lounge Schemas ────────────────────────────────────────────────
 
-class CommunityAccessOut(BaseModel):
+class CommunityAccessOut(UTCOut):
     has_taught: bool
 
 
@@ -644,7 +659,7 @@ class LoungeCommentCreate(BaseModel):
         return s
 
 
-class LoungeCommentOut(BaseModel):
+class LoungeCommentOut(UTCOut):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
@@ -657,7 +672,7 @@ class LoungeCommentOut(BaseModel):
     created_at: dt.datetime
 
 
-class LoungePostOut(BaseModel):
+class LoungePostOut(UTCOut):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
@@ -713,7 +728,7 @@ class StudyCircleCreate(BaseModel):
         return val
 
 
-class StudyCircleParticipantOut(BaseModel):
+class StudyCircleParticipantOut(UTCOut):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
@@ -725,7 +740,7 @@ class StudyCircleParticipantOut(BaseModel):
     joined_at: dt.datetime
 
 
-class StudyCircleOut(BaseModel):
+class StudyCircleOut(UTCOut):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
@@ -777,7 +792,7 @@ class SeniorAnswerCreate(BaseModel):
         return s
 
 
-class SeniorAnswerOut(BaseModel):
+class SeniorAnswerOut(UTCOut):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
@@ -790,7 +805,7 @@ class SeniorAnswerOut(BaseModel):
     created_at: dt.datetime
 
 
-class SeniorQuestionOut(BaseModel):
+class SeniorQuestionOut(UTCOut):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
@@ -810,7 +825,7 @@ class SeniorQuestionDetailOut(SeniorQuestionOut):
 
 # ── Weekly Challenges Schemas ────────────────────────────────────────────────
 
-class WeeklyChallengeOut(BaseModel):
+class WeeklyChallengeOut(UTCOut):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
@@ -835,7 +850,7 @@ class WeeklyChallengeResponseCreate(BaseModel):
         return s
 
 
-class WeeklyChallengeResponseOut(BaseModel):
+class WeeklyChallengeResponseOut(UTCOut):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
@@ -877,7 +892,7 @@ class HackathonCreate(BaseModel):
         return s
 
 
-class HackathonParticipantOut(BaseModel):
+class HackathonParticipantOut(UTCOut):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
@@ -889,7 +904,7 @@ class HackathonParticipantOut(BaseModel):
     joined_at: dt.datetime
 
 
-class HackathonOut(BaseModel):
+class HackathonOut(UTCOut):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
@@ -910,7 +925,7 @@ class HackathonOut(BaseModel):
 
 # ── Teacher Badge Schemas ───────────────────────────────────────────────────
 
-class TeacherBadgeOut(BaseModel):
+class TeacherBadgeOut(UTCOut):
     id: str
     name: str
     tier: str
@@ -920,7 +935,7 @@ class TeacherBadgeOut(BaseModel):
     earned_at: Optional[str] = None
 
 
-class TeacherBadgeDefinitionOut(BaseModel):
+class TeacherBadgeDefinitionOut(UTCOut):
     id: str
     name: str
     tier: str
