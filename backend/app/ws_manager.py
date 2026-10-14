@@ -57,9 +57,13 @@ class WebRTCManager:
             self.rooms[session_id] = {}
         self.rooms[session_id][user_id] = websocket
 
-    def disconnect(self, session_id: int, user_id: int) -> None:
+    def disconnect(self, session_id: int, user_id: int, websocket: WebSocket = None) -> None:
         room = self.rooms.get(session_id)
         if room and user_id in room:
+            # If the user already reconnected, the room holds their NEW socket;
+            # closing the old one must not remove it.
+            if websocket is not None and room[user_id] is not websocket:
+                return
             del room[user_id]
             if not room:
                 del self.rooms[session_id]

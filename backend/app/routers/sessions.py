@@ -17,6 +17,7 @@ import requests
 
 
 from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect, Query
+from starlette.concurrency import run_in_threadpool
 from sqlalchemy import or_
 from sqlalchemy.orm import Session as DBSession
 from ..notification_service import create_notification
@@ -86,13 +87,72 @@ def _to_out(s: models.Session) -> schemas.SessionOut:
 
 
 
+MIN_SESSION_MINUTES = 15
+MAX_SESSION_MINUTES = 180
+# The room opens this many minutes before the scheduled start.
+EARLY_JOIN_MINUTES = 15
+
+
+def _utc(d: Optional[dt.datetime]) -> Optional[dt.datetime]:
+    """SQLite returns naive datetimes (stored as UTC); make every value aware."""
+    if d is None:
+        return None
+    return d.replace(tzinfo=dt.timezone.utc) if d.tzinfo is None else d.astimezone(dt.timezone.utc)
+
+
 def _validate_times(start: dt.datetime, end: dt.datetime):
-    """Raise 422 for obviously invalid date/time combinations."""
+    """Raise 422 for invalid date/time combinations."""
+    start, end = _utc(start), _utc(end)
     if start >= end:
         raise HTTPException(status_code=422, detail="Start time must be before end time.")
+    minutes = (end - start).total_seconds() / 60
+    if minutes < MIN_SESSION_MINUTES:
+        raise HTTPException(status_code=422, detail=f"A session must be at least {MIN_SESSION_MINUTES} minutes long.")
+    if minutes > MAX_SESSION_MINUTES:
+        raise HTTPException(status_code=422, detail=f"A session can be at most {MAX_SESSION_MINUTES // 60} hours long.")
     # We allow scheduling slightly in the past (e.g. starting a session right now)
     if start < utc_now() - dt.timedelta(hours=1):
         raise HTTPException(status_code=422, detail="Session cannot be scheduled too far in the past.")
+    if start > utc_now() + dt.timedelta(days=60):
+        raise HTTPException(status_code=422, detail="Sessions can be scheduled at most 60 days ahead.")
+
+
+def _check_overlap(db: DBSession, people, new_start: dt.datetime, new_end: dt.datetime,
+                   current_user_id: int, ignore_session_id: Optional[int] = None):
+    """Neither person may already have another scheduled session that overlaps
+    this time (e.g. a tutor booked by two different learners at 5–6 PM)."""
+    new_start, new_end = _utc(new_start), _utc(new_end)
+    others = (
+        db.query(models.Session)
+        .filter(
+            models.Session.status == "scheduled",
+            or_(models.Session.tutor_id.in_(people), models.Session.learner_id.in_(people)),
+        )
+        .all()
+    )
+    for other in others:
+        if other.id == ignore_session_id or not other.scheduled_start or not other.scheduled_end:
+            continue
+        if _utc(other.scheduled_start) < new_end and _utc(other.scheduled_end) > new_start:
+            who = "You already have" if current_user_id in (other.tutor_id, other.learner_id) else "Your partner already has"
+            raise HTTPException(
+                status_code=409,
+                detail=f"{who} a session from {_utc(other.scheduled_start).astimezone(IST).strftime('%d %b %I:%M %p')} "
+                       f"to {_utc(other.scheduled_end).astimezone(IST).strftime('%I:%M %p')} IST. Pick a different time.",
+            )
+
+
+def _expire_if_over(s: models.Session, db: DBSession) -> bool:
+    """A scheduled session past its end: completed if BOTH people were in the
+    room, otherwise it stays "scheduled" and the UI shows it as missed.
+    Returns True when the session is over."""
+    end_dt = _utc(s.scheduled_end)
+    if s.status != "scheduled" or end_dt is None or utc_now() < end_dt:
+        return False
+    if s.both_joined_at is not None:
+        s.status = "completed"
+        db.commit()
+    return True
 
 
 
@@ -108,15 +168,8 @@ def _get_my_session(session_id: int, current_user: models.User, db: DBSession) -
     # - a scheduled session past its end that someone joined is completed;
     # - one that nobody joined was missed: it stays "scheduled" (the UI shows
     #   it as Missed) and the room can't be entered any more (410).
-    end_dt = s.scheduled_end
-    if end_dt is not None and end_dt.tzinfo is None:
-        end_dt = end_dt.replace(tzinfo=dt.timezone.utc)
-    if s.status == "scheduled" and end_dt is not None and utc_now() >= end_dt:
-        if s.started_at is not None:
-            s.status = "completed"
-            db.commit()
-        else:
-            raise HTTPException(status_code=410, detail="This session was missed — nobody joined before it ended.")
+    if _expire_if_over(s, db) and s.status == "scheduled":
+        raise HTTPException(status_code=410, detail="This session was missed — you both needed to join before it ended.")
 
     return s
 
@@ -181,31 +234,7 @@ def create_session(
         )
 
     _validate_times(payload.scheduled_start, payload.scheduled_end)
-
-    # Neither person may already have another scheduled session that overlaps
-    # this time (e.g. a tutor booked by two different learners at 5–6 PM).
-    def _utc(d):
-        return d.replace(tzinfo=dt.timezone.utc) if d.tzinfo is None else d.astimezone(dt.timezone.utc)
-    new_start, new_end = _utc(payload.scheduled_start), _utc(payload.scheduled_end)
-    people = (req.from_user_id, req.to_user_id)
-    others = (
-        db.query(models.Session)
-        .filter(
-            models.Session.status == "scheduled",
-            or_(models.Session.tutor_id.in_(people), models.Session.learner_id.in_(people)),
-        )
-        .all()
-    )
-    for other in others:
-        if not other.scheduled_start or not other.scheduled_end:
-            continue
-        if _utc(other.scheduled_start) < new_end and _utc(other.scheduled_end) > new_start:
-            who = "You already have" if current_user.id in (other.tutor_id, other.learner_id) else "Your partner already has"
-            raise HTTPException(
-                status_code=409,
-                detail=f"{who} a session from {_utc(other.scheduled_start).astimezone(IST).strftime('%d %b %I:%M %p')} "
-                       f"to {_utc(other.scheduled_end).astimezone(IST).strftime('%I:%M %p')} IST. Pick a different time.",
-            )
+    _check_overlap(db, (req.from_user_id, req.to_user_id), payload.scheduled_start, payload.scheduled_end, current_user.id)
 
     # Store legacy strings based on scheduled_start for backward compatibility until dropped
     ist_start = payload.scheduled_start.astimezone(IST)
@@ -310,18 +339,25 @@ def update_session(
             status_code=400,
             detail=f"Cannot update a session with status '{s.status}'.",
         )
+    # Once someone has joined, the times are fixed (moving the end time of a
+    # running session would stretch it, or hide that it was missed).
+    if s.started_at is not None and (payload.scheduled_start or payload.scheduled_end):
+        raise HTTPException(status_code=400, detail="This session has already started, so its time can't be changed.")
 
-    s.scheduled_start = payload.scheduled_start or s.scheduled_start
-    s.scheduled_end = payload.scheduled_end or s.scheduled_end
-    _validate_times(s.scheduled_start, s.scheduled_end)
-    
-    ist_start = s.scheduled_start.astimezone(IST)
-    ist_end = s.scheduled_end.astimezone(IST)
+    new_start = _utc(payload.scheduled_start or s.scheduled_start)
+    new_end = _utc(payload.scheduled_end or s.scheduled_end)
+    if payload.scheduled_start or payload.scheduled_end:
+        _validate_times(new_start, new_end)
+        _check_overlap(db, (s.tutor_id, s.learner_id), new_start, new_end, current_user.id, ignore_session_id=s.id)
+    s.scheduled_start, s.scheduled_end = new_start, new_end
+
+    ist_start = new_start.astimezone(IST)
+    ist_end = new_end.astimezone(IST)
     s.session_date = ist_start.strftime("%Y-%m-%d")
     s.start_time = ist_start.strftime("%H:%M")
     s.end_time = ist_end.strftime("%H:%M")
     if payload.notes is not None:
-        s.notes = payload.notes
+        s.notes = payload.notes[:1000]
 
     db.commit()
     db.refresh(s)
@@ -341,6 +377,8 @@ def cancel_session(
 
     if s.status == "completed":
         raise HTTPException(status_code=400, detail="Cannot cancel a completed session.")
+    if s.both_joined_at is not None:
+        raise HTTPException(status_code=400, detail="You both already joined this session, so it can't be cancelled. Complete it instead.")
     if s.status == "cancelled":
         raise HTTPException(status_code=400, detail="Session is already cancelled.")
 
@@ -380,26 +418,43 @@ async def webrtc_signaling(
             return
 
         import asyncio
-        end_dt = s.scheduled_end
-        if end_dt and end_dt.tzinfo is None:
-            end_dt = end_dt.replace(tzinfo=dt.timezone.utc)
-        if end_dt and utc_now() >= end_dt:
-            # Only a session someone actually joined counts as completed.
-            if s.started_at is not None:
-                s.status = "completed"
-                db.commit()
+        end_dt = _utc(s.scheduled_end)
+        if _expire_if_over(s, db):
             await websocket.close(code=4410, reason="Session Ended")
+            return
+
+        # The room opens EARLY_JOIN_MINUTES before the start. Joining earlier
+        # used to mark the session as started hours ahead.
+        start_dt = _utc(s.scheduled_start)
+        if start_dt and utc_now() < start_dt - dt.timedelta(minutes=EARLY_JOIN_MINUTES):
+            await websocket.close(code=4425, reason="Too early")
             return
 
         # First participant to connect marks the session as started.
         if s.started_at is None:
             s.started_at = utc_now()
             db.commit()
+        tutor_id, learner_id = s.tutor_id, s.learner_id
     finally:
         db.close()
 
     # Connect user (already accepted above)
     await webrtc_manager.connect(session_id, user_id, websocket, accept=False)
+
+    # When tutor AND learner are both in the room, remember it: only such a
+    # session counts as held (and can be completed).
+    room = webrtc_manager.rooms.get(session_id, {})
+    if tutor_id in room and learner_id in room:
+        def _mark_both_joined():
+            db2 = SessionLocal()
+            try:
+                db2.query(models.Session).filter(
+                    models.Session.id == session_id, models.Session.both_joined_at.is_(None),
+                ).update({models.Session.both_joined_at: utc_now()}, synchronize_session=False)
+                db2.commit()
+            finally:
+                db2.close()
+        await run_in_threadpool(_mark_both_joined)
 
     # Notify peer that user joined
     await webrtc_manager.send_to_peer(session_id, user_id, {
@@ -416,8 +471,9 @@ async def webrtc_signaling(
                 db_end = SessionLocal()
                 try:
                     s_end = db_end.query(models.Session).filter(models.Session.id == session_id).first()
-                    # Never turn a cancelled session into a completed one.
-                    if s_end and s_end.status == "scheduled":
+                    # Never turn a cancelled session into a completed one, and
+                    # only a session both people joined counts as held.
+                    if s_end and s_end.status == "scheduled" and s_end.both_joined_at is not None:
                         s_end.status = "completed"
                         db_end.commit()
                 finally:
@@ -434,17 +490,24 @@ async def webrtc_signaling(
     try:
         while True:
             data = await websocket.receive_json()
-            if data.get("type") == "ping":
+            if not isinstance(data, dict) or data.get("type") == "ping":
                 continue
             # For WebRTC, just relay to the other participant
             await webrtc_manager.send_to_peer(session_id, user_id, data)
     except WebSocketDisconnect:
         pass
+    except Exception:
+        # Bad JSON or a dead socket: clean up below instead of leaving a
+        # stale entry in the room.
+        pass
     finally:
         enforcer.cancel()
-        webrtc_manager.disconnect(session_id, user_id)
-        # Try to notify peer if still possible
-        asyncio.create_task(webrtc_manager.send_to_peer(session_id, user_id, {
-            "type": "peer_disconnected",
-            "userId": user_id
-        }))
+        replaced = webrtc_manager.rooms.get(session_id, {}).get(user_id) not in (None, websocket)
+        webrtc_manager.disconnect(session_id, user_id, websocket)
+        # Try to notify peer if still possible (not when this was an old
+        # socket of a user who has already reconnected).
+        if not replaced:
+            asyncio.create_task(webrtc_manager.send_to_peer(session_id, user_id, {
+                "type": "peer_disconnected",
+                "userId": user_id
+            }))

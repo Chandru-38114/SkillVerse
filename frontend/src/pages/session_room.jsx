@@ -36,6 +36,7 @@ function SessionRoomComponent() {
   })
   const [isCompleted, setIsCompleted] = useState(false)
   const [notesLoaded, setNotesLoaded] = useState(false)
+  const [completeError, setCompleteError] = useState('')
 
   useEffect(() => {
     async function load() {
@@ -101,6 +102,23 @@ function SessionRoomComponent() {
   const isTutor = user.id === session.tutor_id
   const peerName = isTutor ? session.learner_name : session.tutor_name
 
+  // The room opens 15 minutes before the start (the server enforces this too).
+  const opensAt = session.scheduled_start ? new Date(new Date(session.scheduled_start).getTime() - 15 * 60000) : null
+  if (session.status === 'scheduled' && opensAt && new Date() < opensAt) {
+    return (
+      <div className="sv-room" style={{ alignItems: 'center', justifyContent: 'center', padding: 32 }}>
+        <div className="card" style={{ maxWidth: 440, padding: 30, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14, textAlign: 'center' }}>
+          <span style={{ width: 72, height: 72, borderRadius: 20, border: '2px solid #29251F', background: '#FBEFC4', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, fontWeight: 900, boxShadow: '0 5px 0 #29251F' }}>◷</span>
+          <h2 style={{ margin: 0, fontSize: 24, fontWeight: 900 }}>Too early to join</h2>
+          <p className="muted" style={{ margin: 0, fontSize: 15, lineHeight: 1.55 }}>
+            This room opens at {opensAt.toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: true })}, 15 minutes before the session starts.
+          </p>
+          <Link to="/sessions" className="btn btn-p" style={{ minHeight: 48 }}>Back to sessions</Link>
+        </div>
+      </div>
+    )
+  }
+
   const formatDate = (ds) => {
     if (!ds) return ''
     const d = new Date(ds)
@@ -137,9 +155,10 @@ function SessionRoomComponent() {
         navigate('/dashboard')
       }
     } catch (err) {
-      setError("Failed to complete session: " + err.message)
+      // Keep the room open (e.g. "both of you need to join first") and show
+      // the reason inside the dialog instead of replacing the whole page.
+      setCompleteError(err.message || 'Could not complete the session.')
       setCompleting(false)
-      setConfirmOpen(false)
     }
   }
 
@@ -289,13 +308,18 @@ function SessionRoomComponent() {
             <p className="muted" style={{ margin: 0, fontSize: 15, lineHeight: 1.55 }}>
               Your notes will be saved and your <strong style={{ color: '#29251F', textTransform: 'capitalize' }}>{session.skill_name || session.skill} progress</strong> will update. This can’t be undone.
             </p>
+            {completeError && (
+              <div role="alert" style={{ width: '100%', padding: '10px 12px', border: '2px solid #9A2B1E', borderRadius: 10, background: '#F6DDD8', color: '#9A2B1E', fontWeight: 800, fontSize: 13, textAlign: 'left' }}>
+                {completeError}
+              </div>
+            )}
             {!notesData.learning_notes.trim() && (
               <div style={{ width: '100%', padding: '10px 12px', border: '2px solid #29251F', borderRadius: 10, background: '#FBEFC4', fontWeight: 700, fontSize: 13, textAlign: 'left' }}>
                 ⚠ “My Learning Notes” is empty — add a line before finishing?
               </div>
             )}
             <div style={{ display: 'flex', gap: 12, width: '100%' }}>
-              <button type="button" className="btn btn-s" style={{ flex: 1, minHeight: 50 }} onClick={() => setConfirmOpen(false)}>Keep working</button>
+              <button type="button" className="btn btn-s" style={{ flex: 1, minHeight: 50 }} onClick={() => { setConfirmOpen(false); setCompleteError('') }}>Keep working</button>
               <button type="button" className="btn btn-p" style={{ flex: 1, minHeight: 50 }} disabled={completing} onClick={handleComplete}>
                 {completing ? 'Completing…' : 'Complete'}
               </button>

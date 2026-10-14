@@ -50,7 +50,7 @@ def run_code(
     return execute_python(payload.code)
 
 class CompilerSaveRequest(BaseModel):
-    code: str
+    code: str = Field(..., max_length=50000)
 
 class CompilerResponse(BaseModel):
     code: str
@@ -62,8 +62,9 @@ class CompilerConnectionManager:
         # session_id -> { user_id -> websocket }
         self.active_connections: dict[int, dict[int, WebSocket]] = {}
 
-    async def connect(self, websocket: WebSocket, session_id: int, user_id: int):
-        await websocket.accept()
+    async def connect(self, websocket: WebSocket, session_id: int, user_id: int, accept: bool = True):
+        if accept:
+            await websocket.accept()
         if session_id not in self.active_connections:
             self.active_connections[session_id] = {}
         self.active_connections[session_id][user_id] = websocket
@@ -77,9 +78,12 @@ class CompilerConnectionManager:
 
     async def broadcast(self, session_id: int, sender_id: int, message: str):
         if session_id in self.active_connections:
-            for user_id, connection in self.active_connections[session_id].items():
+            for user_id, connection in list(self.active_connections[session_id].items()):
                 if user_id != sender_id:
-                    await connection.send_text(message)
+                    try:
+                        await connection.send_text(message)
+                    except Exception:
+                        self.disconnect(session_id, user_id)
 
 compiler_manager = CompilerConnectionManager()
 
@@ -163,19 +167,24 @@ async def compiler_websocket(websocket: WebSocket, session_id: int, token: str):
     # Short-lived DB session for initial validation
     db = SessionLocal()
     try:
+        # Accept FIRST, then close with a specific code (CLAUDE.md rule).
+        await websocket.accept()
         user_id = auth.get_user_id_from_token_sync(token)
         if not user_id:
-            await websocket.close(code=1008)
+            await websocket.close(code=4401)
             return
-            
+
         session_db = db.query(models.Session).filter(models.Session.id == session_id).first()
         if not session_db or user_id not in [session_db.tutor_id, session_db.learner_id]:
-            await websocket.close(code=1008)
+            await websocket.close(code=4403)
+            return
+        if session_db.status != "scheduled":
+            await websocket.close(code=4410)
             return
     finally:
         db.close()
 
-    await compiler_manager.connect(websocket, session_id, user_id)
+    await compiler_manager.connect(websocket, session_id, user_id, accept=False)
     try:
         while True:
             data = await websocket.receive_text()
@@ -183,6 +192,8 @@ async def compiler_websocket(websocket: WebSocket, session_id: int, token: str):
                 msg = json.loads(data)
                 if msg.get("type") == "update_code":
                     new_code = msg.get("code")
+                    if not isinstance(new_code, str) or len(new_code) > 50000:
+                        continue
                     
                     if session_id in compiler_save_tasks:
                         compiler_save_tasks[session_id].cancel()
@@ -206,7 +217,11 @@ async def compiler_websocket(websocket: WebSocket, session_id: int, token: str):
                         "user_name": msg.get("user_name", ""),
                         "timestamp": msg.get("timestamp")
                     }))
-            except Exception as e:
+            except Exception:
                 pass
     except WebSocketDisconnect:
+        pass
+    except Exception:
+        pass
+    finally:
         compiler_manager.disconnect(session_id, user_id)

@@ -376,6 +376,8 @@ export default function VideoChat({ sessionId, children, onLeave }) {
           // (1008 kept for older backends). These are final — don't reconnect.
           if (event.code === 4401 || event.code === 4403) {
             setErrorMsg(event.code === 4401 ? 'Please sign in again to join this session.' : 'You are not a participant of this session.')
+          } else if (event.code === 4425) {
+            setErrorMsg('This room opens 15 minutes before the session starts.')
           }
           if (event.code === 1008 || (event.code >= 4400 && event.code < 4500)) {
             console.log('[WebRTC] Backend terminated session (ended).')

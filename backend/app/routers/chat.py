@@ -1,3 +1,4 @@
+import json
 from typing import List, Optional
 import asyncio
 import copy
@@ -499,7 +500,9 @@ def send_message(
     db: Session = Depends(get_db),
 ):
     _authorize(db, request_id, current_user.id)
-    msg = models.Message(request_id=request_id, sender_id=current_user.id, content=payload.content, message_metadata=payload.metadata)
+    if len(json.dumps(payload.metadata or {}, default=str)) > 8000:
+        raise HTTPException(status_code=400, detail="Message details are too large.")
+    msg = models.Message(request_id=request_id, sender_id=current_user.id, content=payload.content, message_metadata=payload.metadata or {})
     db.add(msg)
     db.commit()
     db.refresh(msg)
@@ -620,8 +623,14 @@ async def chat_websocket(websocket: WebSocket, request_id: int, token: str = Que
                 await websocket.send_json({"type": "pong"})
                 continue
 
-            content = (data.get("content") or "").strip()
-            metadata = data.get("metadata", {})
+            if not isinstance(data, dict):
+                continue
+            content = data.get("content") or ""
+            content = content.strip() if isinstance(content, str) else ""
+            metadata = data.get("metadata") or {}
+            # Same limits as the REST route: no giant messages or metadata blobs.
+            if not isinstance(metadata, dict) or len(content) > 5000 or len(json.dumps(metadata, default=str)) > 8000:
+                continue
             if not content and not metadata:
                 continue
 
