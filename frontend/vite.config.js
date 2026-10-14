@@ -10,9 +10,9 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks(id) {
-          if (id.includes('jspdf') || id.includes('html2canvas')) {
-            return 'vendor-pdf'
-          }
+          // jspdf/html2canvas are imported dynamically by CertificateView, so
+          // the bundler keeps them in lazy chunks (forcing them into one named
+          // chunk made the first page load them too).
           if (id.includes('gsap')) {
             return 'vendor-gsap'
           }

@@ -1,8 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import QRCode from 'react-qr-code';
-import html2canvas from 'html2canvas';
-import jsPDF from 'jspdf';
 import { api } from '../api';
 import './certificate.css';
 
@@ -38,6 +36,11 @@ export default function CertificateView() {
       setDownloading(true);
       const element = certificateRef.current;
 
+      // Loaded only when someone downloads (~600 KB) instead of on every page.
+      const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
+        import('html2canvas'),
+        import('jspdf'),
+      ]);
       const canvas = await html2canvas(element, {
         scale: 2,
         useCORS: true,
