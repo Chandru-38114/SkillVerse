@@ -60,6 +60,18 @@ def reset_login_attempts(identifier: str):
         del login_attempts[identifier]
 
 
+
+def _dev_otp_enabled() -> bool:
+    """Return the OTP in the API response (shown on screen) only for local
+    development. Email delivery is not implemented yet (email_service only
+    logs the code), so on production this would let ANYONE read another
+    user's reset code and take over the account. Default: on for the local
+    SQLite database, off for Postgres/production unless DEV_OTP_MODE=true."""
+    flag = os.getenv("DEV_OTP_MODE")
+    if flag is not None:
+        return flag.strip().lower() == "true"
+    return os.getenv("DATABASE_URL", "sqlite").startswith("sqlite")
+
 @router.post("/signup", response_model=schemas.Token)
 def signup(payload: schemas.UserCreate, db: Session = Depends(get_db)):
     try:
@@ -287,7 +299,7 @@ def forgot_password(payload: schemas.ForgotPassword, db: Session = Depends(get_d
     try:
         send_otp_email(payload.email, otp, purpose="password_reset")
         response = {"detail": "If your email is registered, you will receive an OTP."}
-        if os.getenv("DEV_OTP_MODE", "true").lower() == "true":
+        if _dev_otp_enabled():
             response["dev_otp"] = otp
         return response
     except Exception:
@@ -360,7 +372,7 @@ def request_email_verification(current_user: models.User = Depends(auth.get_curr
     try:
         send_otp_email(current_user.email, otp, purpose="email_verification")
         response = {"detail": "Verification OTP sent."}
-        if os.getenv("DEV_OTP_MODE", "true").lower() == "true":
+        if _dev_otp_enabled():
             response["dev_otp"] = otp
         return response
     except Exception:
