@@ -503,8 +503,29 @@ def _call_openrouter_text(model: str, prompt: str, retries: int = 3, delay: floa
     raise GenerationError(f"openrouter/{model}: retries exhausted")
 
 
+_TEXT_POOL = None
+
+
 def generate_text(prompt: str, timeout: float = 60) -> Optional[str]:
-    """Plain-text generation over the shared provider chain. Never raises."""
+    """Plain-text generation over the shared provider chain. Never raises.
+    `timeout` is a hard cap on the whole call (all providers and retries),
+    so a slow AI can't make /assessments/submit hang for minutes."""
+    global _TEXT_POOL
+    import concurrent.futures as _cf
+    if _TEXT_POOL is None:
+        _TEXT_POOL = _cf.ThreadPoolExecutor(max_workers=4, thread_name_prefix="ai-text")
+    future = _TEXT_POOL.submit(_generate_text_unbounded, prompt)
+    try:
+        return future.result(timeout=timeout)
+    except _cf.TimeoutError:
+        logger.warning("[arena] text generation exceeded %.0fs; using fallback", timeout)
+        return None
+    except Exception as err:  # noqa: BLE001
+        logger.warning("[arena] text generation crashed: %s", err)
+        return None
+
+
+def _generate_text_unbounded(prompt: str) -> Optional[str]:
     chain = _provider_chain()
     client = None
     if any(provider == "gemini" for provider, _ in chain):

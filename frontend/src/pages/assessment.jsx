@@ -259,6 +259,9 @@ export default function Assessment() {
 
   const submitRef = useRef(submitQuiz)
   useEffect(() => { submitRef.current = submitQuiz })
+  // The timer auto-submits only ONCE. If that submit fails, the student sees
+  // the error and can press Submit again — it used to retry every second.
+  const autoSubmittedRef = useRef(false)
 
   useEffect(() => {
     let timer
@@ -267,7 +270,10 @@ export default function Assessment() {
         setTimeLeft(t => {
           if (t <= 1) {
             clearInterval(timer)
-            setTimeout(() => submitRef.current(), 0)
+            if (!autoSubmittedRef.current) {
+              autoSubmittedRef.current = true
+              setTimeout(() => submitRef.current(), 0)
+            }
             return 0
           }
           return t - 1
@@ -299,6 +305,7 @@ export default function Assessment() {
         if (q.type === 'coding' && q.starter_code) prefill[q.id] = q.starter_code
       })
       setAnswers(prefill)
+      autoSubmittedRef.current = false
       setViolations(0)
       setTimeLeft(res.seconds_remaining ?? DEFAULT_TIME)
       setResumed(!!res.resumed)
@@ -345,7 +352,7 @@ export default function Assessment() {
         skill_name: skillName.trim(),
         role,
         attempt_id: attemptId,
-        answers: Object.entries(answers).map(([question_id, answer]) => ({ question_id, answer })),
+        answers: Object.entries(answers).map(([question_id, answer]) => ({ question_id, answer: String(answer ?? '') })),
         violations: violationsOverride ?? violations,
         terminated: isTermination,
       }
@@ -542,14 +549,16 @@ export default function Assessment() {
                   )}
                   <div role="radiogroup" aria-label="Answer options" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                     {(currentQuestion.options || []).map((opt, i) => {
-                      const selected = answers[currentQuestion.id] === i || answers[currentQuestion.id] === String(i)
+                      // Answers are sent as the option TEXT — the server compares text (sending
+                      // the index made every submission fail with a 422).
+                      const selected = answers[currentQuestion.id] === opt
                       return (
                         <button
                           key={i}
                           type="button"
                           role="radio"
                           aria-checked={selected}
-                          onClick={() => setAnswer(currentQuestion.id, i)}
+                          onClick={() => setAnswer(currentQuestion.id, opt)}
                           className={`opt${selected ? ' on' : ''}`}
                         >
                           <span className="key">{String.fromCharCode(65 + i)}</span>{opt}

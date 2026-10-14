@@ -114,15 +114,6 @@ def get_latest_assessment(
     return attempt
 
 
-@router.get("/questions/{skill_name}")
-def get_assessment_questions(skill_name: str):
-    """Returns questions WITHOUT the answer key."""
-    questions = get_questions_for_skill(skill_name)
-    return [
-        {"id": q["id"], "topic": q["topic"], "type": q["type"],
-         "question": q["question"], "options": q["options"]}
-        for q in questions
-    ]
 
 
 def level_for_score(score: float) -> str:
@@ -160,27 +151,39 @@ def submit_assessment(
     skill_name = payload.skill_name
     terminated = payload.terminated
     violations = max(0, payload.violations)
-    if payload.attempt_id:
-        session = db.query(models.AssessmentSession).filter(models.AssessmentSession.id == payload.attempt_id).first()
-        if not session or session.user_id != current_user.id:
-            raise HTTPException(status_code=404, detail="Assessment attempt not found")
-        if session.submitted_at is not None:
-            raise HTTPException(status_code=409, detail="This assessment has already been submitted")
-        now = utc_now()
-        if session.expires_at is not None and now > _aware(session.expires_at) + dt.timedelta(seconds=ARENA_GRACE_SECONDS):
-            terminated = True
-        session.submitted_at = now  # committed together with the results below
-        session.violations = violations
-        session.terminated = terminated
-        questions = session.questions
-        skill_name = session.skill_name
-    else:
-        # Legacy path: static question bank
-        questions = get_questions_for_skill(payload.skill_name)
+    # Every attempt must come from POST /assessments/start. (The old fallback
+    # scored a client-chosen skill against placeholder questions and handed
+    # out free badges.)
+    if not payload.attempt_id:
+        raise HTTPException(status_code=400, detail="Start the assessment first (missing attempt_id).")
+    session = db.query(models.AssessmentSession).filter(models.AssessmentSession.id == payload.attempt_id).first()
+    if not session or session.user_id != current_user.id:
+        raise HTTPException(status_code=404, detail="Assessment attempt not found")
+    now = utc_now()
+    # Claim the attempt atomically so two near-simultaneous submits (double
+    # click, timer + violation auto-submit) cannot both be scored.
+    claimed = (
+        db.query(models.AssessmentSession)
+        .filter(models.AssessmentSession.id == session.id, models.AssessmentSession.submitted_at.is_(None))
+        .update({models.AssessmentSession.submitted_at: now}, synchronize_session=False)
+    )
+    if not claimed:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="This assessment has already been submitted")
+    db.commit()
+    db.refresh(session)
+    late = session.expires_at is not None and now > _aware(session.expires_at) + dt.timedelta(seconds=ARENA_GRACE_SECONDS)
+    if late:
+        terminated = True
+    session.violations = violations
+    session.terminated = terminated
+    questions = session.questions
+    skill_name = session.skill_name
     if not questions:
         raise HTTPException(status_code=404, detail="No questions for this skill")
 
-    submitted = {a.question_id: a.answer for a in payload.answers}
+    # Answers sent after the time limit (plus grace) are not counted.
+    submitted = {} if late else {a.question_id: a.answer for a in payload.answers}
 
     per_topic_earned = {}
     per_topic_total = {}
