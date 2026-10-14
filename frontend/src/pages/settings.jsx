@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
-import { getSessionUser, api } from '../api'
+import { getSessionUser, getToken, saveSession, api } from '../api'
 import './settings.css'
 
 const GENDERS = ['Male', 'Female', 'Other', 'Prefer not to say']
@@ -17,7 +17,7 @@ const PW_RULES = [
   { label: 'At least 8 characters', regex: /.{8,}/ },
   { label: 'Upper & lower case', regex: /(?=.*[a-z])(?=.*[A-Z])/ },
   { label: 'One number', regex: /\d/ },
-  { label: 'One special character', regex: /[!@#$%^&*(),.?":{}|<>`]/ },
+  { label: 'One symbol (e.g. ! @ # - _)', regex: /[^A-Za-z0-9]/ },
 ]
 
 export default function Settings() {
@@ -126,6 +126,9 @@ export default function Settings() {
       });
       setUser(u);
       resetForm(u);
+      // Persist so the navbar and a re-opened Settings page show the new values.
+      saveSession(getToken(), u);
+      window.dispatchEvent(new Event('skillverse_user_updated'));
       setProfileMsg("Profile updated successfully.");
     } catch (err) {
       setProfileMsg("Error: " + err.message);

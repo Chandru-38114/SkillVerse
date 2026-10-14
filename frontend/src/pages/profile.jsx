@@ -68,7 +68,8 @@ export default function Profile() {
           u?.id ? api.getUserReviews(u.id).catch(() => []) : Promise.resolve([]),
           api.getMyCertificates().catch(() => []),
         ]);
-        setReviews(r || []);
+        // GET /reviews/user/{id} returns { average_rating, review_count, reviews }.
+        setReviews(Array.isArray(r) ? r : (r?.reviews || []));
         setCertificates(c || []);
       } catch (err) {
         console.error(err);

@@ -33,7 +33,7 @@ export default function Onboarding() {
     { label: 'One uppercase letter', regex: /[A-Z]/ },
     { label: 'One lowercase letter', regex: /[a-z]/ },
     { label: 'One number', regex: /\d/ },
-    { label: 'One special character', regex: /[!@#$%^&*(),.?":{}|<>`]/ }
+    { label: 'One symbol (e.g. ! @ # - _)', regex: /[^A-Za-z0-9]/ }
   ]
 
   function update(field, value) {

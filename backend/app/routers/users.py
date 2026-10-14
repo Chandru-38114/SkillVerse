@@ -129,7 +129,8 @@ def upload_avatar(
     bucket = "avatars"
     
     # Generate public URL securely and accurately to bypass Python SDK bugs (missing slashes/extra query params)
-    import os
+    # (No local "import os" here: it made `os` a local name for the whole
+    # function and crashed the os.path.exists() call above.)
     from urllib.parse import urlparse
     env_url = os.getenv("SUPABASE_URL")
     if env_url:
@@ -287,6 +288,8 @@ def get_my_skills(
         schemas.UserSkillOut(
             id=r.id, skill_id=r.skill_id, skill_name=r.skill.name, role=r.role,
             latest_score=r.latest_score, level=r.level, badge=r.badge,
+            sessions_completed=r.sessions_completed or 0,
+            progress_percentage=r.progress_percentage or 0,
         )
         for r in rows
     ]

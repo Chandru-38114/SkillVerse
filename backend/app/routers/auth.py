@@ -97,7 +97,10 @@ def signup(payload: schemas.UserCreate, db: Session = Depends(get_db)):
         "mobile_number": mobile_val,
         "hashed_password": auth.hash_password(payload.password),
         "college": payload.college,
-        "country": payload.country or ""
+        "country": payload.country or "",
+        "dob": payload.dob or None,
+        "gender": payload.gender or None,
+        "bio": payload.bio or "",
     }
     signup_token = auth.create_encrypted_token(signup_data)
     
@@ -138,6 +141,9 @@ def verify_google_signup(payload: schemas.GoogleSignupVerify, db: Session = Depe
             hashed_password=signup_data["hashed_password"],
             college=signup_data["college"],
             country=signup_data["country"],
+            dob=signup_data.get("dob"),
+            gender=signup_data.get("gender"),
+            bio=signup_data.get("bio", ""),
             is_email_verified=True,
             is_mobile_verified=False
         )
@@ -245,7 +251,10 @@ def complete_google(payload: schemas.GoogleOnboardingComplete, db: Session = Dep
         raise HTTPException(status_code=400, detail=str(e))
         
     mobile_val = payload.mobile_number.strip() if payload.mobile_number and payload.mobile_number.strip() != "" else None
-    
+    # mobile_number is unique in the database: say so instead of crashing (500).
+    if mobile_val and db.query(models.User).filter(models.User.mobile_number == mobile_val).first():
+        raise HTTPException(status_code=400, detail="Mobile number already registered")
+
     user = models.User(
         name=payload.name,
         email=email,

@@ -11,14 +11,18 @@ class UserCreate(BaseModel):
     password: str
     confirm_password: str
     country: Optional[str] = ""
+    # Collected on the signup form (they used to be silently dropped).
+    dob: Optional[str] = None
+    gender: Optional[str] = None
+    bio: Optional[str] = ""
 
     @model_validator(mode='after')
     def check_passwords_match(self):
         if self.password != self.confirm_password:
             raise ValueError('Passwords do not match')
         pw = self.password
-        if len(pw) < 6 or not re.search(r'[A-Z]', pw) or not re.search(r'[a-z]', pw) or not re.search(r'[0-9]', pw) or not re.search(r'[^a-zA-Z0-9]', pw):
-            raise ValueError('Password must contain at least 6 characters, one uppercase letter, one lowercase letter, one number, and one special character.')
+        if len(pw) < 8 or not re.search(r'[A-Z]', pw) or not re.search(r'[a-z]', pw) or not re.search(r'[0-9]', pw) or not re.search(r'[^a-zA-Z0-9]', pw):
+            raise ValueError('Password must contain at least 8 characters, one uppercase letter, one lowercase letter, one number, and one special character.')
         return self
 
 from pydantic import field_validator
@@ -64,8 +68,8 @@ class ResetPassword(BaseModel):
     @field_validator('new_password')
     @classmethod
     def validate_strength(cls, v: str) -> str:
-        if len(v) < 6 or not re.search(r'[A-Z]', v) or not re.search(r'[a-z]', v) or not re.search(r'[0-9]', v) or not re.search(r'[^a-zA-Z0-9]', v):
-            raise ValueError('Password must contain at least 6 characters, one uppercase letter, one lowercase letter, one number, and one special character.')
+        if len(v) < 8 or not re.search(r'[A-Z]', v) or not re.search(r'[a-z]', v) or not re.search(r'[0-9]', v) or not re.search(r'[^a-zA-Z0-9]', v):
+            raise ValueError('Password must contain at least 8 characters, one uppercase letter, one lowercase letter, one number, and one special character.')
         return v
 
 class UserOut(BaseModel):
@@ -131,8 +135,8 @@ class GoogleOnboardingComplete(BaseModel):
         if self.password != self.confirm_password:
             raise ValueError('Passwords do not match')
         pw = self.password
-        if len(pw) < 6 or not re.search(r'[A-Z]', pw) or not re.search(r'[a-z]', pw) or not re.search(r'[0-9]', pw) or not re.search(r'[^a-zA-Z0-9]', pw):
-            raise ValueError('Password must contain at least 6 characters, one uppercase letter, one lowercase letter, one number, and one special character.')
+        if len(pw) < 8 or not re.search(r'[A-Z]', pw) or not re.search(r'[a-z]', pw) or not re.search(r'[0-9]', pw) or not re.search(r'[^a-zA-Z0-9]', pw):
+            raise ValueError('Password must contain at least 8 characters, one uppercase letter, one lowercase letter, one number, and one special character.')
         return self
 
 
@@ -144,6 +148,9 @@ class UserSkillOut(BaseModel):
     latest_score: Optional[float]
     level: str
     badge: Optional[str]
+    # Used by the Profile page ("Sessions done", progress bars).
+    sessions_completed: int = 0
+    progress_percentage: int = 0
 
     class Config:
         from_attributes = True
