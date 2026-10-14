@@ -1,3 +1,4 @@
+import datetime
 import unittest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -216,7 +217,8 @@ class TestExchangeGroupsAndCycles(unittest.TestCase):
             session_date="2026-10-12",
             start_time="10:00",
             end_time="11:00",
-            status="scheduled"
+            status="scheduled",
+            started_at=datetime.datetime(2026, 10, 12, 10, 0),  # participants joined the room
         )
         self.db.add(sess)
         self.db.commit()
@@ -276,7 +278,8 @@ class TestExchangeGroupsAndCycles(unittest.TestCase):
             session_date="2026-10-12",
             start_time="10:00",
             end_time="11:00",
-            status="scheduled"
+            status="scheduled",
+            started_at=datetime.datetime(2026, 10, 12, 10, 0),  # participants joined the room
         )
         self.db.add(sess)
         self.db.commit()

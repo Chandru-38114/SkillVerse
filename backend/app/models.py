@@ -252,8 +252,11 @@ class Session(Base):
     scheduled_start = Column(DateTime(timezone=True), nullable=True)
     scheduled_end = Column(DateTime(timezone=True), nullable=True)
 
-    # scheduled → completed | cancelled
+    # scheduled → completed | cancelled. A scheduled session whose end time
+    # passed with started_at still NULL was missed (nobody joined).
     status = Column(String, default="scheduled", nullable=False)
+    # Set the first time a participant connects to the Learning Arena.
+    started_at = Column(DateTime(timezone=True), nullable=True)
     notes  = Column(Text, nullable=True)            # optional notes / agenda
 
     created_at = Column(DateTime, default=utc_now)

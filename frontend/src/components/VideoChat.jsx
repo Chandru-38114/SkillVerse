@@ -349,7 +349,12 @@ export default function VideoChat({ sessionId, children, onLeave }) {
 
         ws.addEventListener('close', (event) => {
           console.log(`[WebRTC-Diag] WebSocket closed with code: ${event.code}`)
-          if (event.code === 1008) {
+          // 4401 not signed in, 4403 not a participant, 4410 session ended
+          // (1008 kept for older backends). These are final — don't reconnect.
+          if (event.code === 4401 || event.code === 4403) {
+            setErrorMsg(event.code === 4401 ? 'Please sign in again to join this session.' : 'You are not a participant of this session.')
+          }
+          if (event.code === 1008 || (event.code >= 4400 && event.code < 4500)) {
             console.log('[WebRTC] Backend terminated session (ended).')
             setStatus('ended')
             setRemoteStream(null)

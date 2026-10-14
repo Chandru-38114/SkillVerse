@@ -102,21 +102,22 @@ def _get_my_session(session_id: int, current_user: models.User, db: DBSession) -
     if not s or current_user.id not in (s.tutor_id, s.learner_id):
         raise HTTPException(status_code=404, detail="Session not found.")
     
-    # Enforce expiration logic on the backend
-    try:
-        end_dt = s.scheduled_end
-        if end_dt and end_dt.tzinfo is None:
-            end_dt = end_dt.replace(tzinfo=dt.timezone.utc)
-        if end_dt and utc_now() >= end_dt:
-            if s.status not in ('completed', 'cancelled'):
-                s.status = 'completed'
-                db.commit()
-            raise HTTPException(status_code=410, detail="This session has expired.")
-    except Exception as e:
-        if isinstance(e, HTTPException):
-            raise e
-        pass # ignore parsing errors from bad data
-        
+    # Expiry rules:
+    # - completed / cancelled sessions are always readable (the post-session
+    #   review page needs them long after the end time);
+    # - a scheduled session past its end that someone joined is completed;
+    # - one that nobody joined was missed: it stays "scheduled" (the UI shows
+    #   it as Missed) and the room can't be entered any more (410).
+    end_dt = s.scheduled_end
+    if end_dt is not None and end_dt.tzinfo is None:
+        end_dt = end_dt.replace(tzinfo=dt.timezone.utc)
+    if s.status == "scheduled" and end_dt is not None and utc_now() >= end_dt:
+        if s.started_at is not None:
+            s.status = "completed"
+            db.commit()
+        else:
+            raise HTTPException(status_code=410, detail="This session was missed — nobody joined before it ended.")
+
     return s
 
 
@@ -355,20 +356,27 @@ async def webrtc_signaling(
     session_id: int,
     token: str = Query(...)
 ):
+    # Accept FIRST, then authenticate and close with a specific code
+    # (CLAUDE.md rule): closing before accept makes the browser see a generic
+    # 1006 and retry forever instead of showing "session ended".
+    await websocket.accept()
     db = SessionLocal()
     try:
         user = _authenticate_ws(token, db)
         if not user:
-            await websocket.close(code=1008)
+            await websocket.close(code=4401, reason="Not signed in")
             return
-        
+
         s = db.query(models.Session).filter(models.Session.id == session_id).first()
         if not s or user.id not in (s.tutor_id, s.learner_id):
-            await websocket.close(code=1008)
+            await websocket.close(code=4403, reason="Not a participant")
             return
-            
+        # Read the id now: committing below expires ORM objects, and the
+        # session is closed before they're used again.
+        user_id = user.id
+
         if s.status != "scheduled":
-            await websocket.close(code=1008)
+            await websocket.close(code=4410, reason="Session Ended")
             return
 
         import asyncio
@@ -376,20 +384,27 @@ async def webrtc_signaling(
         if end_dt and end_dt.tzinfo is None:
             end_dt = end_dt.replace(tzinfo=dt.timezone.utc)
         if end_dt and utc_now() >= end_dt:
-            s.status = "completed"
-            db.commit()
-            await websocket.close(code=1008, reason="Session Ended")
+            # Only a session someone actually joined counts as completed.
+            if s.started_at is not None:
+                s.status = "completed"
+                db.commit()
+            await websocket.close(code=4410, reason="Session Ended")
             return
+
+        # First participant to connect marks the session as started.
+        if s.started_at is None:
+            s.started_at = utc_now()
+            db.commit()
     finally:
         db.close()
 
-    # Connect user
-    await webrtc_manager.connect(session_id, user.id, websocket)
+    # Connect user (already accepted above)
+    await webrtc_manager.connect(session_id, user_id, websocket, accept=False)
 
     # Notify peer that user joined
-    await webrtc_manager.send_to_peer(session_id, user.id, {
+    await webrtc_manager.send_to_peer(session_id, user_id, {
         "type": "peer_joined",
-        "user_id": user.id
+        "user_id": user_id
     })
 
     async def enforce_end():
@@ -401,13 +416,14 @@ async def webrtc_signaling(
                 db_end = SessionLocal()
                 try:
                     s_end = db_end.query(models.Session).filter(models.Session.id == session_id).first()
-                    if s_end and s_end.status != "completed":
+                    # Never turn a cancelled session into a completed one.
+                    if s_end and s_end.status == "scheduled":
                         s_end.status = "completed"
                         db_end.commit()
                 finally:
                     db_end.close()
                 try:
-                    await websocket.close(code=1008, reason="Session Ended")
+                    await websocket.close(code=4410, reason="Session Ended")
                 except Exception:
                     pass
                 break
@@ -421,14 +437,14 @@ async def webrtc_signaling(
             if data.get("type") == "ping":
                 continue
             # For WebRTC, just relay to the other participant
-            await webrtc_manager.send_to_peer(session_id, user.id, data)
+            await webrtc_manager.send_to_peer(session_id, user_id, data)
     except WebSocketDisconnect:
         pass
     finally:
         enforcer.cancel()
-        webrtc_manager.disconnect(session_id, user.id)
+        webrtc_manager.disconnect(session_id, user_id)
         # Try to notify peer if still possible
-        asyncio.create_task(webrtc_manager.send_to_peer(session_id, user.id, {
+        asyncio.create_task(webrtc_manager.send_to_peer(session_id, user_id, {
             "type": "peer_disconnected",
-            "userId": user.id
+            "userId": user_id
         }))

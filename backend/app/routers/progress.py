@@ -290,7 +290,16 @@ def complete_session(session_id: int, db: Session = Depends(get_db), current_use
         
     if current_user.id not in [sess.tutor_id, sess.learner_id]:
         raise HTTPException(status_code=403, detail="Not authorized")
-        
+
+    # Only a session that actually took place can be completed: not a
+    # cancelled one, and not one nobody joined (started_at is set when a
+    # participant enters the Learning Arena). Older completed sessions from
+    # before started_at existed are still accepted.
+    if sess.status == "cancelled":
+        raise HTTPException(status_code=400, detail="This session was cancelled.")
+    if sess.started_at is None and sess.status != "completed":
+        raise HTTPException(status_code=400, detail="Join the session in the Learning Arena before completing it.")
+
     prog = db.query(models.SessionProgress).filter(
         models.SessionProgress.session_id == session_id,
         models.SessionProgress.user_id == current_user.id

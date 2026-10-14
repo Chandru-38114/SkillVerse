@@ -50,8 +50,9 @@ class WebRTCManager:
         # session_id -> { user_id -> WebSocket }
         self.rooms: Dict[int, Dict[int, WebSocket]] = {}
 
-    async def connect(self, session_id: int, user_id: int, websocket: WebSocket) -> None:
-        await websocket.accept()
+    async def connect(self, session_id: int, user_id: int, websocket: WebSocket, accept: bool = True) -> None:
+        if accept:
+            await websocket.accept()
         if session_id not in self.rooms:
             self.rooms[session_id] = {}
         self.rooms[session_id][user_id] = websocket
@@ -82,4 +83,4 @@ class WebRTCManager:
             del self.rooms[session_id]
 
 
-webrtc_manager = WebRTCManager()
+webrtc_manager = WebRTCManager()

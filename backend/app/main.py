@@ -46,7 +46,7 @@ async def lifespan(app: FastAPI):
             conn_reqs_cols = set(c['name'] for c in inspector.get_columns('connection_requests')) if inspector.has_table('connection_requests') else set()
 
             all_columns_present = (
-                {'scheduled_start', 'scheduled_end'}.issubset(sessions_cols) and
+                {'scheduled_start', 'scheduled_end', 'started_at'}.issubset(sessions_cols) and
                 {'dob', 'gender'}.issubset(users_cols) and
                 {'session_id'}.issubset(reviews_cols) and
                 {'semantic_summary', 'next_session_plan'}.issubset(session_progress_cols) and
@@ -111,6 +111,16 @@ async def lifespan(app: FastAPI):
                             print("[startup] Added scheduled_start and scheduled_end (DATETIME).")
                         except Exception as e2:
                             print(f"[startup] Failed to add scheduled_start/end: {e2}")
+
+                if 'started_at' not in sessions_cols:
+                    for col_type in ("TIMESTAMP WITH TIME ZONE", "DATETIME"):
+                        try:
+                            with conn.begin():
+                                conn.execute(text(f"ALTER TABLE sessions ADD COLUMN started_at {col_type};"))
+                            print(f"[startup] Added sessions.started_at ({col_type}).")
+                            break
+                        except Exception as e:
+                            print(f"[startup] Could not add sessions.started_at as {col_type}: {e}")
 
                 try:
                     with conn.begin():
