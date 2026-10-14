@@ -8,7 +8,6 @@ from ..services.badge_service import (
     TEACHER_BADGES,
     check_and_award_teacher_badges,
     get_user_earned_badges,
-    award_badges_retroactively,
 )
 
 router = APIRouter(prefix="/badges", tags=["badges"])
@@ -37,6 +36,7 @@ def get_my_teacher_badges(
 @router.get("/user/{user_id}", response_model=List[schemas.TeacherBadgeOut])
 def get_user_teacher_badges(
     user_id: int,
+    current_user: models.User = Depends(auth.get_current_user),  # signed-in users only
     db: Session = Depends(get_db),
 ):
     """
@@ -49,16 +49,6 @@ def get_user_teacher_badges(
     return check_and_award_teacher_badges(db, user_id)
 
 
-@router.post("/retroactive")
-def trigger_retroactive_awards(
-    db: Session = Depends(get_db),
-):
-    """
-    Evaluates and awards computable badges retroactively across all existing users.
-    """
-    awarded = award_badges_retroactively(db)
-    return {
-        "status": "success",
-        "message": f"Evaluated badges across {len(awarded)} qualified users.",
-        "awarded": awarded,
-    }
+# The old POST /badges/retroactive had no login check, so anyone on the
+# internet could make the server re-evaluate every user. It is now a script:
+#   python scripts/award_badges.py
