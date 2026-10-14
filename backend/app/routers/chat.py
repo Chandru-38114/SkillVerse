@@ -153,8 +153,20 @@ def download_chat_file(
     _authorize(db, request_id, current_user.id)
     if bucket not in ["chat_audio", "chat_files"]:
         raise HTTPException(status_code=400, detail="Invalid bucket")
-    if not filename.startswith(f"req_{request_id}_"):
+    # Files are named req_<request id>_... . A conversation shows messages from
+    # every request between the same two people, so the file may belong to an
+    # older (possibly completed) request of the pair: allow it if the caller
+    # is a participant of THAT request, not only of the conversation's main one.
+    import re as _re
+    m = _re.match(r"req_(\d+)_", filename)
+    if not m:
         raise HTTPException(status_code=403, detail="Unauthorized access to this file")
+    file_request_id = int(m.group(1))
+    if file_request_id != request_id:
+        file_req = db.query(models.ConnectionRequest).filter(models.ConnectionRequest.id == file_request_id).first()
+        if (not file_req or current_user.id not in (file_req.from_user_id, file_req.to_user_id)
+                or file_req.status not in ("accepted", "completed")):
+            raise HTTPException(status_code=403, detail="Unauthorized access to this file")
 
     from ..supabase_client import SUPABASE_URL, SUPABASE_KEY
     if not SUPABASE_URL or not SUPABASE_KEY:

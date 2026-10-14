@@ -279,7 +279,10 @@ export default function MessageBubble({
               <div className="mnu" style={{ top: 0, ...(isMe ? { right: '100%', marginRight: 6 } : { left: '100%', marginLeft: 6 }) }}>
                 <button type="button" onClick={() => { onReply(m); setMenuOpen(false) }}>↩ Reply</button>
                 <button type="button" onClick={() => { onCopy(m.content); setMenuOpen(false) }}>⧉ Copy</button>
-                <button type="button" onClick={() => { onForward(m); setMenuOpen(false) }}>↪ Forward</button>
+                {/* Forwarding only copies text, so it's hidden for files and voice notes */}
+                {!isAttachment && (
+                  <button type="button" onClick={() => { onForward(m); setMenuOpen(false) }}>↪ Forward</button>
+                )}
                 <hr />
                 <button type="button" onClick={() => { onDeleteForMe(m.id); setMenuOpen(false) }}>🗑 Delete for me</button>
                 {isMe && (
