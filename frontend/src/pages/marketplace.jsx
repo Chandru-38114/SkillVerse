@@ -783,12 +783,20 @@ function RequestControl({ rel, teacher, targetSkill, form, displaySkills, onForm
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
           <span className="pill" style={{ background: '#D6F3EA', height: 36, fontSize: 13 }}>✓ Already Connected</span>
           {rel.request_id && (
-            <Link to={`/chat/${rel.request_id}`} className="btn btn-s" style={{ minHeight: 44 }}>Open Chat →</Link>
+            <Link to={`/messages?request_id=${rel.request_id}`} className="btn btn-s" style={{ minHeight: 44 }}>Open Chat →</Link>
           )}
         </div>
       ) : rel.status === 'pending' ? (
         <div style={{ minHeight: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, border: '2px dashed #29251F', borderRadius: 10, background: '#FBEFC4', fontWeight: 800 }}>
           <span aria-hidden="true">◷</span>Request Pending
+        </div>
+      ) : isTeachingThem ? (
+        // A connection request always makes the SENDER the learner. Sending
+        // one for "I want to teach them" made the other person the tutor, so
+        // offers to teach aren't sent as requests (proper offer flow: later).
+        <div style={{ padding: '12px 14px', border: '2px dashed #29251F', borderRadius: 10, background: '#FBEFC4', fontWeight: 700, fontSize: 14, lineHeight: 1.45 }}>
+          {(teacher.name || 'They').split(' ')[0]} wants to learn {targetSkill}. Learners send the request,
+          so they'll find you under Discover → I Want to Learn. Pick a skill you want to learn from them to connect now.
         </div>
       ) : (
         <>
