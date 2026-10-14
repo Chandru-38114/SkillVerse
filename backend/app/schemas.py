@@ -207,6 +207,8 @@ class MarketplaceUser(BaseModel):
     user_id: int
     name: str
     college: str
+    bio: Optional[str] = None
+    profile_picture_url: Optional[str] = None
     teaching_skills: List[SkillBadgeInfo]
     learning_skills: List[SkillBadgeInfo]
     match_context: Optional[str] = None
@@ -246,6 +248,9 @@ class ConnectionRequestOut(BaseModel):
     learner_goals: Optional[str] = None
     learner_can_teach: Optional[str] = None
     learner_teach_proficiency: Optional[str] = None
+    # Shown on request cards (they used to always fall back to an initial).
+    from_user_avatar: Optional[str] = None
+    to_user_avatar: Optional[str] = None
 
     class Config:
         from_attributes = True

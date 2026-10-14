@@ -188,10 +188,18 @@ export default function Marketplace() {
 
     setSubmitting(true)
     try {
+      // Empty optional fields are sent as null so the Requests page only shows
+      // the "They want to learn / They can teach" panel when there is content.
+      const opt = (v) => (v && String(v).trim()) || null
       await api.sendRequest({
         to_user_id: teacher.user_id,
         skill_name: skillName,
-        message: form.message
+        message: form.message,
+        learner_current_level: opt(form.learner_current_level),
+        learner_topics: opt(form.learner_topics),
+        learner_goals: opt(form.learner_goals),
+        learner_can_teach: opt(form.learner_can_teach),
+        learner_teach_proficiency: opt(form.learner_can_teach) ? opt(form.learner_teach_proficiency) : null,
       })
 
       setStatusMap(prev => ({ ...prev, [`${teacher.user_id}-${skillName}`]: { status: 'pending' } }))
@@ -808,6 +816,25 @@ function RequestControl({ rel, teacher, targetSkill, form, displaySkills, onForm
             onChange={(e) => onFormChange('message', e.target.value)}
             disabled={displaySkills.length === 0}
           />
+          {/* Optional learning details — shown to the tutor on the Requests page */}
+          <details style={{ border: '2px solid #29251F', borderRadius: 10, background: '#FFFDF8', padding: '8px 12px' }}>
+            <summary style={{ cursor: 'pointer', fontWeight: 800, fontSize: 14 }}>Add learning details (optional)</summary>
+            <div style={{ display: 'grid', gap: 8, marginTop: 10 }}>
+              <select className="in" aria-label="My current level" value={form.learner_current_level} onChange={(e) => onFormChange('learner_current_level', e.target.value)}>
+                <option value="">My current level…</option>
+                <option>Beginner</option><option>Intermediate</option><option>Advanced</option>
+              </select>
+              <input className="in" aria-label="Topics I want to improve" placeholder="Topics to improve, e.g. Loops, Recursion" value={form.learner_topics} onChange={(e) => onFormChange('learner_topics', e.target.value)} />
+              <input className="in" aria-label="My goal" placeholder="My goal, e.g. crack placement coding rounds" value={form.learner_goals} onChange={(e) => onFormChange('learner_goals', e.target.value)} />
+              <input className="in" aria-label="Skills I can teach in return" placeholder="I can teach in return, e.g. Java" value={form.learner_can_teach} onChange={(e) => onFormChange('learner_can_teach', e.target.value)} />
+              {form.learner_can_teach.trim() && (
+                <select className="in" aria-label="My level in that skill" value={form.learner_teach_proficiency} onChange={(e) => onFormChange('learner_teach_proficiency', e.target.value)}>
+                  <option value="">My level in that skill…</option>
+                  <option>Beginner</option><option>Intermediate</option><option>Advanced</option>
+                </select>
+              )}
+            </div>
+          </details>
           <button
             type="button"
             onClick={onSend}

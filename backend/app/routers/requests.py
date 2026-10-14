@@ -27,6 +27,8 @@ def _to_out(r: models.ConnectionRequest) -> schemas.ConnectionRequestOut:
         learner_goals=r.learner_goals,
         learner_can_teach=r.learner_can_teach,
         learner_teach_proficiency=r.learner_teach_proficiency,
+        from_user_avatar=getattr(r.from_user, "profile_picture_url", None) if r.from_user else None,
+        to_user_avatar=getattr(r.to_user, "profile_picture_url", None) if r.to_user else None,
     )
 
 

@@ -69,6 +69,8 @@ def search_partners(
                 "user_id": us.user.id,
                 "name": us.user.name,
                 "college": us.user.college,
+                "bio": us.user.bio or None,
+                "profile_picture_url": getattr(us.user, "profile_picture_url", None),
                 "teaching_skills": [],
                 "learning_skills": [],
                 "match_score": 0,

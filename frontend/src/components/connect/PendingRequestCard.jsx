@@ -31,7 +31,7 @@ export default function PendingRequestCard({ req, onAccept, onDecline }) {
       display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 8,
     }}>
       <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-        <span className="av" style={{ width: 40, height: 40, fontSize: 16, background: req.from_user_avatar ? `#FFFDF8 url(${req.from_user_avatar})` : '#E6DDF6' }}>
+        <span className="av" style={{ width: 40, height: 40, fontSize: 16, background: req.from_user_avatar ? `#FFFDF8 url(${req.from_user_avatar}) center / cover no-repeat` : '#E6DDF6' }}>
           {req.from_user_avatar ? '' : (req.from_user_name || '?')[0]}
         </span>
         <div style={{ minWidth: 0 }}>
