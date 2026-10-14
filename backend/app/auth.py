@@ -15,7 +15,17 @@ from . import models
 # random value (e.g.  openssl rand -hex 32).  The fallback below is only for
 # local development; starting the server without a real secret in production
 # is a critical security risk.
-SECRET_KEY = os.environ.get("SECRET_KEY", "dev-secret-change-me-before-you-launch")
+_DEV_SECRET = "dev-secret-change-me-before-you-launch"
+SECRET_KEY = os.environ.get("SECRET_KEY", _DEV_SECRET)
+if SECRET_KEY == _DEV_SECRET and not os.getenv("DATABASE_URL", "sqlite").startswith("sqlite"):
+    # Production database but the public dev secret: anyone could forge a
+    # login token for any user. Shout in the Render logs (not crashing, so the
+    # live site keeps running until the variable is set).
+    import logging as _logging
+    _logging.getLogger("skillverse.security").critical(
+        "SECRET_KEY is not set on a production database — set it on Render NOW "
+        "(e.g. output of `openssl rand -hex 32`). Login tokens can be forged until then."
+    )
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # 7 days
 

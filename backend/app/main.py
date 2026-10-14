@@ -388,22 +388,28 @@ print(f"[CORS] Allowed origins ({len(origins)}): {origins}")
 from fastapi.responses import JSONResponse
 from fastapi.requests import Request
 import traceback
+import re as _re
+_ALLOWED_ORIGIN_RE = _re.compile(r"https://.*\.vercel\.app|https://whimsical-raindrop-f3df51\.netlify\.app")
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     print(f"Unhandled Exception: {exc}")
     traceback.print_exc()
     
-    # We must explicitly add CORS headers here because FastAPI's default 500 handler strips them
+    # We must explicitly add CORS headers here because FastAPI's default 500
+    # handler strips them — but only for origins we actually allow.
     origin = request.headers.get("origin")
     headers = {}
-    if origin:
+    if origin and (origin in origins or _ALLOWED_ORIGIN_RE.fullmatch(origin)):
         headers["access-control-allow-origin"] = origin
         headers["access-control-allow-credentials"] = "true"
-        
+        headers["vary"] = "Origin"
+
+    # Never send exception text to the browser: it can contain SQL, table
+    # names and user data. Full details are in the server log above.
     return JSONResponse(
         status_code=500,
-        content={"detail": f"Internal Server Error: {str(exc)}"},
+        content={"detail": "Internal Server Error. Please try again."},
         headers=headers
     )
 
