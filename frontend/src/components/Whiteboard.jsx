@@ -33,6 +33,9 @@ export default function Whiteboard({ sessionId }) {
   const wsRef = useRef(null);
   const sharedWs = useContext(SessionWebSocketContext);
   const isRemoteUpdate = useRef(false);
+  // Don't auto-save until the saved board has been loaded — otherwise the
+  // empty starting board can overwrite the real one on a slow connection.
+  const boardLoadedRef = useRef(false);
 
   // Fetch initial board state
   useEffect(() => {
@@ -48,6 +51,8 @@ export default function Whiteboard({ sessionId }) {
         }
       } catch (err) {
         console.error("Failed to load whiteboard", err);
+      } finally {
+        boardLoadedRef.current = true;
       }
     }
     loadBoard();
@@ -80,16 +85,24 @@ export default function Whiteboard({ sessionId }) {
         console.error(err);
       }
     };
-    
+    // Keep the label in sync with the socket — it used to stay on
+    // "Connecting..." forever because it was only checked once.
+    const onOpen = () => setSyncStatus('🟢 Connected');
+    const onClose = () => setSyncStatus('🔴 Disconnected');
     sharedWs.addEventListener('message', handleMessage);
-    
+    sharedWs.addEventListener('open', onOpen);
+    sharedWs.addEventListener('close', onClose);
+
     return () => {
       sharedWs.removeEventListener('message', handleMessage);
+      sharedWs.removeEventListener('open', onOpen);
+      sharedWs.removeEventListener('close', onClose);
     };
   }, [sharedWs]);
 
   // Debounced Auto-Save
   useEffect(() => {
+    if (!boardLoadedRef.current) return;
     if (isRemoteUpdate.current) {
       isRemoteUpdate.current = false;
       return; // don't save remote updates immediately, they'll be saved by the other peer or on next local action

@@ -18,6 +18,7 @@ from ..services.code_grader import grade_coding_answer
 from ..services.learning_plan import build_study_plan
 from ..utils.timezone import utc_now, enforce_utc_iso
 from ..utils.levels import score_to_level
+from ..utils.progress_utils import compute_progress_percentage
 from ..services.demand_service import notify_requesters_on_teacher_level_qualified
 from .users import get_or_create_skill
 
@@ -280,6 +281,7 @@ def submit_assessment(
     user_skill.level = level
     user_skill.badge = badge
     user_skill.role = payload.role
+    user_skill.progress_percentage = compute_progress_percentage(user_skill.sessions_completed or 0, badge)
 
     # Award points for completing a certification ONLY if they did not already have a badge for this skill
     if badge and not had_badge_before:

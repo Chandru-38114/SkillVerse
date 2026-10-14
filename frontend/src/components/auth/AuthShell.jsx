@@ -261,7 +261,19 @@ const GLogo = () => (
  * `width` must be >= the rendered width of this button, or part of it will not
  * be clickable. Google caps it at 400px.
  */
+const GOOGLE_CONFIGURED = Boolean((import.meta.env.VITE_GOOGLE_CLIENT_ID || '').trim())
+
 export function GoogleButton({ onSuccess, onError, label = 'Continue with Google', width = 380, disabled = false }) {
+  // Without a client id Google answers every click with "Error 400" — say so
+  // plainly instead of sending the user to a broken Google page.
+  if (!GOOGLE_CONFIGURED) {
+    return (
+      <div className="gbtn" role="note" style={{ width: '100%', opacity: 0.6, cursor: 'not-allowed', flexDirection: 'column', gap: 2 }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}><GLogo />{label}</span>
+        <span style={{ fontSize: 12, fontWeight: 600 }}>Google sign-in is not set up: add VITE_GOOGLE_CLIENT_ID to frontend/.env and restart.</span>
+      </div>
+    )
+  }
   return (
     <div
       className="gbtn"

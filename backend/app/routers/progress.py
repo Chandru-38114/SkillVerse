@@ -13,7 +13,7 @@ from ..database import get_db
 from ..services.summarization import generate_session_summary
 from ..services.question_generator import GenerationError, SKILL_TOPICS, canonical_skill, generate_session_quiz, sanitize
 from ..services.learning_plan import build_next_session_plan
-from ..utils.progress_utils import compute_skill_stage
+from ..utils.progress_utils import compute_skill_stage, compute_progress_percentage
 from .assessments import level_for_score
 
 router = APIRouter(prefix="/progress", tags=["progress"])
@@ -345,9 +345,11 @@ def complete_session(session_id: int, db: Session = Depends(get_db), current_use
     prog.progress_percentage_before = user_skill.progress_percentage
     prog.duration_minutes = duration
     
-    # We no longer invent progress percentage.
-    user_skill.sessions_completed += 1
-    user_skill.total_learning_minutes += duration
+    user_skill.sessions_completed = (user_skill.sessions_completed or 0) + 1
+    user_skill.total_learning_minutes = (user_skill.total_learning_minutes or 0) + duration
+    # Derived from the stage rules (5 sessions -> final challenge, badge -> 100%)
+    # so dashboard/profile/review bars stop showing 0% after real sessions.
+    user_skill.progress_percentage = compute_progress_percentage(user_skill.sessions_completed, user_skill.badge)
     
     prog.level_after = user_skill.level
     prog.progress_percentage_after = user_skill.progress_percentage

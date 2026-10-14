@@ -22,6 +22,7 @@ export default function Compiler({ sessionId }) {
   const [remoteRunIndicator, setRemoteRunIndicator] = useState(null);
 
   const versionRef = useRef(0);
+  const myIdRef = useRef(user?.id);
   const execTimestampRef = useRef(0);
 
   // 1. Initial Load
@@ -55,8 +56,13 @@ export default function Compiler({ sessionId }) {
       try {
         const msg = JSON.parse(event.data);
         if (msg.type === 'update_code' && msg.code !== undefined) {
-          if (msg.version && msg.version > versionRef.current) {
-            versionRef.current = msg.version;
+          // Lamport-style ordering: newer version wins; on a tie the higher
+          // user id wins so both sides settle on the same text.
+          const v = Number(msg.version) || 0;
+          const newer = v > versionRef.current ||
+            (v === versionRef.current && Number(msg.user_id) > Number(myIdRef.current));
+          if (newer) {
+            versionRef.current = v;
             isRemoteUpdate.current = true;
             setCode(msg.code);
           }
@@ -78,19 +84,49 @@ export default function Compiler({ sessionId }) {
       }
     };
 
+    // Keep the label in sync with the socket — it used to stay on
+    // "Connecting..." forever because it was only checked once.
+    const onOpen = () => setSyncStatus('🟢 Connected');
+    const onClose = () => setSyncStatus('🔴 Disconnected');
     sharedWs.addEventListener('message', handleMessage);
+    sharedWs.addEventListener('open', onOpen);
+    sharedWs.addEventListener('close', onClose);
 
     return () => {
       sharedWs.removeEventListener('message', handleMessage);
+      sharedWs.removeEventListener('open', onOpen);
+      sharedWs.removeEventListener('close', onClose);
     };
   }, [sharedWs]);
 
+  // Persist the code (debounced) so a refresh or late joiner doesn't lose it.
+  const saveTimerRef = useRef(null);
+  const scheduleSave = (newCode) => {
+    clearTimeout(saveTimerRef.current);
+    setSaveStatus('Saving…');
+    saveTimerRef.current = setTimeout(async () => {
+      try {
+        await api.saveCompilerState(sessionId, newCode);
+        setSaveStatus('Saved');
+        setTimeout(() => setSaveStatus(''), 2000);
+      } catch (err) {
+        console.error('Failed to save compiler state', err);
+        setSaveStatus('Not saved');
+      }
+    }, 1000);
+  };
+  useEffect(() => () => clearTimeout(saveTimerRef.current), []);
+
   const broadcastCode = (newCode) => {
+    // Every message must carry a version, otherwise the receiver ignores it
+    // and the partner's editor never updates.
+    // Hybrid clock: always moves forward, survives a page refresh (DB version
+    // is small) and tolerates small clock differences between the two laptops.
+    versionRef.current = Math.max(versionRef.current + 1, Date.now());
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify({ type: 'update_code', code: newCode }));
-      setSaveStatus('Saved');
-      setTimeout(() => setSaveStatus(''), 2000);
+      wsRef.current.send(JSON.stringify({ type: 'update_code', code: newCode, version: versionRef.current, user_id: user?.id }));
     }
+    scheduleSave(newCode);
   };
 
   const handleCodeChange = (e) => {

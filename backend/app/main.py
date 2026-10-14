@@ -17,6 +17,7 @@ logging.basicConfig(
 )
 
 from .database import Base, engine
+from . import models  # used by the startup table checks below
 from .routers import (
     auth, users, assessments, marketplace, requests, chat, reviews,
     sessions, compiler, whiteboard, materials, progress, certificates,

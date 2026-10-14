@@ -304,10 +304,22 @@ def get_inbox(
         models.Session.request_id.in_(req_ids),
         models.Session.status == "scheduled"
     ).all()
+    import datetime as _dt
+    from ..utils.timezone import utc_now as _utc_now
+    _now = _utc_now()
+    # Earliest upcoming one first; skip sessions that already ended without
+    # anyone joining, otherwise the chat shows "Join" for an expired session
+    # and the Schedule button never comes back.
+    def _aware(d):
+        return d.replace(tzinfo=_dt.timezone.utc) if (d is not None and d.tzinfo is None) else d
+    sessions = sorted(sessions, key=lambda x: _aware(x.scheduled_start) or _now)
     for s in sessions:
+        end_dt = _aware(s.scheduled_end)
+        if end_dt is not None and end_dt <= _now:
+            continue
         other_u_id = req_to_other_user[s.request_id]
         if other_u_id not in sessions_map_pair:
-            sessions_map_pair[other_u_id] = s # just take the first scheduled session
+            sessions_map_pair[other_u_id] = s
 
     # Hidden messages subquery
     hidden_subq = db.query(models.MessageUserState.message_id).filter(
@@ -377,7 +389,8 @@ def get_inbox(
             session_date=session.session_date if session else None,
             session_time=session.start_time if session else None,
             scheduled_start=session.scheduled_start if session else None,
-            scheduled_end=session.scheduled_end if session else None
+            scheduled_end=session.scheduled_end if session else None,
+            request_ids=pair_req_ids.get(other_user_id, [req.id]),
         ))
 
     # Sort by latest message time descending

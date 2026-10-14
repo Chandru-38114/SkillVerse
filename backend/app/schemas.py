@@ -21,10 +21,30 @@ class UserCreate(BaseModel):
             raise ValueError('Password must contain at least 6 characters, one uppercase letter, one lowercase letter, one number, and one special character.')
         return self
 
+from pydantic import field_validator
+
+
+def _as_utc(v):
+    """SQLite returns naive datetimes; the backend stores UTC. Mark them as
+    UTC so browsers don't read them as local (IST) time — otherwise timers
+    show "Ends in 00:00" and sessions look expired 5h30m early."""
+    if isinstance(v, dt.datetime) and v.tzinfo is None:
+        return v.replace(tzinfo=dt.timezone.utc)
+    return v
+
+
+def _normalize_email(v):
+    # Signup stores emails as strip().lower(); every lookup must match that,
+    # otherwise "Alex@Example.com" can never log in or reset a password.
+    return v.strip().lower() if isinstance(v, str) else v
+
+
 class UserLogin(BaseModel):
     email: Optional[str] = None
     mobile_number: Optional[str] = None
     password: str
+
+    _norm_email = field_validator('email', mode='before')(classmethod(lambda cls, v: _normalize_email(v) or None))
 
 class GoogleAuth(BaseModel):
     credential: str  # The ID token from Google
@@ -32,11 +52,14 @@ class GoogleAuth(BaseModel):
 class ForgotPassword(BaseModel):
     email: EmailStr
 
-from pydantic import field_validator
+    _norm_email = field_validator('email', mode='before')(classmethod(lambda cls, v: _normalize_email(v)))
+
 class ResetPassword(BaseModel):
     email: EmailStr
     otp: str
     new_password: str
+
+    _norm_email = field_validator('email', mode='before')(classmethod(lambda cls, v: _normalize_email(v)))
 
     @field_validator('new_password')
     @classmethod
@@ -261,6 +284,11 @@ class InboxConversationOut(BaseModel):
     session_time: Optional[str] = None
     scheduled_start: Optional[dt.datetime] = None
     scheduled_end: Optional[dt.datetime] = None
+    # Every request id between this pair (the inbox shows one conversation per
+    # person), so links like /messages?request_id=<any of them> resolve.
+    request_ids: List[int] = []
+
+    _utc_times = field_validator('scheduled_start', 'scheduled_end', 'latest_message_time', 'other_last_active')(classmethod(lambda cls, v: _as_utc(v)))
 
 
 class MessageEdit(BaseModel):
@@ -330,7 +358,9 @@ class SessionCreate(BaseModel):
     def ensure_tz_aware(cls, v: dt.datetime) -> dt.datetime:
         if v.tzinfo is None:
             v = v.replace(tzinfo=dt.timezone.utc)
-        return v
+        # Store in UTC: SQLite drops the offset, and the rest of the backend
+        # reads naive values as UTC — an IST value would be 5h30m off.
+        return v.astimezone(dt.timezone.utc)
 
 
 class SessionUpdate(BaseModel):
@@ -346,7 +376,7 @@ class SessionUpdate(BaseModel):
     def ensure_tz_aware(cls, v: Optional[dt.datetime]) -> Optional[dt.datetime]:
         if v and v.tzinfo is None:
             v = v.replace(tzinfo=dt.timezone.utc)
-        return v
+        return v.astimezone(dt.timezone.utc) if v else v
 
 
 class SessionOut(BaseModel):
@@ -367,6 +397,8 @@ class SessionOut(BaseModel):
     request:      Optional[ConnectionRequestOut] = None
     created_at:   dt.datetime
     updated_at:   dt.datetime
+
+    _utc_times = field_validator('scheduled_start', 'scheduled_end', 'created_at', 'updated_at')(classmethod(lambda cls, v: _as_utc(v)))
 
     class Config:
         from_attributes = True

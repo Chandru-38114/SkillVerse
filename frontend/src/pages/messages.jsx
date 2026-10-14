@@ -106,7 +106,9 @@ function ForwardModal({ message, inbox, currentRequestId, onClose, onForward }) 
 export default function Messages() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
-  const urlRequestId = searchParams.get('request_id')
+  // URL params are strings but inbox request ids are numbers — convert, or
+  // links like /messages?request_id=5 never match and stay on "Opening…".
+  const urlRequestId = searchParams.get('request_id') ? Number(searchParams.get('request_id')) : null
   const user = getSessionUser()
   const userId = user ? Number(user.id) : null
 
@@ -602,6 +604,21 @@ export default function Messages() {
   )
 
   const activeConversation = inbox.find(c => c.request_id === selectedRequestId)
+
+  // A link may point at any request between the two people, but the inbox
+  // shows one conversation per person keyed by its main request id. Once the
+  // inbox has loaded, switch to that conversation instead of hanging on
+  // "Opening conversation…".
+  useEffect(() => {
+    if (!selectedRequestId || loadingInbox || activeConversation || globalError) return
+    const owner = inbox.find(c => (c.request_ids || []).includes(selectedRequestId))
+    if (owner) {
+      setSelectedRequestId(owner.request_id)
+    } else {
+      setSelectedRequestId(null)
+      setGlobalError('That conversation is not available yet. Ask your partner to accept the request.')
+    }
+  }, [selectedRequestId, loadingInbox, activeConversation, inbox, globalError])
 
   useEffect(() => {
     if (activeConversation?.request_status === 'completed' && reviewedStatus[selectedRequestId] === undefined) {

@@ -37,6 +37,13 @@ export default function ScheduleModal({ requestId, onClose, onScheduled }) {
     }
   }
 
+  // Clicking the text part of a native date/time box only selects the digits;
+  // the calendar/clock opens only from the small icon, which is easy to miss
+  // (and nearly invisible when the browser is in dark mode). Open the picker
+  // on any click, and force light colours so the icon is always visible.
+  const openPicker = (e) => { try { e.currentTarget.showPicker?.() } catch { /* older browsers: typing still works */ } }
+  const pickerStyle = { colorScheme: 'light', cursor: 'pointer' }
+
   const labelStyle = { display: 'flex', flexDirection: 'column', gap: 6, fontWeight: 700, fontSize: 14 }
 
   return (
@@ -50,17 +57,17 @@ export default function ScheduleModal({ requestId, onClose, onScheduled }) {
         <div style={{ padding: 22, display: 'flex', flexDirection: 'column', gap: 16 }}>
           <label style={labelStyle}>
             Date
-            <input className="in" type="date" min={today} value={date} onChange={e => setDate(e.target.value)} required />
+            <input className="in" type="date" min={today} value={date} onChange={e => setDate(e.target.value)} onClick={openPicker} style={pickerStyle} required />
           </label>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <label style={labelStyle}>
               Start
-              <input className="in" type="time" value={startTime} onChange={e => setStartTime(e.target.value)} required />
+              <input className="in" type="time" value={startTime} onChange={e => setStartTime(e.target.value)} onClick={openPicker} style={pickerStyle} required />
             </label>
             <label style={labelStyle}>
               End
-              <input className="in" type="time" value={endTime} onChange={e => setEndTime(e.target.value)} required />
+              <input className="in" type="time" value={endTime} onChange={e => setEndTime(e.target.value)} onClick={openPicker} style={pickerStyle} required />
             </label>
           </div>
 

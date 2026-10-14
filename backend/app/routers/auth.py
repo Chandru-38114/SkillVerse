@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import or_
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
+from google.auth import exceptions as google_exceptions
 
 from .. import models, schemas, auth
 from ..database import get_db
@@ -19,6 +20,15 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 raw_google_id = os.getenv("VITE_GOOGLE_CLIENT_ID") or os.getenv("GOOGLE_CLIENT_ID")
 GOOGLE_CLIENT_ID = raw_google_id.strip().strip('"').strip("'") if raw_google_id else None
+
+
+def _verify_google_token(credential, request, client_id):
+    """Verify a Google ID token. If the server cannot reach Google (no
+    internet / blocked), return a clear 503 instead of a crash-style 500."""
+    try:
+        return id_token.verify_oauth2_token(credential, request, client_id)
+    except google_exceptions.TransportError:
+        raise HTTPException(status_code=503, detail="Could not reach Google to verify sign-in. Check the server's internet connection and try again.")
 
 # In-memory rate limiting dictionary for login brute-force protection
 login_attempts = {}
@@ -94,7 +104,7 @@ def verify_google_signup(payload: schemas.GoogleSignupVerify, db: Session = Depe
         raise HTTPException(status_code=400, detail="Signup session expired or invalid. Please sign up again.")
 
     try:
-        idinfo = id_token.verify_oauth2_token(
+        idinfo = _verify_google_token(
             payload.credential, google_requests.Request(), GOOGLE_CLIENT_ID
         )
         google_email = idinfo.get("email")
@@ -177,7 +187,7 @@ def google_auth(payload: schemas.GoogleAuth, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail="Google authentication is not configured on the server")
         
     try:
-        idinfo = id_token.verify_oauth2_token(
+        idinfo = _verify_google_token(
             payload.credential, google_requests.Request(), GOOGLE_CLIENT_ID
         )
         email = idinfo.get("email")

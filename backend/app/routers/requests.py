@@ -185,6 +185,12 @@ def respond_to_request(
     if not req or req.to_user_id != current_user.id:
         raise HTTPException(status_code=404, detail="Request not found")
 
+    # Only a pending request can be answered. Without this, a stale tab could
+    # flip an accepted/completed connection to declined (or re-open a
+    # completed one and award completion points twice).
+    if req.status != "pending":
+        raise HTTPException(status_code=400, detail=f"This request was already {req.status}.")
+
     req.status = "accepted" if accept else "declined"
     db.commit()
     db.refresh(req)

@@ -17,6 +17,7 @@ import requests
 
 
 from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect, Query
+from sqlalchemy import or_
 from sqlalchemy.orm import Session as DBSession
 from ..notification_service import create_notification
 from jose import jwt, JWTError
@@ -153,15 +154,25 @@ def create_session(
             detail=f"Sessions can only be created for accepted requests (current status: {req.status}).",
         )
 
-    # Prevent duplicate active sessions
-    existing_active = (
+    # Prevent duplicate active sessions. A "scheduled" session whose end time
+    # has already passed (nobody joined, so it was never closed) must not block
+    # scheduling a new one.
+    now_utc = utc_now()
+    existing_active = None
+    for s_old in (
         db.query(models.Session)
         .filter(
             models.Session.request_id == payload.request_id,
             models.Session.status == "scheduled",
         )
-        .first()
-    )
+        .all()
+    ):
+        old_end = s_old.scheduled_end
+        if old_end is not None and old_end.tzinfo is None:
+            old_end = old_end.replace(tzinfo=dt.timezone.utc)
+        if old_end is None or old_end > now_utc:
+            existing_active = s_old
+            break
     if existing_active:
         raise HTTPException(
             status_code=409,
@@ -169,7 +180,32 @@ def create_session(
         )
 
     _validate_times(payload.scheduled_start, payload.scheduled_end)
-    
+
+    # Neither person may already have another scheduled session that overlaps
+    # this time (e.g. a tutor booked by two different learners at 5–6 PM).
+    def _utc(d):
+        return d.replace(tzinfo=dt.timezone.utc) if d.tzinfo is None else d.astimezone(dt.timezone.utc)
+    new_start, new_end = _utc(payload.scheduled_start), _utc(payload.scheduled_end)
+    people = (req.from_user_id, req.to_user_id)
+    others = (
+        db.query(models.Session)
+        .filter(
+            models.Session.status == "scheduled",
+            or_(models.Session.tutor_id.in_(people), models.Session.learner_id.in_(people)),
+        )
+        .all()
+    )
+    for other in others:
+        if not other.scheduled_start or not other.scheduled_end:
+            continue
+        if _utc(other.scheduled_start) < new_end and _utc(other.scheduled_end) > new_start:
+            who = "You already have" if current_user.id in (other.tutor_id, other.learner_id) else "Your partner already has"
+            raise HTTPException(
+                status_code=409,
+                detail=f"{who} a session from {_utc(other.scheduled_start).astimezone(IST).strftime('%d %b %I:%M %p')} "
+                       f"to {_utc(other.scheduled_end).astimezone(IST).strftime('%I:%M %p')} IST. Pick a different time.",
+            )
+
     # Store legacy strings based on scheduled_start for backward compatibility until dropped
     ist_start = payload.scheduled_start.astimezone(IST)
     ist_end = payload.scheduled_end.astimezone(IST)

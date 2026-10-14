@@ -18,7 +18,9 @@ function isRealtime(path) {
          path.includes("/sessions/upcoming") ||
          path.includes("/sessions/my") ||
          path.includes("/chat/inbox") ||
-         path.match(/\/chat\/.*\/messages/);
+         path.match(/\/chat\/.*\/messages/) ||
+         path.includes("/compiler/") ||   // shared editor state must never be served stale
+         path.includes("/whiteboard");
 }
 
 function getTTL(path) {
@@ -313,6 +315,7 @@ export const api = {
 
   // Compiler (Session Room)
   getCompilerState: (sessionId) => request(`/compiler/${sessionId}/state`),
+  saveCompilerState: (sessionId, code) => request(`/compiler/${sessionId}/state`, { method: "PUT", body: { code } }),
   runCompiler: (sessionId, code) => request(`/compiler/${sessionId}/run`, { method: "POST", body: { code } }),
   // Exchanges & Circles
   getExchangeSuggestions: () => request("/exchanges/suggestions", { bypassCache: true }),
