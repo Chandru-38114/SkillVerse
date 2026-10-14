@@ -397,7 +397,16 @@ export const api = {
     request(`/community/hackathons/${hackathonId}/complete`, { method: "POST" }),
 };
 
+// The GET cache is keyed by path only, so it must be emptied whenever the
+// signed-in account changes — otherwise the next user sees the previous
+// user's profile, skills and certificates for up to 30 seconds.
+function resetApiCache() {
+  cache.clear();
+  inFlight.clear();
+}
+
 export function saveSession(token, user) {
+  if (token !== localStorage.getItem("skillverse_token")) resetApiCache();
   localStorage.setItem("skillverse_token", token);
   localStorage.setItem("skillverse_user", JSON.stringify(user));
 }
@@ -408,6 +417,7 @@ export function getSessionUser() {
 }
 
 export function clearSession() {
+  resetApiCache();
   localStorage.removeItem("skillverse_token");
   localStorage.removeItem("skillverse_user");
 }
