@@ -32,6 +32,34 @@ def _to_out(r: models.ConnectionRequest) -> schemas.ConnectionRequestOut:
     )
 
 
+def accepted_request_for_leg(db: Session, learner_id: int, teacher_id: int, skill_id: int, message: str) -> models.ConnectionRequest:
+    """Return an ACCEPTED request where learner -> teacher for this skill,
+    reusing an existing pending/accepted one instead of inserting a duplicate
+    (exchanges used to create a second connection when one already existed).
+    Direction matters: the request's to_user is always the tutor."""
+    existing = (
+        db.query(models.ConnectionRequest)
+        .filter(
+            models.ConnectionRequest.from_user_id == learner_id,
+            models.ConnectionRequest.to_user_id == teacher_id,
+            models.ConnectionRequest.skill_id == skill_id,
+            models.ConnectionRequest.status.in_(["pending", "accepted"]),
+        )
+        .order_by(models.ConnectionRequest.created_at.desc())
+        .first()
+    )
+    if existing:
+        existing.status = "accepted"
+        return existing
+    req = models.ConnectionRequest(
+        from_user_id=learner_id, to_user_id=teacher_id, skill_id=skill_id,
+        message=message, status="accepted",
+    )
+    db.add(req)
+    db.flush()
+    return req
+
+
 def _find_active_request(
     db: Session,
     user_a_id: int,
@@ -241,15 +269,10 @@ def respond_to_request(
 
                 if is_eligible_to_teach(t1_lvl, l1_lvl) and is_eligible_to_teach(t2_lvl, l2_lvl):
                     # Create reciprocal connection request
-                    recip_req = models.ConnectionRequest(
-                        from_user_id=req.to_user_id,
-                        to_user_id=req.from_user_id,
-                        skill_id=recip_skill.id,
-                        message=f"Reciprocal exchange for {req.skill.name}",
-                        status="accepted",
+                    recip_req = accepted_request_for_leg(
+                        db, learner_id=req.to_user_id, teacher_id=req.from_user_id,
+                        skill_id=recip_skill.id, message=f"Reciprocal exchange for {req.skill.name}",
                     )
-                    db.add(recip_req)
-                    db.flush()
 
                     # Create exchange group of kind "pair"
                     grp = models.ExchangeGroup(kind="pair", status="active")

@@ -17,6 +17,7 @@ from ..database import get_db
 from ..notification_service import create_notification
 from ..services.cycles import find_cycle_suggestions_for_user
 from ..utils.levels import is_eligible_to_teach
+from .requests import accepted_request_for_leg
 
 router = APIRouter(prefix="/exchanges", tags=["exchanges"])
 
@@ -266,15 +267,10 @@ def respond_to_cycle(
             # Learner requests from Teacher
             skill = db.query(models.Skill).filter(models.Skill.id == leg.skill_id).first()
             skill_name = skill.name if skill else "Skill"
-            req = models.ConnectionRequest(
-                from_user_id=leg.learner_id,
-                to_user_id=leg.teacher_id,
-                skill_id=leg.skill_id,
-                message=f"3-Way Exchange Circle: {skill_name}",
-                status="accepted"
+            req = accepted_request_for_leg(
+                db, learner_id=leg.learner_id, teacher_id=leg.teacher_id,
+                skill_id=leg.skill_id, message=f"3-Way Exchange Circle: {skill_name}",
             )
-            db.add(req)
-            db.flush()
             leg.request_id = req.id
             leg.status = "active"
 
