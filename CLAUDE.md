@@ -15,7 +15,8 @@ Student team project (final year). Keep solutions simple and readable over cleve
 2. Take a proctored assessment in the **Skill Arena** (fullscreen, tab-switch detection,
    3 violations = auto-submit).
 3. The AI scores it: overall score, level, per-topic mastery, weak topics, badge.
-4. Discover ranked peers; send connection requests to several at once.
+4. Discover ranked peers (tutor score = strength + measured learner gains + Bayesian rating)
+   and tutors recommended for your weak topics; send connection requests.
 5. A tutor accepts; both chat in real time and agree what to learn.
 6. They schedule a session and meet in the **Learning Arena**: video, shared whiteboard,
    code compiler, notes, materials.
@@ -120,7 +121,7 @@ Frontend uses `VITE_API_URL`. Never hardcode or print secrets.
 - Commit style: `type(scope): short description`, e.g. `fix(chat): ...`, `feat(skill-arena): ...`.
 
 ## Checks before committing
-- Backend: `python -m pytest backend/tests -q` (75 tests) and `python -m py_compile` on changed files.
+- Backend: `python -m pytest backend/tests -q` (80 tests) and `python -m py_compile` on changed files.
 - Frontend: `npm run build` must succeed.
 - Reuse the shared helpers above instead of copying code (storage, session checks,
   time zones, WebSocket rooms, uploads in api.js).
@@ -151,7 +152,9 @@ Frontend uses `VITE_API_URL`. Never hardcode or print secrets.
   `--apply`. Tests: `backend/tests/test_course_rules.py`.
 
 ## Known gaps / roadmap
-- Post-session reassessment (Feature 1), tutor ranking, knowledge-gap recommendations: not built yet.
+- Built (final round): topic scores (`topic_scores` table), post-session reassessment,
+  teaching impact, knowledge-gap recommendations (`GET /marketplace/recommended`) and tutor
+  ranking — maths in `services/tutor_ranking.py`, tests in `test_reassessment.py` / `test_tutor_ranking.py`.
 - Coding questions ARE auto-graded (`services/code_grader.py`); fallback question banks exist
   for Python, Java, DSA and Web Development.
 - Forgot-password needs real email delivery on production (`email_service.py` only logs).

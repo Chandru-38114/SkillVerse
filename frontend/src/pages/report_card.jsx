@@ -24,6 +24,27 @@ function teachingAxes(ts) {
   ]
 }
 
+// Measured teaching impact: how much learners' topic scores rose after your
+// sessions (from their post-session reassessments). Shown after 3 sessions.
+function ImpactLine({ impact }) {
+  const n = impact?.sessions_measured || 0
+  const gain = impact?.avg_gain
+  const text = gain != null
+    ? `${gain > 0 ? '+' : ''}${gain} pts per session`
+    : `${n}/3 sessions measured`
+  return (
+    <div title="Average change in your learners' topic scores after a session with you" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', border: '2px solid #29251F', borderRadius: 14, background: '#FBEFC4' }}>
+      <span style={{ fontSize: 20 }}>📈</span>
+      <span style={{ fontWeight: 800, lineHeight: 1.3 }}>
+        Learner gains: <span className="mono">{text}</span>
+        <br /><span className="muted" style={{ fontSize: 12, fontWeight: 700 }}>
+          {gain != null ? `measured over ${n} sessions` : 'appears after 3 learners take their reassessment'}
+        </span>
+      </span>
+    </div>
+  )
+}
+
 function TeachingRadar({ ts }) {
   const axes = teachingAxes(ts)
   const overall = Math.round(axes.reduce((a, x) => a + x.value, 0) / axes.length)
@@ -39,6 +60,7 @@ function TeachingRadar({ ts }) {
           <span className="mono" style={{ fontSize: 30, fontWeight: 900 }}>{overall}</span>
           <span style={{ fontWeight: 800, lineHeight: 1.3 }}>Overall teaching score<br /><span className="muted" style={{ fontSize: 12, fontWeight: 700 }}>average of the six qualities</span></span>
         </div>
+        <ImpactLine impact={ts.teaching_impact} />
         {axes.map(a => (
           <div key={a.label} title={a.note} style={{ display: 'grid', gridTemplateColumns: '92px 1fr auto', gap: 10, alignItems: 'center' }}>
             <strong style={{ fontSize: 13 }}>{a.label}</strong>

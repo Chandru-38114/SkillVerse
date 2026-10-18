@@ -235,6 +235,11 @@ class TeacherPublicSummary(BaseModel):
     sessions_taught: int = 0
     teaching_since: str
 
+class TeachingImpact(BaseModel):
+    sessions_measured: int = 0
+    avg_gain: Optional[float] = None   # None until 3 measured sessions
+    impact_rank: float = 0
+
 class MarketplaceUser(BaseModel):
     user_id: int
     name: str
@@ -251,6 +256,9 @@ class MarketplaceUser(BaseModel):
     sessions_taught: Optional[int] = None
     teaching_since: Optional[str] = None
     connection_statuses: Dict[str, dict] = {}
+    tutor_score: Optional[float] = None
+    rank_reasons: List[str] = []
+    teaching_impact: Optional[TeachingImpact] = None
 
 class ConnectionRequestCreate(BaseModel):
     to_user_id: int
@@ -591,6 +599,7 @@ class TeacherStatsOut(UTCOut):
     skill_breakdown: Optional[List[TeacherSkillBreakdownItem]] = None
     reliability: Optional[Dict[str, Any]] = None          # completion_rate, completed_sessions, cancelled_or_unscheduled, total_accepted_requests
     recent_reviews: Optional[List[ReviewCommentItem]] = None
+    teaching_impact: Optional[Dict[str, Any]] = None      # sessions_measured, avg_gain (None until 3), impact_rank
 
 
 # ── Demand Request Schemas ───────────────────────────────────────────────────
@@ -956,3 +965,15 @@ class TeacherBadgeDefinitionOut(UTCOut):
     computable: bool
     stubbed: Optional[bool] = False
     stub_reason: Optional[str] = None
+
+
+class RecommendedTutor(BaseModel):
+    user_id: int
+    name: str
+    profile_picture_url: Optional[str] = None
+    skill_name: str
+    weak_topics: List[str] = []       # your weak topics in this course
+    strong_topics: List[str] = []     # which of those this tutor is strong in
+    tutor_score: float
+    rank_reasons: List[str] = []
+    connection_status: Optional[str] = None

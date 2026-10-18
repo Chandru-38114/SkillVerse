@@ -44,6 +44,9 @@ export default function Marketplace() {
   const [formMap, setFormMap] = useState({})
   const [ratingsMap, setRatingsMap] = useState({})
   const [toast, setToast] = useState('')
+  const [sortBy, setSortBy] = useState('best') // best | rating | sessions | impact
+  const [recommended, setRecommended] = useState([])
+  const pendingPrefill = useRef(null)          // {userId, skill, topics} from a recommendation
 
   const user = getSessionUser()
   const toastTimer = useRef(null)
@@ -54,6 +57,7 @@ export default function Marketplace() {
     runSearch(qFromUrl, activeFilter)
     api.mySkills().then(setMySkills).catch(() => {})
     fetchCircleSuggestions()
+    api.recommendedTutors().then(setRecommended).catch(() => setRecommended([]))
   }, [searchParams])
 
   async function fetchCircleSuggestions() {
@@ -143,6 +147,12 @@ export default function Marketplace() {
         const initialSkill = displaySkills.length > 0 ? displaySkills[0].skill_name : '';
         newFormMap[t.user_id] = { ...defaultForm(), target_skill: initialSkill };
       })
+      // Coming from "Recommended for you": pre-fill the course and weak topics.
+      const pre = pendingPrefill.current
+      if (pre && newFormMap[pre.userId]) {
+        newFormMap[pre.userId] = { ...newFormMap[pre.userId], target_skill: pre.skill, learner_topics: pre.topics.join(', ') }
+      }
+      pendingPrefill.current = null
       setStatusMap(newStatusMap)
       setRatingsMap(newRatingsMap)
       setFormMap(newFormMap)
@@ -285,6 +295,25 @@ export default function Marketplace() {
     });
   }, [results, proficiency, activeFilter]);
 
+  // Sorting on top of the server's "best match" order.
+  const sortedResults = useMemo(() => {
+    if (sortBy === 'best') return filteredResults
+    const bayes = (u) => u.review_count ? (u.review_count * u.average_rating + 5 * 3.5) / (u.review_count + 5) : 0
+    const keyFn = {
+      rating: bayes,
+      sessions: (u) => u.sessions_taught || 0,
+      impact: (u) => (u.teaching_impact && u.teaching_impact.avg_gain != null ? u.teaching_impact.impact_rank : -999),
+    }[sortBy]
+    return [...filteredResults].sort((a, b) => keyFn(b) - keyFn(a))
+  }, [filteredResults, sortBy])
+
+  function openRecommendation(rec) {
+    pendingPrefill.current = { userId: rec.user_id, skill: rec.skill_name, topics: rec.weak_topics }
+    setActiveFilter('I Want to Learn')
+    setQuery(rec.name)
+    runSearch(rec.name, 'I Want to Learn')
+  }
+
   const CATEGORIES = ['Java', 'Python', 'React', 'Data Science', 'Machine Learning', 'Figma', 'JavaScript']
 
   function clearAll() {
@@ -378,6 +407,39 @@ export default function Marketplace() {
 
         {error && (
           <div className="card" style={{ padding: '14px 18px', background: '#F6DDD8', borderColor: '#9A2B1E', color: '#9A2B1E', fontWeight: 700 }}>{error}</div>
+        )}
+
+        {/* Knowledge-gap recommendations: tutors strong in your weak topics */}
+        {recommended.length > 0 && (
+          <section className="card" style={{ padding: '22px 26px', background: '#FFFDF8', display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <span style={{ width: 42, height: 42, borderRadius: 12, border: '2px solid #29251F', background: '#D6F3EA', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, boxShadow: '0 3px 0 #29251F' }}>🎯</span>
+              <div>
+                <h2 style={{ margin: 0, fontSize: 22, fontWeight: 900, letterSpacing: '-0.4px' }}>Recommended for your weak topics</h2>
+                <p className="muted" style={{ margin: 0, fontSize: 14 }}>Picked from your Skill Arena and reassessment results.</p>
+              </div>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 14 }}>
+              {recommended.map(rec => (
+                <div key={rec.user_id} style={{ border: '2px solid #29251F', borderRadius: 14, padding: 14, display: 'flex', flexDirection: 'column', gap: 8, boxShadow: '0 3px 0 #29251F', background: '#FFFDF8' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'baseline' }}>
+                    <strong style={{ fontSize: 16 }}>{rec.name}</strong>
+                    <span className="mono" style={{ fontSize: 12, fontWeight: 800 }} title="Tutor score (strength, impact and rating)">{Math.round(rec.tutor_score)}</span>
+                  </div>
+                  <span className="eb" style={{ fontSize: 11 }}>{rec.skill_name}</span>
+                  <span style={{ fontSize: 13 }}>
+                    You're weak in <strong>{rec.weak_topics.slice(0, 3).join(', ')}</strong>
+                  </span>
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                    {rec.rank_reasons.map(r => <span key={r} className="pill" style={{ background: '#FBEFC4', fontSize: 11, height: 24 }}>{r}</span>)}
+                  </div>
+                  <button type="button" className="btn btn-s" style={{ marginTop: 'auto', minHeight: 40 }} onClick={() => openRecommendation(rec)} disabled={!!rec.connection_status && rec.connection_status !== 'declined'}>
+                    {rec.connection_status === 'pending' ? 'Requested' : rec.connection_status === 'accepted' ? 'Connected' : 'Request with these topics'}
+                  </button>
+                </div>
+              ))}
+            </div>
+          </section>
         )}
 
         {/* Skill circle suggestions section */}
@@ -632,10 +694,18 @@ export default function Marketplace() {
           <>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ fontWeight: 800 }}><span className="mono">{filteredResults.length}</span> partner{filteredResults.length === 1 ? '' : 's'} found</span>
-              <span className="muted" style={{ fontSize: 14, fontWeight: 600 }}>Best matches first</span>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span className="eb">SORT</span>
+                <select className="in" style={{ width: 190, minHeight: 42 }} value={sortBy} onChange={e => setSortBy(e.target.value)} aria-label="Sort partners">
+                  <option value="best">Best match</option>
+                  <option value="rating">Highest rated</option>
+                  <option value="sessions">Most sessions</option>
+                  <option value="impact">Biggest learner gains</option>
+                </select>
+              </label>
             </div>
             <div className="grid">
-              {filteredResults.map((teacher, idx) => {
+              {sortedResults.map((teacher, idx) => {
                 const ratings = ratingsMap[teacher.user_id]
                 const form = formMap[teacher.user_id] || defaultForm()
 
@@ -701,6 +771,14 @@ export default function Marketplace() {
                           )}
                         </div>
                       </div>
+
+                      {(teacher.rank_reasons?.length > 0 || teacher.teaching_impact?.avg_gain != null) && (
+                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }} aria-label="Why this tutor ranks here">
+                          {(teacher.rank_reasons || []).map(r => (
+                            <span key={r} className="pill" style={{ background: '#FBEFC4', fontSize: 11, height: 26 }}>{r}</span>
+                          ))}
+                        </div>
+                      )}
 
                       {teacher.bio && (
                         <p style={{ margin: 0, fontSize: 15, lineHeight: 1.55, paddingLeft: 14, borderLeft: '4px solid var(--acc)' }}>{teacher.bio}</p>

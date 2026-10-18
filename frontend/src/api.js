@@ -217,6 +217,8 @@ export const api = {
     if (role) url += `role=${encodeURIComponent(role)}&`;
     return request(url);
   },
+  // Tutors strong in YOUR weak topics (from your Arena/reassessment topic scores)
+  recommendedTutors: () => request("/marketplace/recommended"),
 
   sendRequest: (data) => request("/requests", { method: "POST", body: data }),
   incomingRequests: () => request("/requests/incoming"),

@@ -22,6 +22,7 @@ from sqlalchemy.orm import Session
 from .. import models, schemas, auth
 from ..database import get_db
 from ..utils.session_time import session_minutes
+from ..services.tutor_ranking import teaching_impact_for_users
 
 router = APIRouter(prefix="/teacher-stats", tags=["teacher-stats"])
 
@@ -260,4 +261,5 @@ def get_my_teacher_stats(
         skill_breakdown=skill_breakdown_list,
         reliability=reliability,
         recent_reviews=recent_reviews_list,
+        teaching_impact=teaching_impact_for_users(db, [current_user.id]).get(current_user.id),
     )
