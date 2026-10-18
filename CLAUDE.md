@@ -39,7 +39,7 @@ Student team project (final year). Keep solutions simple and readable over cleve
   Deployed on **Vercel**.
 - Backend: Python, FastAPI, SQLAlchemy, Uvicorn. Deployed on **Render**.
 - Database: PostgreSQL on Supabase (local dev falls back to SQLite). Supabase Storage holds
-  chat files, voice notes and avatars.
+  chat files, voice notes, avatars and session materials.
 - Real-time: WebSockets for chat / whiteboard / compiler sync; WebRTC for video.
 - Auth: JWT (HS256) + bcrypt + Google OAuth.
 - AI: Google Gemini via the `google-genai` package. (The old `google-generativeai`
@@ -47,21 +47,29 @@ Student team project (final year). Keep solutions simple and readable over cleve
 
 ## Layout
 backend/app/
-  main.py                      app setup, CORS, startup table creation
-  models.py  schemas.py        SQLAlchemy models / Pydantic schemas
-  auth.py  database.py
-  routers/                     assessments, auth, users, marketplace, requests, chat,
-                               sessions, compiler, whiteboard, materials, progress,
-                               reviews, certificates, notifications, gamification
+  main.py                      app setup, CORS, error handler, routers
+  db_migrations.py             startup checks: create tables, add new columns (NEW_COLUMNS list)
+  models.py  schemas.py        SQLAlchemy models / Pydantic schemas (every *Out inherits UTCOut)
+  auth.py                      passwords, JWT, get_current_user, get_user_from_token (WebSockets)
+  database.py  supabase_client.py (upload_file / delete_file / signed_url / public_url)
+  ws_manager.py                chat rooms + SessionRoomManager (video, code editor, whiteboard)
+  routers/                     one file per feature: assessments, auth, users, marketplace,
+                               requests, chat, sessions, compiler, whiteboard, materials,
+                               progress, reviews, certificates, notifications, gamification,
+                               exchanges, demand, community, badges, report_card, teacher_stats
   services/question_generator.py   AI question generation (see below)
   services/summarization.py        AI session summaries
+  services/course_rules.py         who may teach/learn which course (see "Course rules")
+  services/session_access.py       get_session_for_participant(): 404/403 check for session routes
+  utils/timezone.py                utc_now(), as_utc() (naive = UTC), IST
   sandbox.py                   restricted Python execution for the compiler
-  data/questions.py            legacy hand-written question bank (fallback only)
+  data/questions.py            hand-written fallback question bank
 frontend/src/
-  api.js                       ALL backend calls live here
+  api.js                       ALL backend calls live here (sendFile() for uploads)
   pages/                       assessment (Skill Arena), messages, marketplace,
                                session_room (Learning Arena), dashboard, progress, ...
   components/                  Compiler, Whiteboard, VideoChat, Notes, Materials, ...
+                               (DateTimePicker.jsx is unused — reference for the planned picker)
 
 ## How the AI assessment works (important)
 - `POST /assessments/start` asks Gemini for a fresh assessment, stores the questions
@@ -112,8 +120,10 @@ Frontend uses `VITE_API_URL`. Never hardcode or print secrets.
 - Commit style: `type(scope): short description`, e.g. `fix(chat): ...`, `feat(skill-arena): ...`.
 
 ## Checks before committing
-- Backend: `python -m py_compile` on every changed file.
+- Backend: `python -m pytest backend/tests -q` (68 tests) and `python -m py_compile` on changed files.
 - Frontend: `npm run build` must succeed.
+- Reuse the shared helpers above instead of copying code (storage, session checks,
+  time zones, WebSocket rooms, uploads in api.js).
 - Only commit the files relevant to the task; leave unrelated files untouched.
 
 ## Course rules (round 3 — all in `backend/app/services/course_rules.py`)
