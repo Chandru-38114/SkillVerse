@@ -42,7 +42,7 @@ Student team project (final year). Keep solutions simple and readable over cleve
 - Database: PostgreSQL on Supabase (local dev falls back to SQLite). Supabase Storage holds
   chat files, voice notes, avatars and session materials.
 - Real-time: WebSockets for chat / whiteboard / compiler sync; WebRTC for video.
-- Auth: JWT (HS256) + bcrypt + Google OAuth.
+- Auth: JWT (HS256, PyJWT — python-jose was removed) + bcrypt + Google OAuth.
 - AI: Google Gemini via the `google-genai` package. (The old `google-generativeai`
   package is legacy — do not add new code that uses it.)
 
@@ -51,7 +51,7 @@ backend/app/
   main.py                      app setup, CORS, error handler, routers
   db_migrations.py             startup checks: create tables, add new columns (NEW_COLUMNS list)
   models.py  schemas.py        SQLAlchemy models / Pydantic schemas (every *Out inherits UTCOut)
-  auth.py                      passwords, JWT, get_current_user, get_user_from_token (WebSockets)
+  auth.py                      passwords, JWT (PyJWT), get_current_user, get_user_from_token (WebSockets)
   database.py  supabase_client.py (upload_file / delete_file / signed_url / public_url)
   ws_manager.py                chat rooms + SessionRoomManager (video, code editor, whiteboard)
   routers/                     one file per feature: assessments, auth, users, marketplace,
@@ -61,6 +61,8 @@ backend/app/
   services/question_generator.py   AI question generation (see below)
   services/summarization.py        AI session summaries
   services/course_rules.py         who may teach/learn which course (see "Course rules")
+  services/topic_scores.py         per-topic scores + post-session reassessment (30% blend)
+  services/tutor_ranking.py        teaching impact, tutor score, recommendation maths
   services/session_access.py       get_session_for_participant(): 404/403 check for session routes
   utils/timezone.py                utc_now(), as_utc() (naive = UTC), IST
   sandbox.py                   restricted Python execution for the compiler

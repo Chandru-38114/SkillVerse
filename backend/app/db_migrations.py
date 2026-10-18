@@ -47,6 +47,12 @@ NEW_COLUMNS = [
     ("assessment_sessions", "session_id", ("INTEGER REFERENCES sessions(id) NULL", "INTEGER")),
     ("user_skills", "level_num", ("INTEGER NOT NULL DEFAULT 0",)),
     ("connection_requests", "points_awarded", ("BOOLEAN NOT NULL DEFAULT FALSE",)),
+    # Request context fields (were added by the old backend/migrate_requests.py)
+    ("connection_requests", "learner_current_level", ("VARCHAR",)),
+    ("connection_requests", "learner_topics", ("TEXT",)),
+    ("connection_requests", "learner_goals", ("TEXT",)),
+    ("connection_requests", "learner_can_teach", ("TEXT",)),
+    ("connection_requests", "learner_teach_proficiency", ("VARCHAR",)),
 ]
 
 

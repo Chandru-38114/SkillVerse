@@ -1,9 +1,15 @@
+"""Print how many rows each main table has (quick health check).
+
+Usage, from the repo root:  python scripts/check_db.py
+Uses DATABASE_URL from the environment (SQLite skillverse.db if not set).
+"""
 import os
 import sys
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__))))
 
-from app.database import SessionLocal, engine
-from app import models
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # repo root
+
+from backend.app.database import SessionLocal, engine  # noqa: E402
+from backend.app import models  # noqa: E402
 
 db = SessionLocal()
 
