@@ -225,18 +225,25 @@ def _apply_role_rules(user_skill, wants_to_teach: bool, can_promote: bool, score
     `user_skill` is an existing row, or None for a new course (then a role is
     chosen for the new row). Returns (role for a new row or None, message or None)."""
     promote = wants_to_teach and can_promote and score >= TEACH_MIN_SCORE
+    # Why a "teach" attempt didn't promote: the score, or the attempt was ended
+    # early (rule violations / time over) — a high score alone must not read
+    # as "you need 60%".
+    if not can_promote and score >= TEACH_MIN_SCORE:
+        reason = (f"This attempt ended early (rule violations or time over), so it can't make you "
+                  f"a tutor for {course_name}. Take the Skill Arena again without violations.")
+    else:
+        reason = f"You need {TEACH_MIN_SCORE}% to teach {course_name}."
     if user_skill is None:
         if promote:
             return "teaching", f"You are now a verified tutor for {course_name}."
         if wants_to_teach:
-            return "learning", (f"You need {TEACH_MIN_SCORE}% to teach {course_name}. "
-                                f"We added it to your learning courses — learn, then try again.")
+            return "learning", f"{reason} We added it to your learning courses — learn, then try again."
         return "learning", None
     if user_skill.role == "learning" and wants_to_teach:
         if promote:
             user_skill.role = "teaching"
             return None, f"Great work! You moved from learner to tutor for {course_name}."
-        return None, f"You need {TEACH_MIN_SCORE}% to teach {course_name}. You are still learning it."
+        return None, f"{reason} You are still learning it."
     return None, None
 
 
@@ -255,7 +262,11 @@ def _check_final_challenge(user_skill, score: float, terminated: bool, course_na
         user_skill.course_completed_at = utc_now()
         return True, f"You passed the final challenge and completed {course_name}! Your certificate is ready on the Progress page."
     if not outcome:
-        outcome = f"You need {FINAL_PASS_SCORE}% in this final challenge to complete {course_name}. You can try again."
+        if terminated and score >= FINAL_PASS_SCORE:
+            outcome = (f"This final challenge ended early (rule violations or time over), so it can't "
+                       f"complete {course_name}. You can try again.")
+        else:
+            outcome = f"You need {FINAL_PASS_SCORE}% in this final challenge to complete {course_name}. You can try again."
     return False, outcome
 
 
