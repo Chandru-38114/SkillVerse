@@ -26,6 +26,7 @@ from ..ws_manager import SessionRoomManager
 
 router = APIRouter(prefix="/compiler", tags=["compiler"])
 
+MAX_RELAYED_OUTPUT_CHARS = 20_000
 MAX_SHARED_CODE_CHARS = 50_000
 DEFAULT_CODE = 'print("Hello, SkillVerse!")'
 SAVE_DELAY_SECONDS = 2.0  # live edits are saved 2 s after the last keystroke
@@ -191,12 +192,13 @@ async def compiler_websocket(websocket: WebSocket, session_id: int, token: str):
                         "version": int(time.time() * 1000),
                     }))
                 elif msg.get("type") == "execution_result":
+                    # Relayed to the partner as plain text, capped like real run output.
                     await compiler_manager.broadcast_text(session_id, user_id, json.dumps({
                         "type": "execution_result",
-                        "output": msg.get("output", ""),
-                        "error": msg.get("error", ""),
-                        "user_name": msg.get("user_name", ""),
-                        "timestamp": msg.get("timestamp"),
+                        "output": str(msg.get("output", ""))[:MAX_RELAYED_OUTPUT_CHARS],
+                        "error": str(msg.get("error", ""))[:MAX_RELAYED_OUTPUT_CHARS],
+                        "user_name": str(msg.get("user_name", ""))[:80],
+                        "timestamp": msg.get("timestamp") if isinstance(msg.get("timestamp"), (int, float, str)) else None,
                     }))
             except Exception:
                 pass  # ignore a bad message, keep the connection
@@ -205,4 +207,5 @@ async def compiler_websocket(websocket: WebSocket, session_id: int, token: str):
     except Exception:
         pass
     finally:
-        compiler_manager.disconnect(session_id, user_id)
+        # Pass the socket: if this user already reconnected, keep the new one.
+        compiler_manager.disconnect(session_id, user_id, websocket)

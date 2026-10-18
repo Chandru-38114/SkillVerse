@@ -43,6 +43,9 @@ ARENA_DURATION_MINUTES = int(os.getenv("ARENA_DURATION_MINUTES", "45"))
 ARENA_GRACE_SECONDS = 120
 
 
+MAX_ARENA_STARTS_PER_DAY = 10
+
+
 @router.post("/start")
 async def start_assessment(
     payload: schemas.AssessmentStart,
@@ -82,6 +85,16 @@ async def start_assessment(
             "level": level, "questions": sanitize(active.questions), "resumed": True,
             "expires_at": enforce_utc_iso(active_expires), "seconds_remaining": seconds_remaining,
         }
+
+    # Each new attempt is a paid AI call: cap it (resuming above doesn't count).
+    started_today = (
+        db.query(models.AssessmentSession)
+        .filter(models.AssessmentSession.user_id == current_user.id,
+                models.AssessmentSession.created_at > now - dt.timedelta(days=1))
+        .count()
+    )
+    if started_today >= MAX_ARENA_STARTS_PER_DAY:
+        raise HTTPException(status_code=429, detail="You've started a lot of Skill Arena attempts today. Please come back tomorrow.")
 
     source = "ai"
     try:

@@ -54,12 +54,13 @@ app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 #   FRONTEND_URL        comma-separated production frontends (set on Render),
 #                       e.g. https://skill-verse-theta.vercel.app
 #   ADDITIONAL_ORIGINS  extra origins, appended to FRONTEND_URL
-# Always allowed: localhost:5173 (local dev), the old Netlify site and any
-# *.vercel.app preview deployment.
+# Always allowed: localhost:5173 (local dev), the old Netlify site and this
+# project's Vercel deployments (skill-verse*.vercel.app).
 # ---------------------------------------------------------------------------
 _LOCAL_DEV_ORIGIN = "http://localhost:5173"
 _OLD_NETLIFY_ORIGIN = "https://whimsical-raindrop-f3df51.netlify.app"
-_VERCEL_ORIGIN_REGEX = r"https://.*\.vercel\.app"
+# Production + preview deployments of THIS Vercel project only (not every *.vercel.app site).
+_VERCEL_ORIGIN_REGEX = r"https://skill-verse[a-z0-9-]*\.vercel\.app"
 
 
 def _configured_origins() -> list:
@@ -112,6 +113,16 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.middleware("http")
+async def security_headers(request: Request, call_next):
+    """Basic hardening headers on every API response."""
+    response = await call_next(request)
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault("Referrer-Policy", "no-referrer")
+    return response
+
 
 for _router in (
     auth, users, assessments, marketplace, requests, chat, sessions, compiler,

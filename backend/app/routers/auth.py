@@ -344,10 +344,8 @@ def reset_password(payload: schemas.ResetPassword, db: Session = Depends(get_db)
 
     user = db.query(models.User).filter(models.User.email == payload.email).first()
     if not user:
-        raise HTTPException(status_code=400, detail="Invalid request")
-
-    if auth.verify_password(payload.new_password, user.hashed_password):
-        raise HTTPException(status_code=400, detail="You are entering your old password. Please choose a different password.")
+        # Same reply as a wrong/expired code, so this can't reveal who has an account.
+        raise HTTPException(status_code=400, detail="OTP expired or not found")
 
     otp_record = db.query(models.PasswordResetOTP).filter(
         models.PasswordResetOTP.email == payload.email,
@@ -364,7 +362,12 @@ def reset_password(payload: schemas.ResetPassword, db: Session = Depends(get_db)
         otp_record.attempts += 1
         db.commit()
         raise HTTPException(status_code=400, detail="Invalid OTP")
-        
+
+    # Only after the emailed code is proven: otherwise this check would let anyone
+    # test password guesses for any email without the login lockout.
+    if auth.verify_password(payload.new_password, user.hashed_password):
+        raise HTTPException(status_code=400, detail="You are entering your old password. Please choose a different password.")
+
     user.hashed_password = auth.hash_password(payload.new_password)
     db.query(models.PasswordResetOTP).filter(models.PasswordResetOTP.email == payload.email).delete()
     db.commit()

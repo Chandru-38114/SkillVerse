@@ -256,7 +256,7 @@ export default function Settings() {
                       📷 {uploadingAvatar ? 'Uploading…' : 'Change photo'}
                       <input
                         type="file"
-                        accept="image/*"
+                        accept="image/png,image/jpeg,image/gif,image/webp"
                         style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer' }}
                         onChange={handleAvatarUpload}
                         disabled={uploadingAvatar || removingAvatar}

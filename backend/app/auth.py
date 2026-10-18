@@ -14,7 +14,8 @@ from typing import Optional
 from cryptography.fernet import Fernet, InvalidToken
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-from jose import JWTError, jwt
+import jwt  # PyJWT
+from jwt import PyJWTError as JWTError
 from passlib.context import CryptContext
 from sqlalchemy.orm import Session
 

@@ -91,4 +91,5 @@ async def whiteboard_websocket(websocket: WebSocket, session_id: int, token: str
     except Exception:
         pass
     finally:
-        manager.disconnect(session_id, user_id)
+        # Pass the socket: if this user already reconnected, keep the new one.
+        manager.disconnect(session_id, user_id, websocket)

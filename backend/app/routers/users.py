@@ -113,20 +113,37 @@ def _remove_local_avatar(url: str) -> None:
             logger.warning(f"Failed to remove local avatar file: {e}")
 
 
+def _image_kind(data: bytes):
+    """(extension, content type) for PNG/JPEG/GIF/WebP bytes, else None."""
+    if data.startswith(b"\x89PNG\r\n\x1a\n"):
+        return "png", "image/png"
+    if data.startswith(b"\xff\xd8\xff"):
+        return "jpg", "image/jpeg"
+    if data[:6] in (b"GIF87a", b"GIF89a"):
+        return "gif", "image/gif"
+    if data[:4] == b"RIFF" and data[8:12] == b"WEBP":
+        return "webp", "image/webp"
+    return None
+
+
 @router.post("/me/avatar", response_model=schemas.UserOut)
 def upload_avatar(
     file: UploadFile = File(...),
     current_user: models.User = Depends(auth.get_current_user),
     db: Session = Depends(get_db)
 ):
-    if not file.content_type.startswith("image/"):
-        raise HTTPException(status_code=400, detail="Invalid file type. Must be an image.")
     file_bytes = file.file.read()
     if len(file_bytes) > 5 * 1024 * 1024:
         raise HTTPException(status_code=400, detail="File too large (max 5MB).")
+    # Avatars get a PUBLIC link, so only real PNG/JPEG/GIF/WebP pictures are
+    # accepted, checked by their first bytes (not the browser's label). This
+    # blocks SVG/HTML files that could run scripts.
+    kind = _image_kind(file_bytes)
+    if not kind:
+        raise HTTPException(status_code=400, detail="Please upload a PNG, JPG, GIF or WebP image.")
+    ext, content_type = kind
 
     get_supabase()  # 500 straight away if storage is not configured
-    ext = file.filename.split(".")[-1]
     filename = f"{current_user.id}_{uuid.uuid4().hex}.{ext}"
 
     # Delete the old avatar (best effort)
@@ -137,7 +154,7 @@ def upload_avatar(
         elif old_url.startswith(_LOCAL_AVATAR_PREFIX):
             _remove_local_avatar(old_url)
 
-    upload_file(AVATAR_BUCKET, filename, file_bytes, file.content_type)
+    upload_file(AVATAR_BUCKET, filename, file_bytes, content_type)
 
     current_user.profile_picture_url = public_url(AVATAR_BUCKET, filename)
     db.commit()

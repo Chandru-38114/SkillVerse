@@ -34,6 +34,11 @@ from ..ws_manager import chat_manager
 
 logger = logging.getLogger(__name__)
 
+_ACTIVE_CONTENT_TYPES = {
+    "text/html", "application/xhtml+xml", "image/svg+xml", "text/javascript",
+    "application/javascript", "text/xml", "application/xml",
+}
+
 router = APIRouter(prefix="/chat", tags=["chat"])
 
 MAX_FILE_BYTES = 25 * 1024 * 1024
@@ -51,6 +56,8 @@ def upload_attachment(
     _authorize(db, request_id, current_user.id)
 
     ext = file.filename.split(".")[-1].lower() if file.filename and "." in file.filename else ""
+    if not re.fullmatch(r"[a-z0-9]{1,8}", ext):
+        ext = ""   # odd extensions (slashes, very long) are dropped
     file_bytes = file.file.read()
     size_bytes = len(file_bytes)
 
@@ -63,7 +70,10 @@ def upload_attachment(
             content_type = content_type.replace("video/", "audio/")
         elif not content_type:
             content_type = "audio/webm"
-    elif type == "file" and not content_type:
+        if not content_type.startswith("audio/"):
+            content_type = "audio/webm"
+    elif type == "file" and (not content_type or content_type in _ACTIVE_CONTENT_TYPES):
+        # Pages/SVGs could run scripts when opened from the storage link: download them instead.
         content_type = "application/octet-stream"
 
     if type == "file":
