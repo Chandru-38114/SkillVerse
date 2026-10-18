@@ -3,6 +3,52 @@ import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { api, getSessionUser } from '../api'
 import './dashboard.css'
 
+// Skill Arena score needed for each badge (same as the backend's badge_for_score).
+const BADGE_TIERS = [
+  { name: 'Bronze', min: 40, fill: '#FBEFC4' },
+  { name: 'Silver', min: 60, fill: '#D6F3EA' },
+  { name: 'Gold', min: 75, fill: 'var(--acc)' },
+  { name: 'Expert', min: 90, fill: '#E6DDF6' },
+]
+const tierFill = (name) => (BADGE_TIERS.find(t => t.name === name) || BADGE_TIERS[0]).fill
+
+/* A badge tile with a small card that explains it on hover, keyboard focus or
+   tap: what the badge is, the score behind it, and how to reach the next one. */
+function BadgeTile({ skill }) {
+  const locked = !skill
+  const score = skill?.latest_score != null ? Math.round(skill.latest_score) : null
+  const next = locked ? BADGE_TIERS[0] : BADGE_TIERS.find(t => t.min > (score ?? 0))
+  const tile = (
+    <span className="badge" style={locked
+      ? { background: '#EDE6D8', borderStyle: 'dashed', boxShadow: 'none', color: '#8C8273' }
+      : { background: tierFill(skill.badge) }}>
+      {locked ? '🔒' : '★'}
+    </span>
+  )
+  return (
+    <div className="btile" tabIndex={0} aria-describedby={locked ? 'tip-locked' : `tip-${skill.id}`}>
+      {locked ? <Link to="/assessment" aria-label="Unlock a badge in the Skill Arena">{tile}</Link> : tile}
+      <span className="btile-name" style={locked ? { color: '#6E6455' } : undefined}>{locked ? 'Locked' : skill.skill_name}</span>
+      <div className="btip" role="tooltip" id={locked ? 'tip-locked' : `tip-${skill.id}`}>
+        <strong>{locked ? 'Unlock a new badge' : `${skill.badge} badge · ${skill.skill_name}`}</strong>
+        <span>
+          {locked
+            ? 'Score 40% or more in any Skill Arena to earn a badge. Click the lock to start one.'
+            : `Verified by the Skill Arena${score != null ? ` with ${score}%` : ''}. Peers see it when they search for ${skill.skill_name}.`}
+        </span>
+        <div className="btip-tiers">
+          {BADGE_TIERS.map(t => (
+            <span key={t.name} className={!locked && t.name === skill.badge ? 'on' : ''} style={{ background: t.fill }}>{t.name} {t.min}%</span>
+          ))}
+        </div>
+        {!locked && (next
+          ? <em>Next: score {next.min}%+ for {next.name}.</em>
+          : <em>Top tier reached — great work!</em>)}
+      </div>
+    </div>
+  )
+}
+
 const STAGE_PILL = {
   'Discovered':           { background: '#EDE6D8' },
   'Baseline Established': { background: '#FFE3CF' },
@@ -295,16 +341,8 @@ export default function Dashboard() {
               <section style={{ display: 'flex', flexDirection: 'column', gap: 18 }} aria-labelledby="sv-vb">
                 <h3 id="sv-vb" style={{ margin: 0, fontSize: 26, fontWeight: 900 }}>Verified badges</h3>
                 <div className="card" style={{ padding: 26, display: 'flex', gap: 26, flexWrap: 'wrap', alignItems: 'flex-start' }}>
-                  {badgedSkills.map(s => (
-                    <div key={s.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, width: 96 }}>
-                      <span className="badge" style={{ background: s.badge === 'Gold' ? 'var(--acc)' : s.badge === 'Silver' ? '#D6F3EA' : '#FBEFC4' }}>★</span>
-                      <span style={{ fontSize: 13, fontWeight: 800, textAlign: 'center' }}>{s.skill_name}</span>
-                    </div>
-                  ))}
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, width: 96 }}>
-                    <span className="badge" style={{ background: '#EDE6D8', borderStyle: 'dashed', boxShadow: 'none', color: '#8C8273' }}>🔒</span>
-                    <span style={{ fontSize: 13, fontWeight: 800, textAlign: 'center', color: '#6E6455' }}>Locked</span>
-                  </div>
+                  {badgedSkills.map(s => <BadgeTile key={s.id} skill={s} />)}
+                  <BadgeTile skill={null} />
                 </div>
               </section>
             </div>
