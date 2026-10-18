@@ -130,7 +130,11 @@ async function request(path, { method = "GET", body, auth = true, bypassCache = 
 
   if (method === "GET" && ttl > 0) {
     inFlight.set(cacheKey, fetchPromise);
-    fetchPromise.finally(() => inFlight.delete(cacheKey));
+    // Forget the in-flight entry when done. (.finally() alone made a second
+    // promise that nobody caught, so every failed GET also showed up as an
+    // "Uncaught (in promise)" error in the browser console.)
+    const forget = () => inFlight.delete(cacheKey);
+    fetchPromise.then(forget, forget);
   }
 
   return fetchPromise;
