@@ -235,6 +235,26 @@ export default function Assessment() {
         }
       }
 
+      // Leaving the exam INSIDE the site (navbar links, the browser's Back
+      // button) used to be possible without any violation: the page never
+      // lost focus and fullscreen stayed on. During the exam the navbar is
+      // hidden, every link click is blocked, and Back stays on the exam.
+      const handleLinkClick = (e) => {
+        const link = e.target.closest && e.target.closest('a[href]')
+        if (!link) return
+        e.preventDefault()
+        e.stopPropagation()
+        recordViolation('Leaving the Skill Arena during the exam is not allowed.')
+      }
+      const handleBack = () => {
+        window.history.pushState(null, '', window.location.href)
+        recordViolation('Leaving the Skill Arena during the exam is not allowed.')
+      }
+      document.body.classList.add('sv-arena-lock')
+      window.history.pushState(null, '', window.location.href)
+      document.addEventListener('click', handleLinkClick, true)
+      window.addEventListener('popstate', handleBack)
+
       window.addEventListener('blur', handleVisibilityBlur)
       document.addEventListener('visibilitychange', handleVisibilityBlur)
       document.addEventListener('fullscreenchange', handleFullscreenChange)
@@ -248,6 +268,9 @@ export default function Assessment() {
 
       return () => {
         clearTimeout(fsCheck)
+        document.body.classList.remove('sv-arena-lock')
+        document.removeEventListener('click', handleLinkClick, true)
+        window.removeEventListener('popstate', handleBack)
         window.removeEventListener('blur', handleVisibilityBlur)
         document.removeEventListener('visibilitychange', handleVisibilityBlur)
         document.removeEventListener('fullscreenchange', handleFullscreenChange)

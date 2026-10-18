@@ -100,11 +100,22 @@ class CourseRulesTest(unittest.TestCase):
             add_skill(req=SkillAddRequest(skill_name="Kotlin"), current_user=self.learner, db=self.db)
         self.assertEqual(ctx.exception.status_code, 409)
 
-    def test_teacher_cannot_add_course_as_learning_or_remove_it(self):
+    def test_teacher_cannot_add_course_as_learning(self):
         with self.assertRaises(HTTPException):
             add_skill(req=SkillAddRequest(skill_name="python"), current_user=self.tutor, db=self.db)
-        with self.assertRaises(HTTPException):
-            remove_skill(skill_id=self._row(1, 1).id, current_user=self.tutor, db=self.db)
+
+    def test_remove_course_frees_a_slot_unless_in_use(self):
+        out = self._request(self.learner, 1)  # pending Python request: both can't remove it
+        for user, uid in ((self.learner, 2), (self.tutor, 1)):
+            with self.assertRaises(HTTPException) as ctx:
+                remove_skill(skill_id=self._row(uid, 1).id, current_user=user, db=self.db)
+            self.assertEqual(ctx.exception.status_code, 409)
+        self.db.query(models.ConnectionRequest).filter_by(id=out.id).update({"status": "declined"})
+        self.db.commit()
+        res = remove_skill(skill_id=self._row(1, 1).id, current_user=self.tutor, db=self.db)  # a taught course
+        self.assertEqual(res["courses_left"], 0)
+        remove_skill(skill_id=self._row(2, 1).id, current_user=self.learner, db=self.db)
+        self.assertEqual(self.db.query(models.UserSkill).count(), 0)
 
     def test_course_names(self):
         self.assertEqual(clean_course_name("  dsa "), "Data Structures and Algorithms")

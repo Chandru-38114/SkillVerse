@@ -28,26 +28,59 @@
 .sv-prog .sk{background:linear-gradient(90deg,#EFE6D6 25%,#F8F1E4 50%,#EFE6D6 75%);background-size:200% 100%;animation:svShP 1.4s infinite linear;border-radius:16px;border:2px solid #E2D3BB}
 @keyframes svShP{to{background-position:-200% 0}}
 
-/* skill map */
-.sv-prog .map{display:grid;grid-template-columns:170px repeat(5,minmax(0,1fr));border:2px solid #29251F;border-radius:14px;overflow:hidden;background:#FFFDF8}
-.sv-prog .map>div{border-right:2px dashed #E2D3BB;border-bottom:2px dashed #E2D3BB;min-height:62px;display:flex;align-items:center;padding:8px 10px}
-.sv-prog .map .hd{min-height:auto;padding:10px;background:#F0E5D2;border-bottom:2px solid #29251F;font-size:11px;font-weight:800;letter-spacing:.06em;justify-content:center;text-align:center}
-.sv-prog .map .nm{font-weight:900;font-size:15px;gap:8px;border-right:2px solid #29251F}
-.sv-prog .seg{flex:1;height:14px;border:2px solid #29251F}
-.sv-prog .tok{width:38px;height:38px;border-radius:999px;border:2px solid #29251F;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:13px;box-shadow:0 3px 0 #29251F;margin:0 auto;background:var(--acc);position:relative;z-index:1}
+/* skill map: one row per course, a 5-stop track. Rows and the header share
+   the same grid, so the stops always line up. */
+.sv-prog .jmap{border:2px solid #29251F;border-radius:16px;background:#FFFDF8;box-shadow:0 4px 0 #D2BEA0,0 7px 0 #29251F;overflow:hidden}
+.sv-prog .jr{display:grid;grid-template-columns:200px 1fr;align-items:center;gap:18px;padding:14px 22px;border-bottom:2px dashed #E2D3BB}
+.sv-prog .jr:last-child{border-bottom:none}
+.sv-prog .jr-head{background:#F0E5D2;border-bottom:2px solid #29251F;padding:10px 22px}
+.sv-prog .jr-labels{display:grid;grid-template-columns:repeat(5,1fr);text-align:center;font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#4A4236}
+.sv-prog .jr-name{display:flex;flex-direction:column;gap:2px;min-width:0}
+.sv-prog .jr-title{font-weight:900;font-size:16px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sv-prog .jr-sub{font-size:12px;font-weight:700;color:#6E6455}
+.sv-prog .jr-track{position:relative;display:grid;grid-template-columns:repeat(5,1fr);align-items:center;justify-items:center;height:44px}
+/* the line runs from the middle of the first stop to the middle of the last */
+.sv-prog .jr-line,.sv-prog .jr-fill{position:absolute;left:10%;height:8px;border-radius:999px;top:calc(50% - 4px)}
+.sv-prog .jr-line{right:10%;background:#F0E5D2;border:2px solid #29251F}
+.sv-prog .jr-fill{background:var(--acc);border:2px solid #29251F}
+.sv-prog .jr-fill[style*="width: 0%"]{display:none}
+.sv-prog .jr-stop{position:relative;z-index:1;width:16px;height:16px;border-radius:999px;border:2px solid #29251F;background:#FFFDF8;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:900}
+.sv-prog .jr-stop.done{background:var(--acc)}
+.sv-prog .jr-stop.here{width:38px;height:38px;background:var(--acc);box-shadow:0 3px 0 #29251F}
+.sv-prog .jr.tutor .jr-fill,.sv-prog .jr.tutor .jr-stop.done{background:#9ADBC4}
+.sv-prog .jr.tutor .jr-stop.here{background:#D6F3EA}
+
+/* "⋯" course menu + confirm dialog + notes */
+.sv-prog .cmenu{position:relative}
+.sv-prog .cmenu-btn{width:38px;height:38px;border-radius:10px;border:2px solid #29251F;background:#FFFDF8;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 3px 0 #29251F}
+.sv-prog .cmenu-btn:hover{background:#F0E5D2}
+.sv-prog .cmenu-list{position:absolute;right:0;top:46px;z-index:20;min-width:180px;background:#FFFDF8;border:2px solid #29251F;border-radius:12px;box-shadow:0 4px 0 #29251F;padding:6px}
+.sv-prog .cmenu-list button{width:100%;text-align:left;padding:10px 12px;border:none;background:none;border-radius:8px;font:800 14px Inter,sans-serif;cursor:pointer;color:#29251F}
+.sv-prog .cmenu-list button:hover{background:#F0E5D2}
+.sv-prog .cmenu-list .danger{color:#9A2B1E}
+.sv-prog .btn-danger{background:#E2533A;color:#FFFDF8;box-shadow:0 4px 0 #9A2B1E,0 7px 0 #29251F}
+.sv-prog .btn-danger:hover:not(:disabled){transform:translateY(3px);box-shadow:0 2px 0 #9A2B1E,0 4px 0 #29251F}
+.sv-prog .btn:disabled{opacity:.6;cursor:wait}
+.sv-prog .pmodal-bg{position:fixed;inset:0;z-index:100;background:rgba(41,37,31,.45);display:flex;align-items:center;justify-content:center;padding:20px}
+.sv-prog .pmodal{max-width:460px;width:100%;padding:28px;display:flex;flex-direction:column;gap:16px}
+.sv-prog .pmodal-icon{width:52px;height:52px;border-radius:14px;border:2px solid #29251F;background:#F6DDD8;display:flex;align-items:center;justify-content:center;font-size:24px;box-shadow:0 3px 0 #29251F}
+.sv-prog .note{padding:12px 14px;border:2px solid #29251F;border-radius:12px;font-weight:700;font-size:15px;line-height:1.5}
+.sv-prog .note.warn{background:#FBEFC4}
+.sv-prog .note.ok{background:#D6F3EA}
 
 .sv-prog .grid2{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:28px;align-items:start}
 
 @media (max-width:1000px){
   .sv-prog .grid2{grid-template-columns:1fr}
-  .sv-prog .map{grid-template-columns:110px repeat(5,minmax(44px,1fr))}
-  .sv-prog .map .hd span{display:none}
+  .sv-prog .jr{grid-template-columns:110px 1fr;gap:10px;padding:12px 14px}
+  .sv-prog .jr-labels{font-size:9px;letter-spacing:0}
+  .sv-prog .jr-stop.here{width:30px;height:30px;font-size:13px}
 }
 
 @keyframes svPopP{0%{opacity:0;scale:.82}70%{opacity:1;scale:1.04}100%{opacity:1;scale:1}}
 @keyframes svGrowX{from{transform:scaleX(0)}to{transform:scaleX(1)}}
 
 @media (prefers-reduced-motion:no-preference){
-  .sv-prog .tok{animation:svPopP .6s .6s both}
-  .sv-prog .seg{transform-origin:0 50%;animation:svGrowX .8s .3s both}
+  .sv-prog .jr-stop.here{animation:svPopP .6s .5s both}
+  .sv-prog .jr-fill{transform-origin:0 50%;animation:svGrowX .8s .2s both}
 }

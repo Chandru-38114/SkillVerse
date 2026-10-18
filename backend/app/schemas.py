@@ -207,6 +207,7 @@ class AssessmentResult(BaseModel):
     role: Optional[str] = None             # "teaching" or "learning" after this attempt
     course_completed: bool = False         # True when this was a passed final challenge
     outcome_message: Optional[str] = None  # one plain sentence for the result screen
+    topic_mastery: Dict[str, float] = {}   # % of marks earned per topic (the result's spider chart)
 
 
 class AssessmentAttemptOut(UTCOut):

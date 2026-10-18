@@ -359,6 +359,7 @@ def submit_assessment(
             score=score, level=level, badge=badge, weak_topics=weak_topics, study_plan=study_plan,
             violations=violations, terminated=terminated, counted=is_counted, role=None,
             outcome_message=f"You already have {MAX_COURSES} courses, so {skill.name} was not added.",
+            topic_mastery=topic_mastery,
         )
     new_role, outcome = _apply_role_rules(user_skill, wants_to_teach, can_promote, score, skill.name)
     if user_skill is None:
@@ -395,4 +396,5 @@ def submit_assessment(
         violations=violations, terminated=terminated,
         counted=is_counted, role=user_skill.role,
         course_completed=course_completed_now, outcome_message=outcome,
+        topic_mastery=topic_mastery,
     )

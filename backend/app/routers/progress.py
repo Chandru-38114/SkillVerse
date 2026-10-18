@@ -14,6 +14,7 @@ from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from starlette.concurrency import run_in_threadpool
 
@@ -102,7 +103,14 @@ def _skill_progress_out(db: Session, user_id: int, us: models.UserSkill, history
         models.AssessmentAttempt.user_id == user_id,
         models.AssessmentAttempt.skill_id == us.skill_id,
     ).count()
-    stage, what_happened, next_milestone = stage_for(us, assessments)
+    taught = None
+    if us.role == "teaching":
+        taught = db.query(models.Session).filter(
+            models.Session.tutor_id == user_id,
+            func.lower(models.Session.skill) == us.skill.name.lower(),
+            models.Session.status == "completed",
+        ).count()
+    stage, what_happened, next_milestone = stage_for(us, assessments, taught)
     return schemas.UserSkillProgressOut(
         id=us.id,
         skill_id=us.skill_id,

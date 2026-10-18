@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 from .. import models, schemas, auth
 from ..database import get_db
 from ..supabase_client import delete_file, get_supabase, public_url, try_delete_file, upload_file
-from ..services.course_rules import ensure_learning_course, get_or_create_course
+from ..services.course_rules import course_count, course_in_use_problem, ensure_learning_course, get_or_create_course
 from ..utils.progress_utils import progress_for
 
 logger = logging.getLogger(__name__)
@@ -215,17 +215,20 @@ def remove_skill(
     current_user: models.User = Depends(auth.get_current_user),
     db: Session = Depends(get_db)
 ):
+    """Remove one of my courses (learning or teaching) to free one of the 4
+    slots. `skill_id` is the id of my row in /users/me/skills. Past history
+    (attempts, sessions, certificates) is kept."""
     us = db.query(models.UserSkill).filter_by(id=skill_id, user_id=current_user.id).first()
     if not us:
         raise HTTPException(status_code=404, detail="Skill not found")
-    # A verified teaching course can't be removed: removing it and adding the
-    # same course back as a learner would break "a teacher can't learn the
-    # course they teach".
-    if us.role == "teaching":
-        raise HTTPException(status_code=400, detail="You can't remove a course you teach.")
-    db.delete(us)
+    problem = course_in_use_problem(db, current_user.id, us.skill)
+    if problem:
+        raise HTTPException(status_code=409, detail=problem)
+    name = us.skill.name
+    # Old data can hold two rows (teaching + learning) for one course: remove both.
+    db.query(models.UserSkill).filter_by(user_id=current_user.id, skill_id=us.skill_id).delete()
     db.commit()
-    return {"detail": "Skill removed"}
+    return {"detail": f"{name} was removed from your courses.", "courses_left": course_count(db, current_user.id)}
 
 
 def get_or_create_skill(db: Session, skill_name: str) -> models.Skill:

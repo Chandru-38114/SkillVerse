@@ -13,6 +13,8 @@ SkillVerse is level-based learning. The rules (agreed with the team):
    name looks like a real course name.
 3. A learner may only send a request to someone who TEACHES that course and
    is at least two levels above them (utils.levels.is_eligible_to_teach).
+   A course can be removed (learning OR teaching) to free a slot, unless it
+   still has an open request or an upcoming session (course_in_use_problem).
 4. A course is finished (100%) when the learner has completed
    SESSIONS_FOR_FINAL sessions AND then passed the final Skill Arena with at
    least FINAL_PASS_SCORE. Only then can a certificate be issued.
@@ -26,6 +28,7 @@ from sqlalchemy.orm import Session
 
 from .. import models
 from ..utils.levels import is_eligible_to_teach
+from ..utils.timezone import as_utc, utc_now
 from .question_generator import canonical_skill
 
 MAX_COURSES = 4
@@ -132,6 +135,37 @@ def teaching_problem(db: Session, teacher_id: int, learner_id: int, skill_id: in
     l_lvl = (l.level_num or 0) if l else 0
     if not is_eligible_to_teach(t_lvl, l_lvl):
         return "The tutor must be at least two levels above the learner in this course."
+    return None
+
+
+def course_in_use_problem(db: Session, user_id: int, skill: models.Skill) -> Optional[str]:
+    """None if the user can remove this course, else why not: a course with an
+    open request (pending or accepted, as learner or tutor) or an upcoming
+    session must be finished or cancelled first, or those would break."""
+    open_request = (
+        db.query(models.ConnectionRequest)
+        .filter(
+            models.ConnectionRequest.skill_id == skill.id,
+            models.ConnectionRequest.status.in_(["pending", "accepted"]),
+            (models.ConnectionRequest.from_user_id == user_id) | (models.ConnectionRequest.to_user_id == user_id),
+        )
+        .first()
+    )
+    if open_request:
+        return (f"You still have an open {skill.name} request or connection. "
+                f"Complete or decline it on the Requests page first, then remove the course.")
+    now = utc_now()
+    for s in (
+        db.query(models.Session)
+        .filter(
+            func.lower(models.Session.skill) == skill.name.lower(),
+            models.Session.status == "scheduled",
+            (models.Session.tutor_id == user_id) | (models.Session.learner_id == user_id),
+        )
+        .all()
+    ):
+        if s.scheduled_end is None or as_utc(s.scheduled_end) > now:
+            return f"You have an upcoming {skill.name} session. Cancel or finish it first, then remove the course."
     return None
 
 

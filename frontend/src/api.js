@@ -119,7 +119,7 @@ async function request(path, { method = "GET", body, auth = true, bypassCache = 
     }
     
     if (method !== "GET") {
-      if (path.startsWith("/users/me")) clearCachePrefix("/users/me");
+      if (path.startsWith("/users/me")) { clearCachePrefix("/users/me"); clearCachePrefix("/progress"); }
       if (path.startsWith("/sessions")) clearCachePrefix("/sessions");
       if (path.startsWith("/requests")) clearCachePrefix("/requests");
       if (path.startsWith("/assessments")) clearCachePrefix("/users/me/skills");
@@ -201,6 +201,8 @@ export const api = {
 
   refreshMe: async () => rememberUser(await request("/users/me")),
   mySkills: () => request("/users/me/skills"),
+  // Remove one of my courses (frees one of the 4 slots). id = my course row id.
+  removeSkill: (userSkillId) => request(`/users/me/skills/${userSkillId}`, { method: "DELETE" }),
 
   // Skill Arena
   getLatestAssessment: () => request("/assessments/latest"),

@@ -63,8 +63,12 @@ def progress_for(us) -> int:
     )
 
 
-def stage_for(us, assessments_count: int):
+def stage_for(us, assessments_count: int, sessions_taught: Optional[int] = None):
+    """`sessions_taught`: for a teaching course, the real number of completed
+    sessions this user taught (the row's own counter only grows when the tutor
+    presses Complete, so it often showed 0)."""
+    sessions = sessions_taught if (us.role == "teaching" and sessions_taught is not None) else (us.sessions_completed or 0)
     return compute_skill_stage(
-        assessments_count, us.sessions_completed or 0, us.badge, us.level, us.total_learning_minutes or 0,
+        assessments_count, sessions, us.badge, us.level, us.total_learning_minutes or 0,
         us.role or "learning", us.course_completed_at is not None,
     )

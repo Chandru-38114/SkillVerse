@@ -1,10 +1,64 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { api } from '../api'
 import './progress.css'
 
 const STAGES = ['Discovered', 'Baseline Established', 'Practicing', 'Developing', 'Mastery']
-const STAGE_SHORT = ['DISCOVERED', 'BASELINE', 'PRACTICING', 'DEVELOPING', 'MASTERY']
+const STAGE_SHORT = ['Discovered', 'Baseline', 'Practicing', 'Developing', 'Mastery']
+const MAX_COURSES = 4 // same limit as the backend (services/course_rules.py)
+
+/* One row of the skill map: the course name and a 5-stop track. Every row and
+   the header use the same grid columns, so the stops always line up. */
+function JourneyRow({ skill }) {
+  const teaching = skill.role === 'teaching'
+  const reached = teaching ? STAGES.length - 1 : Math.max(0, STAGES.indexOf(skill.stage))
+  const fill = `${(reached / (STAGES.length - 1)) * 80}%` // the line spans 10%..90% of the track
+  return (
+    <div className={`jr${teaching ? ' tutor' : ''}`}>
+      <div className="jr-name">
+        <span className="jr-title">{skill.skill_name}</span>
+        <span className="jr-sub">{teaching ? '🎓 Tutor' : skill.stage}</span>
+      </div>
+      <div className="jr-track" role="img" aria-label={`${skill.skill_name}: ${teaching ? 'Tutor' : skill.stage}`}>
+        <span className="jr-line" />
+        <span className="jr-fill" style={{ width: fill }} />
+        {STAGES.map((st, i) => (
+          <span key={st} className={`jr-stop${i < reached ? ' done' : ''}${i === reached ? ' here' : ''}`} title={teaching ? 'Tutor' : st}>
+            {i === reached ? (teaching ? '🎓' : '★') : ''}
+          </span>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+/* "⋯" menu on a course card. For now it has one action: remove the course. */
+function CourseMenu({ onRemove }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef(null)
+  useEffect(() => {
+    if (!open) return
+    const close = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
+    const esc = (e) => { if (e.key === 'Escape') setOpen(false) }
+    document.addEventListener('mousedown', close)
+    document.addEventListener('keydown', esc)
+    return () => { document.removeEventListener('mousedown', close); document.removeEventListener('keydown', esc) }
+  }, [open])
+  return (
+    <div className="cmenu" ref={ref}>
+      <button type="button" className="cmenu-btn" aria-label="Course options" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen(o => !o)}>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="#29251F" aria-hidden="true"><circle cx="5" cy="12" r="2.2" /><circle cx="12" cy="12" r="2.2" /><circle cx="19" cy="12" r="2.2" /></svg>
+      </button>
+      {open && (
+        <div className="cmenu-list" role="menu">
+          <button type="button" role="menuitem" className="danger" onClick={() => { setOpen(false); onRemove() }}>
+            Remove course
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
 
 // The bar shows the server's progress_percentage: 16% per completed session
 // (5 sessions = 80%), 100% only after passing the final challenge.
@@ -21,6 +75,11 @@ export default function Progress() {
   const [showLoading, setShowLoading] = useState(false)
   const [error, setError] = useState(null)
   const [generating, setGenerating] = useState(false)
+  const [removing, setRemoving] = useState(null)     // the course being removed (confirm dialog)
+  const [removeError, setRemoveError] = useState('')
+  const [removeBusy, setRemoveBusy] = useState(false)
+  const [notice, setNotice] = useState('')
+  const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
     let mounted = true
@@ -43,7 +102,22 @@ export default function Progress() {
     }
     loadData()
     return () => { mounted = false; clearTimeout(timer) }
-  }, [])
+  }, [reloadKey])
+
+  const confirmRemove = async () => {
+    setRemoveBusy(true)
+    setRemoveError('')
+    try {
+      const res = await api.removeSkill(removing.id)
+      setNotice(res?.detail || `${removing.skill_name} was removed.`)
+      setRemoving(null)
+      setReloadKey(k => k + 1)
+    } catch (err) {
+      setRemoveError(err.message || 'Could not remove this course.')
+    } finally {
+      setRemoveBusy(false)
+    }
+  }
 
   const handleGenerateCertificate = async (skillName) => {
     setGenerating(true)
@@ -104,11 +178,21 @@ export default function Progress() {
             Track how your skills grow
           </h1>
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 4 }}>
-            <span className="pill" style={{ height: 32, background: 'var(--accl)' }}>{progressData.length} skills</span>
+            <span className="pill" style={{ height: 32, background: progressData.length > MAX_COURSES ? '#F6DDD8' : 'var(--accl)' }} title="You can have 4 courses at a time">
+              {progressData.length} / {MAX_COURSES} courses
+            </span>
             <span className="pill" style={{ height: 32 }}>{totalSessions} sessions completed</span>
             <span className="pill" style={{ height: 32 }}>{totalHours} hours learning</span>
           </div>
         </header>
+
+        {progressData.length > MAX_COURSES && (
+          <div className="note warn">
+            You have {progressData.length} courses, but the limit is {MAX_COURSES} at a time. Remove the ones you're not using
+            with the <b>⋯</b> menu on each course below, so you can add new ones later.
+          </div>
+        )}
+        {notice && <div className="note ok" role="status">{notice}</div>}
 
         {error && (
           <div style={{ padding: '12px 14px', border: '2px solid #9A2B1E', borderRadius: 12, background: '#F6DDD8', color: '#9A2B1E', fontWeight: 800 }}>{error}</div>
@@ -135,29 +219,14 @@ export default function Progress() {
             {/* ---- skill map ---- */}
             <section style={{ display: 'flex', flexDirection: 'column', gap: 16 }} aria-labelledby="sv-map">
               <h2 id="sv-map" style={{ margin: 0, fontSize: 26, fontWeight: 900 }}>Skill map</h2>
-              <div className="map" role="table" aria-label="Skill stages">
-                <div className="hd" />
-                {STAGE_SHORT.map((s, i) => (
-                  <div key={s} className="hd"><span>{s}</span><span style={{ display: 'none' }}>{i + 1}</span></div>
-                ))}
-                {progressData.map(skill => {
-                  // Teachers don't walk the learner stages: show the row as
-                  // complete with a tutor mark.
-                  const teaching = skill.role === 'teaching'
-                  const reached = teaching ? STAGES.length - 1 : STAGES.indexOf(skill.stage)
-                  return (
-                    <div key={skill.id} style={{ display: 'contents' }}>
-                      <div className="nm">{skill.skill_name}{teaching ? ' (tutor)' : ''}</div>
-                      {STAGES.map((st, i) => (
-                        <div key={st}>
-                          {i === reached
-                            ? <span className="tok" aria-label={`${skill.skill_name}: ${teaching ? 'Teaching' : st}`}>{teaching ? '🎓' : '★'}</span>
-                            : <span className="seg" style={{ background: i < reached ? 'var(--acc)' : '#F0E5D2' }} />}
-                        </div>
-                      ))}
-                    </div>
-                  )
-                })}
+              <div className="jmap">
+                <div className="jr jr-head" aria-hidden="true">
+                  <div className="jr-name" />
+                  <div className="jr-labels">
+                    {STAGE_SHORT.map(st => <span key={st}>{st}</span>)}
+                  </div>
+                </div>
+                {progressData.map(skill => <JourneyRow key={skill.id} skill={skill} />)}
               </div>
             </section>
 
@@ -177,14 +246,21 @@ export default function Progress() {
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0 }}>
                               <span style={{ fontSize: 20, fontWeight: 900 }}>{skill.skill_name}</span>
                               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                                <span className="pill">{skill.role === 'teaching' ? 'Teaching' : 'Learning'}</span>
-                                <span className="pill" style={{ background: 'var(--accl)' }}>{skill.stage}</span>
+                                {teaching
+                                  ? <span className="pill" style={{ background: '#D6F3EA' }}>🎓 Tutor</span>
+                                  : <>
+                                      <span className="pill">Learning</span>
+                                      <span className="pill" style={{ background: 'var(--accl)' }}>{skill.stage}</span>
+                                    </>}
                                 {skill.badge && <span className="pill" style={{ background: BADGE_FILL[skill.badge] || '#FBEFC4' }}>★ {skill.badge}</span>}
                               </div>
                             </div>
-                            {skill.latest_score != null && (
-                              <span className="mono" style={{ fontSize: 26, fontWeight: 700 }} title="Latest Skill Arena score">{Math.round(skill.latest_score)}%</span>
-                            )}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                              {skill.latest_score != null && (
+                                <span className="mono" style={{ fontSize: 26, fontWeight: 700 }} title="Latest Skill Arena score">{Math.round(skill.latest_score)}%</span>
+                              )}
+                              <CourseMenu onRemove={() => { setRemoveError(''); setRemoving(skill) }} />
+                            </div>
                           </div>
 
                           {!teaching && (
@@ -312,6 +388,28 @@ export default function Progress() {
           </>
         )}
       </div>
+
+      {removing && (
+        <div className="pmodal-bg" role="dialog" aria-modal="true" aria-labelledby="rm-title" onClick={(e) => { if (e.target === e.currentTarget && !removeBusy) setRemoving(null) }}>
+          <div className="card pmodal">
+            <span className="pmodal-icon" aria-hidden="true">🗑</span>
+            <h3 id="rm-title" style={{ margin: 0, fontSize: 24, fontWeight: 900 }}>Remove {removing.skill_name}?</h3>
+            <p className="muted" style={{ margin: 0, lineHeight: 1.55 }}>
+              This frees one of your {MAX_COURSES} course slots. Your past Skill Arena attempts, sessions and certificates stay in your history.
+              {removing.role === 'teaching'
+                ? ` You will stop appearing as a tutor for ${removing.skill_name}; to teach it again, pass the Skill Arena again.`
+                : ` Your progress in ${removing.skill_name} (${removing.progress_percentage || 0}%) starts again if you add it back.`}
+            </p>
+            {removeError && <div className="note warn" style={{ margin: 0 }}>{removeError}</div>}
+            <div style={{ display: 'flex', gap: 12 }}>
+              <button type="button" className="btn btn-s" style={{ flex: 1 }} disabled={removeBusy} onClick={() => setRemoving(null)}>Keep it</button>
+              <button type="button" className="btn btn-danger" style={{ flex: 1 }} disabled={removeBusy} onClick={confirmRemove}>
+                {removeBusy ? 'Removing…' : 'Remove course'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

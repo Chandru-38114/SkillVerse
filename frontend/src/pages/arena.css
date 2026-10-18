@@ -75,3 +75,7 @@
   .sv-arena .qd{animation:svPop .35s both}
   .sv-arena .modal .tile{animation:svShake .5s .3s both}
 }
+
+/* While an exam is running (assessment.jsx adds this class to <body>) the
+   navbar is hidden, so nobody can wander to another page mid-exam. */
+body.sv-arena-lock .sv-nav{display:none !important}
