@@ -146,6 +146,10 @@ export default function SkillVerseBackground() {
           opacity="0.40"
         />
 
+        {/* Note: SVG doesn't accept % inside `points` or `translate()`, so the
+            traces are drawn as <line>s and the symbols are placed with a
+            nested <svg x="..%" y="..%"> (x/y accept %). */}
+
         {/* ── 2d. CIRCUIT-PATH LANGUAGE ──
             Horizontal + vertical segments with 90° turns,
             mimicking PCB traces — technology/coding identity.
@@ -154,21 +158,30 @@ export default function SkillVerseBackground() {
 
         {/* Top-right circuit trace */}
         <g opacity="0.07" stroke="url(#svbCircuit)" strokeWidth="1.5" fill="none">
-          <polyline points="62%,3% 72%,3% 72%,8% 78%,8% 78%,13%" />
+          <line x1="62%" y1="3%" x2="72%" y2="3%" strokeLinecap="square" />
+          <line x1="72%" y1="3%" x2="72%" y2="8%" strokeLinecap="square" />
+          <line x1="72%" y1="8%" x2="78%" y2="8%" strokeLinecap="square" />
+          <line x1="78%" y1="8%" x2="78%" y2="13%" strokeLinecap="square" />
           <circle cx="72%" cy="3%" r="2" fill="rgb(67,56,202)" opacity="0.3" />
           <circle cx="78%" cy="13%" r="2" fill="rgb(6,182,212)" opacity="0.25" />
         </g>
 
         {/* Left-side circuit trace */}
         <g opacity="0.06" stroke="url(#svbCircuit)" strokeWidth="1.5" fill="none">
-          <polyline points="3%,36% 3%,44% 10%,44% 10%,50% 16%,50%" />
+          <line x1="3%" y1="36%" x2="3%" y2="44%" strokeLinecap="square" />
+          <line x1="3%" y1="44%" x2="10%" y2="44%" strokeLinecap="square" />
+          <line x1="10%" y1="44%" x2="10%" y2="50%" strokeLinecap="square" />
+          <line x1="10%" y1="50%" x2="16%" y2="50%" strokeLinecap="square" />
           <circle cx="3%" cy="36%" r="2" fill="rgb(67,56,202)" opacity="0.25" />
           <circle cx="16%" cy="50%" r="2" fill="rgb(124,58,237)" opacity="0.20" />
         </g>
 
         {/* Lower circuit trace */}
         <g opacity="0.055" stroke="url(#svbCircuit)" strokeWidth="1.5" fill="none">
-          <polyline points="35%,90% 35%,85% 48%,85% 48%,78% 60%,78%" />
+          <line x1="35%" y1="90%" x2="35%" y2="85%" strokeLinecap="square" />
+          <line x1="35%" y1="85%" x2="48%" y2="85%" strokeLinecap="square" />
+          <line x1="48%" y1="85%" x2="48%" y2="78%" strokeLinecap="square" />
+          <line x1="48%" y1="78%" x2="60%" y2="78%" strokeLinecap="square" />
           <circle cx="35%" cy="90%" r="2" fill="rgb(124,58,237)" opacity="0.20" />
           <circle cx="60%" cy="78%" r="2" fill="rgb(67,56,202)" opacity="0.18" />
         </g>
@@ -179,28 +192,28 @@ export default function SkillVerseBackground() {
         */}
 
         {/* CODE BRACKETS — top-right corner, tech identity */}
-        <g opacity="0.065" transform="translate(81%, 4%)">
+        <svg x="81%" y="4%" overflow="visible"><g opacity="0.065">
           <text fontFamily="'JetBrains Mono', monospace" fontSize="36"
                 fill="rgb(67,56,202)" fontWeight="500">&lt;/&gt;</text>
-        </g>
+        </g></svg>
 
         {/* CURLY BRACES — slightly below brackets, secondary */}
-        <g opacity="0.04" transform="translate(88%, 18%)">
+        <svg x="88%" y="18%" overflow="visible"><g opacity="0.04">
           <text fontFamily="'JetBrains Mono', monospace" fontSize="22"
                 fill="rgb(124,58,237)" fontWeight="400">&#123; &#125;</text>
-        </g>
+        </g></svg>
 
         {/* ORBIT RING — bottom-left, discovery/exploration */}
-        <g opacity="0.065" transform="translate(2%, 68%)">
+        <svg x="2%" y="68%" overflow="visible"><g opacity="0.065">
           <ellipse cx="58" cy="32" rx="52" ry="20"
             stroke="rgb(67,56,202)" strokeWidth="1.5" fill="none" strokeDasharray="5 7" />
           <circle cx="110" cy="32" r="5" fill="rgb(67,56,202)" opacity="0.45" />
           {/* Satellite point */}
           <circle cx="20"  cy="22" r="3" fill="rgb(124,58,237)" opacity="0.35" />
-        </g>
+        </g></svg>
 
         {/* COMPASS ROSE — lower-right, navigation/direction */}
-        <g opacity="0.05" transform="translate(88%, 76%)">
+        <svg x="88%" y="76%" overflow="visible"><g opacity="0.05">
           <circle cx="22" cy="22" r="20"
             stroke="rgb(245,158,11)" strokeWidth="1.5" fill="none" strokeDasharray="3 6" />
           <line x1="22" y1="2"  x2="22" y2="42"
@@ -210,10 +223,10 @@ export default function SkillVerseBackground() {
           <circle cx="22" cy="22" r="3" fill="rgb(245,158,11)" opacity="0.8" />
           {/* N indicator */}
           <circle cx="22" cy="5" r="2" fill="rgb(245,158,11)" opacity="0.5" />
-        </g>
+        </g></svg>
 
         {/* NODE-LINK MINI GRAPH — right mid, collaboration/network */}
-        <g opacity="0.055" transform="translate(87%, 40%)">
+        <svg x="87%" y="40%" overflow="visible"><g opacity="0.055">
           <circle cx="0"  cy="0"   r="6" fill="rgb(124,58,237)" />
           <circle cx="38" cy="-18" r="5" fill="rgb(67,56,202)" />
           <circle cx="38" cy="18"  r="4" fill="rgb(6,182,212)" />
@@ -221,26 +234,26 @@ export default function SkillVerseBackground() {
           <line x1="0" y1="0" x2="38" y2="-18" stroke="rgb(124,58,237)" strokeWidth="1.5" opacity="0.6" />
           <line x1="0" y1="0" x2="38" y2="18"  stroke="rgb(67,56,202)"  strokeWidth="1.5" opacity="0.6" />
           <line x1="0" y1="0" x2="20" y2="32"  stroke="rgb(245,158,11)" strokeWidth="1"   opacity="0.4" />
-        </g>
+        </g></svg>
 
         {/* INFINITY LOOP — top-center, continuous learning */}
-        <g opacity="0.045" transform="translate(43%, 1%)">
+        <svg x="43%" y="1%" overflow="visible"><g opacity="0.045">
           <path d="M 0 18 C 0 6 14 6 18 18 C 22 30 36 30 36 18 C 36 6 22 6 18 18 C 14 30 0 30 0 18 Z"
             stroke="rgb(67,56,202)" strokeWidth="2" fill="none" />
-        </g>
+        </g></svg>
 
         {/* BRANCHING PATH — left edge, problem-solving/decision */}
-        <g opacity="0.055" transform="translate(1%, 22%)">
+        <svg x="1%" y="22%" overflow="visible"><g opacity="0.055">
           <path d="M 20 0 L 20 60 M 20 30 L 0 60 M 20 30 L 40 60"
             stroke="rgb(67,56,202)" strokeWidth="1.5" fill="none"
             strokeLinecap="round" strokeDasharray="3 6" />
           <circle cx="20" cy="0"  r="4" fill="rgb(67,56,202)"  opacity="0.4" />
           <circle cx="0"  cy="60" r="3" fill="rgb(124,58,237)" opacity="0.3" />
           <circle cx="40" cy="60" r="3" fill="rgb(6,182,212)"  opacity="0.3" />
-        </g>
+        </g></svg>
 
         {/* PUZZLE GEOMETRY — top area, problem-solving identity */}
-        <g opacity="0.04" transform="translate(52%, 24%)">
+        <svg x="52%" y="24%" overflow="visible"><g opacity="0.04">
           <rect x="0"  y="0"  width="18" height="18" rx="3"
             stroke="rgb(67,56,202)" strokeWidth="1.5" fill="none" />
           <rect x="20" y="0"  width="18" height="18" rx="3"
@@ -252,18 +265,18 @@ export default function SkillVerseBackground() {
           {/* Connecting notch suggestion */}
           <path d="M 18 9 Q 24 9 24 15 Q 24 20 20 20"
             stroke="rgb(67,56,202)" strokeWidth="1" fill="none" strokeDasharray="2 3" />
-        </g>
+        </g></svg>
 
         {/* DIRECTIONAL ARROW PATH — guides eye from hero into journey */}
-        <g opacity="0.05" transform="translate(1%, 10%)">
+        <svg x="1%" y="10%" overflow="visible"><g opacity="0.05">
           <path d="M 0 0 C 12 18 8 38 22 52"
             stroke="rgb(67,56,202)" strokeWidth="1.5" fill="none"
             strokeLinecap="round" strokeDasharray="3 8" />
           <polygon points="17,50 22,62 27,50" fill="rgb(67,56,202)" opacity="0.35" />
-        </g>
+        </g></svg>
 
         {/* CHAT / COLLABORATION BUBBLES — bottom center, collaboration */}
-        <g opacity="0.045" transform="translate(40%, 88%)">
+        <svg x="40%" y="88%" overflow="visible"><g opacity="0.045">
           <rect x="0"  y="0"  width="30" height="18" rx="9"
             stroke="rgb(67,56,202)" strokeWidth="1.5" fill="none" />
           <rect x="18" y="14" width="22" height="14" rx="7"
@@ -271,7 +284,7 @@ export default function SkillVerseBackground() {
           <circle cx="4"  cy="9"  r="1.5" fill="rgb(67,56,202)"  opacity="0.5" />
           <circle cx="10" cy="9"  r="1.5" fill="rgb(67,56,202)"  opacity="0.5" />
           <circle cx="16" cy="9"  r="1.5" fill="rgb(67,56,202)"  opacity="0.5" />
-        </g>
+        </g></svg>
 
       </svg>
 
