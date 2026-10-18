@@ -262,14 +262,14 @@ class MarketplaceUser(BaseModel):
 
 class ConnectionRequestCreate(BaseModel):
     to_user_id: int
-    skill_name: str
-    message: Optional[str] = ""
+    skill_name: str = Field(..., max_length=60)
+    message: Optional[str] = Field("", max_length=1000)
     # Two-way learning context — all optional so old callers still work
-    learner_current_level: Optional[str] = None      # e.g. "Beginner"
-    learner_topics: Optional[str] = None             # comma-separated, e.g. "Loops, Functions"
-    learner_goals: Optional[str] = None              # free-text
-    learner_can_teach: Optional[str] = None          # comma-separated skill names
-    learner_teach_proficiency: Optional[str] = None  # e.g. "Intermediate"
+    learner_current_level: Optional[str] = Field(None, max_length=40)       # e.g. "Beginner"
+    learner_topics: Optional[str] = Field(None, max_length=500)             # comma-separated, e.g. "Loops, Functions"
+    learner_goals: Optional[str] = Field(None, max_length=1000)             # free-text
+    learner_can_teach: Optional[str] = Field(None, max_length=200)          # comma-separated skill names
+    learner_teach_proficiency: Optional[str] = Field(None, max_length=40)   # e.g. "Intermediate"
 
 
 class ConnectionRequestOut(UTCOut):
@@ -396,7 +396,7 @@ class SessionCreate(BaseModel):
     end_time:     Optional[str] = None
     scheduled_start: dt.datetime
     scheduled_end: dt.datetime
-    notes:        Optional[str] = None
+    notes:        Optional[str] = Field(None, max_length=1000)
 
     @field_validator('scheduled_start', 'scheduled_end')
     @classmethod
@@ -414,7 +414,7 @@ class SessionUpdate(BaseModel):
     end_time:     Optional[str] = None
     scheduled_start: Optional[dt.datetime] = None
     scheduled_end: Optional[dt.datetime] = None
-    notes:        Optional[str] = None
+    notes:        Optional[str] = Field(None, max_length=1000)
 
     @field_validator('scheduled_start', 'scheduled_end')
     @classmethod

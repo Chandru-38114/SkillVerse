@@ -82,7 +82,7 @@ frontend/src/
   It checks ownership and rejects a second submission with 409.
 - **Rule: answer keys must never be sent to the browser.** Never return `answer` or
   `explanation` from any endpoint the client calls.
-- Generated mix: 6 MCQs, 3 code-tracing ("output") questions, 1 debugging question.
+- Generated mix (defaults, env-configurable): 12 MCQs, 5 code-tracing, 3 debugging, 2 coding problems; 45 minutes.
   Each is tagged with a topic from `SKILL_TOPICS`, which drives weak-topic analysis.
 - Invalid AI output (duplicate options, bad answer index) is dropped; options are shuffled;
   if one model fails, the next in `GEMINI_MODELS` is tried.

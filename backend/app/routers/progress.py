@@ -13,7 +13,7 @@ import uuid
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 from starlette.concurrency import run_in_threadpool
@@ -38,13 +38,13 @@ EXCHANGE_LEG_POINTS = 20          # points for the teacher when an exchange leg 
 
 
 class SessionQuizAnswer(BaseModel):
-    question_id: str
-    answer: str
+    question_id: str = Field(..., max_length=100)
+    answer: str = Field(..., max_length=5000)
 
 
 class SessionQuizSubmit(BaseModel):
-    attempt_id: str
-    answers: List[SessionQuizAnswer]
+    attempt_id: str = Field(..., max_length=64)
+    answers: List[SessionQuizAnswer] = Field(..., max_length=50)
 
 
 # ---------------------------------------------------------------------------
