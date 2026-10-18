@@ -120,7 +120,7 @@ Frontend uses `VITE_API_URL`. Never hardcode or print secrets.
 - Commit style: `type(scope): short description`, e.g. `fix(chat): ...`, `feat(skill-arena): ...`.
 
 ## Checks before committing
-- Backend: `python -m pytest backend/tests -q` (68 tests) and `python -m py_compile` on changed files.
+- Backend: `python -m pytest backend/tests -q` (69 tests) and `python -m py_compile` on changed files.
 - Frontend: `npm run build` must succeed.
 - Reuse the shared helpers above instead of copying code (storage, session checks,
   time zones, WebSocket rooms, uploads in api.js).
@@ -128,7 +128,10 @@ Frontend uses `VITE_API_URL`. Never hardcode or print secrets.
 
 ## Course rules (round 3 — all in `backend/app/services/course_rules.py`)
 - **One role per course.** A user teaches OR learns a course, never both. A teacher can't
-  request, learn or "add as learning" a course they teach, and can't remove a taught course.
+  request, learn or "add as learning" a course they teach.
+- **Removing a course** (⋯ menu on the Progress page): learning AND teaching courses can be
+  removed to free a slot, unless the course still has an open request/connection or an
+  upcoming session (`course_in_use_problem`).
 - **Learner → teacher:** Skill Arena with the "teach" goal and **60%+** (not on a terminated
   attempt). The server decides the role on submit; the client's `role` is only the goal.
 - **Max 4 courses** per user (teaching + learning). Any course name is allowed (the AI writes
