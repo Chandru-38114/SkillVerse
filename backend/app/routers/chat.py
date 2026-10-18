@@ -14,7 +14,6 @@ together, and the live WebSocket room is per pair ("pair_<low id>_<high id>").
 - PUT/DELETE /chat/messages/{id}, POST .../hide, .../react   message actions
 """
 import copy
-import datetime as dt
 import json
 import logging
 import re
@@ -30,7 +29,7 @@ from .. import models, schemas, auth
 from ..database import get_db, SessionLocal
 from ..notification_service import create_notification
 from ..supabase_client import signed_url, upload_file
-from ..utils.timezone import enforce_utc_iso, utc_now
+from ..utils.timezone import as_utc, enforce_utc_iso, utc_now
 from ..ws_manager import chat_manager
 
 logger = logging.getLogger(__name__)
@@ -284,11 +283,9 @@ def get_inbox(
     # Earliest upcoming one first; skip sessions that already ended without
     # anyone joining, otherwise the chat shows "Join" for an expired session
     # and the Schedule button never comes back.
-    def _aware(d):
-        return d.replace(tzinfo=dt.timezone.utc) if (d is not None and d.tzinfo is None) else d
-    sessions = sorted(sessions, key=lambda x: _aware(x.scheduled_start) or _now)
+    sessions = sorted(sessions, key=lambda x: as_utc(x.scheduled_start) or _now)
     for s in sessions:
-        end_dt = _aware(s.scheduled_end)
+        end_dt = as_utc(s.scheduled_end)
         if end_dt is not None and end_dt <= _now:
             continue
         other_u_id = req_to_other_user[s.request_id]

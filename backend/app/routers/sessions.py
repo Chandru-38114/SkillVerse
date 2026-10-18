@@ -26,7 +26,7 @@ from starlette.concurrency import run_in_threadpool
 from .. import models, schemas, auth
 from ..database import get_db, SessionLocal
 from ..notification_service import create_notification
-from ..utils.timezone import utc_now, IST
+from ..utils.timezone import IST, as_utc, utc_now
 from ..ws_manager import webrtc_manager
 from .requests import _to_out as _req_to_out
 
@@ -85,16 +85,10 @@ def _to_out(s: models.Session) -> schemas.SessionOut:
 
 
 
-def _utc(d: Optional[dt.datetime]) -> Optional[dt.datetime]:
-    """SQLite returns naive datetimes (stored as UTC); make every value aware."""
-    if d is None:
-        return None
-    return d.replace(tzinfo=dt.timezone.utc) if d.tzinfo is None else d.astimezone(dt.timezone.utc)
-
 
 def _validate_times(start: dt.datetime, end: dt.datetime):
     """Raise 422 for invalid date/time combinations."""
-    start, end = _utc(start), _utc(end)
+    start, end = as_utc(start), as_utc(end)
     if start >= end:
         raise HTTPException(status_code=422, detail="Start time must be before end time.")
     minutes = (end - start).total_seconds() / 60
@@ -113,7 +107,7 @@ def _check_overlap(db: DBSession, people, new_start: dt.datetime, new_end: dt.da
                    current_user_id: int, ignore_session_id: Optional[int] = None):
     """Neither person may already have another scheduled session that overlaps
     this time (e.g. a tutor booked by two different learners at 5–6 PM)."""
-    new_start, new_end = _utc(new_start), _utc(new_end)
+    new_start, new_end = as_utc(new_start), as_utc(new_end)
     others = (
         db.query(models.Session)
         .filter(
@@ -125,12 +119,12 @@ def _check_overlap(db: DBSession, people, new_start: dt.datetime, new_end: dt.da
     for other in others:
         if other.id == ignore_session_id or not other.scheduled_start or not other.scheduled_end:
             continue
-        if _utc(other.scheduled_start) < new_end and _utc(other.scheduled_end) > new_start:
+        if as_utc(other.scheduled_start) < new_end and as_utc(other.scheduled_end) > new_start:
             who = "You already have" if current_user_id in (other.tutor_id, other.learner_id) else "Your partner already has"
             raise HTTPException(
                 status_code=409,
-                detail=f"{who} a session from {_utc(other.scheduled_start).astimezone(IST).strftime('%d %b %I:%M %p')} "
-                       f"to {_utc(other.scheduled_end).astimezone(IST).strftime('%I:%M %p')} IST. Pick a different time.",
+                detail=f"{who} a session from {as_utc(other.scheduled_start).astimezone(IST).strftime('%d %b %I:%M %p')} "
+                       f"to {as_utc(other.scheduled_end).astimezone(IST).strftime('%I:%M %p')} IST. Pick a different time.",
             )
 
 
@@ -141,7 +135,7 @@ def _partner_of(s: models.Session, user_id: int) -> int:
 def _set_display_times(s: models.Session, start: dt.datetime, end: dt.datetime) -> None:
     """Older pages read session_date/start_time/end_time as India-time text;
     keep them in step with scheduled_start/scheduled_end (UTC)."""
-    ist_start, ist_end = _utc(start).astimezone(IST), _utc(end).astimezone(IST)
+    ist_start, ist_end = as_utc(start).astimezone(IST), as_utc(end).astimezone(IST)
     s.session_date = ist_start.strftime("%Y-%m-%d")
     s.start_time = ist_start.strftime("%H:%M")
     s.end_time = ist_end.strftime("%H:%M")
@@ -151,7 +145,7 @@ def _expire_if_over(s: models.Session, db: DBSession) -> bool:
     """A scheduled session past its end: completed if BOTH people were in the
     room, otherwise it stays "scheduled" and the UI shows it as missed.
     Returns True when the session is over."""
-    end_dt = _utc(s.scheduled_end)
+    end_dt = as_utc(s.scheduled_end)
     if s.status != "scheduled" or end_dt is None or utc_now() < end_dt:
         return False
     if s.both_joined_at is not None:
@@ -220,7 +214,7 @@ def create_session(
         models.Session.request_id == payload.request_id,
         models.Session.status == "scheduled",
     ).all()
-    if any(_utc(old.scheduled_end) is None or _utc(old.scheduled_end) > now_utc for old in scheduled):
+    if any(as_utc(old.scheduled_end) is None or as_utc(old.scheduled_end) > now_utc for old in scheduled):
         raise HTTPException(
             status_code=409,
             detail="An active session is already scheduled for this request. Cancel it first to reschedule.",
@@ -265,7 +259,7 @@ def upcoming_sessions(
     )
     
     def not_over(s: models.Session) -> bool:
-        end, start = _utc(s.scheduled_end), _utc(s.scheduled_start)
+        end, start = as_utc(s.scheduled_end), as_utc(s.scheduled_start)
         if end:
             return end > now
         # no end time: hide it 2 hours after the start
@@ -321,8 +315,8 @@ def update_session(
     if s.started_at is not None and (payload.scheduled_start or payload.scheduled_end):
         raise HTTPException(status_code=400, detail="This session has already started, so its time can't be changed.")
 
-    new_start = _utc(payload.scheduled_start or s.scheduled_start)
-    new_end = _utc(payload.scheduled_end or s.scheduled_end)
+    new_start = as_utc(payload.scheduled_start or s.scheduled_start)
+    new_end = as_utc(payload.scheduled_end or s.scheduled_end)
     if payload.scheduled_start or payload.scheduled_end:
         _validate_times(new_start, new_end)
         _check_overlap(db, (s.tutor_id, s.learner_id), new_start, new_end, current_user.id, ignore_session_id=s.id)
@@ -390,14 +384,14 @@ async def webrtc_signaling(
             await websocket.close(code=4410, reason="Session Ended")
             return
 
-        end_dt = _utc(s.scheduled_end)
+        end_dt = as_utc(s.scheduled_end)
         if _expire_if_over(s, db):
             await websocket.close(code=4410, reason="Session Ended")
             return
 
         # The room opens EARLY_JOIN_MINUTES before the start. Joining earlier
         # used to mark the session as started hours ahead.
-        start_dt = _utc(s.scheduled_start)
+        start_dt = as_utc(s.scheduled_start)
         if start_dt and utc_now() < start_dt - dt.timedelta(minutes=EARLY_JOIN_MINUTES):
             await websocket.close(code=4425, reason="Too early")
             return
