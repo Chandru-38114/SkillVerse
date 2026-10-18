@@ -70,7 +70,7 @@ frontend/src/
   pages/                       assessment (Skill Arena), messages, marketplace,
                                session_room (Learning Arena), dashboard, progress, ...
   components/                  Compiler, Whiteboard, VideoChat, Notes, Materials, ...
-                               (DateTimePicker.jsx is unused — reference for the planned picker)
+                               (chat/ScheduleModal.jsx = the day/time/duration chip picker)
 
 ## How the AI assessment works (important)
 - `POST /assessments/start` asks Gemini for a fresh assessment, stores the questions
