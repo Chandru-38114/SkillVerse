@@ -18,16 +18,12 @@ Badges:
 """
 
 from typing import List, Dict, Any
-from datetime import datetime, timezone
+from ..utils.timezone import utc_now
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
 
 from .. import models
 from .teacher_stats_service import get_teacher_public_stats_for_users
-
-
-def utc_now() -> datetime:
-    return datetime.now(timezone.utc)
 
 
 TEACHER_BADGES: Dict[str, Dict[str, Any]] = {

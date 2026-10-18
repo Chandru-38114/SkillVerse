@@ -14,7 +14,6 @@ Provides statistics for teachers on SkillVerse:
 
 No email, phone, or answer key leakage anywhere.
 """
-import datetime as dt
 from typing import List
 from collections import Counter
 from fastapi import APIRouter, Depends
@@ -22,22 +21,11 @@ from sqlalchemy.orm import Session
 
 from .. import models, schemas, auth
 from ..database import get_db
+from ..utils.session_time import session_minutes
 
 router = APIRouter(prefix="/teacher-stats", tags=["teacher-stats"])
 
 
-def _calculate_session_duration(session: models.Session) -> int:
-    try:
-        st = dt.datetime.strptime(session.start_time, "%H:%M")
-        en = dt.datetime.strptime(session.end_time, "%H:%M")
-        duration = int((en - st).total_seconds() / 60)
-        if duration < 0:
-            duration += 24 * 60
-        if duration == 0:
-            duration = 60
-        return duration
-    except Exception:
-        return 60
 
 
 @router.get("/me", response_model=schemas.TeacherStatsOut)
@@ -65,7 +53,7 @@ def get_my_teacher_stats(
 
     # ── 1. Teaching experience ────────────────────────────────────────────────
     # Total hours taught from completed sessions
-    total_minutes = sum(_calculate_session_duration(s) for s in completed_teaching_sessions)
+    total_minutes = sum(session_minutes(s) for s in completed_teaching_sessions)
     total_hours_taught = round(total_minutes / 60.0, 1)
 
     # Teaching since = date of their first completed teaching session

@@ -12,29 +12,17 @@ Provides a comprehensive overview of a user's:
 
 No public version, no email/phone leakage, no answer key leakage.
 """
-import datetime as dt
 from typing import List
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from .. import models, schemas, auth
 from ..database import get_db
+from ..utils.session_time import session_minutes
 
 router = APIRouter(prefix="/report-card", tags=["report-card"])
 
 
-def _calculate_session_duration(session: models.Session) -> int:
-    try:
-        st = dt.datetime.strptime(session.start_time, "%H:%M")
-        en = dt.datetime.strptime(session.end_time, "%H:%M")
-        duration = int((en - st).total_seconds() / 60)
-        if duration < 0:
-            duration += 24 * 60
-        if duration == 0:
-            duration = 60
-        return duration
-    except Exception:
-        return 60
 
 
 @router.get("/me", response_model=schemas.ReportCardOut)
@@ -129,7 +117,7 @@ def get_my_report_card(
     )
 
     learning_sessions_count = len(learner_completed_sessions)
-    total_learning_minutes = sum(_calculate_session_duration(s) for s in learner_completed_sessions)
+    total_learning_minutes = sum(session_minutes(s) for s in learner_completed_sessions)
     distinct_skills_learned = sorted(list(set(s.skill for s in learner_completed_sessions if s.skill)))
 
     learning_activity = schemas.LearningActivitySummary(
@@ -150,7 +138,7 @@ def get_my_report_card(
     )
 
     teaching_sessions_count = len(teacher_completed_sessions)
-    total_teaching_minutes = sum(_calculate_session_duration(s) for s in teacher_completed_sessions)
+    total_teaching_minutes = sum(session_minutes(s) for s in teacher_completed_sessions)
     distinct_skills_taught = sorted(list(set(s.skill for s in teacher_completed_sessions if s.skill)))
 
     teaching_activity = schemas.TeachingActivitySummary(
