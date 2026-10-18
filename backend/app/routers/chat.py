@@ -1,33 +1,45 @@
-import json
-import re
-from typing import List
+"""
+Chat between two connected people.
+
+ONE conversation per pair of users: if they have several connection requests
+(e.g. Python first, Java later), the messages of all of them are shown
+together, and the live WebSocket room is per pair ("pair_<low id>_<high id>").
+
+- POST /chat/{request_id}/upload           file or voice note -> Supabase Storage
+- GET  /chat/{request_id}/file/{bucket}/{name}   temporary download link
+- GET  /chat/inbox                          one row per conversation
+- POST /chat/{request_id}/read              mark the partner's messages as read
+- GET/POST /chat/{request_id}/messages      history / send (REST fallback)
+- WS   /chat/ws/{request_id}                live chat, presence and history
+- PUT/DELETE /chat/messages/{id}, POST .../hide, .../react   message actions
+"""
 import copy
+import datetime as dt
+import json
 import logging
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, WebSocket, WebSocketDisconnect, Query, File, UploadFile
+import re
 import uuid
-from starlette.concurrency import run_in_threadpool
+from typing import List
+
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, WebSocket, WebSocketDisconnect, Query, File, UploadFile
+from sqlalchemy import or_, and_, func
 from sqlalchemy.orm import Session
-from ..notification_service import create_notification
-from ..utils.timezone import enforce_utc_iso
-from ..supabase_client import signed_url, upload_file
+from starlette.concurrency import run_in_threadpool
 
 from .. import models, schemas, auth
 from ..database import get_db, SessionLocal
+from ..notification_service import create_notification
+from ..supabase_client import signed_url, upload_file
+from ..utils.timezone import enforce_utc_iso, utc_now
 from ..ws_manager import chat_manager
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
-ALLOWED_EXTENSIONS = {
-    "pdf": "application/pdf",
-    "png": "image/png",
-    "jpg": "image/jpeg",
-    "jpeg": "image/jpeg",
-    "txt": "text/plain",
-    "doc": "application/msword",
-    "docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-}
+MAX_FILE_BYTES = 25 * 1024 * 1024
+MAX_VOICE_BYTES = 10 * 1024 * 1024
+BLOCKED_FILE_EXTENSIONS = ["exe", "bat", "cmd", "ps1", "sh", "js", "vbs"]  # programs/scripts
 
 @router.post("/{request_id}/upload")
 def upload_attachment(
@@ -56,12 +68,12 @@ def upload_attachment(
         content_type = "application/octet-stream"
 
     if type == "file":
-        if size_bytes > 25 * 1024 * 1024:
+        if size_bytes > MAX_FILE_BYTES:
             raise HTTPException(status_code=400, detail="File too large (max 25MB)")
-        if ext in ["exe", "bat", "cmd", "ps1", "sh", "js", "vbs"]:
+        if ext in BLOCKED_FILE_EXTENSIONS:
             raise HTTPException(status_code=400, detail="Executable files are not allowed")
     elif type == "voice":
-        if size_bytes > 10 * 1024 * 1024:
+        if size_bytes > MAX_VOICE_BYTES:
             raise HTTPException(status_code=400, detail="Voice message too large")
         ext = ext or "webm"
     else:
@@ -128,6 +140,45 @@ def _authorize(db: Session, request_id: int, user_id: int) -> models.ConnectionR
     return req
 
 
+def _other_user(req: models.ConnectionRequest, user_id: int) -> int:
+    """The other person in a request."""
+    return req.to_user_id if req.from_user_id == user_id else req.from_user_id
+
+
+def _room_id(user_a: int, user_b: int) -> str:
+    """Live chat room shared by two users (same for both, whatever the order)."""
+    return f"pair_{min(user_a, user_b)}_{max(user_a, user_b)}"
+
+
+def _pair_request_ids(db: Session, user_a: int, user_b: int) -> List[int]:
+    """Every connection request between these two users, in either direction."""
+    rows = db.query(models.ConnectionRequest.id).filter(
+        or_(
+            and_(models.ConnectionRequest.from_user_id == user_a, models.ConnectionRequest.to_user_id == user_b),
+            and_(models.ConnectionRequest.from_user_id == user_b, models.ConnectionRequest.to_user_id == user_a),
+        )
+    ).all()
+    return [r[0] for r in rows]
+
+
+def _hidden_message_ids(db: Session, user_id: int):
+    """Subquery: messages this user deleted "for me"."""
+    return db.query(models.MessageUserState.message_id).filter(
+        models.MessageUserState.user_id == user_id
+    ).subquery()
+
+
+def _conversation_messages(db: Session, request_id: int, user_id: int) -> List[models.Message]:
+    """The whole conversation of this user with the request's other person,
+    oldest first, without messages they hid."""
+    req = db.query(models.ConnectionRequest).filter(models.ConnectionRequest.id == request_id).first()
+    pair_ids = _pair_request_ids(db, user_id, _other_user(req, user_id))
+    return db.query(models.Message).filter(
+        models.Message.request_id.in_(pair_ids),
+        ~models.Message.id.in_(_hidden_message_ids(db, user_id)),
+    ).order_by(models.Message.created_at).all()
+
+
 def _serialize_message(msg: models.Message) -> dict:
     """Shared serializer for WS payloads — keeps history, new messages, and
     update broadcasts consistent."""
@@ -146,8 +197,7 @@ def _pair_room(db: Session, request_id: int) -> str:
     req = db.query(models.ConnectionRequest).filter(models.ConnectionRequest.id == request_id).first()
     if not req:
         return str(request_id)
-    u1, u2 = min(req.from_user_id, req.to_user_id), max(req.from_user_id, req.to_user_id)
-    return f"pair_{u1}_{u2}"
+    return _room_id(req.from_user_id, req.to_user_id)
 
 
 async def _broadcast(room_id: str, payload: dict) -> None:
@@ -166,8 +216,6 @@ def _queue_message_update(background_tasks: BackgroundTasks, db: Session, msg: m
     background_tasks.add_task(_broadcast, _pair_room(db, msg.request_id),
                               {"type": "message_update", "message": _serialize_message(msg)})
 
-
-from sqlalchemy import or_, and_, func
 
 @router.get("/inbox", response_model=List[schemas.InboxConversationOut])
 def get_inbox(
@@ -194,7 +242,7 @@ def get_inbox(
     req_to_other_user = {}
     
     for req in reqs:
-        other_user_id = req.to_user_id if req.from_user_id == current_user.id else req.from_user_id
+        other_user_id = _other_user(req, current_user.id)
         existing = canonical_reqs.get(other_user_id)
         if existing is None:
             canonical_reqs[other_user_id] = req
@@ -232,14 +280,12 @@ def get_inbox(
         models.Session.request_id.in_(req_ids),
         models.Session.status == "scheduled"
     ).all()
-    import datetime as _dt
-    from ..utils.timezone import utc_now as _utc_now
-    _now = _utc_now()
+    _now = utc_now()
     # Earliest upcoming one first; skip sessions that already ended without
     # anyone joining, otherwise the chat shows "Join" for an expired session
     # and the Schedule button never comes back.
     def _aware(d):
-        return d.replace(tzinfo=_dt.timezone.utc) if (d is not None and d.tzinfo is None) else d
+        return d.replace(tzinfo=dt.timezone.utc) if (d is not None and d.tzinfo is None) else d
     sessions = sorted(sessions, key=lambda x: _aware(x.scheduled_start) or _now)
     for s in sessions:
         end_dt = _aware(s.scheduled_end)
@@ -249,10 +295,7 @@ def get_inbox(
         if other_u_id not in sessions_map_pair:
             sessions_map_pair[other_u_id] = s
 
-    # Hidden messages subquery
-    hidden_subq = db.query(models.MessageUserState.message_id).filter(
-        models.MessageUserState.user_id == current_user.id
-    ).subquery()
+    hidden_subq = _hidden_message_ids(db, current_user.id)
 
     # Unread counts map
     unread_counts = db.query(
@@ -333,16 +376,8 @@ def mark_conversation_read(
     db: Session = Depends(get_db),
 ):
     req = _authorize(db, request_id, current_user.id)
-    other_user_id = req.to_user_id if req.from_user_id == current_user.id else req.from_user_id
-
-    # Find all requests between this user pair to merge reads
-    pair_reqs = db.query(models.ConnectionRequest.id).filter(
-        or_(
-            and_(models.ConnectionRequest.from_user_id == current_user.id, models.ConnectionRequest.to_user_id == other_user_id),
-            and_(models.ConnectionRequest.from_user_id == other_user_id, models.ConnectionRequest.to_user_id == current_user.id),
-        )
-    ).all()
-    pair_req_ids = [r[0] for r in pair_reqs]
+    other_user_id = _other_user(req, current_user.id)
+    pair_req_ids = _pair_request_ids(db, current_user.id, other_user_id)
 
     unread_messages = db.query(models.Message).filter(
         models.Message.request_id.in_(pair_req_ids),
@@ -360,8 +395,7 @@ def mark_conversation_read(
 
     db.commit()
 
-    room_id = f"pair_{min(current_user.id, other_user_id)}_{max(current_user.id, other_user_id)}"
-    background_tasks.add_task(_broadcast, room_id, {
+    background_tasks.add_task(_broadcast, _room_id(current_user.id, other_user_id), {
         "type": "messages_read",
         "request_id": request_id,
         "reader_id": current_user.id,
@@ -376,25 +410,8 @@ def list_messages(
     current_user: models.User = Depends(auth.get_current_user),
     db: Session = Depends(get_db),
 ):
-    req = _authorize(db, request_id, current_user.id)
-    other_user_id = req.to_user_id if req.from_user_id == current_user.id else req.from_user_id
-
-    pair_reqs = db.query(models.ConnectionRequest.id).filter(
-        or_(
-            and_(models.ConnectionRequest.from_user_id == current_user.id, models.ConnectionRequest.to_user_id == other_user_id),
-            and_(models.ConnectionRequest.from_user_id == other_user_id, models.ConnectionRequest.to_user_id == current_user.id),
-        )
-    ).all()
-    pair_req_ids = [r[0] for r in pair_reqs]
-
-    hidden_subq = db.query(models.MessageUserState.message_id).filter(
-        models.MessageUserState.user_id == current_user.id
-    ).subquery()
-    rows = db.query(models.Message).filter(
-        models.Message.request_id.in_(pair_req_ids),
-        ~models.Message.id.in_(hidden_subq)
-    ).order_by(models.Message.created_at).all()
-    return rows
+    _authorize(db, request_id, current_user.id)
+    return _conversation_messages(db, request_id, current_user.id)
 
 
 @router.post("/{request_id}/messages", response_model=schemas.MessageOut)
@@ -413,17 +430,15 @@ def send_message(
     db.commit()
     db.refresh(msg)
     req = db.query(models.ConnectionRequest).filter(models.ConnectionRequest.id == request_id).first()
-    other_user_id = req.to_user_id if req.from_user_id == current_user.id else req.from_user_id
-    create_notification(db, other_user_id, "message", "New Message", f"{current_user.name} sent you a message", request_id, "chat")
+    create_notification(db, _other_user(req, current_user.id), "message", "New Message", f"{current_user.name} sent you a message", request_id, "chat")
     # Messages sent over REST (forwarding, or while the socket reconnects) must
     # also reach a partner who is online right now.
     background_tasks.add_task(_broadcast, _pair_room(db, request_id), {**_serialize_message(msg), "type": "message"})
     return msg
 
 
-
-
 def _ws_auth_and_authz(token: str, request_id: int):
+    """(user, None, other user id) or (None, close code, None)."""
     db = SessionLocal()
     try:
         user = auth.get_user_from_token(token, db)
@@ -431,38 +446,19 @@ def _ws_auth_and_authz(token: str, request_id: int):
             return None, 4401, None
         try:
             req = _authorize(db, request_id, user.id)
-            other_user_id = req.to_user_id if req.from_user_id == user.id else req.from_user_id
-            return user, None, other_user_id
+            return user, None, _other_user(req, user.id)
         except HTTPException:
             return None, 4403, None
     finally:
         db.close()
 
 def _fetch_history(request_id: int, user_id: int):
-    db_hist = SessionLocal()
+    db = SessionLocal()
     try:
-        req = db_hist.query(models.ConnectionRequest).filter(models.ConnectionRequest.id == request_id).first()
-        other_user_id = req.to_user_id if req.from_user_id == user_id else req.from_user_id
-
-        pair_reqs = db_hist.query(models.ConnectionRequest.id).filter(
-            or_(
-                and_(models.ConnectionRequest.from_user_id == user_id, models.ConnectionRequest.to_user_id == other_user_id),
-                and_(models.ConnectionRequest.from_user_id == other_user_id, models.ConnectionRequest.to_user_id == user_id),
-            )
-        ).all()
-        pair_req_ids = [r[0] for r in pair_reqs]
-
-        hidden_subq = db_hist.query(models.MessageUserState.message_id).filter(
-            models.MessageUserState.user_id == user_id
-        ).subquery()
-        
-        messages = db_hist.query(models.Message).filter(
-            models.Message.request_id.in_(pair_req_ids),
-            ~models.Message.id.in_(hidden_subq)
-        ).order_by(models.Message.created_at).all()
-        return [_serialize_message(m) for m in messages]
+        return [_serialize_message(m) for m in _conversation_messages(db, request_id, user_id)]
     finally:
-        db_hist.close()
+        db.close()
+
 
 def _save_message_and_notify(request_id: int, user_id: int, user_name: str, content: str, metadata: dict = None):
     db_msg = SessionLocal()
@@ -473,12 +469,12 @@ def _save_message_and_notify(request_id: int, user_id: int, user_name: str, cont
         db_msg.refresh(msg)
         req = db_msg.query(models.ConnectionRequest).filter(models.ConnectionRequest.id == request_id).first()
         if req:
-            other_user_id = req.to_user_id if req.from_user_id == user_id else req.from_user_id
-            create_notification(db_msg, other_user_id, "message", "New Message", f"{user_name} sent you a message", request_id, "chat")
+            create_notification(db_msg, _other_user(req, user_id), "message", "New Message", f"{user_name} sent you a message", request_id, "chat")
 
         return _serialize_message(msg)
     finally:
         db_msg.close()
+
 
 @router.websocket("/ws/{request_id}")
 async def chat_websocket(websocket: WebSocket, request_id: int, token: str = Query("")):
@@ -488,7 +484,7 @@ async def chat_websocket(websocket: WebSocket, request_id: int, token: str = Que
         await websocket.close(code=error_code)
         return
 
-    room_id = f"pair_{min(user.id, other_user_id)}_{max(user.id, other_user_id)}"
+    room_id = _room_id(user.id, other_user_id)
     await chat_manager.connect(room_id, websocket, accept=False)
 
     try:
@@ -552,10 +548,10 @@ async def chat_websocket(websocket: WebSocket, request_id: int, token: str = Que
         except Exception:
             logger.exception("Error broadcasting offline presence")
 
+
 def _update_last_active(user_id: int) -> str:
     db = SessionLocal()
     try:
-        from ..utils.timezone import utc_now
         now = utc_now()
         db.query(models.User).filter(models.User.id == user_id).update({"last_active": now})
         db.commit()
@@ -575,8 +571,6 @@ def _get_message_authorized(db: Session, message_id: int, user_id: int) -> model
     return msg
 
 
-
-
 @router.put("/messages/{message_id}", response_model=schemas.MessageOut)
 def edit_message(
     message_id: int,
@@ -591,7 +585,6 @@ def edit_message(
     if (msg.message_metadata or {}).get("deleted_for_everyone"):
         raise HTTPException(status_code=400, detail="Cannot edit a deleted message")
 
-    from ..utils.timezone import utc_now
     new_meta = dict(msg.message_metadata or {})
     new_meta["edited_at"] = utc_now().isoformat()
     msg.content = payload.content
