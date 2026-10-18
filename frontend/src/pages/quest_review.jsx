@@ -124,7 +124,7 @@ export default function QuestReview() {
         setQuizSkipMessage(err.message)
         setStep('intro')
       } else {
-        setQuizError(err.message || "Couldn't start the knowledge check.")
+        setQuizError(err.message || "Couldn't start the reassessment.")
         setStep('intro')
       }
       return
@@ -148,7 +148,7 @@ export default function QuestReview() {
         setAlreadySubmittedNotice(true)
         setStep('review')
       } else {
-        setQuizError(err.message || "Couldn't submit the knowledge check.")
+        setQuizError(err.message || "Couldn't submit the reassessment.")
       }
     } finally {
       setQuizSubmitting(false)
@@ -220,7 +220,7 @@ export default function QuestReview() {
                 )}
 
                 {isTutor ? (
-                  <p className="text-sm text-clay">The knowledge check is for {peerName || 'your learner'} — it tests what they learned in this session.</p>
+                  <p className="text-sm text-clay">The reassessment is for {peerName || 'your learner'} — it tests what they learned in this session.</p>
                 ) : (
                 <div className="card p-5 flex flex-col sm:flex-row sm:items-center gap-4 justify-between">
                   <div className="flex items-start gap-3">
@@ -228,8 +228,8 @@ export default function QuestReview() {
                       <Sparkles className="w-5 h-5" />
                     </div>
                     <div>
-                      <h3 className="font-bold text-ink">Quick knowledge check</h3>
-                      <p className="text-sm text-clay">5 questions on what you just learned.</p>
+                      <h3 className="font-bold text-ink">Reassessment</h3>
+                      <p className="text-sm text-clay">A few questions on what you just learned. Your result updates your {skillName} score.</p>
                     </div>
                   </div>
                   <button onClick={startKnowledgeCheck} className="btn-primary flex-shrink-0">
@@ -238,7 +238,7 @@ export default function QuestReview() {
                 </div>
                 )}
                 <p className="text-xs text-clay mt-4 text-center">
-                  This is practice - it does not change your verified skill level.
+                  It moves your course score 30% of the way towards this result. Badges come only from the Skill Arena.
                 </p>
               </div>
             )}
@@ -342,6 +342,36 @@ export default function QuestReview() {
                   <p className="text-4xl font-bold text-ink">{result.score}%</p>
                 </div>
 
+                {result.skill_change?.updated && (
+                  <div className="card p-5 mb-6 flex flex-wrap items-center justify-center gap-4 text-center">
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-wider text-clay">{skillName} score</p>
+                      <p className="text-2xl font-bold text-ink">
+                        {result.skill_change.score_before ?? '—'}% <span className="text-clay">→</span> {result.skill_change.score_after}%
+                      </p>
+                    </div>
+                    {result.skill_change.level_before !== result.skill_change.level_after && (
+                      <span className="text-sm font-bold bg-moss/10 text-moss px-3 py-1.5 rounded-full">
+                        Level: {result.skill_change.level_before} → {result.skill_change.level_after}
+                      </span>
+                    )}
+                  </div>
+                )}
+
+                {result.topic_scores && Object.keys(result.topic_scores).length > 0 && (
+                  <div className="mb-6 flex flex-col gap-3">
+                    <h3 className="text-sm font-bold uppercase tracking-wider text-clay">By topic</h3>
+                    {Object.entries(result.topic_scores).map(([topic, pct]) => (
+                      <div key={topic}>
+                        <div className="flex justify-between text-sm font-medium text-ink mb-1"><span>{topic}</span><span>{Math.round(pct)}%</span></div>
+                        <div className="h-2.5 rounded-full bg-paper border border-line overflow-hidden">
+                          <div className="h-full bg-brand" style={{ width: `${pct}%` }} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
                 {result.missed_topics && result.missed_topics.length > 0 && (
                   <div className="mb-6">
                     <h3 className="text-sm font-bold uppercase tracking-wider text-clay mb-2">Topics to revisit</h3>
@@ -387,7 +417,7 @@ export default function QuestReview() {
             {alreadySubmittedNotice && (
               <div className="flex items-start gap-3 bg-paper border border-line rounded-xl p-4 mb-6">
                 <CheckCircle2 className="w-5 h-5 text-moss flex-shrink-0 mt-0.5" />
-                <p className="text-sm text-clay">You've already completed the knowledge check for this session.</p>
+                <p className="text-sm text-clay">You've already completed the reassessment for this session.</p>
               </div>
             )}
             <div className="grid md:grid-cols-2 gap-6 items-start">

@@ -32,6 +32,7 @@ from ..services.course_rules import (
     FINAL_PASS_SCORE, MAX_COURSES, SESSIONS_FOR_FINAL, TEACH_MIN_SCORE,
     clean_course_name, course_count, ensure_can_add_course, find_course, user_course,
 )
+from ..services.topic_scores import record_topic_scores
 from ..services.demand_service import notify_requesters_on_teacher_level_qualified
 from .users import get_or_create_skill
 
@@ -346,6 +347,10 @@ def submit_assessment(
     )
     db.add(attempt)
     is_counted = _record_weekly_attempt(db, current_user.id, skill.id, score)
+    # Per-topic history (teaching impact, recommendations). A terminated or
+    # late attempt says little about real skill, so it isn't recorded.
+    if not terminated:
+        record_topic_scores(db, current_user.id, skill.id, topic_mastery, source="arena")
 
     # 4. Course role (learner / tutor) — decided by the server.
     wants_to_teach = (payload.role or "").strip().lower() == "teaching"

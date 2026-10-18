@@ -20,7 +20,7 @@ Student team project (final year). Keep solutions simple and readable over cleve
 6. They schedule a session and meet in the **Learning Arena**: video, shared whiteboard,
    code compiler, notes, materials.
 7. AI summarises the session into revision notes.
-8. Both reassess; skill profiles update. (Post-session reassessment is still planned.)
+8. The learner takes a short reassessment; it nudges their course score 30% towards the result (badges stay Arena-only).
    A course is finished after 5 sessions + a passed final Skill Arena (60%+) → certificate.
 
 ## Repos and branches
@@ -120,7 +120,7 @@ Frontend uses `VITE_API_URL`. Never hardcode or print secrets.
 - Commit style: `type(scope): short description`, e.g. `fix(chat): ...`, `feat(skill-arena): ...`.
 
 ## Checks before committing
-- Backend: `python -m pytest backend/tests -q` (69 tests) and `python -m py_compile` on changed files.
+- Backend: `python -m pytest backend/tests -q` (75 tests) and `python -m py_compile` on changed files.
 - Frontend: `npm run build` must succeed.
 - Reuse the shared helpers above instead of copying code (storage, session checks,
   time zones, WebSocket rooms, uploads in api.js).
@@ -146,7 +146,7 @@ Frontend uses `VITE_API_URL`. Never hardcode or print secrets.
   (socket closes 4425 earlier). A session counts only when tutor AND learner were both in the
   room (`sessions.both_joined_at`); otherwise it ends as Missed. Only such sessions can be
   completed, never before their start. Times can't be changed after someone joined; a session
-  both joined can't be cancelled. The post-session knowledge check is for the learner only.
+  both joined can't be cancelled. The post-session reassessment is for the learner only (`services/topic_scores.py`).
 - Old data with two rows for one course: `python scripts/fix_course_roles.py` (dry run), then
   `--apply`. Tests: `backend/tests/test_course_rules.py`.
 

@@ -4,8 +4,8 @@ Course progress and the end of a learning session.
 - GET  /progress/my, /progress/skill/{name}, /progress/history   progress pages
 - GET/PUT /progress/session/{id}            the session's notes and topics
 - POST /progress/session/{id}/complete      "Complete session" in the Learning Arena
-- POST /progress/session/{id}/quiz/start|submit   post-session knowledge check
-  (learner only, practice only — it never changes the skill level)
+- POST /progress/session/{id}/quiz/start|submit   post-session reassessment
+  (learner only; gently updates the course score/level, never the badge)
 """
 import datetime as dt
 import logging
@@ -25,6 +25,7 @@ from ..services.learning_plan import build_next_session_plan
 from ..services.question_generator import GenerationError, SKILL_TOPICS, canonical_skill, generate_session_quiz, sanitize
 from ..services.session_access import get_session_for_participant
 from ..services.summarization import generate_session_summary
+from ..services.topic_scores import apply_reassessment, fallback_quiz, per_topic_percent, record_topic_scores
 from ..utils.progress_utils import progress_for, stage_for
 from ..utils.session_time import session_minutes
 from ..utils.timezone import utc_now
@@ -349,15 +350,54 @@ def complete_session(session_id: int, db: Session = Depends(get_db), current_use
 
 
 # ---------------------------------------------------------------------------
-# Post-session knowledge check (practice only)
+# Post-session reassessment (learner only)
 # ---------------------------------------------------------------------------
+def _session_topics(sess: models.Session, prog: models.SessionProgress) -> List[str]:
+    return list(dict.fromkeys(  # de-duplicate, keep the order
+        _split_topics(prog.topics_discussed)
+        + _split_topics(prog.topics_completed)
+        + SKILL_TOPICS.get(canonical_skill(sess.skill), [])
+    ))
+
+
+async def _ai_reassessment(db: Session, sess: models.Session, prog: models.SessionProgress, user_id: int):
+    """Questions written by the AI from the session summary, or (None, reason)."""
+    if not prog.semantic_summary:
+        await run_in_threadpool(_try_generate_summary, db, sess, prog, user_id)
+        db.commit()
+    if not prog.semantic_summary:
+        return None, (503, "The AI summary isn't available right now. Please try again in a minute.")
+
+    messages = db.query(models.Message).filter(models.Message.request_id == sess.request_id).all()
+    chat_history = "\n".join(msg.content for msg in messages)
+    wb = db.query(models.WhiteboardState).filter(models.WhiteboardState.session_id == sess.id).first()
+    comp = db.query(models.CompilerState).filter(models.CompilerState.session_id == sess.id).first()
+    has_source = (
+        _has_content(chat_history)
+        or _has_content(wb.state if wb else None)
+        or _has_content(comp.code if comp else None)
+    )
+    topics = _session_topics(sess, prog)
+    if len(prog.semantic_summary.strip()) < MIN_SESSION_SUMMARY_CHARS or not has_source or not topics:
+        return None, (409, "There wasn't enough recorded in this session to build a reassessment.")
+    try:
+        questions = await run_in_threadpool(
+            generate_session_quiz, sess.skill, prog.level_before or "intermediate", prog.semantic_summary, topics,
+        )
+        return questions, None
+    except GenerationError as err:
+        logger.warning("[arena] session quiz unavailable for session %s: %s", sess.id, err)
+        return None, (503, "The AI quiz generator is busy right now. Please try again in a minute.")
+
+
 @router.post("/session/{session_id}/quiz/start")
 async def start_session_quiz(session_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
-    """Formative-only post-session knowledge check. Never affects UserSkill, badges,
-    points or marketplace ranking - it writes only to this user's SessionProgress row."""
+    """The learner's reassessment after a session. Questions come from the AI
+    (based on the session summary) or, when the AI is busy, from the course's
+    question bank. Submitting it gently updates the course score and level."""
     sess = get_session_for_participant(db, session_id, current_user.id)
     if current_user.id != sess.learner_id:
-        raise HTTPException(status_code=403, detail="The knowledge check is for the learner of this session.")
+        raise HTTPException(status_code=403, detail="The reassessment is for the learner of this session.")
     if sess.status != "completed":
         raise HTTPException(status_code=400, detail="This session has not been completed yet")
 
@@ -365,22 +405,14 @@ async def start_session_quiz(session_id: int, db: Session = Depends(get_db), cur
     if not prog:
         raise HTTPException(status_code=409, detail="Complete the session first.")
 
-    # One knowledge check per person per session.
+    # One reassessment per person per session.
     done = db.query(models.AssessmentSession).filter(
         models.AssessmentSession.user_id == current_user.id,
         models.AssessmentSession.session_id == session_id,
         models.AssessmentSession.submitted_at.isnot(None),
     ).first()
     if done:
-        raise HTTPException(status_code=409, detail="You've already completed the knowledge check for this session.")
-
-    # If the summary failed when the session was completed (AI busy), try again
-    # now instead of saying "not ready" forever.
-    if not prog.semantic_summary:
-        await run_in_threadpool(_try_generate_summary, db, sess, prog, current_user.id)
-        db.commit()
-    if not prog.semantic_summary:
-        raise HTTPException(status_code=503, detail="The AI summary isn't available right now. Please try again in a minute.")
+        raise HTTPException(status_code=409, detail="You've already completed the reassessment for this session.")
 
     # An unfinished quiz (e.g. the page was reloaded): give the same questions back.
     active = db.query(models.AssessmentSession).filter(
@@ -389,46 +421,25 @@ async def start_session_quiz(session_id: int, db: Session = Depends(get_db), cur
         models.AssessmentSession.submitted_at.is_(None),
     ).order_by(models.AssessmentSession.created_at.desc()).first()
     if active:
-        return {"attempt_id": active.id, "questions": sanitize(active.questions), "resumed": True}
+        return {"attempt_id": active.id, "questions": sanitize(active.questions), "resumed": True,
+                "source": active.source}
 
-    messages = db.query(models.Message).filter(models.Message.request_id == sess.request_id).all()
-    chat_history = "\n".join(msg.content for msg in messages)
-    wb = db.query(models.WhiteboardState).filter(models.WhiteboardState.session_id == session_id).first()
-    comp = db.query(models.CompilerState).filter(models.CompilerState.session_id == session_id).first()
-    has_source = (
-        _has_content(chat_history)
-        or _has_content(wb.state if wb else None)
-        or _has_content(comp.code if comp else None)
-    )
-    topics = list(dict.fromkeys(  # de-duplicate, keep the order
-        _split_topics(prog.topics_discussed)
-        + _split_topics(prog.topics_completed)
-        + SKILL_TOPICS.get(canonical_skill(sess.skill), [])
-    ))
-    if len(prog.semantic_summary.strip()) < MIN_SESSION_SUMMARY_CHARS or not has_source or not topics:
-        raise HTTPException(
-            status_code=409,
-            detail="There wasn't enough recorded in this session to build a knowledge check.",
-        )
-
-    try:
-        questions = await run_in_threadpool(
-            generate_session_quiz, sess.skill, prog.level_before or "intermediate", prog.semantic_summary, topics,
-        )
-    except GenerationError as err:
-        logger.warning("[arena] session quiz unavailable for session %s: %s", session_id, err)
-        raise HTTPException(
-            status_code=503,
-            detail="The AI quiz generator is busy right now. Please try again in a minute.",
-        )
+    questions, problem = await _ai_reassessment(db, sess, prog, current_user.id)
+    source = "session"
+    if questions is None:
+        # AI busy or too little recorded: use the course's question bank.
+        questions = fallback_quiz(sess.skill, _session_topics(sess, prog))
+        source = "session-bank"
+        if not questions:
+            raise HTTPException(status_code=problem[0], detail=problem[1])
 
     attempt = models.AssessmentSession(
         id=str(uuid.uuid4()), user_id=current_user.id, skill_name=sess.skill,
-        source="session", session_id=session_id, questions=questions,
+        source=source, session_id=session_id, questions=questions,
     )
     db.add(attempt)
     db.commit()
-    return {"attempt_id": attempt.id, "questions": sanitize(questions), "resumed": False}
+    return {"attempt_id": attempt.id, "questions": sanitize(questions), "resumed": False, "source": source}
 
 
 @router.post("/session/{session_id}/quiz/submit")
@@ -436,8 +447,6 @@ def submit_session_quiz(session_id: int, payload: SessionQuizSubmit, db: Session
     attempt = db.query(models.AssessmentSession).filter(models.AssessmentSession.id == payload.attempt_id).first()
     if not attempt or attempt.user_id != current_user.id or attempt.session_id != session_id:
         raise HTTPException(status_code=404, detail="Session quiz attempt not found")
-    if attempt.submitted_at is not None:
-        raise HTTPException(status_code=409, detail="This session quiz has already been submitted")
 
     sess = db.query(models.Session).filter(models.Session.id == session_id).first()
     if not sess:
@@ -445,6 +454,17 @@ def submit_session_quiz(session_id: int, payload: SessionQuizSubmit, db: Session
     prog = _my_progress_row(db, session_id, current_user.id)
     if not prog:
         raise HTTPException(status_code=404, detail="Session progress not found")
+
+    # Claim the attempt atomically: it changes the skill score, so a double
+    # click must not count twice.
+    claimed = (
+        db.query(models.AssessmentSession)
+        .filter(models.AssessmentSession.id == attempt.id, models.AssessmentSession.submitted_at.is_(None))
+        .update({models.AssessmentSession.submitted_at: utc_now()}, synchronize_session=False)
+    )
+    if not claimed:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="This session quiz has already been submitted")
 
     # Score against the SERVER's stored answers.
     submitted = {a.question_id: a.answer for a in payload.answers}
@@ -457,7 +477,14 @@ def submit_session_quiz(session_id: int, payload: SessionQuizSubmit, db: Session
             missed_topics.append(q["topic"])
     total = len(attempt.questions)
     score = round((correct / total) * 100, 1) if total else 0.0
-    attempt.submitted_at = utc_now()
+    topic_scores = per_topic_percent(attempt.questions, submitted)
+
+    # Reassessment: save the topic scores and move the course score/level
+    # gently (badges stay with the proctored Skill Arena).
+    record_topic_scores(db, current_user.id, prog.skill_id, topic_scores, source="reassessment", session_id=session_id)
+    change = apply_reassessment(db, user_course(db, current_user.id, prog.skill_id), score)
+    if change.get("updated"):
+        prog.level_after = change["level_after"]
 
     # Weak topics from the latest Skill Arena attempt feed the next-session plan.
     weak_topics = []
@@ -471,10 +498,9 @@ def submit_session_quiz(session_id: int, payload: SessionQuizSubmit, db: Session
     next_session_plan = build_next_session_plan(
         sess.skill, prog.semantic_summary or "", score, missed_topics, weak_topics,
     )
-
-    # The quiz is formative only: it must not overwrite the session's real
-    # progress snapshot (progress_percentage_after / level_after). The score
-    # is returned to the page; only the next-session plan is stored here.
     prog.next_session_plan = "\n".join(next_session_plan)
     db.commit()
-    return {"score": score, "missed_topics": missed_topics, "next_session_plan": next_session_plan}
+    return {
+        "score": score, "missed_topics": missed_topics, "next_session_plan": next_session_plan,
+        "topic_scores": topic_scores, "skill_change": change,
+    }

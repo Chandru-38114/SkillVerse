@@ -675,3 +675,22 @@ class UserBadge(Base):
     )
 
 
+
+
+class TopicScore(Base):
+    """One topic's score (0-100) from a Skill Arena attempt or a post-session
+    reassessment. The history behind teaching impact and recommendations."""
+    __tablename__ = "topic_scores"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    skill_id = Column(Integer, ForeignKey("skills.id"), nullable=False)
+    topic = Column(String(120), nullable=False)
+    score = Column(Float, nullable=False)
+    source = Column(String(20), nullable=False, default="arena")   # "arena" | "reassessment"
+    session_id = Column(Integer, ForeignKey("sessions.id"), nullable=True)
+    created_at = Column(DateTime, default=utc_now, nullable=False)
+
+    __table_args__ = (
+        Index("ix_topic_scores_user_skill", "user_id", "skill_id"),
+    )
