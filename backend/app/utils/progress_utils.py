@@ -1,3 +1,4 @@
+"""Course progress rules: the % shown on the Progress page and the stage text."""
 from typing import Optional
 
 # Kept in sync with services/course_rules.py (not imported to avoid a cycle).

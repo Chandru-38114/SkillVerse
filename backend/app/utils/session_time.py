@@ -1,3 +1,4 @@
+"""Session length helper."""
 import datetime as dt
 
 

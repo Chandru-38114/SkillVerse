@@ -57,13 +57,13 @@ def find_cycle_suggestions_for_user(db: Session, user_id: int) -> List[Dict[str,
             user_skills_map[uid] = {"teaching": {}, "learning": {}}
         user_skills_map[uid][us.role][us.skill_id] = (us.skill.name, us.level_num or 0)
 
-    for other_id, s_data in user_skills_map.items():
-        for my_s_id, (my_s_name, my_learn_lvl) in my_learning.items():
+    for s_data in user_skills_map.values():
+        for my_s_id, (_name, my_learn_lvl) in my_learning.items():
             if my_s_id in s_data["teaching"]:
                 t_name, t_lvl = s_data["teaching"][my_s_id]
                 if is_eligible_to_teach(t_lvl, my_learn_lvl):
                     # Can I teach them anything in return?
-                    for my_t_id, (my_t_name, my_teach_lvl) in my_teaching.items():
+                    for my_t_id, (_name, my_teach_lvl) in my_teaching.items():
                         if my_t_id in s_data["learning"]:
                             _, their_learn_lvl = s_data["learning"][my_t_id]
                             if is_eligible_to_teach(my_teach_lvl, their_learn_lvl):

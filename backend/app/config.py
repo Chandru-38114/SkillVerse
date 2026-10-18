@@ -1,3 +1,7 @@
+"""
+Loads backend/.env into os.environ at startup (local development).
+On Render the variables come from the dashboard instead.
+"""
 import os
 
 def load_env():

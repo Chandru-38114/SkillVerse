@@ -1,3 +1,4 @@
+"""Points summary and the leaderboard."""
 from typing import Optional
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session

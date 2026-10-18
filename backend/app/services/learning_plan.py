@@ -1,3 +1,7 @@
+"""
+AI study plans: the plan after a Skill Arena attempt and the "next session" plan
+after a post-session quiz. Falls back to simple templates when the AI is busy.
+"""
 import logging
 from typing import Dict, List
 

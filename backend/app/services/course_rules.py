@@ -21,6 +21,7 @@ import re
 from typing import Optional
 
 from fastapi import HTTPException
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from .. import models
@@ -53,7 +54,6 @@ def clean_course_name(raw: Optional[str]) -> str:
 
 def find_course(db: Session, name: str) -> Optional[models.Skill]:
     """Case-insensitive exact match (no LIKE wildcards from user input)."""
-    from sqlalchemy import func
     return db.query(models.Skill).filter(func.lower(models.Skill.name) == name.lower()).first()
 
 

@@ -1,3 +1,4 @@
+"""create_notification(): one helper used by every router to notify a user."""
 from sqlalchemy.orm import Session
 from . import models
 

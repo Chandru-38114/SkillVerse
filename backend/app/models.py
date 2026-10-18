@@ -1,3 +1,7 @@
+"""
+Database tables (SQLAlchemy models). New tables are created at startup; new
+columns on existing tables also need a line in db_migrations.NEW_COLUMNS.
+"""
 from .utils.timezone import utc_now
 from sqlalchemy import (
     Column, Integer, String, Float, ForeignKey, DateTime, Date, Text, Boolean, JSON, Index, UniqueConstraint

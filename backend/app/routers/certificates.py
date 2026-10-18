@@ -1,3 +1,7 @@
+"""
+Course certificates: issued only when a learner finished a course
+(5 sessions + passed final Skill Arena); public verification by certificate id.
+"""
 import uuid
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException

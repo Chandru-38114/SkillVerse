@@ -1,3 +1,7 @@
+"""
+Database connection. DATABASE_URL picks Postgres (Supabase, production) or
+the local SQLite file skillverse.db.
+"""
 import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base

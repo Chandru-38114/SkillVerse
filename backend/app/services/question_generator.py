@@ -17,6 +17,7 @@ Question types map onto what the Skill Arena already renders:
     code tracing      -> type "output"  (snippet appended to the question)
     debugging         -> type "mcq"     (buggy snippet appended to the question)
 """
+import concurrent.futures as _cf
 import json
 import logging
 import os
@@ -511,7 +512,6 @@ def generate_text(prompt: str, timeout: float = 60) -> Optional[str]:
     `timeout` is a hard cap on the whole call (all providers and retries),
     so a slow AI can't make /assessments/submit hang for minutes."""
     global _TEXT_POOL
-    import concurrent.futures as _cf
     if _TEXT_POOL is None:
         _TEXT_POOL = _cf.ThreadPoolExecutor(max_workers=4, thread_name_prefix="ai-text")
     future = _TEXT_POOL.submit(_generate_text_unbounded, prompt)

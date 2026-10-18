@@ -1,3 +1,7 @@
+"""
+Pydantic schemas: what the API accepts (…Create/…Update) and returns (…Out).
+Every …Out class inherits UTCOut so times reach the browser marked as UTC.
+"""
 import re
 import datetime as dt
 from typing import Dict, Any, Optional, List, Union

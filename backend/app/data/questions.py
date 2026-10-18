@@ -1,12 +1,12 @@
-# This is the seed question bank for the skill assessment engine.
-#
-# For the MVP this is hand-written data so the whole flow (assess -> score ->
-# weak topics -> study plan -> badge) works end-to-end with zero external
-# dependencies. To upgrade this into the "AI Skill Assessment" described in
-# the product plan, replace `get_questions_for_skill()` with a call to an
-# LLM (OpenAI/Anthropic) that generates MCQs/coding/debugging questions for
-# an arbitrary skill name -- everything downstream (scoring, badges, study
-# plans) stays the same because it just consumes the `topic` tags below.
+"""
+Hand-written fallback question bank for the Skill Arena.
+
+Questions normally come from the AI (services/question_generator.py). When the
+AI is unavailable, the four supported courses (Python, Java, DSA, Web
+Development) use these questions instead (the response says "source": "bank").
+Every question has a `topic` tag from SKILL_TOPICS, which drives weak-topic
+analysis and study plans. Answers stay on the server.
+"""
 
 QUESTION_BANK = {
     "python": [

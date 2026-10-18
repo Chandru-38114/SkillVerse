@@ -1,3 +1,4 @@
+"""Auto-grading of Skill Arena coding questions (see "How grading works" below)."""
 import ast
 import secrets
 

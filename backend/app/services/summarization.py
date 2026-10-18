@@ -1,3 +1,7 @@
+"""
+AI summary of a finished learning session (chat + whiteboard + code), used as
+revision notes and as the source for the post-session quiz.
+"""
 import logging
 from typing import Optional
 

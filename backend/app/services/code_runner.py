@@ -1,3 +1,7 @@
+"""
+Runs untrusted Python in a separate process (sandbox.py) with an empty
+environment and hard CPU/memory/time limits. Used by the compiler and the grader.
+"""
 import os
 import sys
 import tempfile

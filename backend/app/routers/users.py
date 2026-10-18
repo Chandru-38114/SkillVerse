@@ -1,6 +1,11 @@
+"""
+The signed-in user: profile, password, avatar, and their courses
+(/users/me/skills).
+"""
+import datetime
+import logging
 import os
 import uuid
-import logging
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.orm import Session
@@ -17,9 +22,9 @@ router = APIRouter(prefix="/users", tags=["users"])
 
 
 def calculate_age(dob) -> int:
+    """Age in whole years from a date or "YYYY-MM-DD" text; None if unknown."""
     if not dob:
         return None
-    import datetime
     try:
         if isinstance(dob, datetime.date):
             birth_date = dob

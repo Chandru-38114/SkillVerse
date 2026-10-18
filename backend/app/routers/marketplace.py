@@ -1,3 +1,7 @@
+"""
+Marketplace search: find people to learn from (and teach), with a simple
+match score and public teacher stats.
+"""
 from typing import List, Optional
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
@@ -92,7 +96,7 @@ def search_partners(
             users_map[us.user_id]["learning_skills"].append(skill_info)
 
     # Calculate deterministic matching score with eligibility rule
-    for u_id, data in users_map.items():
+    for data in users_map.values():
         their_teaching_map = {s.skill_name.lower(): (s.level_num or 0) for s in data["teaching_skills"]}
         their_learning_map = {s.skill_name.lower(): (s.level_num or 0) for s in data["learning_skills"]}
 
