@@ -1,5 +1,6 @@
 """
-Community Router — Teachers-only Community and Lounge Feed.
+Community Router — the teachers-only Community: Lounge feed, Study Circles,
+Ask-a-Senior, Weekly Challenge and Hackathons.
 
 Access Control:
 - require_teacher dependency checks has_taught via teacher_stats_service helper.
@@ -13,6 +14,10 @@ Lounge Feed:
 - POST /community/lounge/posts/{id}/comments: comment on post.
 - DELETE /community/lounge/posts/{id}: post author only.
 - DELETE /community/lounge/comments/{id}: comment author or post author.
+
+Study Circles (group sessions), Ask-a-Senior (Q&A), the Weekly Challenge
+(one rotating prompt per week) and Hackathons follow below, each in its own
+section. Every list is paginated with limit/offset (see _page).
 """
 from typing import List, Optional
 import datetime as dt
@@ -23,10 +28,28 @@ from sqlalchemy import func
 
 from .. import models, schemas, auth
 from ..database import get_db
-from ..utils.timezone import utc_now
+from ..utils.timezone import as_utc, utc_now
 from ..services.teacher_stats_service import check_user_has_taught
 
 router = APIRouter(prefix="/community", tags=["community"])
+
+MAX_PAGE_SIZE = 100
+POST_COOLDOWN_SECONDS = 30
+
+
+def _page(limit, offset):
+    """Safe paging values: negative numbers made Postgres error (500) and
+    huge limits dumped the whole table."""
+    return max(1, min(MAX_PAGE_SIZE, int(limit))), max(0, int(offset))
+
+
+def _author_fields(user: Optional[models.User]) -> dict:
+    """Name / college / photo shown next to a post, comment or question."""
+    return {
+        "author_name": user.name if user else "Teacher",
+        "author_college": (user.college or "") if user else "",
+        "author_avatar_url": user.profile_picture_url if user else None,
+    }
 
 
 def require_teacher(
@@ -82,16 +105,9 @@ def create_lounge_post(
         .first()
     )
     if latest_post and latest_post.created_at:
-        now = utc_now()
-        latest_created = latest_post.created_at
-        if latest_created.tzinfo is not None and now.tzinfo is None:
-            latest_created = latest_created.replace(tzinfo=None)
-        elif latest_created.tzinfo is None and now.tzinfo is not None:
-            now = now.replace(tzinfo=None)
-
-        elapsed = (now - latest_created).total_seconds()
-        if elapsed < 30:
-            remaining = int(30 - elapsed)
+        elapsed = (utc_now() - as_utc(latest_post.created_at)).total_seconds()
+        if elapsed < POST_COOLDOWN_SECONDS:
+            remaining = int(POST_COOLDOWN_SECONDS - elapsed)
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                 detail=f"Rate limit exceeded. Please wait {remaining} seconds before posting again.",
@@ -109,9 +125,7 @@ def create_lounge_post(
     return schemas.LoungePostOut(
         id=post.id,
         author_id=post.author_id,
-        author_name=current_user.name,
-        author_college=current_user.college or "",
-        author_avatar_url=current_user.profile_picture_url,
+        **_author_fields(current_user),
         body=post.body,
         created_at=post.created_at,
         edited_at=post.edited_at,
@@ -132,21 +146,9 @@ def get_lounge_posts(
     Includes author name and comment_count.
     Gated by require_teacher.
     """
-    if hasattr(limit, "default"):
-        limit = limit.default or 20
-    if hasattr(offset, "default"):
-        offset = offset.default or 0
-    # Negative values made Postgres error (500); huge limits dumped the table.
-    limit = max(1, min(100, int(limit)))
-    offset = max(0, int(offset))
-    if hasattr(skip, "default"):
-        skip = skip.default
-
-    limit = max(1, min(100, int(limit)))
-    if skip is not None and offset == 0:
+    limit, offset = _page(limit, offset)
+    if skip is not None and offset == 0:  # older frontend sent ?skip= instead of ?offset=
         offset = int(skip)
-    else:
-        offset = max(0, int(offset))
 
     posts = (
         db.query(models.LoungePost)
@@ -170,25 +172,18 @@ def get_lounge_posts(
         .all()
     )
 
-    results = []
-    for p in posts:
-        author_name = p.author.name if p.author else "Teacher"
-        author_college = p.author.college if p.author and p.author.college else ""
-        author_avatar = p.author.profile_picture_url if p.author else None
-        results.append(
-            schemas.LoungePostOut(
-                id=p.id,
-                author_id=p.author_id,
-                author_name=author_name,
-                author_college=author_college,
-                author_avatar_url=author_avatar,
-                body=p.body,
-                created_at=p.created_at,
-                edited_at=p.edited_at,
-                comment_count=comment_counts.get(p.id, 0),
-            )
+    return [
+        schemas.LoungePostOut(
+            id=p.id,
+            author_id=p.author_id,
+            **_author_fields(p.author),
+            body=p.body,
+            created_at=p.created_at,
+            edited_at=p.edited_at,
+            comment_count=comment_counts.get(p.id, 0),
         )
-    return results
+        for p in posts
+    ]
 
 
 @router.get("/lounge/posts/{id}", response_model=schemas.LoungePostDetailOut)
@@ -213,25 +208,17 @@ def get_lounge_post_detail(
             id=c.id,
             post_id=c.post_id,
             author_id=c.author_id,
-            author_name=c.author.name if c.author else "Teacher",
-            author_college=c.author.college if c.author and c.author.college else "",
-            author_avatar_url=c.author.profile_picture_url if c.author else None,
+            **_author_fields(c.author),
             body=c.body,
             created_at=c.created_at,
         )
         for c in post.comments
     ]
 
-    author_name = post.author.name if post.author else "Teacher"
-    author_college = post.author.college if post.author and post.author.college else ""
-    author_avatar = post.author.profile_picture_url if post.author else None
-
     return schemas.LoungePostDetailOut(
         id=post.id,
         author_id=post.author_id,
-        author_name=author_name,
-        author_college=author_college,
-        author_avatar_url=author_avatar,
+        **_author_fields(post.author),
         body=post.body,
         created_at=post.created_at,
         edited_at=post.edited_at,
@@ -272,9 +259,7 @@ def create_lounge_comment(
         id=comment.id,
         post_id=comment.post_id,
         author_id=comment.author_id,
-        author_name=current_user.name,
-        author_college=current_user.college or "",
-        author_avatar_url=current_user.profile_picture_url,
+        **_author_fields(current_user),
         body=comment.body,
         created_at=comment.created_at,
     )
@@ -432,15 +417,7 @@ def list_study_circles(
     List upcoming study circles (paginated, newest/soonest first).
     Gated by require_teacher.
     """
-    if hasattr(limit, "default"):
-        limit = limit.default or 20
-    if hasattr(offset, "default"):
-        offset = offset.default or 0
-    # Negative values made Postgres error (500); huge limits dumped the table.
-    limit = max(1, min(100, int(limit)))
-    offset = max(0, int(offset))
-    if hasattr(status_filter, "default"):
-        status_filter = status_filter.default
+    limit, offset = _page(limit, offset)
 
     query = db.query(models.StudyCircle)
     if status_filter == "all":
@@ -680,13 +657,10 @@ def _serialize_senior_question(
     q: models.SeniorQuestion,
     answer_count: int = 0,
 ) -> schemas.SeniorQuestionOut:
-    author = q.author
     return schemas.SeniorQuestionOut(
         id=q.id,
         author_id=q.author_id,
-        author_name=author.name if author else "Teacher",
-        author_college=(author.college or "") if author else "",
-        author_avatar_url=author.profile_picture_url if author else None,
+        **_author_fields(q.author),
         body=q.body,
         status=q.status,
         created_at=q.created_at,
@@ -727,15 +701,7 @@ def list_senior_questions(
     """
     List questions in Ask-a-Senior (paginated, newest first, optional status filter).
     """
-    if hasattr(limit, "default"):
-        limit = limit.default or 20
-    if hasattr(offset, "default"):
-        offset = offset.default or 0
-    # Negative values made Postgres error (500); huge limits dumped the table.
-    limit = max(1, min(100, int(limit)))
-    offset = max(0, int(offset))
-    if hasattr(status_filter, "default"):
-        status_filter = status_filter.default
+    limit, offset = _page(limit, offset)
 
     query = db.query(models.SeniorQuestion)
     if isinstance(status_filter, str) and status_filter:
@@ -800,9 +766,7 @@ def create_senior_answer(
         id=answer.id,
         question_id=answer.question_id,
         author_id=answer.author_id,
-        author_name=current_user.name,
-        author_college=current_user.college or "",
-        author_avatar_url=current_user.profile_picture_url,
+        **_author_fields(current_user),
         body=answer.body,
         created_at=answer.created_at,
     )
@@ -830,9 +794,7 @@ def get_senior_question(
             id=a.id,
             question_id=a.question_id,
             author_id=a.author_id,
-            author_name=a.author.name if a.author else "Teacher",
-            author_college=(a.author.college or "") if a.author else "",
-            author_avatar_url=a.author.profile_picture_url if a.author else None,
+            **_author_fields(a.author),
             body=a.body,
             created_at=a.created_at,
         )
@@ -840,18 +802,7 @@ def get_senior_question(
     ]
 
     base = _serialize_senior_question(question, answer_count=len(answers_out))
-    return schemas.SeniorQuestionDetailOut(
-        id=base.id,
-        author_id=base.author_id,
-        author_name=base.author_name,
-        author_college=base.author_college,
-        author_avatar_url=base.author_avatar_url,
-        body=base.body,
-        status=base.status,
-        created_at=base.created_at,
-        answer_count=base.answer_count,
-        answers=answers_out,
-    )
+    return schemas.SeniorQuestionDetailOut(**base.model_dump(), answers=answers_out)
 
 
 # ── Weekly Challenges (Rotating prompt teachers respond to) ───────────────────
@@ -1002,13 +953,7 @@ def list_weekly_challenge_responses(
     """
     List responses to the active weekly challenge (paginated, newest first).
     """
-    if hasattr(limit, "default"):
-        limit = limit.default or 20
-    if hasattr(offset, "default"):
-        offset = offset.default or 0
-    # Negative values made Postgres error (500); huge limits dumped the table.
-    limit = max(1, min(100, int(limit)))
-    offset = max(0, int(offset))
+    limit, offset = _page(limit, offset)
 
     challenge = _get_or_create_current_weekly_challenge(db)
     responses = (
@@ -1121,15 +1066,7 @@ def list_hackathons(
     """
     List teacher hackathons (paginated, soonest first).
     """
-    if hasattr(limit, "default"):
-        limit = limit.default or 20
-    if hasattr(offset, "default"):
-        offset = offset.default or 0
-    # Negative values made Postgres error (500); huge limits dumped the table.
-    limit = max(1, min(100, int(limit)))
-    offset = max(0, int(offset))
-    if hasattr(status_filter, "default"):
-        status_filter = status_filter.default
+    limit, offset = _page(limit, offset)
 
     # Nothing ever sets status="active", so "active"/"upcoming" are worked out
     # from starts_at/ends_at (stored as naive UTC).
