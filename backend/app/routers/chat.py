@@ -1,4 +1,5 @@
 import json
+import re
 from typing import List
 import copy
 import logging
@@ -8,7 +9,7 @@ from starlette.concurrency import run_in_threadpool
 from sqlalchemy.orm import Session
 from ..notification_service import create_notification
 from ..utils.timezone import enforce_utc_iso
-from ..supabase_client import get_supabase
+from ..supabase_client import signed_url, upload_file
 
 from .. import models, schemas, auth
 from ..database import get_db, SessionLocal
@@ -68,62 +69,7 @@ def upload_attachment(
 
     filename = f"req_{request_id}_{current_user.id}_{uuid.uuid4().hex}.{ext}"
     bucket = "chat_audio" if type == "voice" else "chat_files"
-    supabase = get_supabase()
-
-    try:
-        logger.info(f"Uploading to bucket '{bucket}', path '{filename}', content-type '{content_type}' (raw: {raw_content_type})")
-        res = supabase.storage.from_(bucket).upload(
-            file=file_bytes,
-            path=filename,
-            file_options={"content-type": content_type}
-        )
-        
-        if isinstance(res, dict):
-            status = res.get("statusCode", res.get("status", 200))
-            if res.get("error") or status >= 400:
-                msg = res.get("message", res.get("error", "Upload failed"))
-                logger.error(f"Storage upload dict error (Bucket: {bucket}, Path: {filename}): HTTP {status} - {msg}")
-                raise HTTPException(status_code=status if isinstance(status, int) else 500, detail=f"Storage upload failed (HTTP {status}): {msg}")
-        elif hasattr(res, "status_code") and res.status_code >= 400:
-            err = res.json() if hasattr(res, "json") else {}
-            msg = err.get("message", err.get("error", "Upload failed"))
-            logger.error(f"Storage upload response error (Bucket: {bucket}, Path: {filename}): HTTP {res.status_code} - {msg}")
-            raise HTTPException(status_code=res.status_code, detail=f"Storage upload failed (HTTP {res.status_code}): {msg}")
-            
-    except HTTPException:
-        raise
-    except Exception as e:
-        # If the SDK throws an exception (like the text AttributeError), fallback to a reliable REST upload
-        logger.warning(f"Storage SDK upload failed (Bucket: {bucket}, Path: {filename}): {str(e)}. Attempting REST fallback...")
-        import requests
-        from ..supabase_client import SUPABASE_URL, SUPABASE_KEY
-        
-        if not SUPABASE_URL or not SUPABASE_KEY:
-            raise HTTPException(status_code=500, detail="Storage configuration missing for fallback.")
-            
-        from urllib.parse import urlparse
-        parsed = urlparse(SUPABASE_URL)
-        base_url = f"{parsed.scheme}://{parsed.netloc}"
-        url = f"{base_url}/storage/v1/object/{bucket}/{filename}"
-        headers = {
-            "apikey": SUPABASE_KEY,
-            "Authorization": f"Bearer {SUPABASE_KEY}",
-            "Content-Type": content_type
-        }
-        
-        try:
-            resp = requests.post(url, data=file_bytes, headers=headers, timeout=30)
-            if resp.status_code >= 400:
-                err_dict = resp.json() if resp.text else {}
-                msg = err_dict.get("message", err_dict.get("error", resp.text or "REST Upload failed"))
-                logger.error(f"REST fallback upload failed: HTTP {resp.status_code} - {msg}")
-                raise HTTPException(status_code=resp.status_code, detail=f"Storage upload failed (HTTP {resp.status_code}): {msg}")
-            logger.info("REST fallback upload succeeded.")
-        except HTTPException:
-            raise
-        except Exception as rest_e:
-            logger.error(f"REST fallback also failed: {str(rest_e)}", exc_info=True)
-            raise HTTPException(status_code=500, detail="Both SDK and REST upload failed. Check server logs.")
+    upload_file(bucket, filename, file_bytes, content_type)
 
     metadata = {
         "type": type,
@@ -154,8 +100,7 @@ def download_chat_file(
     # every request between the same two people, so the file may belong to an
     # older (possibly completed) request of the pair: allow it if the caller
     # is a participant of THAT request, not only of the conversation's main one.
-    import re as _re
-    m = _re.match(r"req_(\d+)_", filename)
+    m = re.match(r"req_(\d+)_", filename)
     if not m:
         raise HTTPException(status_code=403, detail="Unauthorized access to this file")
     file_request_id = int(m.group(1))
@@ -165,48 +110,13 @@ def download_chat_file(
                 or file_req.status not in ("accepted", "completed")):
             raise HTTPException(status_code=403, detail="Unauthorized access to this file")
 
-    from ..supabase_client import SUPABASE_URL, SUPABASE_KEY
-    if not SUPABASE_URL or not SUPABASE_KEY:
-        raise HTTPException(status_code=500, detail="Storage configuration missing")
-
-    from urllib.parse import urlparse
-    import requests
-
-    parsed = urlparse(SUPABASE_URL)
-    base_url = f"{parsed.scheme}://{parsed.netloc}"
-    sign_url = f"{base_url}/storage/v1/object/sign/{bucket}/{filename}"
-
-    headers = {
-        "apikey": SUPABASE_KEY,
-        "Authorization": f"Bearer {SUPABASE_KEY}",
-        "Content-Type": "application/json"
-    }
-    
     try:
-        resp = requests.post(sign_url, json={"expiresIn": 3600}, headers=headers, timeout=10)
-        if resp.status_code >= 400:
-            err_dict = resp.json() if resp.text else {}
-            msg = err_dict.get("message", err_dict.get("error", "Signed URL generation failed"))
-            raise Exception(f"HTTP {resp.status_code}: {msg}")
-            
-        data = resp.json()
-        # Storage API usually returns {"signedURL": "/object/sign/..."}
-        signed_path = data.get("signedURL") or data.get("signedUrl")
-        if not signed_path:
-            raise Exception("No signed URL path in response")
-            
-        if signed_path.startswith("/storage/v1/"):
-            full_signed_url = f"{base_url}{signed_path}"
-        elif signed_path.startswith("/object/sign/"):
-            full_signed_url = f"{base_url}/storage/v1{signed_path}"
-        else:
-            full_signed_url = f"{base_url}/storage/v1/{signed_path.lstrip('/')}"
-            
-        return {"url": full_signed_url}
+        return {"url": signed_url(bucket, filename)}
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Failed to generate signed URL for {bucket}/{filename}: {e}")
         raise HTTPException(status_code=500, detail="Could not generate download link")
-
 
 
 def _authorize(db: Session, request_id: int, user_id: int) -> models.ConnectionRequest:

@@ -1,3 +1,5 @@
+"""Learning materials (PDF/Word/text) the tutor shares in a session. Files live in
+the private Supabase "materials" bucket; downloads use 60-second signed links."""
 import os
 import uuid
 import logging
@@ -7,7 +9,8 @@ from fastapi.responses import RedirectResponse
 
 from .. import models, auth
 from ..database import get_db
-from ..supabase_client import get_supabase
+from ..services.session_access import get_session_for_participant, is_participant
+from ..supabase_client import get_supabase, try_delete_file, upload_file
 
 logger = logging.getLogger(__name__)
 
@@ -32,13 +35,9 @@ def upload_material(
     current_user: models.User = Depends(auth.get_current_user),
     db: Session = Depends(get_db)
 ):
-    session_db = db.query(models.Session).filter(models.Session.id == session_id).first()
-    if not session_db:
-        raise HTTPException(status_code=404, detail="Session not found")
-        
-    if current_user.id not in [session_db.tutor_id, session_db.learner_id]:
-        raise HTTPException(status_code=403, detail="Not authorized to upload to this session")
-
+    session_db = get_session_for_participant(
+        db, session_id, current_user.id, "Not authorized to upload to this session"
+    )
     if current_user.id != session_db.tutor_id:
         raise HTTPException(status_code=403, detail="Only tutors can upload materials")
 
@@ -55,62 +54,7 @@ def upload_material(
         raise HTTPException(status_code=413, detail="File too large (Max 10MB)")
 
     stored_filename = f"{uuid.uuid4()}{ext}"
-    supabase = get_supabase()
-    bucket = "materials"
-
-    try:
-        logger.info(f"Uploading to bucket '{bucket}', path '{stored_filename}', content-type '{ALLOWED_EXTENSIONS[ext]}'")
-        res = supabase.storage.from_(bucket).upload(
-            file=file_bytes,
-            path=stored_filename,
-            file_options={"content-type": ALLOWED_EXTENSIONS[ext]}
-        )
-        
-        if isinstance(res, dict):
-            status = res.get("statusCode", res.get("status", 200))
-            if res.get("error") or status >= 400:
-                msg = res.get("message", res.get("error", "Upload failed"))
-                logger.error(f"Storage upload dict error (Bucket: {bucket}, Path: {stored_filename}): HTTP {status} - {msg}")
-                raise HTTPException(status_code=status if isinstance(status, int) else 500, detail=f"Storage upload failed (HTTP {status}): {msg}")
-        elif hasattr(res, "status_code") and res.status_code >= 400:
-            err = res.json() if hasattr(res, "json") else {}
-            msg = err.get("message", err.get("error", "Upload failed"))
-            logger.error(f"Storage upload response error (Bucket: {bucket}, Path: {stored_filename}): HTTP {res.status_code} - {msg}")
-            raise HTTPException(status_code=res.status_code, detail=f"Storage upload failed (HTTP {res.status_code}): {msg}")
-            
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.warning(f"Storage SDK upload failed (Bucket: {bucket}, Path: {stored_filename}): {str(e)}. Attempting REST fallback...")
-        import requests
-        from ..supabase_client import SUPABASE_URL, SUPABASE_KEY
-        
-        if not SUPABASE_URL or not SUPABASE_KEY:
-            raise HTTPException(status_code=500, detail="Storage configuration missing for fallback.")
-            
-        from urllib.parse import urlparse
-        parsed = urlparse(SUPABASE_URL)
-        base_url = f"{parsed.scheme}://{parsed.netloc}"
-        url = f"{base_url}/storage/v1/object/{bucket}/{stored_filename}"
-        headers = {
-            "apikey": SUPABASE_KEY,
-            "Authorization": f"Bearer {SUPABASE_KEY}",
-            "Content-Type": ALLOWED_EXTENSIONS[ext]
-        }
-        
-        try:
-            resp = requests.post(url, data=file_bytes, headers=headers, timeout=30)
-            if resp.status_code >= 400:
-                err_dict = resp.json() if resp.text else {}
-                msg = err_dict.get("message", err_dict.get("error", resp.text or "REST Upload failed"))
-                logger.error(f"REST fallback upload failed: HTTP {resp.status_code} - {msg}")
-                raise HTTPException(status_code=resp.status_code, detail=f"Storage upload failed (HTTP {resp.status_code}): {msg}")
-            logger.info("REST fallback upload succeeded.")
-        except HTTPException:
-            raise
-        except Exception as rest_e:
-            logger.error(f"REST fallback also failed: {str(rest_e)}", exc_info=True)
-            raise HTTPException(status_code=500, detail="Both SDK and REST upload failed. Check server logs.")
+    upload_file("materials", stored_filename, file_bytes, ALLOWED_EXTENSIONS[ext])
 
     mat = models.LearningMaterial(
         session_id=session_id,
@@ -134,13 +78,7 @@ def list_materials(
     current_user: models.User = Depends(auth.get_current_user),
     db: Session = Depends(get_db)
 ):
-    session_db = db.query(models.Session).filter(models.Session.id == session_id).first()
-    if not session_db:
-        raise HTTPException(status_code=404, detail="Session not found")
-        
-    if current_user.id not in [session_db.tutor_id, session_db.learner_id]:
-        raise HTTPException(status_code=403, detail="Not authorized")
-
+    get_session_for_participant(db, session_id, current_user.id)
     materials = db.query(models.LearningMaterial).filter_by(session_id=session_id).order_by(models.LearningMaterial.created_at.desc()).all()
     return materials
 
@@ -155,7 +93,7 @@ def download_material(
         raise HTTPException(status_code=404, detail="Material not found")
 
     session_db = db.query(models.Session).filter(models.Session.id == mat.session_id).first()
-    if not session_db or current_user.id not in [session_db.tutor_id, session_db.learner_id]:
+    if not session_db or not is_participant(session_db, current_user.id):
         raise HTTPException(status_code=403, detail="Not authorized")
 
     supabase = get_supabase()
@@ -187,11 +125,8 @@ def delete_material(
         raise HTTPException(status_code=403, detail="Only the uploader can delete this material")
 
     # 1. Delete from Supabase
-    supabase = get_supabase()
-    try:
-        supabase.storage.from_("materials").remove([mat.stored_filename])
-    except Exception as e:
-        print(f"Warning: Failed to delete {mat.stored_filename} from Supabase: {e}")
+    get_supabase()  # 500 if storage is not configured, same as upload
+    try_delete_file("materials", mat.stored_filename)
 
     # 2. Cleanup local legacy file if exists
     stored_path = os.path.join(UPLOAD_DIR, mat.stored_filename)

@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from .. import models, schemas, auth
 from ..database import get_db
-from ..supabase_client import get_supabase
+from ..supabase_client import delete_file, get_supabase, public_url, try_delete_file, upload_file
 from ..services.course_rules import ensure_learning_course, get_or_create_course
 from ..utils.progress_utils import progress_for
 
@@ -94,6 +94,20 @@ def change_password(
     db.commit()
     return {"detail": "Password updated successfully"}
 
+AVATAR_BUCKET = "avatars"
+_AVATAR_PUBLIC_PATH = "/storage/v1/object/public/avatars/"
+_LOCAL_AVATAR_PREFIX = "/uploads/avatars/"  # very old avatars were stored on the server
+
+
+def _remove_local_avatar(url: str) -> None:
+    path = url.lstrip("/")
+    if os.path.exists(path):
+        try:
+            os.remove(path)
+        except Exception as e:
+            logger.warning(f"Failed to remove local avatar file: {e}")
+
+
 @router.post("/me/avatar", response_model=schemas.UserOut)
 def upload_avatar(
     file: UploadFile = File(...),
@@ -102,184 +116,49 @@ def upload_avatar(
 ):
     if not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="Invalid file type. Must be an image.")
-        
     file_bytes = file.file.read()
     if len(file_bytes) > 5 * 1024 * 1024:
         raise HTTPException(status_code=400, detail="File too large (max 5MB).")
-        
-    supabase = get_supabase()
-    
+
+    get_supabase()  # 500 straight away if storage is not configured
     ext = file.filename.split(".")[-1]
     filename = f"{current_user.id}_{uuid.uuid4().hex}.{ext}"
-    
-    # Delete old avatar if it exists
+
+    # Delete the old avatar (best effort)
     old_url = current_user.profile_picture_url
     if old_url:
-        if "supabase.co/storage/v1/object/public/avatars/" in old_url:
-            old_filename = old_url.split("/")[-1]
-            try:
-                supabase.storage.from_("avatars").remove([old_filename])
-            except Exception:
-                pass
-        elif old_url.startswith("/uploads/avatars/"):
-            old_path = old_url.lstrip("/")
-            if os.path.exists(old_path):
-                try:
-                    os.remove(old_path)
-                except Exception:
-                    pass
+        if "supabase.co" + _AVATAR_PUBLIC_PATH in old_url:
+            try_delete_file(AVATAR_BUCKET, old_url.split("/")[-1])
+        elif old_url.startswith(_LOCAL_AVATAR_PREFIX):
+            _remove_local_avatar(old_url)
 
-    bucket = "avatars"
-    
-    # Generate public URL securely and accurately to bypass Python SDK bugs (missing slashes/extra query params)
-    # (No local "import os" here: it made `os` a local name for the whole
-    # function and crashed the os.path.exists() call above.)
-    from urllib.parse import urlparse
-    env_url = os.getenv("SUPABASE_URL")
-    if env_url:
-        parsed = urlparse(env_url)
-        base_url = f"{parsed.scheme}://{parsed.netloc}"
-        public_url = f"{base_url}/storage/v1/object/public/{bucket}/{filename}"
-    else:
-        public_url = supabase.storage.from_(bucket).get_public_url(filename)
+    upload_file(AVATAR_BUCKET, filename, file_bytes, file.content_type)
 
-    try:
-        logger.info(f"Uploading to bucket '{bucket}', path '{filename}', content-type '{file.content_type}'")
-        res = supabase.storage.from_(bucket).upload(
-            file=file_bytes,
-            path=filename,
-            file_options={"content-type": file.content_type}
-        )
-        
-        if isinstance(res, dict):
-            status = res.get("statusCode", res.get("status", 200))
-            if res.get("error") or status >= 400:
-                msg = res.get("message", res.get("error", "Upload failed"))
-                logger.error(f"Storage upload dict error (Bucket: {bucket}, Path: {filename}): HTTP {status} - {msg}")
-                raise HTTPException(status_code=status if isinstance(status, int) else 500, detail=f"Storage upload failed (HTTP {status}): {msg}")
-        elif hasattr(res, "status_code") and res.status_code >= 400:
-            err = res.json() if hasattr(res, "json") else {}
-            msg = err.get("message", err.get("error", "Upload failed"))
-            logger.error(f"Storage upload response error (Bucket: {bucket}, Path: {filename}): HTTP {res.status_code} - {msg}")
-            raise HTTPException(status_code=res.status_code, detail=f"Storage upload failed (HTTP {res.status_code}): {msg}")
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.warning(f"Storage SDK upload failed (Bucket: {bucket}, Path: {filename}): {str(e)}. Attempting REST fallback...")
-        import requests
-        from ..supabase_client import SUPABASE_URL, SUPABASE_KEY
-        
-        if not SUPABASE_URL or not SUPABASE_KEY:
-            raise HTTPException(status_code=500, detail="Storage configuration missing for fallback.")
-            
-        from urllib.parse import urlparse
-        parsed = urlparse(SUPABASE_URL)
-        base_url = f"{parsed.scheme}://{parsed.netloc}"
-        url = f"{base_url}/storage/v1/object/{bucket}/{filename}"
-        headers = {
-            "apikey": SUPABASE_KEY,
-            "Authorization": f"Bearer {SUPABASE_KEY}",
-            "Content-Type": file.content_type
-        }
-        
-        try:
-            resp = requests.post(url, data=file_bytes, headers=headers, timeout=30)
-            if resp.status_code >= 400:
-                err_dict = resp.json() if resp.text else {}
-                msg = err_dict.get("message", err_dict.get("error", resp.text or "REST Upload failed"))
-                logger.error(f"REST fallback upload failed: HTTP {resp.status_code} - {msg}")
-                raise HTTPException(status_code=resp.status_code, detail=f"Storage upload failed (HTTP {resp.status_code}): {msg}")
-            logger.info("REST fallback upload succeeded.")
-        except HTTPException:
-            raise
-        except Exception as rest_e:
-            logger.error(f"REST fallback also failed: {str(rest_e)}", exc_info=True)
-            raise HTTPException(status_code=500, detail="Both SDK and REST upload failed. Check server logs.")
-
-    current_user.profile_picture_url = public_url
+    current_user.profile_picture_url = public_url(AVATAR_BUCKET, filename)
     db.commit()
     db.refresh(current_user)
     return current_user
+
 
 @router.delete("/me/avatar", response_model=schemas.UserOut)
 def remove_avatar(
     current_user: models.User = Depends(auth.get_current_user),
     db: Session = Depends(get_db)
 ):
-    supabase = get_supabase()
+    get_supabase()  # 500 straight away if storage is not configured
     old_url = current_user.profile_picture_url
     if old_url:
-        target_path = "/storage/v1/object/public/avatars/"
-        if target_path in old_url:
-            old_filename = old_url.split(target_path)[-1].split("?")[0]
-            logger.info(f"Attempting to remove avatar object: {old_filename}")
-            
-            # 1. Try SDK deletion
-            deleted = False
-            try:
-                res = supabase.storage.from_("avatars").remove([old_filename])
-                if isinstance(res, list) and len(res) > 0:
-                    deleted = True
-                elif isinstance(res, dict) and res.get("error"):
-                    raise Exception(res.get("message", "SDK deletion error"))
-            except Exception as e:
-                logger.warning(f"SDK failed to remove avatar '{old_filename}': {e}")
-            
-            # 2. If SDK didn't confirm deletion, try REST fallback
-            if not deleted:
-                from ..supabase_client import SUPABASE_KEY
-                import os
-                import requests
-                from urllib.parse import urlparse
-                
-                env_url = os.getenv("SUPABASE_URL")
-                if env_url:
-                    parsed = urlparse(env_url)
-                    base_url = f"{parsed.scheme}://{parsed.netloc}"
-                    url = f"{base_url}/storage/v1/object/avatars/{old_filename}"
-                    headers = {
-                        "apikey": SUPABASE_KEY,
-                        "Authorization": f"Bearer {SUPABASE_KEY}",
-                    }
-                    try:
-                        resp = requests.delete(url, headers=headers, timeout=30)
-                        if resp.status_code >= 400:
-                            err_dict = resp.json() if resp.text else {}
-                            msg = err_dict.get("message", err_dict.get("error", resp.text or "REST Delete failed"))
-                            # If it's already missing (404/400 containing 'not found'), we consider it success
-                            if resp.status_code == 404 or "not found" in msg.lower():
-                                logger.info(f"Avatar '{old_filename}' already missing from storage.")
-                                deleted = True
-                            else:
-                                logger.error(f"REST fallback delete failed: HTTP {resp.status_code} - {msg}")
-                                raise HTTPException(status_code=resp.status_code, detail=f"Storage deletion failed (HTTP {resp.status_code}): {msg}")
-                        else:
-                            logger.info(f"REST fallback delete succeeded for '{old_filename}'.")
-                            deleted = True
-                    except HTTPException:
-                        raise
-                    except Exception as rest_e:
-                        logger.error(f"REST fallback also failed: {str(rest_e)}")
-                        raise HTTPException(status_code=500, detail="Storage deletion failed. Check server logs.")
-                else:
-                    raise HTTPException(status_code=500, detail="Missing SUPABASE_URL for robust deletion.")
-                    
-            if not deleted:
-                raise HTTPException(status_code=500, detail="Failed to delete avatar from storage.")
-
-        elif old_url.startswith("/uploads/avatars/"):
-            old_path = old_url.lstrip("/")
-            import os
-            if os.path.exists(old_path):
-                try:
-                    os.remove(old_path)
-                except Exception as e:
-                    logger.warning(f"Failed to remove local avatar file: {e}")
+        if _AVATAR_PUBLIC_PATH in old_url:
+            old_filename = old_url.split(_AVATAR_PUBLIC_PATH)[-1].split("?")[0]
+            delete_file(AVATAR_BUCKET, old_filename)  # raises if it can't be deleted
+        elif old_url.startswith(_LOCAL_AVATAR_PREFIX):
+            _remove_local_avatar(old_url)
 
     current_user.profile_picture_url = None
     db.commit()
     db.refresh(current_user)
     return current_user
+
 
 @router.get("/me/skills", response_model=List[schemas.UserSkillOut])
 def get_my_skills(
