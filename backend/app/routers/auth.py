@@ -1,20 +1,38 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+"""
+Sign up, log in (email/mobile + password, or Google), forgot password and
+email verification.
+
+Sign-up flow: POST /auth/signup checks the form and returns an encrypted
+signup_token (nothing is saved yet); the browser then signs in with Google
+and POST /auth/verify-google-signup creates the account only if the Google
+email matches. Google-first users go /auth/google -> /auth/complete-google.
+"""
+import datetime as dt
+import logging
 import os
 import secrets
 import string
-import datetime as dt
-from sqlalchemy.orm import Session
-from sqlalchemy import or_
-from google.oauth2 import id_token
-from google.auth.transport import requests as google_requests
+import time
+
+from fastapi import APIRouter, Depends, HTTPException, status
 from google.auth import exceptions as google_exceptions
+from google.auth.transport import requests as google_requests
+from google.oauth2 import id_token
+from sqlalchemy import or_
+from sqlalchemy.orm import Session
 
 from .. import models, schemas, auth
 from ..database import get_db
 from ..email_service import send_otp_email
 
-
 router = APIRouter(prefix="/auth", tags=["auth"])
+logger = logging.getLogger(__name__)
+
+MAX_LOGIN_FAILURES = 5          # then the account is locked for LOGIN_LOCK_MINUTES
+LOGIN_LOCK_MINUTES = 5
+OTP_VALID_MINUTES = 10
+OTP_RESEND_WAIT_SECONDS = 60
+MAX_OTP_TRIES = 5
 
 raw_google_id = os.getenv("VITE_GOOGLE_CLIENT_ID") or os.getenv("GOOGLE_CLIENT_ID")
 GOOGLE_CLIENT_ID = raw_google_id.strip().strip('"').strip("'") if raw_google_id else None
@@ -28,7 +46,10 @@ def _verify_google_token(credential, request, client_id):
     except google_exceptions.TransportError:
         raise HTTPException(status_code=503, detail="Could not reach Google to verify sign-in. Check the server's internet connection and try again.")
 
-# In-memory rate limiting dictionary for login brute-force protection
+# ---------------------------------------------------------------------------
+# Small helpers
+# ---------------------------------------------------------------------------
+# In-memory brute-force protection: identifier -> (failed attempts, locked until)
 login_attempts = {}
 
 def check_login_rate_limit(identifier: str):
@@ -48,8 +69,8 @@ def record_failed_login(identifier: str):
     else:
         attempts, lockout_time = login_attempts[identifier]
         attempts += 1
-        if attempts >= 5:
-            login_attempts[identifier] = (attempts, now + dt.timedelta(minutes=5))
+        if attempts >= MAX_LOGIN_FAILURES:
+            login_attempts[identifier] = (attempts, now + dt.timedelta(minutes=LOGIN_LOCK_MINUTES))
         else:
             login_attempts[identifier] = (attempts, None)
 
@@ -57,6 +78,27 @@ def reset_login_attempts(identifier: str):
     if identifier in login_attempts:
         del login_attempts[identifier]
 
+
+def _check_password_strength(password: str) -> None:
+    """400 with a friendly message if the password is too weak."""
+    try:
+        auth.validate_password_strength(password)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+def _clean_mobile(raw) -> str | None:
+    """Trimmed mobile number, or None when empty."""
+    return raw.strip() if raw and raw.strip() != "" else None
+
+
+def _new_otp() -> str:
+    return "".join(secrets.choice(string.digits) for _ in range(6))
+
+
+def _login_response(user: models.User) -> schemas.Token:
+    token = auth.create_access_token({"sub": str(user.id)})
+    return schemas.Token(access_token=token, user=schemas.UserOut.model_validate(user))
 
 
 def _dev_otp_enabled() -> bool:
@@ -70,19 +112,20 @@ def _dev_otp_enabled() -> bool:
         return flag.strip().lower() == "true"
     return os.getenv("DATABASE_URL", "sqlite").startswith("sqlite")
 
+
+# ---------------------------------------------------------------------------
+# Sign up and log in
+# ---------------------------------------------------------------------------
 @router.post("/signup", response_model=schemas.Token)
 def signup(payload: schemas.UserCreate, db: Session = Depends(get_db)):
-    try:
-        auth.validate_password_strength(payload.password)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    _check_password_strength(payload.password)
 
     email = payload.email.strip().lower()
     existing_email = db.query(models.User).filter(models.User.email == email).first()
     if existing_email:
         raise HTTPException(status_code=400, detail="Email already registered")
         
-    mobile_val = payload.mobile_number.strip() if payload.mobile_number and payload.mobile_number.strip() != "" else None
+    mobile_val = _clean_mobile(payload.mobile_number)
     if mobile_val:
         existing_mobile = db.query(models.User).filter(models.User.mobile_number == mobile_val).first()
         if existing_mobile:
@@ -148,9 +191,7 @@ def verify_google_signup(payload: schemas.GoogleSignupVerify, db: Session = Depe
         db.add(user)
         db.commit()
         db.refresh(user)
-
-        token = auth.create_access_token({"sub": str(user.id)})
-        return schemas.Token(access_token=token, user=schemas.UserOut.model_validate(user))
+        return _login_response(user)
 
     except ValueError as e:
         raise HTTPException(status_code=401, detail=f"Invalid Google token: {str(e)}")
@@ -163,8 +204,6 @@ def login(payload: schemas.UserLogin, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Must provide email or mobile number")
 
     check_login_rate_limit(identifier)
-
-    import time
     t_start = time.perf_counter()
 
     # Prevent matching `mobile_number IS NULL` or `email IS NULL` by only using provided fields
@@ -184,7 +223,7 @@ def login(payload: schemas.UserLogin, db: Session = Depends(get_db)):
 
     total_ms = (time.perf_counter() - t_start) * 1000.0
     # Timing only — no email/mobile in the server logs.
-    print(f"[TIMING] Login: user_lookup={t_lookup_ms:.1f}ms, bcrypt_verify={t_bcrypt_ms:.1f}ms, total={total_ms:.1f}ms")
+    logger.info(f"[TIMING] Login: user_lookup={t_lookup_ms:.1f}ms, bcrypt_verify={t_bcrypt_ms:.1f}ms, total={total_ms:.1f}ms")
 
     if not user or not password_ok:
         record_failed_login(identifier)
@@ -194,8 +233,7 @@ def login(payload: schemas.UserLogin, db: Session = Depends(get_db)):
         )
         
     reset_login_attempts(identifier)
-    token = auth.create_access_token({"sub": str(user.id)})
-    return schemas.Token(access_token=token, user=schemas.UserOut.model_validate(user))
+    return _login_response(user)
 
 
 @router.post("/google", response_model=schemas.Token)
@@ -216,21 +254,11 @@ def google_auth(payload: schemas.GoogleAuth, db: Session = Depends(get_db)):
         user = db.query(models.User).filter(models.User.email == email).first()
         
         if user:
-            # Login
-            token = auth.create_access_token({"sub": str(user.id)})
-            return schemas.Token(access_token=token, user=schemas.UserOut.model_validate(user))
-        else:
-            # Onboarding Required
-            onboarding_data = {
-                "email": email,
-                "name": name
-            }
-            onboarding_token = auth.create_encrypted_token(onboarding_data)
-            return schemas.Token(
-                onboarding_required=True,
-                onboarding_token=onboarding_token
-            )
-            
+            return _login_response(user)
+        # New Google user: finish the profile first (POST /auth/complete-google).
+        onboarding_token = auth.create_encrypted_token({"email": email, "name": name})
+        return schemas.Token(onboarding_required=True, onboarding_token=onboarding_token)
+
     except ValueError as e:
         raise HTTPException(status_code=401, detail=f"Invalid Google token: {str(e)}")
 
@@ -244,12 +272,8 @@ def complete_google(payload: schemas.GoogleOnboardingComplete, db: Session = Dep
     if db.query(models.User).filter(models.User.email == email).first():
         raise HTTPException(status_code=400, detail="Account already exists. Please log in.")
         
-    try:
-        auth.validate_password_strength(payload.password)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-        
-    mobile_val = payload.mobile_number.strip() if payload.mobile_number and payload.mobile_number.strip() != "" else None
+    _check_password_strength(payload.password)
+    mobile_val = _clean_mobile(payload.mobile_number)
     # mobile_number is unique in the database: say so instead of crashing (500).
     if mobile_val and db.query(models.User).filter(models.User.mobile_number == mobile_val).first():
         raise HTTPException(status_code=400, detail="Mobile number already registered")
@@ -270,11 +294,12 @@ def complete_google(payload: schemas.GoogleOnboardingComplete, db: Session = Dep
     db.add(user)
     db.commit()
     db.refresh(user)
-
-    token = auth.create_access_token({"sub": str(user.id)})
-    return schemas.Token(access_token=token, user=schemas.UserOut.model_validate(user))
+    return _login_response(user)
 
 
+# ---------------------------------------------------------------------------
+# One-time codes (forgot password, verify email)
+# ---------------------------------------------------------------------------
 @router.post("/forgot-password")
 def forgot_password(payload: schemas.ForgotPassword, db: Session = Depends(get_db)):
     user = db.query(models.User).filter(models.User.email == payload.email).first()
@@ -288,18 +313,17 @@ def forgot_password(payload: schemas.ForgotPassword, db: Session = Depends(get_d
         models.PasswordResetOTP.email == payload.email
     ).order_by(models.PasswordResetOTP.created_at.desc()).first()
     
-    if recent_otp and (now - recent_otp.created_at).total_seconds() < 60:
+    if recent_otp and (now - recent_otp.created_at).total_seconds() < OTP_RESEND_WAIT_SECONDS:
         raise HTTPException(status_code=429, detail="Please wait 60 seconds before requesting another OTP.")
-        
-    otp = ''.join(secrets.choice(string.digits) for _ in range(6))
-    
+
+    otp = _new_otp()
     # Invalidate previous OTPs
     db.query(models.PasswordResetOTP).filter(models.PasswordResetOTP.email == payload.email).delete()
     
     reset_entry = models.PasswordResetOTP(
         email=payload.email,
         hashed_otp=auth.hash_password(otp),
-        expires_at=now + dt.timedelta(minutes=10)
+        expires_at=now + dt.timedelta(minutes=OTP_VALID_MINUTES)
     )
     db.add(reset_entry)
     db.commit()
@@ -316,10 +340,7 @@ def forgot_password(payload: schemas.ForgotPassword, db: Session = Depends(get_d
 
 @router.post("/reset-password")
 def reset_password(payload: schemas.ResetPassword, db: Session = Depends(get_db)):
-    try:
-        auth.validate_password_strength(payload.new_password)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    _check_password_strength(payload.new_password)
 
     user = db.query(models.User).filter(models.User.email == payload.email).first()
     if not user:
@@ -328,7 +349,6 @@ def reset_password(payload: schemas.ResetPassword, db: Session = Depends(get_db)
     if auth.verify_password(payload.new_password, user.hashed_password):
         raise HTTPException(status_code=400, detail="You are entering your old password. Please choose a different password.")
 
-        
     otp_record = db.query(models.PasswordResetOTP).filter(
         models.PasswordResetOTP.email == payload.email,
         models.PasswordResetOTP.expires_at > dt.datetime.utcnow()
@@ -337,7 +357,7 @@ def reset_password(payload: schemas.ResetPassword, db: Session = Depends(get_db)
     if not otp_record:
         raise HTTPException(status_code=400, detail="OTP expired or not found")
         
-    if otp_record.attempts >= 5:
+    if otp_record.attempts >= MAX_OTP_TRIES:
         raise HTTPException(status_code=400, detail="Too many invalid attempts. Please request a new OTP.")
         
     if not auth.verify_password(payload.otp, otp_record.hashed_otp):
@@ -351,6 +371,7 @@ def reset_password(payload: schemas.ResetPassword, db: Session = Depends(get_db)
     
     return {"detail": "Password has been successfully reset."}
 
+
 @router.post("/verify-email/request")
 def request_email_verification(current_user: models.User = Depends(auth.get_current_user), db: Session = Depends(get_db)):
     if current_user.is_email_verified:
@@ -361,18 +382,17 @@ def request_email_verification(current_user: models.User = Depends(auth.get_curr
         models.EmailVerificationOTP.user_id == current_user.id
     ).order_by(models.EmailVerificationOTP.created_at.desc()).first()
     
-    if recent_otp and (now - recent_otp.created_at).total_seconds() < 60:
+    if recent_otp and (now - recent_otp.created_at).total_seconds() < OTP_RESEND_WAIT_SECONDS:
         raise HTTPException(status_code=429, detail="Please wait 60 seconds before requesting another OTP.")
-        
-    otp = ''.join(secrets.choice(string.digits) for _ in range(6))
-    
+
+    otp = _new_otp()
     # Invalidate previous OTPs
     db.query(models.EmailVerificationOTP).filter(models.EmailVerificationOTP.user_id == current_user.id).delete()
     
     entry = models.EmailVerificationOTP(
         user_id=current_user.id,
         hashed_otp=auth.hash_password(otp),
-        expires_at=now + dt.timedelta(minutes=10)
+        expires_at=now + dt.timedelta(minutes=OTP_VALID_MINUTES)
     )
     db.add(entry)
     db.commit()
@@ -385,6 +405,7 @@ def request_email_verification(current_user: models.User = Depends(auth.get_curr
         return response
     except Exception:
         raise HTTPException(status_code=500, detail="Unable to send verification code. Please try again later.")
+
 
 @router.post("/verify-email/confirm")
 def confirm_email_verification(payload: schemas.VerifyOTP, current_user: models.User = Depends(auth.get_current_user), db: Session = Depends(get_db)):
@@ -399,7 +420,7 @@ def confirm_email_verification(payload: schemas.VerifyOTP, current_user: models.
     if not otp_record:
         raise HTTPException(status_code=400, detail="OTP expired or not found")
         
-    if otp_record.attempts >= 5:
+    if otp_record.attempts >= MAX_OTP_TRIES:
         raise HTTPException(status_code=400, detail="Too many invalid attempts. Please request a new OTP.")
         
     if not auth.verify_password(payload.otp, otp_record.hashed_otp):
@@ -412,7 +433,3 @@ def confirm_email_verification(payload: schemas.VerifyOTP, current_user: models.
     db.commit()
     
     return {"detail": "Email successfully verified."}
-
-
-
-
