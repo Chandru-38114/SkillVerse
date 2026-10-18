@@ -26,7 +26,8 @@ function BadgeTile({ skill }) {
     </span>
   )
   return (
-    <div className="btile" tabIndex={0} aria-describedby={locked ? 'tip-locked' : `tip-${skill.id}`}>
+    <div className="btile" tabIndex={0} aria-describedby={locked ? 'tip-locked' : `tip-${skill.id}`}
+      onMouseEnter={keepTipOnScreen} onFocus={keepTipOnScreen}>
       {locked ? <Link to="/assessment" aria-label="Unlock a badge in the Skill Arena">{tile}</Link> : tile}
       <span className="btile-name" style={locked ? { color: '#6E6455' } : undefined}>{locked ? 'Locked' : skill.skill_name}</span>
       <div className="btip" role="tooltip" id={locked ? 'tip-locked' : `tip-${skill.id}`}>
@@ -47,6 +48,23 @@ function BadgeTile({ skill }) {
       </div>
     </div>
   )
+}
+
+// The badge card is centred over its tile; near the screen edge it would be
+// cut off, so slide it sideways (the little arrow stays over the tile).
+function keepTipOnScreen(e) {
+  const tile = e.currentTarget
+  const tip = tile.querySelector('.btip')
+  if (!tip) return
+  const t = tile.getBoundingClientRect()
+  const width = tip.offsetWidth
+  const margin = 8
+  const left = t.left + t.width / 2 - width / 2
+  const right = left + width
+  let shift = 0
+  if (left < margin) shift = margin - left
+  else if (right > window.innerWidth - margin) shift = window.innerWidth - margin - right
+  tip.style.setProperty('--shift', `${Math.round(shift)}px`)
 }
 
 const STAGE_PILL = {

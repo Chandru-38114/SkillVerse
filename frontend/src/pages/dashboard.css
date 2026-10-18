@@ -43,14 +43,14 @@
 .sv-dash .btile .badge{transition:transform 160ms ease}
 .sv-dash .btile:hover .badge,.sv-dash .btile:focus-visible .badge{transform:translateY(-3px) rotate(-4deg)}
 .sv-dash .btile-name{font-size:13px;font-weight:800;text-align:center}
-.sv-dash .btip{position:absolute;bottom:calc(100% + 12px);left:50%;transform:translate(-50%,6px);width:260px;padding:14px;background:#29251F;color:#FFFDF8;border-radius:14px;box-shadow:0 4px 0 #FF8A3D;display:flex;flex-direction:column;gap:8px;font-size:13px;line-height:1.45;text-align:left;opacity:0;pointer-events:none;transition:opacity 160ms ease,transform 160ms ease;z-index:30}
-.sv-dash .btip::after{content:"";position:absolute;top:100%;left:50%;margin-left:-8px;border:8px solid transparent;border-top-color:#29251F}
+.sv-dash .btip{position:absolute;bottom:calc(100% + 12px);left:50%;transform:translate(calc(-50% + var(--shift,0px)),6px);width:260px;padding:14px;background:#29251F;color:#FFFDF8;border-radius:14px;box-shadow:0 4px 0 #FF8A3D;display:flex;flex-direction:column;gap:8px;font-size:13px;line-height:1.45;text-align:left;opacity:0;pointer-events:none;transition:opacity 160ms ease,transform 160ms ease;z-index:30}
+.sv-dash .btip::after{content:"";position:absolute;top:100%;left:calc(50% - var(--shift,0px));margin-left:-8px;border:8px solid transparent;border-top-color:#29251F}
 .sv-dash .btip strong{font-size:14px}
 .sv-dash .btip em{font-style:normal;font-weight:800;color:#FFB27A}
 .sv-dash .btip-tiers{display:flex;flex-wrap:wrap;gap:4px}
 .sv-dash .btip-tiers span{padding:2px 7px;border-radius:999px;border:1.5px solid #29251F;color:#29251F;font-size:11px;font-weight:800;opacity:.55}
 .sv-dash .btip-tiers span.on{opacity:1;outline:2px solid #FFFDF8}
-.sv-dash .btile:hover .btip,.sv-dash .btile:focus-within .btip{opacity:1;transform:translate(-50%,0)}
+.sv-dash .btile:hover .btip,.sv-dash .btile:focus-within .btip{opacity:1;transform:translate(calc(-50% + var(--shift,0px)),0)}
 
 .sv-dash .grid{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:32px}
 .sv-dash .paths{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}
