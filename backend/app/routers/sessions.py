@@ -1,55 +1,63 @@
-from typing import Optional
 """
 Sessions router — scheduling a learning session for an accepted connection.
 
 Endpoints:
+  GET    /sessions/turn-credentials  TURN servers for the video call (Metered)
   POST   /sessions              Create a session for an accepted request
-  GET    /sessions/upcoming     My upcoming (scheduled, future) sessions
+  GET    /sessions/upcoming     My upcoming (scheduled, not yet ended) sessions
   GET    /sessions/my           All my sessions (any status)
   GET    /sessions/{id}         Single session by id
   PUT    /sessions/{id}         Reschedule (date/time/notes)
   POST   /sessions/{id}/cancel  Cancel a scheduled session
+  WS     /sessions/ws/{id}      Video-call signalling (WebRTC) for the Learning Arena
 """
+import asyncio
 import datetime as dt
-from typing import List
+import logging
 import os
+from typing import List, Optional
+
 import requests
-
-
 from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect, Query
-from starlette.concurrency import run_in_threadpool
 from sqlalchemy import or_
 from sqlalchemy.orm import Session as DBSession
-from ..notification_service import create_notification
+from starlette.concurrency import run_in_threadpool
 
 from .. import models, schemas, auth
 from ..database import get_db, SessionLocal
-from .requests import _to_out as _req_to_out
-from ..ws_manager import webrtc_manager
+from ..notification_service import create_notification
 from ..utils.timezone import utc_now, IST
+from ..ws_manager import webrtc_manager
+from .requests import _to_out as _req_to_out
 
 router = APIRouter(prefix="/sessions", tags=["sessions"])
+logger = logging.getLogger(__name__)
+
+MIN_SESSION_MINUTES = 15
+MAX_SESSION_MINUTES = 180
+MAX_DAYS_AHEAD = 60
+# The room opens this many minutes before the scheduled start.
+EARLY_JOIN_MINUTES = 15
+
 
 @router.get("/turn-credentials")
 def get_turn_credentials(current_user: models.User = Depends(auth.get_current_user)):
-    """Fetch time-limited TURN credentials securely from backend variables."""
+    """Fetch time-limited TURN credentials securely from backend variables.
+    (TURN relays the video when the two browsers can't connect directly.)"""
     metered_domain = os.environ.get("METERED_DOMAIN")
     metered_api_key = os.environ.get("METERED_API_KEY")
-    
     if not metered_domain or not metered_api_key:
-        print("[TURN] Backend metered config missing, returning empty array")
+        logger.info("[TURN] Backend metered config missing, returning empty array")
         return {"iceServers": []}
-        
+
     url = f"https://{metered_domain}/api/v1/turn/credentials?apiKey={metered_api_key}"
     try:
         resp = requests.get(url, timeout=5)
         resp.raise_for_status()
         return {"iceServers": resp.json()}
     except Exception as e:
-        print(f"[TURN] Failed to fetch credentials from Metered: {e}")
+        logger.warning(f"[TURN] Failed to fetch credentials from Metered: {e}")
         return {"iceServers": []}
-
-
 
 
 # ── helpers ──────────────────────────────────────────────────────────────────
@@ -77,12 +85,6 @@ def _to_out(s: models.Session) -> schemas.SessionOut:
 
 
 
-MIN_SESSION_MINUTES = 15
-MAX_SESSION_MINUTES = 180
-# The room opens this many minutes before the scheduled start.
-EARLY_JOIN_MINUTES = 15
-
-
 def _utc(d: Optional[dt.datetime]) -> Optional[dt.datetime]:
     """SQLite returns naive datetimes (stored as UTC); make every value aware."""
     if d is None:
@@ -103,8 +105,8 @@ def _validate_times(start: dt.datetime, end: dt.datetime):
     # We allow scheduling slightly in the past (e.g. starting a session right now)
     if start < utc_now() - dt.timedelta(hours=1):
         raise HTTPException(status_code=422, detail="Session cannot be scheduled too far in the past.")
-    if start > utc_now() + dt.timedelta(days=60):
-        raise HTTPException(status_code=422, detail="Sessions can be scheduled at most 60 days ahead.")
+    if start > utc_now() + dt.timedelta(days=MAX_DAYS_AHEAD):
+        raise HTTPException(status_code=422, detail=f"Sessions can be scheduled at most {MAX_DAYS_AHEAD} days ahead.")
 
 
 def _check_overlap(db: DBSession, people, new_start: dt.datetime, new_end: dt.datetime,
@@ -132,6 +134,19 @@ def _check_overlap(db: DBSession, people, new_start: dt.datetime, new_end: dt.da
             )
 
 
+def _partner_of(s: models.Session, user_id: int) -> int:
+    return s.learner_id if user_id == s.tutor_id else s.tutor_id
+
+
+def _set_display_times(s: models.Session, start: dt.datetime, end: dt.datetime) -> None:
+    """Older pages read session_date/start_time/end_time as India-time text;
+    keep them in step with scheduled_start/scheduled_end (UTC)."""
+    ist_start, ist_end = _utc(start).astimezone(IST), _utc(end).astimezone(IST)
+    s.session_date = ist_start.strftime("%Y-%m-%d")
+    s.start_time = ist_start.strftime("%H:%M")
+    s.end_time = ist_end.strftime("%H:%M")
+
+
 def _expire_if_over(s: models.Session, db: DBSession) -> bool:
     """A scheduled session past its end: completed if BOTH people were in the
     room, otherwise it stays "scheduled" and the UI shows it as missed.
@@ -143,7 +158,6 @@ def _expire_if_over(s: models.Session, db: DBSession) -> bool:
         s.status = "completed"
         db.commit()
     return True
-
 
 
 def _get_my_session(session_id: int, current_user: models.User, db: DBSession) -> models.Session:
@@ -202,22 +216,11 @@ def create_session(
     # has already passed (nobody joined, so it was never closed) must not block
     # scheduling a new one.
     now_utc = utc_now()
-    existing_active = None
-    for s_old in (
-        db.query(models.Session)
-        .filter(
-            models.Session.request_id == payload.request_id,
-            models.Session.status == "scheduled",
-        )
-        .all()
-    ):
-        old_end = s_old.scheduled_end
-        if old_end is not None and old_end.tzinfo is None:
-            old_end = old_end.replace(tzinfo=dt.timezone.utc)
-        if old_end is None or old_end > now_utc:
-            existing_active = s_old
-            break
-    if existing_active:
+    scheduled = db.query(models.Session).filter(
+        models.Session.request_id == payload.request_id,
+        models.Session.status == "scheduled",
+    ).all()
+    if any(_utc(old.scheduled_end) is None or _utc(old.scheduled_end) > now_utc for old in scheduled):
         raise HTTPException(
             status_code=409,
             detail="An active session is already scheduled for this request. Cancel it first to reschedule.",
@@ -226,27 +229,20 @@ def create_session(
     _validate_times(payload.scheduled_start, payload.scheduled_end)
     _check_overlap(db, (req.from_user_id, req.to_user_id), payload.scheduled_start, payload.scheduled_end, current_user.id)
 
-    # Store legacy strings based on scheduled_start for backward compatibility until dropped
-    ist_start = payload.scheduled_start.astimezone(IST)
-    ist_end = payload.scheduled_end.astimezone(IST)
-    
     session = models.Session(
         request_id=payload.request_id,
-        tutor_id=req.to_user_id,
+        tutor_id=req.to_user_id,     # the receiver of a request is the tutor
         learner_id=req.from_user_id,
         skill=req.skill.name,
-        session_date=ist_start.strftime("%Y-%m-%d"),
-        start_time=ist_start.strftime("%H:%M"),
-        end_time=ist_end.strftime("%H:%M"),
         scheduled_start=payload.scheduled_start,
         scheduled_end=payload.scheduled_end,
         notes=payload.notes,
     )
+    _set_display_times(session, payload.scheduled_start, payload.scheduled_end)
     db.add(session)
     db.commit()
     db.refresh(session)
-    to_notify = session.learner_id if current_user.id == session.tutor_id else session.tutor_id
-    create_notification(db, to_notify, "session", "Session Scheduled", f"{current_user.name} scheduled a new session", session.id, "session")
+    create_notification(db, _partner_of(session, current_user.id), "session", "Session Scheduled", f"{current_user.name} scheduled a new session", session.id, "session")
     return _to_out(session)
 
 
@@ -268,23 +264,14 @@ def upcoming_sessions(
         .all()
     )
     
-    # Filter out sessions that have already ended (or started > 2 hours ago if no end time)
-    valid_rows = []
-    for s in rows:
-        end_dt = s.scheduled_end
-        if end_dt and end_dt.tzinfo is None:
-            end_dt = end_dt.replace(tzinfo=dt.timezone.utc)
-            
-        start_dt = s.scheduled_start
-        if start_dt and start_dt.tzinfo is None:
-            start_dt = start_dt.replace(tzinfo=dt.timezone.utc)
-            
-        if end_dt and end_dt > now:
-            valid_rows.append(s)
-        elif not end_dt and start_dt and start_dt > now - dt.timedelta(hours=2):
-            valid_rows.append(s)
-            
-    return [_to_out(s) for s in valid_rows]
+    def not_over(s: models.Session) -> bool:
+        end, start = _utc(s.scheduled_end), _utc(s.scheduled_start)
+        if end:
+            return end > now
+        # no end time: hide it 2 hours after the start
+        return bool(start and start > now - dt.timedelta(hours=2))
+
+    return [_to_out(s) for s in rows if not_over(s)]
 
 
 @router.get("/my", response_model=List[schemas.SessionOut])
@@ -341,18 +328,13 @@ def update_session(
         _check_overlap(db, (s.tutor_id, s.learner_id), new_start, new_end, current_user.id, ignore_session_id=s.id)
     s.scheduled_start, s.scheduled_end = new_start, new_end
 
-    ist_start = new_start.astimezone(IST)
-    ist_end = new_end.astimezone(IST)
-    s.session_date = ist_start.strftime("%Y-%m-%d")
-    s.start_time = ist_start.strftime("%H:%M")
-    s.end_time = ist_end.strftime("%H:%M")
+    _set_display_times(s, new_start, new_end)
     if payload.notes is not None:
         s.notes = payload.notes[:1000]
 
     db.commit()
     db.refresh(s)
-    to_notify = s.learner_id if current_user.id == s.tutor_id else s.tutor_id
-    create_notification(db, to_notify, "session", "Session Rescheduled", f"{current_user.name} rescheduled the session", s.id, "session")
+    create_notification(db, _partner_of(s, current_user.id), "session", "Session Rescheduled", f"{current_user.name} rescheduled the session", s.id, "session")
     return _to_out(s)
 
 
@@ -375,9 +357,10 @@ def cancel_session(
     s.status = "cancelled"
     db.commit()
     db.refresh(s)
-    to_notify = s.learner_id if current_user.id == s.tutor_id else s.tutor_id
-    create_notification(db, to_notify, "session", "Session Cancelled", f"{current_user.name} cancelled the session", s.id, "session")
+    create_notification(db, _partner_of(s, current_user.id), "session", "Session Cancelled", f"{current_user.name} cancelled the session", s.id, "session")
     return _to_out(s)
+
+
 @router.websocket("/ws/{session_id}")
 async def webrtc_signaling(
     websocket: WebSocket,
@@ -407,7 +390,6 @@ async def webrtc_signaling(
             await websocket.close(code=4410, reason="Session Ended")
             return
 
-        import asyncio
         end_dt = _utc(s.scheduled_end)
         if _expire_if_over(s, db):
             await websocket.close(code=4410, reason="Session Ended")
