@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { api } from '../api'
+import ArenaResultInsights from '../components/ArenaResultInsights'
 import './arena.css'
 
 const STEPS = { PICK: 'pick', RULES: 'rules', QUIZ: 'quiz', RESULT: 'result', TERMINATED: 'terminated' }
@@ -136,6 +137,23 @@ function LocalCompiler({ code, onChange, language, onViolation }) {
       </div>
     </div>
   )
+}
+
+// The result score counts up from 0 once, for a bit of celebration.
+function CountUp({ to, ms = 900 }) {
+  const [n, setN] = useState(0)
+  useEffect(() => {
+    let raf
+    const start = performance.now()
+    const tick = (t) => {
+      const k = Math.min(1, (t - start) / ms)
+      setN(Math.round(to * (1 - Math.pow(1 - k, 3))))
+      if (k < 1) raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [to, ms])
+  return n
 }
 
 export default function Assessment() {
@@ -747,7 +765,7 @@ export default function Assessment() {
           <div className="card two" style={{ padding: 32, display: 'grid', gridTemplateColumns: 'auto 1fr', gap: 32, alignItems: 'center' }}>
             <div style={{ width: 180, height: 180, borderRadius: 999, border: '2px solid #29251F', background: `conic-gradient(var(--acc) 0 ${Math.round(result.score)}%, #F0E5D2 ${Math.round(result.score)}% 100%)`, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 5px 0 #29251F' }}>
               <div style={{ width: 128, height: 128, borderRadius: 999, border: '2px solid #29251F', background: '#FFFDF8', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <span className="mono" style={{ fontSize: 40, fontWeight: 700 }}>{Math.round(result.score)}<span style={{ fontSize: 20 }}>%</span></span>
+                <span className="mono" style={{ fontSize: 40, fontWeight: 700 }}><CountUp to={Math.round(result.score)} /><span style={{ fontSize: 20 }}>%</span></span>
               </div>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -784,6 +802,8 @@ export default function Assessment() {
               )}
             </div>
           </div>
+
+          <ArenaResultInsights result={result} skillName={skillName} />
 
           <div className="two" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
             <div className="card" style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 10 }}>

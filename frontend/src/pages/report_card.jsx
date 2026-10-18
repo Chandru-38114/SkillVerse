@@ -1,7 +1,58 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../api'
+import RadarChart from '../components/RadarChart'
 import './report_card.css'
+
+// Six teaching qualities on a 0-100 scale for the spider-web chart.
+// Caps (20 h, 10 learners, 25 sessions) are "full marks" for a student tutor.
+function teachingAxes(ts) {
+  const pct = (v, full) => Math.max(0, Math.min(100, ((Number(v) || 0) / full) * 100))
+  const hours = ts.teaching_experience?.total_hours_taught || 0
+  const rating = ts.rating_summary?.average_rating
+  const learners = ts.students_help?.distinct_learners_taught || 0
+  const returning = ts.students_help?.returning_students_count || 0
+  const sessions = ts.session_stats?.total_sessions_taught || 0
+  const reliability = ts.reliability?.completion_rate || 0
+  return [
+    { label: 'Rating', value: rating ? pct(rating, 5) : 0, display: rating ? `★ ${rating.toFixed(1)}` : 'no reviews', note: 'Average stars out of 5' },
+    { label: 'Reliability', value: pct(reliability, 100), display: `${reliability}%`, note: 'Accepted requests that became completed sessions' },
+    { label: 'Experience', value: pct(hours, 20), display: `${hours} h`, note: 'Hours taught (20 h = full)' },
+    { label: 'Reach', value: pct(learners, 10), display: `${learners} learner${learners === 1 ? '' : 's'}`, note: 'Different learners taught (10 = full)' },
+    { label: 'Loyalty', value: learners ? pct(returning, learners) : 0, display: `${returning} returned`, note: 'Learners who came back for 2+ sessions' },
+    { label: 'Sessions', value: pct(sessions, 25), display: `${sessions}`, note: 'Completed sessions taught (25 = full)' },
+  ]
+}
+
+function TeachingRadar({ ts }) {
+  const axes = teachingAxes(ts)
+  const overall = Math.round(axes.reduce((a, x) => a + x.value, 0) / axes.length)
+  return (
+    <section className="card sv-teach-dna">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <span className="eb">🕸 TEACHING DNA</span>
+        <h3 style={{ margin: 0, fontSize: 20, fontWeight: 900 }}>Your teaching shape</h3>
+        <RadarChart axes={axes} size={250} color="#3FB58F" fill="rgba(63,181,143,0.25)" />
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', border: '2px solid #29251F', borderRadius: 14, background: '#D6F3EA', boxShadow: '0 3px 0 #29251F' }}>
+          <span className="mono" style={{ fontSize: 30, fontWeight: 900 }}>{overall}</span>
+          <span style={{ fontWeight: 800, lineHeight: 1.3 }}>Overall teaching score<br /><span className="muted" style={{ fontSize: 12, fontWeight: 700 }}>average of the six qualities</span></span>
+        </div>
+        {axes.map(a => (
+          <div key={a.label} title={a.note} style={{ display: 'grid', gridTemplateColumns: '92px 1fr auto', gap: 10, alignItems: 'center' }}>
+            <strong style={{ fontSize: 13 }}>{a.label}</strong>
+            <div style={{ height: 10, border: '2px solid #29251F', borderRadius: 999, background: '#F0E5D2', overflow: 'hidden' }}>
+              <div style={{ width: `${a.value}%`, height: '100%', background: '#3FB58F' }} />
+            </div>
+            <span className="mono" style={{ fontSize: 12, fontWeight: 800, minWidth: 74, textAlign: 'right' }}>{a.display}</span>
+          </div>
+        ))}
+        <span className="muted" style={{ fontSize: 12 }}>Hover a row to see how it's scored.</span>
+      </div>
+    </section>
+  )
+}
 
 function formatDate(iso) {
   if (!iso) return ''
@@ -587,6 +638,8 @@ export default function ReportCard() {
                     </span>
                   </div>
                 </div>
+
+                <TeachingRadar ts={teacherStats} />
 
                 {/* Rating Distribution & Reliability breakdown */}
                 <div className="grid2">

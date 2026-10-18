@@ -227,3 +227,7 @@
     padding: 10px 14px;
   }
 }
+
+/* Teaching DNA: spider-web chart + quality bars; stacks on small screens */
+.sv-report-card .sv-teach-dna { padding: 24px; display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 24px; align-items: center; }
+@media (max-width: 800px) { .sv-report-card .sv-teach-dna { grid-template-columns: 1fr; } }
