@@ -240,7 +240,7 @@ export default function Messages() {
           setMessages(msgs)
           setLoadingMessages(false)
         }
-      } catch (err) {
+      } catch {
         if (isActive && !historyLoaded) {
           setLoadingMessages(false)
           setWsError('Could not load messages. Check your connection.')
@@ -274,7 +274,7 @@ export default function Messages() {
         let data
         try {
           data = JSON.parse(event.data)
-        } catch (e) {
+        } catch {
           return
         }
         if (data.type === 'pong') return
@@ -396,7 +396,7 @@ export default function Messages() {
         const updated = await api.editMessage(editingMsg.id, text)
         setMessages(prev => prev.map(m => m.id === editingMsg.id ? { ...m, content: updated.content, metadata: updated.metadata } : m))
         setEditingMsg(null)
-      } catch (err) {
+      } catch {
         showToast('Failed to edit message')
         setDraft(text)
       }
@@ -477,7 +477,7 @@ export default function Messages() {
       setIsRecording(true)
       setRecordingTime(0)
       timerRef.current = setInterval(() => setRecordingTime(t => t + 1), 1000)
-    } catch (err) {
+    } catch {
       showToast('Microphone access denied or unavailable')
     }
   }
@@ -555,7 +555,7 @@ export default function Messages() {
     try {
       const result = await api.toggleReaction(msgId, emoji)
       setMessages(prev => prev.map(m => m.id === msgId ? { ...m, metadata: result.metadata } : m))
-    } catch (err) {
+    } catch {
       showToast('Failed to update reaction')
     }
   }
@@ -635,7 +635,7 @@ export default function Messages() {
           } else {
             setReviewedStatus(prev => ({ ...prev, [selectedRequestId]: { reviewed: false, sessionId: null } }));
           }
-        } catch (err) {
+        } catch {
           setReviewedStatus(prev => ({ ...prev, [selectedRequestId]: { reviewed: false, sessionId: null } }));
         }
       };
@@ -874,7 +874,6 @@ export default function Messages() {
                               isConsecutive={isConsecutive}
                               isMatch={!!isMatch}
                               currentUserId={userId}
-                              allMessages={messages}
                               onReply={handleReply}
                               onCopy={handleCopy}
                               onEdit={handleEdit}

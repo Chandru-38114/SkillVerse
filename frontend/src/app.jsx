@@ -1,4 +1,4 @@
-import { Navigate, Routes, Route, useLocation, useNavigate } from 'react-router-dom'
+import { Navigate, Routes, Route, useLocation } from 'react-router-dom'
 import { useState, useEffect, lazy, Suspense } from 'react'
 import { GoogleOAuthProvider } from '@react-oauth/google'
 import Navbar from './components/navbar'
@@ -58,7 +58,6 @@ function OnboardingRoute() {
 
 export default function App() {
   const location = useLocation();
-  const navigate = useNavigate();
   const [authChecked, setAuthChecked] = useState(() => !!(getToken() && getSessionUser()));
 
   useEffect(() => {

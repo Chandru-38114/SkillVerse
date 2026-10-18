@@ -27,7 +27,6 @@ export default function Marketplace() {
   const [results, setResults] = useState([])
   const [mySkills, setMySkills] = useState([])
   const [circleSuggestions, setCircleSuggestions] = useState([])
-  const [loadingSuggestions, setLoadingSuggestions] = useState(false)
   const [proposingCycleId, setProposingCycleId] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -58,14 +57,11 @@ export default function Marketplace() {
   }, [searchParams])
 
   async function fetchCircleSuggestions() {
-    setLoadingSuggestions(true)
     try {
       const data = await api.getExchangeSuggestions()
       setCircleSuggestions(Array.isArray(data) ? data : [])
-    } catch (_) {
+    } catch {
       setCircleSuggestions([])
-    } finally {
-      setLoadingSuggestions(false)
     }
   }
 
@@ -128,7 +124,7 @@ export default function Marketplace() {
           if (statusObj) newStatusMap[`${t.user_id}-${s.skill_name}`] = statusObj
         })
 
-        let displaySkills = [];
+        let displaySkills;
         if (roleFilter === 'I Can Teach') {
           displaySkills = t.learning_skills;
         } else if (roleFilter === 'I Want to Learn') {
@@ -271,7 +267,7 @@ export default function Marketplace() {
     if (proficiency === 'All') return results;
 
     return results.filter(user => {
-      let relevantSkills = [];
+      let relevantSkills;
       if (activeFilter === 'I Want to Learn') {
         relevantSkills = user.teaching_skills;
       } else if (activeFilter === 'I Can Teach') {
@@ -643,7 +639,7 @@ export default function Marketplace() {
                 const ratings = ratingsMap[teacher.user_id]
                 const form = formMap[teacher.user_id] || defaultForm()
 
-                let displaySkills = [];
+                let displaySkills;
                 if (activeFilter === 'I Can Teach') {
                   displaySkills = teacher.learning_skills.map(s => ({ ...s, intent: 'teach' }));
                 } else if (activeFilter === 'I Want to Learn') {

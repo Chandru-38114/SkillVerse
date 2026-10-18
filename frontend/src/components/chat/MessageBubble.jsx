@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { formatTime } from '../../utils/dateTime'
 import { api } from '../../api'
 import { REACTION_EMOJIS, getEmojiForKey } from '../../utils/emojis'
@@ -154,7 +154,7 @@ export function FileAttachment({ meta, reqId }) {
 }
 
 export default function MessageBubble({
-  m, reqId, isMe, isConsecutive, isMatch, currentUserId, allMessages,
+  m, reqId, isMe, isConsecutive, isMatch, currentUserId,
   onReply, onCopy, onEdit, onDeleteForEveryone, onDeleteForMe,
   onToggleReaction, onForward, onScrollToRef, msgRef,
 }) {

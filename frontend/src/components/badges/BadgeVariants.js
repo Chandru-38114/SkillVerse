@@ -1,4 +1,3 @@
-import React from 'react';
 
 /* ── Geometric line icon SVG components ────────────────────────────────────────── */
 

@@ -1,4 +1,3 @@
-import React from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import * as Icons from 'lucide-react';
 import { BADGE_VARIANTS } from './BadgeVariants';

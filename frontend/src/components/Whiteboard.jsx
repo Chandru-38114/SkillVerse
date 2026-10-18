@@ -1,6 +1,6 @@
 import { MousePointer2, Move, Pencil, Minus, ArrowRight, Square, Circle, Diamond, Type, Eraser, Undo, Redo, Trash2 } from 'lucide-react';
-import React, { useState, useRef, useEffect, useCallback, useContext } from 'react';
-import { api, getSessionUser } from '../api';
+import { useState, useRef, useEffect, useCallback, useContext } from 'react';
+import { api } from '../api';
 import { SessionWebSocketContext } from './VideoChat';
 
 export default function Whiteboard({ sessionId }) {
@@ -117,7 +117,7 @@ export default function Whiteboard({ sessionId }) {
         await api.saveWhiteboard(sessionId, stateStr);
         setSaveStatus('Saved');
         setTimeout(() => setSaveStatus(''), 2000);
-      } catch (err) {
+      } catch {
         setSaveStatus('Save failed');
       }
     }, 1000);

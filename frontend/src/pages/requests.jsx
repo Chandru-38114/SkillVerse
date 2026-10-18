@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { api, getSessionUser } from '../api'
+import { api } from '../api'
 import './requests.css'
 
 const AV_BG = ['#FBEFC4', '#E6DDF6', '#D6F3EA', '#FFE3CF']
@@ -13,7 +13,6 @@ const ST = {
 }
 
 export default function Requests() {
-  const user = getSessionUser()
   const [tab, setTab] = useState('incoming')
   const [incoming, setIncoming] = useState([])
   const [outgoing, setOutgoing] = useState([])

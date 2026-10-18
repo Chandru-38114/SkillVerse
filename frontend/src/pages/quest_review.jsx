@@ -1,5 +1,5 @@
-import React, { useEffect, useRef, useState } from 'react'
-import { useParams, Link, useNavigate } from 'react-router-dom'
+import { useEffect, useRef, useState } from 'react'
+import { useParams, Link } from 'react-router-dom'
 import { api, getSessionUser } from '../api'
 import ReviewForm from '../components/connect/ReviewForm'
 import {
@@ -16,7 +16,6 @@ const LOADING_MESSAGES = [
 export default function QuestReview() {
   const { sessionId } = useParams()
   const user = getSessionUser()
-  const navigate = useNavigate()
 
   const [session, setSession] = useState(null)
   const [progress, setProgress] = useState(null)
@@ -24,7 +23,6 @@ export default function QuestReview() {
   const [error, setError] = useState(null)
   const [loading, setLoading] = useState(true)
   const [reviewed, setReviewed] = useState(false)
-  const [submitting, setSubmitting] = useState(false)
 
   // Knowledge check flow: intro -> loading -> quiz -> result -> review
   const [step, setStep] = useState('intro')
@@ -56,7 +54,7 @@ export default function QuestReview() {
         try {
           const sp = await api.getSessionProgress(sessionId)
           setSessionProgress(sp)
-        } catch (spErr) {
+        } catch {
           // No session progress recorded yet - the intro card just won't show a summary.
         }
 
@@ -90,7 +88,6 @@ export default function QuestReview() {
   }, [])
 
   const handleReviewSubmitted = async () => {
-    setSubmitting(true)
     try {
       // Refresh progress to catch the +5 pts or any other backend updates
       const allProgress = await api.getMyProgress()
@@ -100,8 +97,6 @@ export default function QuestReview() {
       setReviewed(true)
     } catch (err) {
       console.error(err)
-    } finally {
-      setSubmitting(false)
     }
   }
 

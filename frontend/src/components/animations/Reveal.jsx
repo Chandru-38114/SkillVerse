@@ -1,4 +1,3 @@
-import React from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 
 export function Reveal({ children, delay = 0, duration = 0.5, yOffset = 20, className = '', once = true }) {

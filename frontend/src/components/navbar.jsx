@@ -103,7 +103,7 @@ export default function Navbar() {
     try {
       const data = await api.getUnreadNotificationCount()
       setUnreadCount(data.unread_count || 0)
-    } catch (_) {}
+    } catch { /* ignore */ }
   }, [])
 
   useEffect(() => {
@@ -152,7 +152,7 @@ export default function Navbar() {
       try {
         const data = await api.getNotifications()
         setNotifications(data.slice(0, 10))
-      } catch (_) {}
+      } catch { /* ignore */ }
       setNotifLoading(false)
     }
   }
@@ -162,7 +162,7 @@ export default function Navbar() {
       await api.markNotificationRead(id)
       setNotifications(ns => ns.map(n => n.id === id ? { ...n, is_read: true } : n))
       setUnreadCount(c => Math.max(0, c - 1))
-    } catch (_) {}
+    } catch { /* ignore */ }
   }
 
   async function handleMarkAll() {
@@ -170,7 +170,7 @@ export default function Navbar() {
       await api.markAllNotificationsRead()
       setNotifications(ns => ns.map(n => ({ ...n, is_read: true })))
       setUnreadCount(0)
-    } catch (_) {}
+    } catch { /* ignore */ }
   }
 
   function notifNav(notif) {

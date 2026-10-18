@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, createContext } from 'react'
+import { useEffect, useRef, useState, createContext } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { REACTION_EMOJIS, getEmojiForKey } from '../utils/emojis'
 import { api, getSessionUser } from '../api'
@@ -573,33 +573,6 @@ export default function VideoChat({ sessionId, children, onLeave }) {
       </div>
     )
   }
-
-  const controlsContent = (
-    <div className="flex items-center gap-2">
-      <button
-        onClick={toggleMute}
-        className={`w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center transition-all text-xs md:text-base ${isMuted ? 'bg-red-500 text-white shadow' : 'bg-white/20 text-white hover:bg-white/30 backdrop-blur-sm'}`}
-        title={isMuted ? 'Unmute' : 'Mute'}
-      >
-        {isMuted ? <MicOff size={16} /> : <Mic size={16} />}
-      </button>
-      <button
-        onClick={toggleVideo}
-        className={`w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center transition-all text-xs md:text-base ${isVideoOff ? 'bg-red-500 text-white shadow' : 'bg-white/20 text-white hover:bg-white/30 backdrop-blur-sm'}`}
-        title={isVideoOff ? 'Turn Camera On' : 'Turn Camera Off'}
-      >
-        {isVideoOff ? <VideoOff size={16} /> : <Video size={16} />}
-      </button>
-      {/* Mobile Leave Button overlaid */}
-      <button
-        onClick={() => (onLeave ? onLeave() : navigate('/sessions'))}
-        className="md:hidden ml-auto px-3 py-1.5 rounded-full font-semibold transition-all bg-red-600 text-white hover:bg-red-700 shadow-sm text-xs whitespace-nowrap"
-        title="Leave Session"
-      >
-        Leave
-      </button>
-    </div>
-  )
 
   return (
     <div className="flex-1 flex flex-col md:flex-row overflow-hidden min-h-0 min-w-0 w-full h-full bg-paper">

@@ -4,14 +4,14 @@ export function initLanding(gsap, ScrollTrigger, Lenis) {
   function addTicker(fn){ gsap.ticker.add(fn); _tickers.push(fn); return fn; }
   function cleanup(){
     _alive.v = false;
-    try { _listeners.forEach(function(l){ l[0].removeEventListener(l[1], l[2], l[3]); }); } catch(e){}
-    try { _tickers.forEach(function(fn){ gsap.ticker.remove(fn); }); } catch(e){}
-    try { ScrollTrigger.getAll().forEach(function(t){ t.kill(); }); } catch(e){}
-    try { if (_lenis) _lenis.destroy(); } catch(e){}
-    try { gsap.globalTimeline.clear(); } catch(e){}
-    try { if (typeof mm !== 'undefined' && mm && mm.revert) mm.revert(); } catch(e){}
-    try { document.body.classList.remove('is-dark'); } catch(e){}
-    try { var p = document.querySelector('.pre'); if (p) p.remove(); } catch(e){}
+    try { _listeners.forEach(function(l){ l[0].removeEventListener(l[1], l[2], l[3]); }); } catch { /* ignore */ }
+    try { _tickers.forEach(function(fn){ gsap.ticker.remove(fn); }); } catch { /* ignore */ }
+    try { ScrollTrigger.getAll().forEach(function(t){ t.kill(); }); } catch { /* ignore */ }
+    try { if (_lenis) _lenis.destroy(); } catch { /* ignore */ }
+    try { gsap.globalTimeline.clear(); } catch { /* ignore */ }
+    try { if (typeof mm !== 'undefined' && mm && mm.revert) mm.revert(); } catch { /* ignore */ }
+    try { document.body.classList.remove('is-dark'); } catch { /* ignore */ }
+    try { var p = document.querySelector('.pre'); if (p) p.remove(); } catch { /* ignore */ }
   }
 
   var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;

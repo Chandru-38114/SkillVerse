@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { api, getSessionUser, getAvatarUrl } from '../api'
 import './community.css'
@@ -117,7 +117,7 @@ export default function Community() {
         setHasTaught(!!res.has_taught)
         setAccessLoading(false)
       })
-      .catch(err => {
+      .catch(() => {
         if (!mounted) return
         // If 403 or network issue, fallback to locked state safely
         setHasTaught(false)
@@ -226,10 +226,10 @@ export default function Community() {
 
         {/* Tab contents */}
         {activeTab === 'lounge' && <LoungeSection currentUser={currentUser} setBannerError={setBannerError} />}
-        {activeTab === 'circles' && <StudyCirclesSection currentUser={currentUser} setBannerError={setBannerError} />}
-        {activeTab === 'senior' && <AskSeniorSection currentUser={currentUser} setBannerError={setBannerError} />}
+        {activeTab === 'circles' && <StudyCirclesSection setBannerError={setBannerError} />}
+        {activeTab === 'senior' && <AskSeniorSection setBannerError={setBannerError} />}
         {activeTab === 'weekly' && <WeeklyChallengeSection currentUser={currentUser} setBannerError={setBannerError} />}
-        {activeTab === 'hackathons' && <HackathonsSection currentUser={currentUser} setBannerError={setBannerError} />}
+        {activeTab === 'hackathons' && <HackathonsSection setBannerError={setBannerError} />}
       </div>
     </div>
   )
@@ -595,7 +595,7 @@ function LoungeSection({ currentUser, setBannerError }) {
 
 // ── Tab 2: Study Circles ────────────────────────────────────────────────────
 
-function StudyCirclesSection({ currentUser, setBannerError }) {
+function StudyCirclesSection({ setBannerError }) {
   const [circles, setCircles] = useState([])
   const [loading, setLoading] = useState(true)
   const [showCreateModal, setShowCreateModal] = useState(false)
@@ -974,7 +974,7 @@ function StudyCirclesSection({ currentUser, setBannerError }) {
 
 // ── Tab 3: Ask-a-Senior ─────────────────────────────────────────────────────
 
-function AskSeniorSection({ currentUser, setBannerError }) {
+function AskSeniorSection({ setBannerError }) {
   const [questions, setQuestions] = useState([])
   const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState('') // '' | 'open' | 'answered'
@@ -1451,7 +1451,7 @@ function WeeklyChallengeSection({ currentUser, setBannerError }) {
 
 // ── Tab 5: Hackathons ───────────────────────────────────────────────────────
 
-function HackathonsSection({ currentUser, setBannerError }) {
+function HackathonsSection({ setBannerError }) {
   const [hackathons, setHackathons] = useState([])
   const [loading, setLoading] = useState(true)
   const [showCreateModal, setShowCreateModal] = useState(false)

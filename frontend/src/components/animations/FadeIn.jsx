@@ -1,4 +1,3 @@
-import React from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 
 export function FadeIn({ children, delay = 0, duration = 0.4, className = '', once = true }) {

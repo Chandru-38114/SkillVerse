@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 
 export default function PendingRequestCard({ req, onAccept, onDecline }) {
   const [submitting, setSubmitting] = useState(false)

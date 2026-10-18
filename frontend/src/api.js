@@ -1,3 +1,7 @@
+// ALL calls from the frontend to the backend live in this file (CLAUDE.md rule).
+// Pages call api.something(); request() adds the login token, turns errors into
+// readable messages, and caches some GET responses for a short time.
+
 // Backend base URL — set VITE_API_URL in .env.production for deployment.
 // Local development falls back to the Vite dev-server proxy target automatically.
 export const BASE_URL = (import.meta.env.VITE_API_URL || "http://localhost:8000").replace(/\/+$/, "");
@@ -6,6 +10,10 @@ export function getToken() {
   return localStorage.getItem("skillverse_token");
 }
 
+// ---------------------------------------------------------------------------
+// GET cache: identical GETs within a few seconds share one response.
+// Anything that changes live (chat, notifications, sessions, ...) is never cached.
+// ---------------------------------------------------------------------------
 const cache = new Map();
 const inFlight = new Map();
 
@@ -80,13 +88,13 @@ async function request(path, { method = "GET", body, auth = true, bypassCache = 
         console.error(`[API] Request failed/aborted: ${method} ${path}`, error.name, error.message);
       }
       if (error.name === 'TypeError' && error.message === 'Failed to fetch') {
-        throw new Error("Network connection failed. Please check your internet or try again later.");
+        throw new Error("Network connection failed. Please check your internet or try again later.", { cause: error });
       }
       throw error;
     }
 
     if (!res.ok) {
-      let errorMessage = `Request failed (${res.status})`;
+      let errorMessage;
       try {
         const errData = await res.json();
         if (res.status === 422 && errData.detail && Array.isArray(errData.detail)) {
@@ -94,7 +102,7 @@ async function request(path, { method = "GET", body, auth = true, bypassCache = 
         } else {
           errorMessage = errData.detail || errData.message || res.statusText;
         }
-      } catch (parseError) {
+      } catch {
         errorMessage = res.statusText || `Server returned ${res.status}`;
       }
       
@@ -128,7 +136,50 @@ async function request(path, { method = "GET", body, auth = true, bypassCache = 
   return fetchPromise;
 }
 
+// ---------------------------------------------------------------------------
+// File uploads (multipart form) and the saved user
+// ---------------------------------------------------------------------------
+// Sends one file (or nothing, e.g. for DELETE) with the login token and returns
+// the JSON answer. Errors show the server's reason when it gives one.
+async function sendFile(path, { method = "POST", file, failText }) {
+  const init = { method, headers: { Authorization: `Bearer ${getToken()}` } };
+  if (file) {
+    const formData = new FormData();
+    formData.append("file", file);
+    init.body = formData;
+  }
+  let res;
+  try {
+    res = await fetch(`${BASE_URL}${path}`, init);
+  } catch (error) {
+    if (error.name === 'TypeError' && error.message === 'Failed to fetch') {
+      throw new Error("Network connection failed.", { cause: error });
+    }
+    throw error;
+  }
+  if (!res.ok) {
+    let errMsg = `${failText} (${res.status})`;
+    try {
+      const errData = await res.json();
+      errMsg = errData.detail || errData.message || res.statusText;
+    } catch { /* not JSON: keep the generic message */ }
+    throw new Error(errMsg);
+  }
+  return res.json();
+}
+
+// Save the latest user object and tell listeners (e.g. the navbar) it changed.
+function rememberUser(user) {
+  localStorage.setItem("skillverse_user", JSON.stringify(user));
+  window.dispatchEvent(new Event("skillverse_user_updated"));
+  return user;
+}
+
+// ---------------------------------------------------------------------------
+// Every backend call, grouped by feature
+// ---------------------------------------------------------------------------
 export const api = {
+  // Sign up / log in
   signup: (data) => request("/auth/signup", { method: "POST", body: data, auth: false }),
   verifyGoogleSignup: (signup_token, credential) => request("/auth/verify-google-signup", { method: "POST", body: { signup_token, credential }, auth: false }),
   login: (data) => request("/auth/login", { method: "POST", body: data, auth: false }),
@@ -136,78 +187,24 @@ export const api = {
   completeGoogle: (onboarding_token, details) => request("/auth/complete-google", { method: "POST", body: { onboarding_token, ...details }, auth: false }),
   forgotPassword: (email) => request("/auth/forgot-password", { method: "POST", body: { email }, auth: false }),
   resetPassword: (data) => request("/auth/reset-password", { method: "POST", body: data, auth: false }),
+
+  // My account
   me: () => request("/users/me"),
   updateMe: (data) => request("/users/me", { method: "PUT", body: data }),
   changePassword: (current_password, new_password) => request("/users/me/password", { method: "PUT", body: { current_password, new_password } }),
-  uploadAvatar: async (file) => {
-    const formData = new FormData();
-    formData.append("file", file);
-    try {
-      const res = await fetch(`${BASE_URL}/users/me/avatar`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${getToken()}` },
-        body: formData,
-      });
-      if (!res.ok) {
-        let errMsg = `Upload failed (${res.status})`;
-        try {
-          const errData = await res.json();
-          errMsg = errData.detail || errData.message || res.statusText;
-        } catch (e) {}
-        throw new Error(errMsg);
-      }
-      const u = await res.json();
-      localStorage.setItem("skillverse_user", JSON.stringify(u));
-      window.dispatchEvent(new Event("skillverse_user_updated"));
-      return u;
-    } catch (error) {
-      if (error.name === 'TypeError' && error.message === 'Failed to fetch') {
-        throw new Error("Network connection failed.");
-      }
-      throw error;
-    }
-  },
-  removeAvatar: async () => {
-    try {
-      const res = await fetch(`${BASE_URL}/users/me/avatar`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${getToken()}` },
-      });
-      if (!res.ok) {
-        let errMsg = `Remove failed (${res.status})`;
-        try {
-          const errData = await res.json();
-          errMsg = errData.detail || errData.message || res.statusText;
-        } catch (e) {}
-        throw new Error(errMsg);
-      }
-      const u = await res.json();
-      localStorage.setItem("skillverse_user", JSON.stringify(u));
-      window.dispatchEvent(new Event("skillverse_user_updated"));
-      return u;
-    } catch (error) {
-      if (error.name === 'TypeError' && error.message === 'Failed to fetch') {
-        throw new Error("Network connection failed.");
-      }
-      throw error;
-    }
-  },
+  uploadAvatar: async (file) => rememberUser(await sendFile("/users/me/avatar", { file, failText: "Upload failed" })),
+  removeAvatar: async () => rememberUser(await sendFile("/users/me/avatar", { method: "DELETE", failText: "Remove failed" })),
 
-  refreshMe: async () => {
-    const user = await request("/users/me");
-    localStorage.setItem("skillverse_user", JSON.stringify(user));
-    // Notify any component listening (e.g. Navbar) that the user object changed.
-    window.dispatchEvent(new Event("skillverse_user_updated"));
-    return user;
-  },
+  refreshMe: async () => rememberUser(await request("/users/me")),
   mySkills: () => request("/users/me/skills"),
 
+  // Skill Arena
   getLatestAssessment: () => request("/assessments/latest"),
   // Generates a fresh AI assessment; answers stay on the server. POST, so it is never cached.
   startAssessment: (skill, level, role) => request("/assessments/start", { method: "POST", body: { skill_name: skill, level, role } }),
   submitAssessment: (data) => request("/assessments/submit", { method: "POST", body: data }),
 
-
+  // Marketplace & connection requests
   searchTeachers: (skill, role) => {
     let url = `/marketplace/search?`;
     if (skill) url += `q=${encodeURIComponent(skill)}&`;
@@ -223,23 +220,15 @@ export const api = {
     request(`/requests/status?to_user_id=${toUserId}&skill_name=${encodeURIComponent(skillName)}`),
   completeRequest: (id) => request(`/requests/${id}/complete`, { method: "POST" }),
 
+  // Chat
   listMessages: (requestId) => request(`/chat/${requestId}/messages`),
   markMessagesRead: (requestId) => request(`/chat/${requestId}/read`, { method: "POST" }),
   sendMessage: (requestId, content, metadata = {}) => request(`/chat/${requestId}/messages`, { method: "POST", body: { content, metadata } }),
   getChatFileUrl: (requestId, bucket, filename) => request(`/chat/${requestId}/file/${bucket}/${filename}`),
-  uploadChatAttachment: (requestId, file, type = "file") => {
-    const formData = new FormData();
-    formData.append("file", file);
-    return fetch(`${BASE_URL}/chat/${requestId}/upload?type=${type}`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${getToken()}` },
-      body: formData,
-    }).then(async (res) => {
-      if (!res.ok) throw new Error((await res.json()).detail || "Upload failed");
-      return res.json();
-    });
-  },
+  uploadChatAttachment: (requestId, file, type = "file") =>
+    sendFile(`/chat/${requestId}/upload?type=${type}`, { file, failText: "Upload failed" }),
 
+  // Reviews
   submitReview: (sessionId, data) => request(`/reviews/session/${sessionId}`, { method: "POST", body: data }),
   getMyReviewForSession: (sessionId) => request(`/reviews/my/session/${sessionId}`),
   getUserReviews: (userId) => request(`/reviews/user/${userId}`, { auth: false }),
@@ -253,11 +242,9 @@ export const api = {
   cancelSession: (id) => request(`/sessions/${id}/cancel`, { method: "POST" }),
   getTurnCredentials: () => request("/sessions/turn-credentials"),
 
-
-  // Auth Verification
+  // Email verification
   requestEmailVerification: () => request("/auth/verify-email/request", { method: "POST" }),
   confirmEmailVerification: (otp) => request("/auth/verify-email/confirm", { method: "POST", body: { otp } }),
-
 
   // Notifications
   getNotifications: () => request("/notifications"),
@@ -283,9 +270,8 @@ export const api = {
   getWhiteboard: (sessionId) => request(`/sessions/${sessionId}/whiteboard`),
   saveWhiteboard: (sessionId, state) => request(`/sessions/${sessionId}/whiteboard`, { method: "PUT", body: { state } }),
 
-  // Chat inbox (Direct Messages)
+  // Chat inbox and message actions
   getChatInbox: () => request("/chat/inbox"),
-  markChatRead: (requestId) => request(`/chat/${requestId}/read`, { method: "POST" }),
   editMessage: (messageId, content) => request(`/chat/messages/${messageId}`, { method: "PUT", body: { content } }),
   deleteMessageForEveryone: (messageId) => request(`/chat/messages/${messageId}`, { method: "DELETE" }),
   deleteMessageForMe: (messageId) => request(`/chat/messages/${messageId}/hide`, { method: "POST" }),
@@ -294,18 +280,7 @@ export const api = {
 
   // Materials
   getSessionMaterials: (sessionId) => request(`/materials/session/${sessionId}`),
-  uploadMaterial: (sessionId, file) => {
-    const formData = new FormData();
-    formData.append("file", file);
-    return fetch(`${BASE_URL}/materials/${sessionId}`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${getToken()}` },
-      body: formData,
-    }).then(res => {
-      if (!res.ok) throw new Error("Upload failed");
-      return res.json();
-    });
-  },
+  uploadMaterial: (sessionId, file) => sendFile(`/materials/${sessionId}`, { file, failText: "Upload failed" }),
   deleteMaterial: (id) => request(`/materials/${id}`, { method: "DELETE" }),
 
   // Gamification
@@ -316,6 +291,7 @@ export const api = {
   getCompilerState: (sessionId) => request(`/compiler/${sessionId}/state`),
   saveCompilerState: (sessionId, code) => request(`/compiler/${sessionId}/state`, { method: "PUT", body: { code } }),
   runCompiler: (sessionId, code) => request(`/compiler/${sessionId}/run`, { method: "POST", body: { code } }),
+
   // Exchanges & Circles
   getExchangeSuggestions: () => request("/exchanges/suggestions", { bypassCache: true }),
   proposeExchangeCycle: (legs) => request("/exchanges/cycles", { method: "POST", body: { legs } }),
@@ -422,17 +398,15 @@ export function clearSession() {
   localStorage.removeItem("skillverse_user");
 }
 
-
-// Phase 2: real-time chat over WebSockets.
+// Real-time chat over WebSockets.
 // Browsers can't set an Authorization header on a WebSocket handshake, so
 // the JWT is passed as a query param instead — the backend decodes it the
-// same way as any REST request (see chat.py's _authenticate_ws).
+// same way as any REST request (see auth.get_user_from_token).
 export function chatSocketUrl(requestId) {
   const token = getToken();
   const wsBase = BASE_URL.replace(/^http/, "ws");
   return `${wsBase}/chat/ws/${requestId}?token=${encodeURIComponent(token || "")}`;
 }
-
 
 export const getAvatarUrl = (url) => {
   if (!url) return null;
@@ -440,8 +414,8 @@ export const getAvatarUrl = (url) => {
   return `${BASE_URL}${url}`;
 };
 
+// Wake the Render server early (free instances sleep), so the first real
+// request isn't slow. Errors are ignored.
 export function prewarmServer() {
-  try {
-    fetch(`${BASE_URL}/`, { method: "GET" }).catch(() => {});
-  } catch (e) {}
+  fetch(`${BASE_URL}/`, { method: "GET" }).catch(() => {});
 }

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { api, getSessionUser } from '../api'
 import VideoChat from '../components/VideoChat'
@@ -54,7 +54,7 @@ function SessionRoomComponent() {
             learning_notes: res.learning_notes || ""
           })
           if (res.duration_minutes > 0) setIsCompleted(true)
-        } catch (err) {
+        } catch {
           // ignore 404 for notes
         } finally {
           setNotesLoaded(true)

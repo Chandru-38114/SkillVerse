@@ -27,7 +27,7 @@ export default function Landing() {
     }
 
     return () => {
-      try { cleanup() } catch (err) { /* nothing left to clean */ }
+      try { cleanup() } catch { /* nothing left to clean */ }
       document.body.classList.remove('sv-landing', 'is-dark')
       document.documentElement.classList.remove('lenis', 'lenis-smooth', 'lenis-scrolling', 'lenis-stopped')
     }

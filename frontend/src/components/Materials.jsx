@@ -80,7 +80,7 @@ export default function Materials({ session, onBack }) {
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
-    } catch (err) {
+    } catch {
       setError("Failed to download file");
     }
   };

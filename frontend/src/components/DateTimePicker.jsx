@@ -1,5 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Calendar as CalendarIcon, Clock, X } from 'lucide-react';
+// NOT USED by any page right now. Kept as a reference for the planned
+// schedule date/time picker redesign (see SKILLVERSE handoff, task A).
+import { useState, useEffect, useRef } from 'react';
+import { Calendar as CalendarIcon, Clock } from 'lucide-react';
 
 // Format time utility for the picker display (e.g. "22:30" -> "10:30 PM")
 function formatTimeDisplay(time24) {

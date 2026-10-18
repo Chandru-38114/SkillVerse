@@ -1,4 +1,3 @@
-import React from 'react'
 import { formatDateTime } from '../../utils/dateTime'
 
 export default function SessionCard({ conv, onCancel, navigate }) {
