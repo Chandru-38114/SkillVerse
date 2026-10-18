@@ -4,7 +4,7 @@ Demand Router — POST /demand/request & GET /demand/mine
 Handles skill demand requests when no eligible teacher is available.
 - Checks if an eligible teacher exists at learner's level; if yes, returns that teacher without creating a DemandRequest.
 - If no teacher exists, creates a DemandRequest and notifies eligible / qualified users.
-- Enforces 3 open requests limit and 24h re-request cooldown on closed requests.
+- Enforces MAX_OPEN_DEMANDS (3) open requests and a 24h re-request cooldown on closed requests.
 - Never leaks user email or phone in notifications or responses.
 """
 import datetime as dt
@@ -21,6 +21,124 @@ from ..notification_service import create_notification
 from ..services.course_rules import clean_course_name, find_course, user_course
 
 router = APIRouter(prefix="/demand", tags=["demand"])
+
+
+MAX_OPEN_DEMANDS = 3            # open demand requests per learner, across all courses
+REREQUEST_COOLDOWN_HOURS = 24   # wait after a request was fulfilled/expired
+
+
+def _check_demand_limits(db: Session, user_id: int, skill_id: int) -> None:
+    """400 if the learner already has an open request for this course, has
+    MAX_OPEN_DEMANDS open requests, or closed one for this course very recently."""
+    # Check already open for this exact skill
+    already_open = (
+        db.query(models.DemandRequest)
+        .filter(
+            models.DemandRequest.requester_id == user_id,
+            models.DemandRequest.skill_id == skill_id,
+            models.DemandRequest.status == "open",
+        )
+        .first()
+    )
+    if already_open:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="You already have an open demand request for this skill.",
+        )
+
+    # At most MAX_OPEN_DEMANDS open requests across all courses
+    open_count = (
+        db.query(models.DemandRequest)
+        .filter(
+            models.DemandRequest.requester_id == user_id,
+            models.DemandRequest.status == "open",
+        )
+        .count()
+    )
+    if open_count >= MAX_OPEN_DEMANDS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="You can have at most 3 open demand requests at a time.",
+        )
+
+    # Cooldown: cannot re-request same skill within 24 hours of expiring/fulfilled
+    cutoff = utc_now() - dt.timedelta(hours=REREQUEST_COOLDOWN_HOURS)
+    recent_closed = (
+        db.query(models.DemandRequest)
+        .filter(
+            models.DemandRequest.requester_id == user_id,
+            models.DemandRequest.skill_id == skill_id,
+            models.DemandRequest.status.in_(["fulfilled", "expired"]),
+            # Time it was fulfilled/expired (updated_at), not when it was opened.
+            models.DemandRequest.updated_at >= cutoff,
+        )
+        .first()
+    )
+    if recent_closed:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot re-request the same skill within 24 hours of a previous request.",
+        )
+
+
+def _notify_possible_teachers(db: Session, current_user: models.User, skill: models.Skill,
+                              dr: models.DemandRequest, learner_level_num: int) -> None:
+    """Notify every other user who has this course on their profile (once each)."""
+    # Find every user who has this skill on their profile (even if not listed as "teaching")
+    potential_user_skills = (
+        db.query(models.UserSkill)
+        .filter(
+            models.UserSkill.skill_id == skill.id,
+            models.UserSkill.user_id != current_user.id,
+        )
+        .all()
+    )
+
+    # Group by user_id so each distinct user is notified once
+    users_checked = {}
+    for us in potential_user_skills:
+        u_id = us.user_id
+        if u_id not in users_checked:
+            users_checked[u_id] = us
+        else:
+            # Keep highest level
+            if (us.level_num or 0) > (users_checked[u_id].level_num or 0):
+                users_checked[u_id] = us
+
+    for u_id, us in users_checked.items():
+        # Prevent duplicate teacher notifications: do not notify the same teacher twice for the same skill
+        # while an open demand request for this skill is active
+        already_notified = (
+            db.query(models.Notification)
+            .join(models.DemandRequest, models.Notification.related_id == models.DemandRequest.id)
+            .filter(
+                models.Notification.user_id == u_id,
+                models.Notification.type == "demand_request",
+                models.DemandRequest.skill_id == skill.id,
+                models.DemandRequest.status == "open",
+                models.DemandRequest.id != dr.id,
+            )
+            .first()
+        )
+        if already_notified:
+            continue
+
+        u_lvl = us.level_num if us.level_num is not None else 0
+        if is_eligible_to_teach(u_lvl, learner_level_num):
+            msg = f"{current_user.name} wants to learn {skill.name}. You're eligible to teach it — send them a request"
+        else:
+            # Has skill on profile but unverified or below threshold
+            msg = f"{current_user.name} wants to learn {skill.name}. You're eligible to teach it — take the assessment to confirm"
+
+        create_notification(
+            db=db,
+            user_id=u_id,
+            notification_type="demand_request",
+            title="Skill Demand",
+            message=msg,
+            related_id=dr.id,
+            related_type="demand_request",
+        )
 
 
 @router.post("/request", response_model=schemas.DemandResponse)
@@ -107,56 +225,8 @@ def create_demand_request(
             level_num=best_lvl,
         )
 
-    # ── 4. Rate-limit checks ──────────────────────────────────────────────────
-    # Check already open for this exact skill
-    already_open = (
-        db.query(models.DemandRequest)
-        .filter(
-            models.DemandRequest.requester_id == current_user.id,
-            models.DemandRequest.skill_id == skill.id,
-            models.DemandRequest.status == "open",
-        )
-        .first()
-    )
-    if already_open:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="You already have an open demand request for this skill.",
-        )
-
-    # Limit to at most 3 open demand requests across all skills
-    open_count = (
-        db.query(models.DemandRequest)
-        .filter(
-            models.DemandRequest.requester_id == current_user.id,
-            models.DemandRequest.status == "open",
-        )
-        .count()
-    )
-    if open_count >= 3:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="You can have at most 3 open demand requests at a time.",
-        )
-
-    # Cooldown: cannot re-request same skill within 24 hours of expiring/fulfilled
-    cutoff = utc_now() - dt.timedelta(hours=24)
-    recent_closed = (
-        db.query(models.DemandRequest)
-        .filter(
-            models.DemandRequest.requester_id == current_user.id,
-            models.DemandRequest.skill_id == skill.id,
-            models.DemandRequest.status.in_(["fulfilled", "expired"]),
-            # Time it was fulfilled/expired (updated_at), not when it was opened.
-            models.DemandRequest.updated_at >= cutoff,
-        )
-        .first()
-    )
-    if recent_closed:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot re-request the same skill within 24 hours of a previous request.",
-        )
+    # ── 4. Limits ─────────────────────────────────────────────────────────────
+    _check_demand_limits(db, current_user.id, skill.id)
 
     # ── 5. Create DemandRequest ───────────────────────────────────────────────
     now = utc_now()
@@ -171,62 +241,8 @@ def create_demand_request(
     db.commit()
     db.refresh(dr)
 
-    # ── 6. Notify eligible users ──────────────────────────────────────────────
-    # Find every user who has this skill on their profile (even if not listed as "teaching")
-    potential_user_skills = (
-        db.query(models.UserSkill)
-        .filter(
-            models.UserSkill.skill_id == skill.id,
-            models.UserSkill.user_id != current_user.id,
-        )
-        .all()
-    )
-
-    # Group by user_id so each distinct user is notified once
-    users_checked = {}
-    for us in potential_user_skills:
-        u_id = us.user_id
-        if u_id not in users_checked:
-            users_checked[u_id] = us
-        else:
-            # Keep highest level
-            if (us.level_num or 0) > (users_checked[u_id].level_num or 0):
-                users_checked[u_id] = us
-
-    for u_id, us in users_checked.items():
-        # Prevent duplicate teacher notifications: do not notify the same teacher twice for the same skill
-        # while an open demand request for this skill is active
-        already_notified = (
-            db.query(models.Notification)
-            .join(models.DemandRequest, models.Notification.related_id == models.DemandRequest.id)
-            .filter(
-                models.Notification.user_id == u_id,
-                models.Notification.type == "demand_request",
-                models.DemandRequest.skill_id == skill.id,
-                models.DemandRequest.status == "open",
-                models.DemandRequest.id != dr.id,
-            )
-            .first()
-        )
-        if already_notified:
-            continue
-
-        u_lvl = us.level_num if us.level_num is not None else 0
-        if is_eligible_to_teach(u_lvl, learner_level_num):
-            msg = f"{current_user.name} wants to learn {skill.name}. You're eligible to teach it — send them a request"
-        else:
-            # Has skill on profile but unverified or below threshold
-            msg = f"{current_user.name} wants to learn {skill.name}. You're eligible to teach it — take the assessment to confirm"
-
-        create_notification(
-            db=db,
-            user_id=u_id,
-            notification_type="demand_request",
-            title="Skill Demand",
-            message=msg,
-            related_id=dr.id,
-            related_type="demand_request",
-        )
+    # ── 6. Tell everyone who has this course on their profile ────────────────
+    _notify_possible_teachers(db, current_user, skill, dr, learner_level_num)
 
     return schemas.DemandResponse(
         status="open",
