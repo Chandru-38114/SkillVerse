@@ -1,11 +1,24 @@
+"""
+Connection requests: a LEARNER asks a TUTOR to teach them a course.
+
+- POST /requests                      send a request (course rules checked)
+- GET  /requests/status               relationship with one user for one course
+- GET  /requests/incoming|outgoing    my requests
+- POST /requests/{id}/respond         tutor accepts / declines
+- POST /requests/{id}/complete        finish the connection (needs a held session)
+
+If the learner offered to "teach in return", accepting also creates the
+opposite request and a two-way (pair) skill exchange.
+"""
 from typing import List, Optional
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import or_, and_
 from sqlalchemy.orm import Session
-from ..notification_service import create_notification
 
 from .. import models, schemas, auth
 from ..database import get_db
+from ..notification_service import create_notification
 from ..services.demand_service import fulfill_demand_request_on_connection
 from ..services.course_rules import (
     MAX_COURSES, clean_course_name, course_count, ensure_learning_course, find_course,
@@ -13,6 +26,16 @@ from ..services.course_rules import (
 )
 
 router = APIRouter(prefix="/requests", tags=["requests"])
+
+COMPLETION_POINTS = 20  # for the learner and the tutor when a connection is completed
+
+
+def _between(user_a_id: int, user_b_id: int):
+    """SQL filter: requests between these two users, in either direction."""
+    return or_(
+        and_(models.ConnectionRequest.from_user_id == user_a_id, models.ConnectionRequest.to_user_id == user_b_id),
+        and_(models.ConnectionRequest.from_user_id == user_b_id, models.ConnectionRequest.to_user_id == user_a_id),
+    )
 
 
 def _to_out(r: models.ConnectionRequest) -> schemas.ConnectionRequestOut:
@@ -81,16 +104,7 @@ def _find_active_request(
         .filter(
             models.ConnectionRequest.skill_id == skill_id,
             models.ConnectionRequest.status.notin_(["declined", "completed"]),
-            or_(
-                and_(
-                    models.ConnectionRequest.from_user_id == user_a_id,
-                    models.ConnectionRequest.to_user_id == user_b_id,
-                ),
-                and_(
-                    models.ConnectionRequest.from_user_id == user_b_id,
-                    models.ConnectionRequest.to_user_id == user_a_id,
-                ),
-            ),
+            _between(user_a_id, user_b_id),
         )
         .first()
     )
@@ -174,7 +188,6 @@ def create_request(
     return _to_out(req)
 
 
-
 @router.get("/status")
 def get_connection_status(
     to_user_id: int = Query(..., description="The other user's ID"),
@@ -199,16 +212,7 @@ def get_connection_status(
         db.query(models.ConnectionRequest)
         .filter(
             models.ConnectionRequest.skill_id == skill.id,
-            or_(
-                and_(
-                    models.ConnectionRequest.from_user_id == current_user.id,
-                    models.ConnectionRequest.to_user_id == to_user_id,
-                ),
-                and_(
-                    models.ConnectionRequest.from_user_id == to_user_id,
-                    models.ConnectionRequest.to_user_id == current_user.id,
-                ),
-            ),
+            _between(current_user.id, to_user_id),
         )
         # Most recent first — a new request after a decline should take precedence.
         .order_by(models.ConnectionRequest.created_at.desc())
@@ -242,6 +246,44 @@ def outgoing_requests(
     ).order_by(models.ConnectionRequest.created_at.desc()).all()
     return [_to_out(r) for r in rows]
 
+
+
+def _start_pair_exchange(db: Session, req: models.ConnectionRequest) -> None:
+    """Leg 1: the tutor (req.to_user) teaches the learner req.skill.
+    Leg 2: the learner teaches the tutor the course they offered.
+    Both legs must follow the course rules (roles + levels), and the tutor
+    must have room for one more course. If not, nothing is created."""
+    reciprocal_skill_name = req.learner_can_teach.split(",")[0].strip()
+    recip_skill = find_course(db, reciprocal_skill_name) if reciprocal_skill_name else None
+    if not recip_skill:
+        return
+    if teaching_problem(db, req.from_user_id, req.to_user_id, recip_skill.id) is not None:
+        return
+    if user_course(db, req.to_user_id, recip_skill.id) is None and course_count(db, req.to_user_id) >= MAX_COURSES:
+        return
+
+    ensure_learning_course(db, req.to_user_id, recip_skill)
+    recip_req = accepted_request_for_leg(
+        db, learner_id=req.to_user_id, teacher_id=req.from_user_id,
+        skill_id=recip_skill.id, message=f"Reciprocal exchange for {req.skill.name}",
+    )
+
+    grp = models.ExchangeGroup(kind="pair", status="active")
+    db.add(grp)
+    db.flush()
+    db.add_all([
+        models.ExchangeMember(group_id=grp.id, user_id=req.from_user_id, accepted=True),
+        models.ExchangeMember(group_id=grp.id, user_id=req.to_user_id, accepted=True),
+        models.ExchangeLeg(
+            group_id=grp.id, teacher_id=req.to_user_id, learner_id=req.from_user_id,
+            skill_id=req.skill_id, request_id=req.id, status="active",
+        ),
+        models.ExchangeLeg(
+            group_id=grp.id, teacher_id=req.from_user_id, learner_id=req.to_user_id,
+            skill_id=recip_skill.id, request_id=recip_req.id, status="active",
+        ),
+    ])
+    db.commit()
 
 
 @router.post("/{request_id}/respond", response_model=schemas.ConnectionRequestOut)
@@ -283,56 +325,9 @@ def respond_to_request(
             skill_id=req.skill_id,
         )
 
-        # Check for two-way exchange (Pair Exchange)
-        # If the requester offered a skill to teach (learner_can_teach)
+        # The learner offered to teach something in return: start a pair exchange.
         if req.learner_can_teach:
-            reciprocal_skill_name = req.learner_can_teach.split(",")[0].strip()
-            recip_skill = find_course(db, reciprocal_skill_name) if reciprocal_skill_name else None
-            if recip_skill:
-                # Leg 1: current_user (to_user) teaches from_user req.skill_id.
-                # Leg 2: from_user teaches current_user recip_skill. Both legs
-                # must follow the course rules (roles + levels); leg 2 also
-                # needs current_user to be able to take that course.
-                leg2_ok = teaching_problem(db, req.from_user_id, req.to_user_id, recip_skill.id) is None
-                if leg2_ok and user_course(db, req.to_user_id, recip_skill.id) is None:
-                    leg2_ok = course_count(db, req.to_user_id) < MAX_COURSES
-                if leg2_ok:
-                    ensure_learning_course(db, req.to_user_id, recip_skill)
-                    # Create reciprocal connection request
-                    recip_req = accepted_request_for_leg(
-                        db, learner_id=req.to_user_id, teacher_id=req.from_user_id,
-                        skill_id=recip_skill.id, message=f"Reciprocal exchange for {req.skill.name}",
-                    )
-
-                    # Create exchange group of kind "pair"
-                    grp = models.ExchangeGroup(kind="pair", status="active")
-                    db.add(grp)
-                    db.flush()
-
-                    # Exchange members
-                    m1 = models.ExchangeMember(group_id=grp.id, user_id=req.from_user_id, accepted=True)
-                    m2 = models.ExchangeMember(group_id=grp.id, user_id=req.to_user_id, accepted=True)
-                    db.add_all([m1, m2])
-
-                    # Two legs: one in each direction
-                    leg1 = models.ExchangeLeg(
-                        group_id=grp.id,
-                        teacher_id=req.to_user_id,
-                        learner_id=req.from_user_id,
-                        skill_id=req.skill_id,
-                        request_id=req.id,
-                        status="active"
-                    )
-                    leg2 = models.ExchangeLeg(
-                        group_id=grp.id,
-                        teacher_id=req.from_user_id,
-                        learner_id=req.to_user_id,
-                        skill_id=recip_skill.id,
-                        request_id=recip_req.id,
-                        status="active"
-                    )
-                    db.add_all([leg1, leg2])
-                    db.commit()
+            _start_pair_exchange(db, req)
     else:
         create_notification(db, other_user, "request", "Learning Request Declined", f"{current_user.name} declined your request", req.id, "request")
     return _to_out(req)
@@ -392,9 +387,9 @@ def complete_request(
             learner = db.query(models.User).filter(models.User.id == req.from_user_id).first()
             teacher = db.query(models.User).filter(models.User.id == req.to_user_id).first()
             if learner:
-                learner.points += 20
+                learner.points += COMPLETION_POINTS
             if teacher:
-                teacher.points += 20
+                teacher.points += COMPLETION_POINTS
         req.points_awarded = True
 
     db.commit()
