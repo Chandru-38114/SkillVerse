@@ -10,24 +10,21 @@ export default function Login() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
-  const [slowServerMessage, setSlowServerMessage] = useState(false)
+  const [waitSeconds, setWaitSeconds] = useState(0) // how long the current sign-in has taken
 
   useEffect(() => {
     prewarmServer()
   }, [])
 
+  // Count the seconds while signing in, so a slow (sleeping) server shows a
+  // live counter instead of a frozen button.
   useEffect(() => {
-    let timer
-    if (loading || googleLoading) {
-      setSlowServerMessage(false)
-      timer = setTimeout(() => {
-        setSlowServerMessage(true)
-      }, 6000)
-    } else {
-      setSlowServerMessage(false)
-    }
-    return () => clearTimeout(timer)
+    if (!(loading || googleLoading)) return
+    const started = Date.now()
+    const timer = setInterval(() => setWaitSeconds(Math.floor((Date.now() - started) / 1000)), 1000)
+    return () => { clearInterval(timer); setWaitSeconds(0) }
   }, [loading, googleLoading])
+  const slowServerMessage = (loading || googleLoading) && waitSeconds >= 5
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -97,7 +94,8 @@ export default function Login() {
         {error && <Alert kind="err">{error}</Alert>}
         {slowServerMessage && (
           <Alert kind="info">
-            Waking up the server, this can take up to a minute. Please don't refresh.
+            The server is waking up ({waitSeconds}s). It sleeps when nobody has used SkillVerse
+            for a while and can take up to a minute to start. Please don't refresh — you'll be signed in automatically.
           </Alert>
         )}
 
