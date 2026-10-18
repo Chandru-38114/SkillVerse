@@ -8,10 +8,10 @@ Handles skill demand requests when no eligible teacher is available.
 - Never leaks user email or phone in notifications or responses.
 """
 import datetime as dt
-from typing import List, Optional
+from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from sqlalchemy import or_, and_, desc
+from sqlalchemy import desc
 
 from .. import models, schemas, auth
 from ..database import get_db

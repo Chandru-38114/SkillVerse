@@ -1,4 +1,4 @@
-from typing import List, Dict, Any
+from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -7,7 +7,6 @@ from ..database import get_db
 from ..services.badge_service import (
     TEACHER_BADGES,
     check_and_award_teacher_badges,
-    get_user_earned_badges,
 )
 
 router = APIRouter(prefix="/badges", tags=["badges"])

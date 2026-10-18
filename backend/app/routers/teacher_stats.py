@@ -15,11 +15,10 @@ Provides statistics for teachers on SkillVerse:
 No email, phone, or answer key leakage anywhere.
 """
 import datetime as dt
-from typing import Dict, List, Any, Optional
+from typing import List
 from collections import Counter
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from sqlalchemy import func, desc
 
 from .. import models, schemas, auth
 from ..database import get_db

@@ -1,16 +1,24 @@
 """
-In-memory connection manager for chat WebSockets.
+In-memory WebSocket "rooms".
 
-Rooms are keyed by connection_request_id — one room per accepted connection
-between two users. This is process-local (fine for a single uvicorn worker
-during Phase 2); if you scale to multiple workers/processes later, swap the
-in-memory dict for a Redis pub/sub backend and keep this same interface.
+- chat_manager      one room per connection request (the two chat partners)
+- SessionRoomManager one room per learning session, one socket per user.
+  Used three times: video signalling (webrtc_manager here), the shared code
+  editor (routers/compiler.py) and the whiteboard (routers/whiteboard.py).
+
+Everything lives in this process's memory, which is fine for a single
+Uvicorn worker. With several workers, swap the dicts for Redis pub/sub and
+keep the same methods.
 """
-from typing import Dict, List
+from typing import Dict, List, Optional
+
 from fastapi import WebSocket
 
 
 class ConnectionManager:
+    """Chat rooms keyed by the connection request id. A user may have several
+    tabs open, so a room holds a list of sockets."""
+
     def __init__(self):
         self.active_connections: Dict[str, List[WebSocket]] = {}
 
@@ -45,34 +53,36 @@ class ConnectionManager:
 chat_manager = ConnectionManager()
 
 
-class WebRTCManager:
+class SessionRoomManager:
+    """Learning-session rooms: session_id -> {user_id: websocket}.
+    A user reconnecting replaces their old socket."""
+
     def __init__(self):
-        # session_id -> { user_id -> WebSocket }
         self.rooms: Dict[int, Dict[int, WebSocket]] = {}
 
     async def connect(self, session_id: int, user_id: int, websocket: WebSocket, accept: bool = True) -> None:
         if accept:
             await websocket.accept()
-        if session_id not in self.rooms:
-            self.rooms[session_id] = {}
-        self.rooms[session_id][user_id] = websocket
+        self.rooms.setdefault(session_id, {})[user_id] = websocket
 
-    def disconnect(self, session_id: int, user_id: int, websocket: WebSocket = None) -> None:
+    def disconnect(self, session_id: int, user_id: int, websocket: Optional[WebSocket] = None) -> None:
+        """Remove the user from the room. When `websocket` is given and the user
+        has already reconnected (the room holds their NEW socket), do nothing,
+        so closing the old socket doesn't remove the new one."""
         room = self.rooms.get(session_id)
-        if room and user_id in room:
-            # If the user already reconnected, the room holds their NEW socket;
-            # closing the old one must not remove it.
-            if websocket is not None and room[user_id] is not websocket:
-                return
-            del room[user_id]
-            if not room:
-                del self.rooms[session_id]
+        if not room or user_id not in room:
+            return
+        if websocket is not None and room[user_id] is not websocket:
+            return
+        del room[user_id]
+        if not room:
+            del self.rooms[session_id]
 
     async def send_to_peer(self, session_id: int, sender_id: int, message: dict) -> None:
+        """Send a JSON message to everyone in the room except the sender."""
         room = self.rooms.get(session_id)
         if not room:
             return
-        
         dead = []
         for uid, connection in room.items():
             if uid != sender_id:
@@ -80,11 +90,19 @@ class WebRTCManager:
                     await connection.send_json(message)
                 except Exception:
                     dead.append(uid)
-        
         for uid in dead:
             del room[uid]
-        if not room: # Cleanup if empty
+        if not room:
             del self.rooms[session_id]
 
+    async def broadcast_text(self, session_id: int, sender_id: int, message: str) -> None:
+        """Send raw text to everyone in the room except the sender."""
+        for uid, connection in list(self.rooms.get(session_id, {}).items()):
+            if uid != sender_id:
+                try:
+                    await connection.send_text(message)
+                except Exception:
+                    self.disconnect(session_id, uid)
 
-webrtc_manager = WebRTCManager()
+
+webrtc_manager = SessionRoomManager()

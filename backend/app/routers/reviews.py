@@ -6,9 +6,7 @@ All validation is enforced server-side.  The client never supplies
 reviewer_id or reviewee_id; they are derived from the JWT and the
 connection request.
 """
-from typing import List
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import func
 from sqlalchemy.orm import Session
 from ..notification_service import create_notification
 

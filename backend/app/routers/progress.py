@@ -1,6 +1,6 @@
 import logging
 import uuid
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException
 from starlette.concurrency import run_in_threadpool
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
@@ -15,7 +15,6 @@ from ..services.question_generator import GenerationError, SKILL_TOPICS, canonic
 from ..services.learning_plan import build_next_session_plan
 from ..utils.progress_utils import progress_for, stage_for
 from ..services.course_rules import user_course
-from .assessments import level_for_score
 
 router = APIRouter(prefix="/progress", tags=["progress"])
 logger = logging.getLogger(__name__)

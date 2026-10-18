@@ -1,7 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 import os
-from .. import config
-import random
 import secrets
 import string
 import datetime as dt

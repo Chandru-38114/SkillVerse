@@ -7,7 +7,7 @@ Endpoints:
   POST /exchanges/{id}/respond  Accept or decline participation in an exchange group
   GET  /exchanges/mine          List current user's exchange groups with their legs
 """
-from typing import List, Optional
+from typing import List
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from pydantic import BaseModel

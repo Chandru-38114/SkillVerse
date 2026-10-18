@@ -1,9 +1,9 @@
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from sqlalchemy import or_, desc, func
+from sqlalchemy import or_, desc
 
-from .. import models, auth, schemas
+from .. import models, auth
 from ..database import get_db
 from pydantic import BaseModel
 

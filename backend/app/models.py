@@ -1,4 +1,3 @@
-import datetime as dt
 from .utils.timezone import utc_now
 from sqlalchemy import (
     Column, Integer, String, Float, ForeignKey, DateTime, Date, Text, Boolean, JSON, Index, UniqueConstraint

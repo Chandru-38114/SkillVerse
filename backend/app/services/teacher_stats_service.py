@@ -5,7 +5,7 @@ Shared calculation helpers for public and private teacher statistics.
 Guarantees consistent logic between /teacher-stats/me and /marketplace/search.
 Avoids N+1 queries by utilizing grouped aggregation.
 """
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, func, or_
 

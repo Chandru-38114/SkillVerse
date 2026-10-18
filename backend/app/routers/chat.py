@@ -1,14 +1,10 @@
 import json
-from typing import List, Optional
-import asyncio
+from typing import List
 import copy
 import logging
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, WebSocket, WebSocketDisconnect, Query, File, UploadFile
 import uuid
-import mimetypes
-from fastapi.responses import RedirectResponse
 from starlette.concurrency import run_in_threadpool
-from jose import jwt, JWTError
 from sqlalchemy.orm import Session
 from ..notification_service import create_notification
 from ..utils.timezone import enforce_utc_iso
@@ -261,7 +257,7 @@ def _queue_message_update(background_tasks: BackgroundTasks, db: Session, msg: m
                               {"type": "message_update", "message": _serialize_message(msg)})
 
 
-from sqlalchemy import or_, and_, desc, func
+from sqlalchemy import or_, and_, func
 
 @router.get("/inbox", response_model=List[schemas.InboxConversationOut])
 def get_inbox(
@@ -515,24 +511,12 @@ def send_message(
     return msg
 
 
-def _authenticate_ws(token: str, db: Session) -> Optional[models.User]:
-    """Same JWT the REST API uses, just decoded manually — browsers can't set
-    Authorization headers on a native WebSocket handshake, so the token is
-    passed as a query param instead: /chat/ws/{request_id}?token=..."""
-    try:
-        payload = jwt.decode(token, auth.SECRET_KEY, algorithms=[auth.ALGORITHM])
-        user_id = payload.get("sub")
-        if user_id is None:
-            return None
-    except JWTError:
-        return None
-    return db.query(models.User).filter(models.User.id == int(user_id)).first()
 
 
 def _ws_auth_and_authz(token: str, request_id: int):
     db = SessionLocal()
     try:
-        user = _authenticate_ws(token, db)
+        user = auth.get_user_from_token(token, db)
         if not user:
             return None, 4401, None
         try:
@@ -740,7 +724,7 @@ def delete_message_for_me(
     current_user: models.User = Depends(auth.get_current_user),
     db: Session = Depends(get_db),
 ):
-    msg = _get_message_authorized(db, message_id, current_user.id)
+    _get_message_authorized(db, message_id, current_user.id)  # 404/403 if not allowed
     existing = db.query(models.MessageUserState).filter(
         models.MessageUserState.message_id == message_id,
         models.MessageUserState.user_id == current_user.id

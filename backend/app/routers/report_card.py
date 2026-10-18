@@ -13,10 +13,9 @@ Provides a comprehensive overview of a user's:
 No public version, no email/phone leakage, no answer key leakage.
 """
 import datetime as dt
-from typing import Dict, List, Any
+from typing import List
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from sqlalchemy import func, desc
 
 from .. import models, schemas, auth
 from ..database import get_db

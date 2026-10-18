@@ -1,7 +1,7 @@
 import re
 import datetime as dt
 from typing import Dict, Any, Optional, List, Union
-from pydantic import BaseModel, Field, EmailStr, Field, model_validator, ConfigDict
+from pydantic import BaseModel, EmailStr, Field, model_validator, ConfigDict
 
 
 class UTCOut(BaseModel):

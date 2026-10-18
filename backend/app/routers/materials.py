@@ -1,10 +1,9 @@
 import os
 import uuid
-import shutil
 import logging
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.orm import Session
-from fastapi.responses import FileResponse, RedirectResponse
+from fastapi.responses import RedirectResponse
 
 from .. import models, auth
 from ..database import get_db

@@ -17,10 +17,10 @@ Badges:
     * Centurion: 100 completed teaching sessions (computable)
 """
 
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any
 from datetime import datetime, timezone
 from sqlalchemy.orm import Session
-from sqlalchemy import func, or_
+from sqlalchemy import or_
 
 from .. import models
 from .teacher_stats_service import get_teacher_public_stats_for_users

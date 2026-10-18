@@ -1,5 +1,4 @@
 import os
-import shutil
 import uuid
 import logging
 from typing import List
@@ -228,7 +227,7 @@ def remove_avatar(
             
             # 2. If SDK didn't confirm deletion, try REST fallback
             if not deleted:
-                from ..supabase_client import SUPABASE_URL, SUPABASE_KEY
+                from ..supabase_client import SUPABASE_KEY
                 import os
                 import requests
                 from urllib.parse import urlparse

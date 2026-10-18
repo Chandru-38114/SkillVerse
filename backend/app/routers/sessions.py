@@ -21,13 +21,12 @@ from starlette.concurrency import run_in_threadpool
 from sqlalchemy import or_
 from sqlalchemy.orm import Session as DBSession
 from ..notification_service import create_notification
-from jose import jwt, JWTError
 
 from .. import models, schemas, auth
 from ..database import get_db, SessionLocal
 from .requests import _to_out as _req_to_out
 from ..ws_manager import webrtc_manager
-from ..utils.timezone import utc_now, IST, enforce_utc_iso
+from ..utils.timezone import utc_now, IST
 
 router = APIRouter(prefix="/sessions", tags=["sessions"])
 
@@ -52,15 +51,6 @@ def get_turn_credentials(current_user: models.User = Depends(auth.get_current_us
 
 
 
-def _authenticate_ws(token: str, db: DBSession) -> Optional[models.User]:
-    try:
-        payload = jwt.decode(token, auth.SECRET_KEY, algorithms=[auth.ALGORITHM])
-        user_id = payload.get("sub")
-        if user_id is None:
-            return None
-    except JWTError:
-        return None
-    return db.query(models.User).filter(models.User.id == int(user_id)).first()
 
 # ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -400,7 +390,7 @@ async def webrtc_signaling(
     await websocket.accept()
     db = SessionLocal()
     try:
-        user = _authenticate_ws(token, db)
+        user = auth.get_user_from_token(token, db)
         if not user:
             await websocket.close(code=4401, reason="Not signed in")
             return

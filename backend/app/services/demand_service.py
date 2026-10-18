@@ -4,7 +4,7 @@ Demand Request Service.
 Handles skill demand notification flows, fulfillment triggers, and rate-limiting rules.
 Guarantees privacy: never exposes any user's email or phone number in notifications.
 """
-from typing import Optional, List
+from typing import List
 from sqlalchemy.orm import Session
 
 from .. import models

@@ -16,7 +16,7 @@ Lounge Feed:
 """
 from typing import List, Optional
 import datetime as dt
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from sqlalchemy import func
