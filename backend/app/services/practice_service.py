@@ -6,9 +6,11 @@ import json
 import logging
 import random
 import re
+import threading
 import uuid
 from typing import List, Optional
 
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from .. import models
@@ -98,29 +100,39 @@ def _from_ai(p: dict) -> dict:
 # The built-in bank
 # ---------------------------------------------------------------------------
 _seeded = False
+_seed_lock = threading.Lock()
 
 
 def ensure_bank(db: Session) -> None:
-    """Insert any bank problem that isn't in the database yet (once per process)."""
+    """Insert any bank problem that isn't in the database yet (once per process).
+    Two first requests can arrive together (the Practice page loads courses and
+    problems at once), so seeding is locked; another server process seeding at the
+    same moment is handled by the unique slug (we roll back and carry on)."""
     global _seeded
     if _seeded:
         return
-    have = {s for (s,) in db.query(models.PracticeProblem.slug).all()}
-    for raw in PRACTICE_BANK:
-        if raw["slug"] in have:
-            continue
+    with _seed_lock:
+        if _seeded:
+            return
+        have = {s for (s,) in db.query(models.PracticeProblem.slug).all()}
+        for raw in PRACTICE_BANK:
+            if raw["slug"] in have:
+                continue
+            try:
+                spec = build_spec(raw)
+            except Exception as err:  # noqa: BLE001 - a broken bank entry must not break the page
+                logger.error("[practice] bank problem %s is invalid: %s", raw["slug"], err)
+                continue
+            db.add(models.PracticeProblem(
+                slug=raw["slug"], course=raw["course"], title=raw["title"], difficulty=raw["difficulty"],
+                topics=raw.get("topics", []), statement=raw["statement"], constraints=raw.get("constraints", []),
+                kind=raw.get("kind", "function"), spec=spec, reference=raw["reference"], source="bank",
+            ))
         try:
-            spec = build_spec(raw)
-        except Exception as err:  # noqa: BLE001 - a broken bank entry must not break the page
-            logger.error("[practice] bank problem %s is invalid: %s", raw["slug"], err)
-            continue
-        db.add(models.PracticeProblem(
-            slug=raw["slug"], course=raw["course"], title=raw["title"], difficulty=raw["difficulty"],
-            topics=raw.get("topics", []), statement=raw["statement"], constraints=raw.get("constraints", []),
-            kind=raw.get("kind", "function"), spec=spec, reference=raw["reference"], source="bank",
-        ))
-    db.commit()
-    _seeded = True
+            db.commit()
+        except IntegrityError:
+            db.rollback()       # another process inserted them first: that's fine
+        _seeded = True
 
 
 # ---------------------------------------------------------------------------

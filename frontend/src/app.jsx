@@ -34,6 +34,8 @@ const Notifications = lazy(() => import('./pages/notifications'))
 const Gamification = lazy(() => import('./pages/gamification'))
 const QuestReview = lazy(() => import('./pages/quest_review'))
 const Community = lazy(() => import('./pages/community'))
+const Practice = lazy(() => import('./pages/practice'))
+const PracticeProblem = lazy(() => import('./pages/practice_problem'))
 
 import { api, saveSession, clearSession } from './api'
 import { getSessionUser, getToken } from './api'
@@ -100,6 +102,8 @@ export default function App() {
             <Route path="/" element={<RootRedirect />} /><Route path="/landing" element={<Landing />} />
             <Route path="/signup" element={<Signup />} />
             <Route path="/onboarding" element={<OnboardingRoute />} />
+            <Route path="/practice" element={<ProtectedRoute><Practice /></ProtectedRoute>} />
+            <Route path="/practice/:slug" element={<ProtectedRoute><PracticeProblem /></ProtectedRoute>} />
             <Route path="/login" element={<Login />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/verify-email" element={<VerifyEmail />} />

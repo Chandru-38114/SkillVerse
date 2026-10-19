@@ -375,6 +375,9 @@ def _java_lit(v, t: str) -> str:
     raise SpecError(t)
 
 
+JAVA_AUTO_IMPORTS = "import java.util.*; import java.util.function.*; import java.util.stream.*; "
+
+
 def _java_files(sig: dict, code: str, tests: list, marker: str) -> dict:
     fn = sig["function"]
     methods, calls = [], []
@@ -393,6 +396,11 @@ def _java_files(sig: dict, code: str, tests: list, marker: str) -> dict:
             "\n    public static void main(String[] args) {\n        StringBuilder out = new StringBuilder(\"[\");\n" +
             "\n        out.append(',');\n".join(calls) +
             f"\n        out.append(']');\n        System.out.flush();\n        System.out.println({json.dumps(marker)} + out);\n    }}\n}}\n")
+    # Like LeetCode: java.util (List, Map, HashMap, ...) is always imported. Added on
+    # line 1 itself so compiler error line numbers still match the learner's code
+    # (Java allows the same import twice, so a learner's own imports are fine).
+    if not re.search(r"^\s*package\s", code, re.M):
+        code = JAVA_AUTO_IMPORTS + code
     files = {"Main.java": main + JAVA_HELPERS, "Solution.java": code}
     if not re.search(r"\bclass\s+ListNode\b", code):
         files["ListNode.java"] = JAVA_LISTNODE

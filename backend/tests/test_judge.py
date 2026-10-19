@@ -108,6 +108,11 @@ class JudgeTest(unittest.TestCase):
             code = "class Solution { public ListNode reverseList(ListNode h) { ListNode p = null; while (h != null) { ListNode n = h.next; h.next = p; p = h; h = n; } return p; } }"
             self.assertEqual(J.judge(self.reverse, "java", code)["verdict"], "Accepted")
             self.assertEqual(J.judge(self.reverse, "java", "class Solution { public ListNode reverseList(ListNode h) { return x; } }")["verdict"], "Compile Error")
+            # java.util is imported automatically, like on LeetCode
+            no_import = ("class Solution { public int[] twoSum(int[] nums, int target) { Map<Integer, Integer> m = new HashMap<>();"
+                         " for (int i = 0; ; i++) { if (m.containsKey(target - nums[i])) return new int[]{m.get(target - nums[i]), i};"
+                         " m.put(nums[i], i); } } }")
+            self.assertEqual(J.judge(self.two_sum, "java", no_import)["verdict"], "Accepted")
 
     @unittest.skipUnless(HAVE_NODE, "node not installed")
     def test_javascript(self):

@@ -10,6 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@monaco-editor/react": "4.7.0",
     "@react-oauth/google": "^0.13.5",
     "framer-motion": "^14.0.0",
     "gsap": "^3.12.5",
@@ -17,6 +18,7 @@
     "jspdf": "^4.2.1",
     "lenis": "^1.1.13",
     "lucide-react": "^1.45.0",
+    "monaco-editor": "0.57.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "react-qr-code": "^2.2.0",
@@ -36,5 +38,8 @@
     "postcss": "^8.5.19",
     "tailwindcss": "^3.4.13",
     "vite": "^8.1.1"
+  },
+  "overrides": {
+    "dompurify": "3.4.17"
   }
 }

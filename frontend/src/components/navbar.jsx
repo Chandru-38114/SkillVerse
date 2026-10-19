@@ -25,12 +25,13 @@ const NAV = [
       { to: '/gamification', label: 'Skill Journey', sub: 'Points, badges, leaderboard' },
       { to: '/progress', label: 'Progress', sub: 'Skills and topic mastery' },
       { to: '/assessment', label: 'Assessments', sub: 'Skill Arena' },
+      { to: '/practice', label: 'Practice', sub: 'Coding problems, LeetCode style' },
     ],
   },
 ]
 
 const CONNECT_ROUTES = ['/messages', '/requests', '/exchanges', '/sessions', '/chat']
-const JOURNEY_ROUTES = ['/gamification', '/progress', '/assessment']
+const JOURNEY_ROUTES = ['/gamification', '/progress', '/assessment', '/practice']
 
 const Chev = () => (
   <svg className="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">

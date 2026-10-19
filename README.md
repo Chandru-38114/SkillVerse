@@ -32,6 +32,14 @@ learn what you don't, in a live **Learning Arena** with video, a shared whiteboa
 | Auth | JWT (PyJWT, HS256), bcrypt, Google OAuth | |
 | AI | Google Gemini (`google-genai`), OpenRouter as backup, hand-written question banks as fallback | |
 
+## The code editor (LeetCode style)
+
+- Languages: Python 3, Java 21, JavaScript, SQL (SQLite) and HTML/CSS/JS (live preview in the browser).
+- The editor is Monaco (the VS Code editor): automatic indentation on Enter, bracket closing, colours, Ctrl+Enter runs.
+- Used in three places: the Learning Arena (shared live between tutor and learner), the **Practice** page
+  (`/practice`: problems per course, Run on examples, Submit against hidden tests, points for a first solve,
+  "create a new problem" with AI) and the Skill Arena coding questions.
+
 ## Folder layout
 
 ```
@@ -40,6 +48,8 @@ backend/app/        FastAPI app: main.py, models.py, schemas.py, auth.py, db_mig
   services/         question_generator (all AI calls), course_rules, topic_scores, tutor_ranking, ...
   data/questions.py fallback question banks
   sandbox.py        restricted Python runner for the code editor
+  services/judge.py LeetCode-style judge (Python, Java, JavaScript, SQL); data/practice_bank.py = 26 problems
+runner/             separate code-runner service for Java 21 and Node 22 (see runner/README.md)
 backend/tests/      unit tests (pytest)
 frontend/src/       api.js (every backend call), pages/, components/, utils/
 eval/               evaluation scripts for the report (see eval/README.md)
@@ -76,7 +86,9 @@ Names only — **never commit real values**. The full list with explanations is 
 `backend/.env.example` and `frontend/.env.example`.
 
 - Render (backend): `DATABASE_URL`, `SECRET_KEY`, `FRONTEND_URL`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`,
-  `GOOGLE_CLIENT_ID`, `GEMINI_API_KEY`, `OPENROUTER_API_KEY`, `METERED_DOMAIN`, `METERED_API_KEY`, `DEV_OTP_MODE`
+  `GOOGLE_CLIENT_ID`, `GEMINI_API_KEY`, `OPENROUTER_API_KEY`, `METERED_DOMAIN`, `METERED_API_KEY`, `DEV_OTP_MODE`,
+  `RUNNER_URL`, `RUNNER_TOKEN`
+- Render (code runner service): only `RUNNER_TOKEN` (same value as on the backend)
 - Vercel (frontend): `VITE_API_URL`, `VITE_GOOGLE_CLIENT_ID`
 
 ## Deploying
@@ -89,7 +101,7 @@ cron-job.org) hitting `https://skillverse-api-fm56.onrender.com/` every 5 minute
 ## Checks before every commit
 
 ```bash
-python -m pytest backend/tests -q        # 80 tests
+python -m pytest backend/tests -q        # 93 tests (runner: python -m pytest runner/tests -q)
 cd frontend && npm run build
 ```
 
@@ -100,7 +112,10 @@ cd frontend && npm run build
   the leaderboard and public profile reviews/badges. WebSockets check the token and that you're in the session.
 - Uploads: avatars must be real PNG/JPEG/GIF/WebP; chat files that could run scripts are stored as downloads.
 - Login lockout after repeated failures; password reset needs the emailed code; Skill Arena limited to 10 new attempts a day.
-- The code editor runs Python in a sandbox (no files, network or imports of dangerous modules; 3 s CPU, 256 MB).
+- Code editor: Python and SQL run in sandboxes on the API server (no files, network or dangerous modules).
+  Java and JavaScript run on the separate runner service, which holds no secrets: Java's Security Manager
+  and Node's permission model block files, environment and programs; every run has CPU, memory, output and
+  time limits. Hidden test answers never leave the server.
 - Known: Tailwind 3's build tools have dependency advisories (build machine only, not shipped);
   fixing them needs a Tailwind 4 upgrade.
 

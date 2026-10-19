@@ -28,6 +28,7 @@ function isRealtime(path) {
          path.includes("/chat/inbox") ||
          path.match(/\/chat\/.*\/messages/) ||
          path.includes("/compiler/") ||   // shared editor state must never be served stale
+         path.includes("/practice/") ||   // solved / attempted status changes on every submit
          path.includes("/whiteboard");
 }
 
@@ -209,6 +210,30 @@ export const api = {
   // Generates a fresh AI assessment; answers stay on the server. POST, so it is never cached.
   startAssessment: (skill, level, role) => request("/assessments/start", { method: "POST", body: { skill_name: skill, level, role } }),
   submitAssessment: (data) => request("/assessments/submit", { method: "POST", body: data }),
+  // Free-form run in the Skill Arena editor (custom input)
+  runArenaCode: (code, language = "python", stdin = "") =>
+    request("/compiler/arena/run", { method: "POST", body: { code, language, stdin } }),
+  // Run a coding answer on the question's EXAMPLE tests (hidden tests run on submit)
+  arenaRunCode: (attemptId, questionId, language, code) =>
+    request(`/assessments/${attemptId}/run-code`, { method: "POST", body: { question_id: questionId, language, code } }),
+
+  // Practice (LeetCode-style problems)
+  practiceCourses: () => request("/practice/courses"),
+  practiceProblems: ({ course, difficulty, q } = {}) => {
+    const qs = new URLSearchParams();
+    if (course) qs.set("course", course);
+    if (difficulty) qs.set("difficulty", difficulty);
+    if (q) qs.set("q", q);
+    return request(`/practice/problems?${qs.toString()}`);
+  },
+  practiceProblem: (slug) => request(`/practice/problems/${encodeURIComponent(slug)}`),
+  practiceRun: (slug, language, code) =>
+    request(`/practice/problems/${encodeURIComponent(slug)}/run`, { method: "POST", body: { language, code } }),
+  practiceSubmit: (slug, language, code) =>
+    request(`/practice/problems/${encodeURIComponent(slug)}/submit`, { method: "POST", body: { language, code } }),
+  practiceSubmissions: (slug) => request(`/practice/problems/${encodeURIComponent(slug)}/submissions`),
+  practiceGenerate: (course, difficulty, topic) =>
+    request("/practice/generate", { method: "POST", body: { course, difficulty, topic: topic || null } }),
 
   // Marketplace & connection requests
   searchTeachers: (skill, role) => {
@@ -297,8 +322,9 @@ export const api = {
 
   // Compiler (Session Room)
   getCompilerState: (sessionId) => request(`/compiler/${sessionId}/state`),
-  saveCompilerState: (sessionId, code) => request(`/compiler/${sessionId}/state`, { method: "PUT", body: { code } }),
-  runCompiler: (sessionId, code) => request(`/compiler/${sessionId}/run`, { method: "POST", body: { code } }),
+  saveCompilerState: (sessionId, code, language) => request(`/compiler/${sessionId}/state`, { method: "PUT", body: { code, language } }),
+  runCompiler: (sessionId, code, language = "python", stdin = "") =>
+    request(`/compiler/${sessionId}/run`, { method: "POST", body: { code, language, stdin } }),
 
   // Exchanges & Circles
   getExchangeSuggestions: () => request("/exchanges/suggestions", { bypassCache: true }),

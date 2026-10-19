@@ -92,21 +92,31 @@ frontend/src/
   team is training its own models (Qwen2.5-3B for written answers, BGE-M3 embeddings)
   to replace the Gemini API calls later. Keep that file the only place AI is called from.
 
-## The code compiler
-- `POST /compiler/arena/run` — Skill Arena, any signed-in user.
-- `POST /compiler/{session_id}/run` — Learning Arena, participants only.
-- Both call `execute_python()` in `routers/compiler.py`, which runs `sandbox.py` in a
-  subprocess with an EMPTY environment (no server secrets), isolated mode, 256 MB memory,
-  3 s CPU, 4 s wall timeout, and output capped at 20,000 characters.
-- `sandbox.py` blocks dangerous imports, dunder access (including via `getattr` and format
-  strings), file/process/socket operations, and `eval`/`exec`/`open`.
-- **Only Python executes.** Java and JavaScript can be written but not run.
-- If you touch the sandbox, re-test both normal student code (classes, comprehensions,
-  recursion) and escape attempts such as `getattr((), "__class__")`.
+## The code compiler (LeetCode style)
+- Languages: python, java, javascript, sql, plus "web" (HTML/CSS/JS previewed in a sandboxed iframe, never
+  sent to a server). One entry point for running programs: `services/code_exec.py` `run_program()`.
+  - python -> `sandbox.py` subprocess (empty environment, 256 MB, CPU limit), stdin supported.
+  - sql -> `services/sql_runner.py` (in-memory SQLite in a subprocess; ATTACH/PRAGMA/extensions denied).
+  - java, javascript -> the separate **runner service** in `runner/` via `RUNNER_URL` + `RUNNER_TOKEN`
+    (header `X-Runner-Token`). The runner holds NO secrets. Java 21 runs under the Security Manager with an
+    empty policy; Node 22 with `--permission`. Never run Java/JS on the API server.
+- Judge: `services/judge.py` grades a typed function signature (int, string, int[], ListNode, TreeNode, ...)
+  against tests; expected answers come from running the reference Python solution. Hidden test answers are
+  never returned. java.util is auto-imported for Java solutions.
+- Practice: `routers/practice.py`, `services/practice_service.py`, bank in `data/practice_bank.py`
+  (tables `practice_problems`, `practice_submissions`). AI problems are only saved if the reference passes.
+- Skill Arena coding questions come from `practice_service.arena_coding_questions()`; answers are JSON
+  `{language, code}`; `POST /assessments/{attempt_id}/run-code` runs only the example tests.
+- Endpoints: `POST /compiler/arena/run`, `POST /compiler/{session_id}/run`, `GET/PUT /compiler/{session_id}/state`
+  (remembers language + one draft per language).
+- Frontend: `components/code/` (CodeEditor = Monaco, JudgeResults, WebPreview, SqlTable); pages
+  `practice.jsx`, `practice_problem.jsx`. CodeEditor is semi-controlled on purpose (prevents lost keystrokes).
+- If you touch a sandbox, re-test normal student code AND escape attempts (`getattr((), "__class__")`,
+  reading files/env, network, infinite loops). Runner tests: `runner/tests/`.
 
 ## Environment variables (Render)
 `DATABASE_URL`, `SECRET_KEY`, `FRONTEND_URL`, Supabase keys, Google OAuth client id,
-`GEMINI_API_KEY`, and optionally `GEMINI_MODELS` (comma-separated, default
+`GEMINI_API_KEY`, `RUNNER_URL`, `RUNNER_TOKEN`, and optionally `GEMINI_MODELS` (comma-separated, default
 `gemini-3.6-flash,gemini-3.5-flash-lite`).
 Frontend uses `VITE_API_URL`. Never hardcode or print secrets.
 
@@ -123,7 +133,7 @@ Frontend uses `VITE_API_URL`. Never hardcode or print secrets.
 - Commit style: `type(scope): short description`, e.g. `fix(chat): ...`, `feat(skill-arena): ...`.
 
 ## Checks before committing
-- Backend: `python -m pytest backend/tests -q` (80 tests) and `python -m py_compile` on changed files.
+- Backend: `python -m pytest backend/tests -q` (93 tests) and `python -m py_compile` on changed files.
 - Frontend: `npm run build` must succeed.
 - Reuse the shared helpers above instead of copying code (storage, session checks,
   time zones, WebSocket rooms, uploads in api.js).
@@ -157,7 +167,7 @@ Frontend uses `VITE_API_URL`. Never hardcode or print secrets.
 - Built (final round): topic scores (`topic_scores` table), post-session reassessment,
   teaching impact, knowledge-gap recommendations (`GET /marketplace/recommended`) and tutor
   ranking — maths in `services/tutor_ranking.py`, tests in `test_reassessment.py` / `test_tutor_ranking.py`.
-- Coding questions ARE auto-graded (`services/code_grader.py`); fallback question banks exist
+- Coding questions ARE auto-graded by `services/judge.py` (Practice-style hidden tests); fallback question banks exist
   for Python, Java, DSA and Web Development.
 - Forgot-password needs real email delivery on production (`email_service.py` only logs).
 - Team-trained models (Qwen2.5-3B, BGE-M3) will replace the Gemini API later.

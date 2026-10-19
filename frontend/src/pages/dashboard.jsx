@@ -417,6 +417,7 @@ export default function Dashboard() {
                 <span id="sv-qk" className="eb" style={{ marginBottom: 6 }}>QUICK LINKS</span>
                 <Link to="/marketplace" className="ql"><span className="qi" style={{ background: '#D6F3EA' }}>⇄</span>Discover Partners<span style={{ marginLeft: 'auto' }}>→</span></Link>
                 <Link to="/assessment" className="ql"><span className="qi" style={{ background: 'var(--accl)' }}>✓</span>Take a Skill Challenge<span style={{ marginLeft: 'auto' }}>→</span></Link>
+                <Link to="/practice" className="ql"><span className="qi" style={{ background: '#D6F3EA' }}>{'</>'}</span>Practice coding problems<span style={{ marginLeft: 'auto' }}>→</span></Link>
                 <Link to="/gamification" className="ql"><span className="qi" style={{ background: '#E6DDF6' }}>◎</span>View Full Journey<span style={{ marginLeft: 'auto' }}>→</span></Link>
               </section>
 

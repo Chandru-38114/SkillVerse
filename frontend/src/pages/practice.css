@@ -1,0 +1,70 @@
+/* Practice (LeetCode-style problems). Scoped under .sv-prac so .btn / .card / .pill
+   can't collide with the app's classes of the same name. Same look as Progress. */
+.sv-prac{
+  --acc:#FF8A3D; --accd:#C4581A; --accl:#FFE3CF;
+  font-family:Inter,system-ui,sans-serif;color:#29251F;background:#F8F3E9;
+  min-height:100vh;padding-bottom:60px;
+}
+.sv-prac *{box-sizing:border-box}
+.sv-prac a{color:#29251F}
+.sv-prac .muted{color:#6E6455}
+.sv-prac .eb{font-size:12px;font-weight:800;letter-spacing:.1em;color:#6E6455}
+.sv-prac .mono{font-family:"JetBrains Mono",ui-monospace,Menlo,monospace}
+
+.sv-prac .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:42px;padding:0 18px;border:2px solid #29251F;border-radius:10px;font:800 14px Inter,sans-serif;color:#29251F;text-decoration:none;cursor:pointer;transition:transform 180ms ease,box-shadow 180ms ease,background-color 180ms ease;white-space:nowrap}
+.sv-prac .btn-p{background:var(--acc);box-shadow:inset 0 2px 0 rgba(255,255,255,.45),0 3px 0 var(--accd),0 5px 0 #29251F}
+.sv-prac .btn-p:hover:not(:disabled){transform:translateY(2px);box-shadow:0 1px 0 var(--accd),0 3px 0 #29251F}
+.sv-prac .btn-s{background:#FFFDF8;box-shadow:inset 0 2px 0 rgba(255,255,255,.9),0 3px 0 #D2BEA0,0 5px 0 #29251F}
+.sv-prac .btn-s:hover:not(:disabled){background:#F0E5D2;transform:translateY(2px);box-shadow:0 1px 0 #D2BEA0,0 3px 0 #29251F}
+.sv-prac .btn:disabled{opacity:.55;cursor:not-allowed}
+.sv-prac .btn:focus-visible,.sv-prac a:focus-visible,.sv-prac select:focus-visible,.sv-prac input:focus-visible{outline:3px solid #A58D70;outline-offset:2px}
+
+.sv-prac .card{background:#FFFDF8;border:2px solid #29251F;border-radius:16px;box-shadow:0 4px 0 #D2BEA0,0 7px 0 #29251F}
+.sv-prac .pill{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 10px;border-radius:999px;border:2px solid #29251F;font-size:12px;font-weight:800;white-space:nowrap;background:#FFFDF8}
+.sv-prac .d-Easy{background:#D6F3EA}
+.sv-prac .d-Medium{background:#FBEFC4}
+.sv-prac .d-Hard{background:#FFD9D0}
+
+.sv-prac .field{height:42px;border:2px solid #29251F;border-radius:10px;background:#FFFDF8;padding:0 12px;font:600 14px Inter,sans-serif;color:#29251F}
+
+/* list page */
+.sv-prac .wrap{max-width:1100px;margin:0 auto;padding:28px 16px}
+.sv-prac .head{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:20px}
+.sv-prac h1{font-size:34px;font-weight:900;margin:6px 0 4px;letter-spacing:-.02em}
+.sv-prac .tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+.sv-prac .tab{border:2px solid #29251F;border-radius:999px;padding:7px 14px;font:800 13px Inter,sans-serif;background:#FFFDF8;cursor:pointer;color:#29251F}
+.sv-prac .tab[aria-selected="true"]{background:#29251F;color:#F8F3E9}
+.sv-prac .tab .cnt{font-weight:700;opacity:.7;margin-left:6px}
+.sv-prac .filters{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px}
+.sv-prac .filters input{flex:1;min-width:180px}
+.sv-prac .plist{overflow:hidden}
+.sv-prac .prow{display:grid;grid-template-columns:34px 1fr auto auto;gap:14px;align-items:center;padding:13px 18px;border-bottom:2px dashed #E2D3BB;text-decoration:none}
+.sv-prac .prow:last-child{border-bottom:none}
+.sv-prac .prow:hover{background:#F8F1E4}
+.sv-prac .ptitle{font-weight:800;font-size:15px}
+.sv-prac .ptopics{font-size:12px;color:#6E6455;margin-top:2px}
+.sv-prac .stat{font-size:18px;text-align:center}
+.sv-prac .empty{padding:36px;text-align:center}
+.sv-prac .gen{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:16px 18px;margin-top:18px}
+
+/* problem workspace: description left, editor right (stacks on small screens) */
+.sv-prac.ws{padding-bottom:0}
+.sv-prac .ws-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.25fr);gap:14px;padding:14px 16px;max-width:1500px;margin:0 auto}
+@media (max-width: 960px){.sv-prac .ws-grid{grid-template-columns:minmax(0,1fr)}}
+.sv-prac .pane{overflow:hidden;display:flex;flex-direction:column;min-width:0}
+.sv-prac .pane-tabs{display:flex;gap:4px;padding:8px;background:#F0E5D2;border-bottom:2px solid #29251F}
+.sv-prac .pane-tabs button{border:none;background:transparent;font:800 13px Inter,sans-serif;padding:6px 12px;border-radius:8px;cursor:pointer;color:#4A4236}
+.sv-prac .pane-tabs button[aria-selected="true"]{background:#FFFDF8;color:#29251F;box-shadow:0 0 0 2px #29251F}
+.sv-prac .desc{padding:18px 20px;overflow:auto;max-height:calc(100vh - 150px)}
+@media (max-width: 960px){.sv-prac .desc{max-height:none}}
+.sv-prac .desc h2{font-size:22px;font-weight:900;margin:0 0 8px}
+.sv-prac .statement{white-space:pre-wrap;line-height:1.65;font-size:15px}
+.sv-prac .ex{background:#F8F1E4;border-left:4px solid #D2BEA0;border-radius:8px;padding:10px 14px;margin:10px 0;font-size:13px}
+.sv-prac .ex b{display:inline-block;min-width:64px}
+.sv-prac .schema{background:#29251F;color:#F8F3E9;border-radius:10px;padding:12px 14px;font-size:12px;white-space:pre-wrap;overflow:auto}
+.sv-prac .sub-row{display:grid;grid-template-columns:1fr auto auto;gap:12px;padding:10px 0;border-bottom:1px dashed #E2D3BB;font-size:13px;align-items:center}
+.sv-prac .ed-bar{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 10px;background:#3A352D;border-bottom:2px solid #29251F;flex-wrap:wrap}
+.sv-prac .ed-bar select{height:34px;border-radius:8px;border:2px solid #29251F;background:#FFFDF8;font:800 13px Inter,sans-serif;padding:0 8px}
+.sv-prac .ed-actions{display:flex;gap:8px;align-items:center}
+.sv-prac .ed-actions .btn{min-height:34px;padding:0 14px;font-size:13px}
+.sv-prac .hint{color:#B9AE9C;font-size:11px}

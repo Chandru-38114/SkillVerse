@@ -2,6 +2,10 @@ import { useState, useEffect, useRef } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { api } from '../api'
 import ArenaResultInsights from '../components/ArenaResultInsights'
+import LazyCodeEditor from '../components/code/LazyCodeEditor'
+import JudgeResults from '../components/code/JudgeResults'
+import SqlTable from '../components/code/SqlTable'
+import { LANGUAGE_LABELS } from '../components/code/languages'
 import './arena.css'
 
 const STEPS = { PICK: 'pick', RULES: 'rules', QUIZ: 'quiz', RESULT: 'result', TERMINATED: 'terminated' }
@@ -51,92 +55,102 @@ function splitQuestion(text) {
 }
 
 /* ── Code editor ─────────────────────────────────────────────────────────────
-   Behaviour is unchanged from the previous Arena: Tab inserts four spaces,
-   copy/cut remember what left THIS editor, and a paste whose contents did not
-   come from here is refused and counted as a violation. */
-function LocalCompiler({ code, onChange, language, onViolation }) {
-  const [output, setOutput] = useState('')
-  const [error, setError] = useState('')
+   Monaco (the VS Code / LeetCode editor): auto-indent, bracket closing, colours.
+   Arena rule kept from before: copy/cut remember what left THIS editor, and a
+   paste whose contents did not come from here is refused and counted as a
+   violation (right-click and drag-drop are off too).
+   Run tests the answer on the question's examples; hidden tests run on Submit.
+   The answer is sent as JSON {language, code}. */
+function ArenaCodeEditor({ q, value, onChange, attemptId, onViolation, draftsRef }) {
+  const langs = q.languages && q.languages.length ? q.languages : ['python']
+  const parsed = parseCodeAnswer(value, q)
+  const [result, setResult] = useState(null)
+  const [resultId, setResultId] = useState(0)
   const [isRunning, setIsRunning] = useState(false)
-  const lastEditorTextRef = useRef('')
+
+  const setCode = (code) => {
+    draftsRef.current[`${q.id}:${parsed.language}`] = code
+    onChange(JSON.stringify({ language: parsed.language, code }))
+  }
+  const switchLanguage = (lang) => {
+    draftsRef.current[`${q.id}:${parsed.language}`] = parsed.code
+    const code = draftsRef.current[`${q.id}:${lang}`] ?? q.starter?.[lang] ?? ''
+    onChange(JSON.stringify({ language: lang, code }))
+    setResult(null)
+  }
 
   const handleRun = async () => {
+    if (isRunning) return
     setIsRunning(true)
-    setError('')
-    setOutput('')
     try {
-      const res = await api.runArenaCode(code)
-      if (res.error) setError(res.error)
-      setOutput(res.output || '')
+      setResult(await api.arenaRunCode(attemptId, q.id, parsed.language, parsed.code))
     } catch (err) {
-      setError(err.message || 'Execution failed')
+      setResult({ verdict: 'Error', passed: 0, total: 0, results: [], error: err.message || 'Execution failed' })
     } finally {
+      setResultId(n => n + 1)
       setIsRunning(false)
     }
   }
 
-  const handleKeyDown = (e) => {
-    if (e.key === 'Tab') {
-      e.preventDefault()
-      const start = e.target.selectionStart
-      const end = e.target.selectionEnd
-      onChange(code.substring(0, start) + '    ' + code.substring(end))
-      setTimeout(() => { e.target.selectionStart = e.target.selectionEnd = start + 4 }, 0)
-    }
-  }
-
-  const captureEditorText = (e) => {
-    const ta = e.target
-    lastEditorTextRef.current = code.substring(ta.selectionStart, ta.selectionEnd)
-  }
-
-  const handlePaste = (e) => {
-    const clipboardText = e.clipboardData ? e.clipboardData.getData('text') : ''
-    if (clipboardText !== lastEditorTextRef.current) {
-      e.preventDefault()
-      onViolation?.('Pasting external code is not allowed.')
-    }
-  }
-
-  const isPython = !language || language.toLowerCase() === 'python'
-
   return (
     <div style={{ border: '2px solid #29251F', borderRadius: 14, overflow: 'hidden', boxShadow: '0 4px 0 #29251F' }}>
-      <div style={{ background: '#3A352D', padding: '10px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #29251F' }}>
-        <span className="mono" style={{ color: '#F8F3E9', fontSize: 12, fontWeight: 700 }}>
-          {isPython ? 'PYTHON 3' : `${language.toUpperCase()} · RUN SUPPORTS PYTHON 3`}
-        </span>
-        <button
-          type="button"
-          onClick={handleRun}
-          aria-disabled={isRunning || !code.trim()}
-          disabled={isRunning || !code.trim()}
-          className="btn btn-p"
-          style={{ minHeight: 36, padding: '0 14px', fontSize: 13, boxShadow: '0 3px 0 #29251F' }}
-        >
-          ▶ {isRunning ? 'Running…' : 'Run Code'}
-        </button>
+      <div style={{ background: '#3A352D', padding: '10px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap', borderBottom: '2px solid #29251F' }}>
+        {langs.length > 1 ? (
+          <select
+            aria-label="Language"
+            value={parsed.language}
+            onChange={e => switchLanguage(e.target.value)}
+            style={{ height: 34, borderRadius: 8, border: '2px solid #29251F', background: '#FFFDF8', fontWeight: 800, fontSize: 13, padding: '0 8px' }}
+          >
+            {langs.map(l => <option key={l} value={l}>{LANGUAGE_LABELS[l] || l}</option>)}
+          </select>
+        ) : (
+          <span className="mono" style={{ color: '#F8F3E9', fontSize: 12, fontWeight: 700 }}>{(LANGUAGE_LABELS[langs[0]] || langs[0]).toUpperCase()}</span>
+        )}
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+          <span className="mono hide-m" style={{ color: '#B9AE9C', fontSize: 11 }}>Ctrl + Enter = Run</span>
+          <button
+            type="button"
+            onClick={handleRun}
+            aria-disabled={isRunning || !parsed.code.trim()}
+            disabled={isRunning || !parsed.code.trim()}
+            className="btn btn-p"
+            style={{ minHeight: 36, padding: '0 14px', fontSize: 13, boxShadow: '0 3px 0 #29251F' }}
+          >
+            ▶ {isRunning ? 'Running…' : 'Run examples'}
+          </button>
+        </div>
       </div>
-      <textarea
-        value={code}
-        onChange={e => onChange(e.target.value)}
-        onKeyDown={handleKeyDown}
-        onCopy={captureEditorText}
-        onCut={captureEditorText}
-        onPaste={handlePaste}
-        spellCheck="false"
-        placeholder="Write your code here…"
-        className="mono"
-        style={{ width: '100%', minHeight: 200, background: '#29251F', color: '#F8F3E9', padding: 16, fontSize: 14, lineHeight: 1.7, border: 'none', resize: 'vertical', display: 'block' }}
+      <LazyCodeEditor
+        key={`${q.id}:${parsed.language}`}
+        height={340}
+        theme="dark"
+        language={parsed.language}
+        value={parsed.code}
+        onChange={setCode}
+        onRun={handleRun}
+        restrictPaste
+        onViolation={onViolation}
+        ariaLabel={`${LANGUAGE_LABELS[parsed.language] || parsed.language} answer editor`}
       />
-      <div style={{ background: '#1F1C17', borderTop: '2px dashed #6E6455', padding: '12px 16px', minHeight: 90 }}>
-        <span className="mono" style={{ color: '#B9AE9C', fontSize: 11, fontWeight: 700 }}>CONSOLE OUTPUT</span>
-        <pre className="mono" style={{ color: error ? '#FF9B86' : '#D6F3EA', fontSize: 14, marginTop: 8, whiteSpace: 'pre-wrap' }}>
-          {isRunning && !error && !output ? 'Executing…' : (error || output || 'Run your code to see output…')}
-        </pre>
+      <div style={{ borderTop: '2px dashed #6E6455' }}>
+        <JudgeResults key={resultId} result={result} running={isRunning} emptyText="Run your code to check it on the examples. Hidden tests are checked when you submit." />
       </div>
     </div>
   )
+}
+
+// A coding answer is JSON {language, code}; before the first edit it is the starter code.
+function parseCodeAnswer(value, q) {
+  const langs = q.languages && q.languages.length ? q.languages : ['python']
+  if (value) {
+    try {
+      const v = JSON.parse(value)
+      if (v && typeof v.code === 'string') return { language: langs.includes(v.language) ? v.language : langs[0], code: v.code }
+    } catch { /* plain code from an older client */ }
+    return { language: langs[0], code: String(value) }
+  }
+  return { language: langs[0], code: q.starter?.[langs[0]] ?? q.starter_code ?? '' }
 }
 
 // The result score counts up from 0 once, for a bit of celebration.
@@ -178,6 +192,7 @@ export default function Assessment() {
   const [showWarning, setShowWarning] = useState(null) // { count, message }
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false)
   const lastViolation = useRef(0)
+  const codeDraftsRef = useRef({})   // per question + language, so switching language keeps your code
 
   // Timer — always seeded from the server's seconds_remaining, never a hardcoded
   // value, so a resumed attempt only gets the time actually left.
@@ -343,7 +358,11 @@ export default function Assessment() {
       setAttemptId(res.attempt_id)
       const prefill = {}
       res.questions.forEach(q => {
-        if (q.type === 'coding' && q.starter_code) prefill[q.id] = q.starter_code
+        if (q.type === 'coding') {
+          const lang = q.languages?.[0] || 'python'
+          const starter = q.starter?.[lang] ?? q.starter_code
+          if (starter) prefill[q.id] = JSON.stringify({ language: lang, code: starter })
+        }
       })
       setAnswers(prefill)
       autoSubmittedRef.current = false
@@ -616,24 +635,46 @@ export default function Assessment() {
                 <>
                   {currentQuestion.title && <h3 style={{ margin: 0, fontSize: 22, fontWeight: 900 }}>{currentQuestion.title}</h3>}
                   <p style={{ margin: 0, fontSize: 17, lineHeight: 1.55 }}>{currentQuestion.question}</p>
-                  <div style={{ padding: '14px 16px', border: '2px solid #29251F', borderRadius: 12, background: '#F8F3E9', display: 'flex', flexDirection: 'column', gap: 6, fontSize: 14 }}>
+                  <div style={{ padding: '14px 16px', border: '2px solid #29251F', borderRadius: 12, background: '#F8F3E9', display: 'flex', flexDirection: 'column', gap: 8, fontSize: 14 }}>
                     {currentQuestion.function_name && (
                       <span><strong>Function name:</strong> <code className="mono">{currentQuestion.function_name}</code></span>
                     )}
                     {formatExample(currentQuestion) && (
                       <span><strong>Example:</strong> <code className="mono">{formatExample(currentQuestion)}</code></span>
                     )}
+                    {currentQuestion.kind === 'sql' && currentQuestion.schema && (
+                      <div><strong>Tables:</strong><pre className="mono" style={{ background: '#29251F', color: '#F8F3E9', borderRadius: 8, padding: 10, fontSize: 12, whiteSpace: 'pre-wrap', margin: '6px 0 0' }}>{currentQuestion.schema}</pre></div>
+                    )}
+                    {(currentQuestion.examples || []).map((ex, i) => (
+                      <div key={i} className="mono" style={{ fontSize: 13 }}>
+                        <strong style={{ fontFamily: 'Inter, sans-serif' }}>Example {i + 1}</strong>
+                        {currentQuestion.kind === 'sql' ? (
+                          <>
+                            <div style={{ whiteSpace: 'pre-wrap' }}>Data: {ex.input}</div>
+                            <div style={{ background: '#29251F', borderRadius: 8, padding: 8, marginTop: 4 }}><SqlTable results={[ex.output]} /></div>
+                          </>
+                        ) : (
+                          <>
+                            <div>Input: {ex.input}</div>
+                            <div>Output: {JSON.stringify(ex.output)}</div>
+                          </>
+                        )}
+                      </div>
+                    ))}
                     <span className="muted" style={{ fontSize: 13 }}>
                       {currentQuestion.test_count
                         ? `Checked against ${currentQuestion.test_count} test cases. Partial credit is given for passing some but not all.`
                         : 'Checked against hidden test cases. Partial credit is given for passing some but not all.'}
                     </span>
                   </div>
-                  <LocalCompiler
-                    code={answers[currentQuestion.id] ?? currentQuestion.starter_code ?? ''}
+                  <ArenaCodeEditor
+                    key={currentQuestion.id}
+                    q={currentQuestion}
+                    value={answers[currentQuestion.id]}
                     onChange={v => setAnswer(currentQuestion.id, v)}
-                    language={skillName}
+                    attemptId={attemptId}
                     onViolation={recordViolation}
+                    draftsRef={codeDraftsRef}
                   />
                 </>
               )}
