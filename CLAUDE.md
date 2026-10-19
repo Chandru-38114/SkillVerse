@@ -116,7 +116,7 @@ frontend/src/
 
 ## Environment variables (Render)
 `DATABASE_URL`, `SECRET_KEY`, `FRONTEND_URL`, Supabase keys, Google OAuth client id,
-`GEMINI_API_KEY`, `RUNNER_URL`, `RUNNER_TOKEN`, and optionally `GEMINI_MODELS` (comma-separated, default
+`GEMINI_API_KEY`, `RUNNER_URL`, `RUNNER_TOKEN`, `BREVO_API_KEY`, `EMAIL_FROM`, and optionally `GEMINI_MODELS` (comma-separated, default
 `gemini-3.6-flash,gemini-3.5-flash-lite`).
 Frontend uses `VITE_API_URL`. Never hardcode or print secrets.
 
@@ -133,7 +133,7 @@ Frontend uses `VITE_API_URL`. Never hardcode or print secrets.
 - Commit style: `type(scope): short description`, e.g. `fix(chat): ...`, `feat(skill-arena): ...`.
 
 ## Checks before committing
-- Backend: `python -m pytest backend/tests -q` (93 tests) and `python -m py_compile` on changed files.
+- Backend: `python -m pytest backend/tests -q` (97 tests) and `python -m py_compile` on changed files.
 - Frontend: `npm run build` must succeed.
 - Reuse the shared helpers above instead of copying code (storage, session checks,
   time zones, WebSocket rooms, uploads in api.js).
@@ -169,6 +169,8 @@ Frontend uses `VITE_API_URL`. Never hardcode or print secrets.
   ranking — maths in `services/tutor_ranking.py`, tests in `test_reassessment.py` / `test_tutor_ranking.py`.
 - Coding questions ARE auto-graded by `services/judge.py` (Practice-style hidden tests); fallback question banks exist
   for Python, Java, DSA and Web Development.
-- Forgot-password needs real email delivery on production (`email_service.py` only logs).
+- Email codes (forgot password, verify email) go through Brevo's API in `email_service.py` when
+  `BREVO_API_KEY` + `EMAIL_FROM` are set (no own domain needed); otherwise they are only logged.
+  With email set up, `dev_otp` is never returned, whatever `DEV_OTP_MODE` says.
 - Team-trained models (Qwen2.5-3B, BGE-M3) will replace the Gemini API later.
 - A UI/UX redesign is planned; the current UI is functional but plain.

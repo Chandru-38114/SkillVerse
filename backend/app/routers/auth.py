@@ -23,7 +23,7 @@ from sqlalchemy.orm import Session
 
 from .. import models, schemas, auth
 from ..database import get_db
-from ..email_service import send_otp_email
+from ..email_service import email_configured, send_otp_email
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 logger = logging.getLogger(__name__)
@@ -103,10 +103,12 @@ def _login_response(user: models.User) -> schemas.Token:
 
 def _dev_otp_enabled() -> bool:
     """Return the OTP in the API response (shown on screen) only for local
-    development. Email delivery is not implemented yet (email_service only
-    logs the code), so on production this would let ANYONE read another
-    user's reset code and take over the account. Default: on for the local
-    SQLite database, off for Postgres/production unless DEV_OTP_MODE=true."""
+    development / demos. On a public site this would let ANYONE read another
+    user's reset code and take over the account, so it is ALWAYS off once real
+    email (Brevo) is set up. Otherwise: on for the local SQLite database, off for
+    Postgres/production unless DEV_OTP_MODE=true."""
+    if email_configured():
+        return False
     flag = os.getenv("DEV_OTP_MODE")
     if flag is not None:
         return flag.strip().lower() == "true"
@@ -335,6 +337,8 @@ def forgot_password(payload: schemas.ForgotPassword, db: Session = Depends(get_d
             response["dev_otp"] = otp
         return response
     except Exception:
+        db.delete(reset_entry)      # sending failed: let them try again straight away
+        db.commit()
         raise HTTPException(status_code=500, detail="Unable to send verification code. Please try again later.")
 
 
@@ -407,6 +411,8 @@ def request_email_verification(current_user: models.User = Depends(auth.get_curr
             response["dev_otp"] = otp
         return response
     except Exception:
+        db.delete(entry)            # sending failed: let them try again straight away
+        db.commit()
         raise HTTPException(status_code=500, detail="Unable to send verification code. Please try again later.")
 
 

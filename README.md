@@ -87,7 +87,7 @@ Names only — **never commit real values**. The full list with explanations is 
 
 - Render (backend): `DATABASE_URL`, `SECRET_KEY`, `FRONTEND_URL`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`,
   `GOOGLE_CLIENT_ID`, `GEMINI_API_KEY`, `OPENROUTER_API_KEY`, `METERED_DOMAIN`, `METERED_API_KEY`, `DEV_OTP_MODE`,
-  `RUNNER_URL`, `RUNNER_TOKEN`
+  `RUNNER_URL`, `RUNNER_TOKEN`, `BREVO_API_KEY`, `EMAIL_FROM`
 - Render (code runner service): only `RUNNER_TOKEN` (same value as on the backend)
 - Vercel (frontend): `VITE_API_URL`, `VITE_GOOGLE_CLIENT_ID`
 
@@ -101,7 +101,7 @@ cron-job.org) hitting `https://skillverse-api-fm56.onrender.com/` every 5 minute
 ## Checks before every commit
 
 ```bash
-python -m pytest backend/tests -q        # 93 tests (runner: python -m pytest runner/tests -q)
+python -m pytest backend/tests -q        # 97 tests (runner: python -m pytest runner/tests -q)
 cd frontend && npm run build
 ```
 
@@ -111,7 +111,8 @@ cd frontend && npm run build
 - Every API route needs a login except sign-up/login/password reset, certificate verification,
   the leaderboard and public profile reviews/badges. WebSockets check the token and that you're in the session.
 - Uploads: avatars must be real PNG/JPEG/GIF/WebP; chat files that could run scripts are stored as downloads.
-- Login lockout after repeated failures; password reset needs the emailed code; Skill Arena limited to 10 new attempts a day.
+- Login lockout after repeated failures; password reset needs the emailed code (sent with Brevo; the code is
+  never shown on screen once email is set up); Skill Arena limited to 10 new attempts a day.
 - Code editor: Python and SQL run in sandboxes on the API server (no files, network or dangerous modules).
   Java and JavaScript run on the separate runner service, which holds no secrets: Java's Security Manager
   and Node's permission model block files, environment and programs; every run has CPU, memory, output and
@@ -121,7 +122,6 @@ cd frontend && npm run build
 
 ## Still to do
 
-- Real email delivery for password reset (codes are only logged on production today).
 - Replace the Gemini calls with the team's own models (Qwen2.5-3B, BGE-M3) — all AI calls are in
   `backend/app/services/question_generator.py` to make that swap easy.
 - Optional ideas: flashcards from session summaries, multilingual summaries, free-slot finder.
