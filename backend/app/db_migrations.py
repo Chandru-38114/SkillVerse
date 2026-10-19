@@ -53,6 +53,9 @@ NEW_COLUMNS = [
     ("connection_requests", "learner_goals", ("TEXT",)),
     ("connection_requests", "learner_can_teach", ("TEXT",)),
     ("connection_requests", "learner_teach_proficiency", ("VARCHAR",)),
+    # Multi-language shared editor
+    ("compiler_states", "language", ("VARCHAR(20) DEFAULT 'python'", "VARCHAR(20)")),
+    ("compiler_states", "drafts", ("TEXT",)),
 ]
 
 

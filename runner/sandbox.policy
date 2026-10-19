@@ -1,0 +1,4 @@
+// Student Java code gets NO permissions: no files, network, environment
+// variables, programs or reflection. Printing and reading stdin still work.
+grant {
+};

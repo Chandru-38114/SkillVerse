@@ -42,3 +42,7 @@ eval/tmp/
 /patch*.py
 /fix*.py
 /fix*.js
+
+# Code runner: downloaded JDK/Node and compiled classes (made by runner/build.sh)
+runner/tools/
+runner/java/classes/

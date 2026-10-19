@@ -13,6 +13,7 @@ import os
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel, Field
 from starlette.concurrency import run_in_threadpool
 from sqlalchemy.orm import Session
 from ..notification_service import create_notification
@@ -21,9 +22,13 @@ from .. import models, schemas, auth
 from ..database import get_db
 from ..data.questions import get_questions_for_skill, QUESTION_BANK
 from ..services.question_generator import (
-    GenerationError, canonical_level, generate_assessment, sanitize,
+    N_CODING, GenerationError, canonical_level, generate_assessment, sanitize,
 )
 from ..services.code_grader import grade_coding_answer
+from ..services import judge as J
+from ..services import practice_service as PS
+from ..services.code_exec import prewarm_runner
+from .practice import _rate_limit as practice_rate_limit
 from ..services.learning_plan import build_study_plan
 from ..utils.timezone import as_utc, enforce_utc_iso, utc_now
 from ..utils.levels import score_to_level
@@ -82,7 +87,7 @@ async def start_assessment(
         seconds_remaining = max(0, int((active_expires - now).total_seconds()))
         return {
             "attempt_id": active.id, "skill_name": active.skill_name, "source": active.source,
-            "level": level, "questions": sanitize(active.questions), "resumed": True,
+            "level": level, "questions": _public(active.questions), "resumed": True,
             "expires_at": enforce_utc_iso(active_expires), "seconds_remaining": seconds_remaining,
         }
 
@@ -108,6 +113,13 @@ async def start_assessment(
             )
         questions, source = get_questions_for_skill(skill), "bank"
 
+    # Coding questions: LeetCode-style, in the course's language(s), judged with
+    # hidden tests (services/judge.py). AI-written when possible, else the Practice bank.
+    questions = [q for q in questions if q.get("type") != "coding"]
+    questions += await run_in_threadpool(PS.arena_coding_questions, db, skill, level, N_CODING, source == "ai")
+    if any(lang in ("java", "javascript") for q in questions for lang in q.get("languages", [])):
+        prewarm_runner()   # a sleeping free runner takes ~1 min to wake: start it now
+
     expires_at = now + dt.timedelta(minutes=ARENA_DURATION_MINUTES)
     session = models.AssessmentSession(
         id=str(uuid.uuid4()), user_id=current_user.id, skill_name=skill,
@@ -117,7 +129,7 @@ async def start_assessment(
     db.commit()
     return {
         "attempt_id": session.id, "skill_name": skill, "source": source,
-        "level": level, "questions": sanitize(questions), "resumed": False,
+        "level": level, "questions": _public(questions), "resumed": False,
         "expires_at": enforce_utc_iso(expires_at),
         "seconds_remaining": ARENA_DURATION_MINUTES * 60,
     }
@@ -173,6 +185,12 @@ def study_plan_for_topics(weak_topics: list[str]) -> list[str]:
     return [f"Day {i+1}: Focus on {topic}" for i, topic in enumerate(weak_topics)]
 
 
+def _public(questions: list) -> list:
+    """What the browser may see: no answers, no hidden tests."""
+    return [PS.arena_public_coding(q) if q.get("type") == "coding" and q.get("spec") else sanitize([q])[0]
+            for q in questions]
+
+
 def _score_answers(questions: list, submitted: dict):
     """Mark every question against the SERVER's stored answers.
     Returns (score %, weak topics, mastery % per topic, coding feedback lines)."""
@@ -186,7 +204,12 @@ def _score_answers(questions: list, submitted: dict):
         total_marks += marks
         per_topic_total[topic] = per_topic_total.get(topic, 0) + marks
 
-        if q.get("type") == "coding":
+        if q.get("type") == "coding" and q.get("spec"):
+            language, code = PS.parse_coding_answer(submitted.get(q["id"], ""), q["languages"])
+            result = J.judge(q["spec"], language, code, "all")
+            earned = marks * (result["passed"] / result["total"] if result["total"] else 0)
+            coding_feedback.append(f"{q.get('title', q['topic'])}: {result['verdict']} ({result['passed']}/{result['total']} tests, {language})")
+        elif q.get("type") == "coding":   # older attempts (Python-only format)
             result = grade_coding_answer(submitted.get(q["id"], ""), q["function_name"], q["tests"])
             earned = marks * result["fraction"]
             coding_feedback.append(f"{q.get('title', q['topic'])}: {result['detail']}")
@@ -287,6 +310,37 @@ def _check_final_challenge(user_skill, score: float, terminated: bool, course_na
 # ---------------------------------------------------------------------------
 # Submit
 # ---------------------------------------------------------------------------
+class ArenaCodeRun(BaseModel):
+    question_id: str = Field(..., max_length=60)
+    language: str = Field(..., pattern="^(python|java|javascript|sql)$")
+    code: str = Field(..., max_length=50_000)
+
+
+@router.post("/{attempt_id}/run-code")
+async def run_arena_coding(
+    attempt_id: str,
+    payload: ArenaCodeRun,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user),
+):
+    """The exam's "Run" button: test a coding answer on the visible EXAMPLE tests
+    only (their answers are already on screen). Hidden tests run on Submit."""
+    attempt = db.query(models.AssessmentSession).filter(models.AssessmentSession.id == attempt_id).first()
+    if not attempt or attempt.user_id != current_user.id:
+        raise HTTPException(status_code=404, detail="Attempt not found")
+    if attempt.submitted_at is not None:
+        raise HTTPException(status_code=409, detail="This attempt is already submitted.")
+    if attempt.expires_at and utc_now() > as_utc(attempt.expires_at) + dt.timedelta(seconds=ARENA_GRACE_SECONDS):
+        raise HTTPException(status_code=409, detail="Time is up for this attempt.")
+    q = next((q for q in attempt.questions if q.get("id") == payload.question_id and q.get("type") == "coding"), None)
+    if not q or not q.get("spec"):
+        raise HTTPException(status_code=404, detail="Coding question not found")
+    if payload.language not in q["languages"]:
+        raise HTTPException(status_code=400, detail="That language isn't allowed for this question.")
+    practice_rate_limit(current_user.id)
+    return await run_in_threadpool(J.judge, q["spec"], payload.language, payload.code, "sample")
+
+
 @router.post("/submit", response_model=schemas.AssessmentResult)
 def submit_assessment(
     payload: schemas.AssessmentSubmit,

@@ -41,7 +41,7 @@ ALLOWED_NODES = {
 
 BLOCKED_BUILTINS = {
     '__import__', 'eval', 'exec', 'open', 'globals', 'locals',
-    'compile', 'input'
+    'compile',
 }
 
 BLOCKED_MODULES = {
@@ -129,14 +129,53 @@ def main():
     import itertools
     import random
     import datetime
+    import heapq
+    import bisect
+    import functools
+    import re
+    import statistics
+    import types
+
+    class _AnyHint:
+        """Optional[X], Union[...] etc.: accepted in type hints, means nothing."""
+        def __getitem__(self, item):
+            return object
+
+    # LeetCode-style code writes "from typing import List, Optional". The real
+    # typing module can evaluate strings (an escape route), so a harmless stand-in.
+    typing_shim = types.SimpleNamespace(
+        List=list, Dict=dict, Set=set, Tuple=tuple, FrozenSet=frozenset,
+        Deque=collections.deque, DefaultDict=collections.defaultdict, Counter=collections.Counter,
+        Optional=_AnyHint(), Union=_AnyHint(), Any=object, Callable=_AnyHint(), Iterable=_AnyHint(),
+        Iterator=_AnyHint(), Generator=_AnyHint(), Sequence=_AnyHint(),
+    )
 
     ALLOWED_IMPORTS = {
         'math': math,
         'collections': collections,
         'itertools': itertools,
         'random': random,
-        'datetime': datetime
+        'datetime': datetime,
+        'heapq': heapq,
+        'bisect': bisect,
+        'functools': functools,
+        're': re,
+        'statistics': statistics,
+        'typing': typing_shim,
+        # Not allowed on purpose: string (Formatter.get_field) and operator
+        # (attrgetter) can reach dunder attributes from a computed string.
     }
+
+    stdin_reader = sys.stdin
+
+    def safe_input(prompt=''):
+        """input() reads the text the user typed in the "Input" box (stdin)."""
+        if prompt:
+            print(prompt, end='')
+        line = stdin_reader.readline()
+        if not line:
+            raise EOFError("No more input. Type your input in the Input box before running.")
+        return line.rstrip('\n')
 
     def _check_name(name):
         if not isinstance(name, str) or name.startswith('_'):
@@ -163,6 +202,11 @@ def main():
 
     safe_builtins = {
         'print': print,
+        'input': safe_input,
+        'EOFError': EOFError,
+        'OverflowError': OverflowError,
+        'RecursionError': RecursionError,
+        'oct': oct,
         'range': range,
         'len': len,
         'int': int,
@@ -236,6 +280,7 @@ def main():
     }
 
     compiled_code = compile(tree, '<string>', 'exec')
+    sys.setrecursionlimit(20000)  # recursive DSA solutions (trees, DFS) need more than 1000
     sys.addaudithook(security_audit_hook)  # from here on: no files, processes or sockets
 
     # Execute

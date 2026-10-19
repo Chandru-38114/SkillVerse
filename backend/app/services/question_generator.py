@@ -56,6 +56,9 @@ SKILL_ALIASES = {
     "web development": "Web Development",
     "web dev": "Web Development",
     "webdev": "Web Development",
+    "sql": "SQL",
+    "javascript": "JavaScript",
+    "js": "JavaScript",
 }
 
 SKILL_TOPICS = {
@@ -69,13 +72,6 @@ SKILL_TOPICS = {
 def canonical_skill(skill_name: str) -> str:
     key = " ".join(skill_name.strip().lower().split())
     return SKILL_ALIASES.get(key, skill_name.strip())
-
-
-CODING_SKILLS = {"Python", "Data Structures and Algorithms"}
-
-
-def supports_coding(skill: str) -> bool:
-    return skill in CODING_SKILLS
 
 
 LEVELS = {
@@ -114,26 +110,47 @@ class _GenAssessment(BaseModel):
     debugging_questions: List[_GenDebug]
 
 
-class _GenTestCase(BaseModel):
-    args_json: str
-    expected_json: str
-
-
-class _GenCodingProblem(BaseModel):
-    topic: str
-    title: str
-    problem: str
-    function_name: str
-    starter_code: str
-    test_cases: List[_GenTestCase]
-
-
-class _GenCodingSet(BaseModel):
-    problems: List[_GenCodingProblem]
-
-
 class _GenQuizSet(BaseModel):
     mcqs: List[_GenMCQ]
+
+
+# LeetCode-style Practice problems (typed, multi-language; see services/judge.py)
+class _GenParam(BaseModel):
+    name: str
+    type: str
+
+
+class _GenFnTest(BaseModel):
+    args_json: str
+    sample: bool = False
+
+
+class _GenSqlDataset(BaseModel):
+    insert_sql: str
+    sample: bool = False
+
+
+class _GenPracticeProblem(BaseModel):
+    title: str
+    topic: str
+    statement: str
+    constraints: List[str] = []
+    kind: str = "function"            # "function" or "sql"
+    function_name: str = ""
+    params: List[_GenParam] = []
+    returns: str = ""
+    output_param: str = ""
+    any_order: bool = False
+    reference_python: str = ""
+    tests: List[_GenFnTest] = []
+    sql_schema: str = ""
+    sql_reference: str = ""
+    sql_datasets: List[_GenSqlDataset] = []
+    ordered: bool = False
+
+
+class _GenPracticeSet(BaseModel):
+    problems: List[_GenPracticeProblem]
 
 
 # ── Configuration ────────────────────────────────────────────────────────────
@@ -162,7 +179,6 @@ N_TRACE = int(os.getenv("ARENA_N_TRACE", "5"))
 N_DEBUG = int(os.getenv("ARENA_N_DEBUG", "3"))
 N_CODING = int(os.getenv("ARENA_N_CODING", "2"))
 MIN_VALID = int(os.getenv("ARENA_MIN_VALID", "14"))  # fewer usable items than this -> try next model
-MIN_TEST_CASES = 3
 
 N_SESSION_QUIZ = 5
 MIN_SESSION_QUIZ_VALID = 3  # fewer usable items than this -> try next provider
@@ -189,29 +205,6 @@ Rules:
 - Explanations are one or two sentences.
 - {topic_line}
 - {level_line}"""
-
-
-def _coding_prompt(skill: str, level: str) -> str:
-    level_line = LEVELS.get(level, LEVELS["intermediate"])
-    return f"""Generate {N_CODING} Python problem-solving exercises for a "{skill}" assessment.
-Target difficulty: {level_line}
-
-For each problem return:
-- topic: a short topic name
-- title: a short title
-- problem: the problem statement in plain language, with NO example code or sample solution in it
-- function_name: a valid Python identifier for the function the student must write (snake_case, not starting with "_")
-- starter_code: a stub like "def {{function_name}}(...):\\n    pass"
-- test_cases: exactly 5 test cases, each with:
-    - args_json: a JSON array string of the arguments to pass, in order
-    - expected_json: a JSON string of the exact value the function must RETURN
-
-Hard rules:
-- The function must RETURN its answer, never print it.
-- Use only plain JSON-safe data: integers, strings, booleans, lists, dicts. No floats, no randomness,
-  no sets, nothing that depends on dict/set ordering, no dates or times.
-- The solution may only need: the builtins, plus the math, collections, itertools and datetime modules.
-- Test cases must be deterministic and fully specified by args_json and expected_json."""
 
 
 def _session_quiz_prompt(skill: str, level: str, summary: str, topics: List[str]) -> str:
@@ -318,52 +311,6 @@ def _to_quiz_questions(gen: _GenQuizSet, topics: List[str]) -> List[dict]:
             continue
         out.append(q)
     return out
-
-
-_FUNC_NAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
-
-
-def _convert_coding(item: _GenCodingProblem, allowed_topics: Optional[List[str]]) -> Optional[dict]:
-    name = item.function_name.strip()
-    if not _FUNC_NAME_RE.match(name) or name.startswith("_"):
-        return None
-    if not item.problem.strip() or not item.title.strip():
-        return None
-
-    tests = []
-    for tc in item.test_cases:
-        try:
-            args = json.loads(tc.args_json)
-            expected = json.loads(tc.expected_json)
-        except (ValueError, TypeError):
-            continue
-        if not isinstance(args, list):
-            continue
-        tests.append({"args": args, "expected": expected})
-    if len(tests) < MIN_TEST_CASES:
-        return None
-
-    topic = item.topic.strip() or "General"
-    if allowed_topics and topic not in allowed_topics:
-        match = next((t for t in allowed_topics if t.lower() == topic.lower()), None)
-        topic = match or topic
-
-    return {
-        "id": f"ai-code-{uuid.uuid4().hex[:10]}",
-        "topic": topic,
-        "type": "coding",
-        "marks": 5,
-        "title": item.title.strip(),
-        "question": item.problem.strip(),
-        "function_name": name,
-        "starter_code": item.starter_code.strip(),
-        "tests": tests,
-    }
-
-
-def _to_coding_questions(gen: _GenCodingSet, skill: str) -> List[dict]:
-    allowed = SKILL_TOPICS.get(skill)
-    return [q for q in (_convert_coding(p, allowed) for p in gen.problems[:N_CODING]) if q]
 
 
 # ── Gemini call with model fallback and 503 backoff ──────────────────────────
@@ -551,19 +498,6 @@ def _generate_text_unbounded(prompt: str) -> Optional[str]:
     return None
 
 
-def _generate_coding_questions(chain: List[Tuple[str, str]], client, skill: str, level: str) -> List[dict]:
-    prompt = _coding_prompt(skill, level)
-    for provider, model in chain:
-        try:
-            gen = _call(provider, model, prompt, _GenCodingSet, client)
-            problems = _to_coding_questions(gen, skill)
-            if problems:
-                return problems
-        except Exception as err:  # noqa: BLE001
-            logger.warning("[arena] coding generation failed with %s/%s: %s", provider, model, err)
-    return []
-
-
 def generate_assessment(skill_name: str, level: Optional[str] = None) -> List[dict]:
     """Return a list of questions WITH answers. Raises GenerationError if AI is unavailable."""
     chain = _provider_chain()
@@ -588,11 +522,8 @@ def generate_assessment(skill_name: str, level: Optional[str] = None) -> List[di
             questions = _to_questions(_call(provider, model, prompt, _GenAssessment, client), skill)
             if len(questions) >= MIN_VALID:
                 logger.info("[arena] generated %d questions for %s with %s/%s", len(questions), skill, provider, model)
-                if supports_coding(skill):
-                    try:
-                        questions += _generate_coding_questions(chain, client, skill, level)
-                    except Exception as err:  # noqa: BLE001
-                        logger.warning("[arena] coding questions unavailable for %s: %s", skill, err)
+                # Coding questions are added by the caller (services/practice_service.py),
+                # in the course's language, judged by services/judge.py.
                 return questions
             last_error = GenerationError(f"{provider}/{model} returned only {len(questions)} valid questions")
             logger.warning("[arena] %s", last_error)
@@ -642,6 +573,86 @@ def generate_session_quiz(skill: str, level: str, summary: str, topics: List[str
         except Exception as err:  # noqa: BLE001
             last_error = err
             logger.warning("[arena] session quiz generation failed with %s/%s: %s", provider, model, err)
+    raise GenerationError(str(last_error) if last_error else "No models configured")
+
+
+PRACTICE_TYPES = "int, long, double, bool, string, int[], long[], double[], bool[], string[], int[][], string[][], ListNode, TreeNode"
+PRACTICE_DIFFICULTY = {
+    "Easy": "Easy: one clear idea, a short loop or a simple data structure.",
+    "Medium": "Medium: needs a well-known technique (two pointers, hashing, BFS/DFS, sorting, a heap, simple DP).",
+    "Hard": "Hard: a non-obvious algorithm or careful edge cases, still solvable in about 40 lines.",
+}
+
+
+def _practice_prompt(course: str, difficulty: str, count: int, topic: Optional[str], kind: str, avoid: List[str]) -> str:
+    topic_line = f"Focus on the topic: {topic}." if topic else "Pick varied, classic topics for this course."
+    avoid_line = f"Do NOT repeat these existing problems: {', '.join(avoid[:40])}." if avoid else ""
+    if kind == "sql":
+        return f"""Write {count} original LeetCode-style SQL practice problem(s) for a "{course}" course.
+Difficulty: {PRACTICE_DIFFICULTY.get(difficulty, PRACTICE_DIFFICULTY['Easy'])}
+{topic_line} {avoid_line}
+
+For each problem set kind = "sql" and give:
+- title, topic (e.g. Joins, Aggregation, Subqueries, Filtering, Window Functions)
+- statement: markdown describing the tables (names and columns) and EXACTLY what the query must return
+  (column names, and whether rows must be ordered). No solution in the statement.
+- constraints: [] (may be empty)
+- sql_schema: CREATE TABLE statements only (SQLite syntax, no data)
+- sql_reference: a correct SQLite query that solves it
+- sql_datasets: 3 datasets, each an INSERT script for the tables (5-12 rows, include edge cases);
+  mark the first one sample = true
+- ordered: true only if the statement asks for a specific row order
+Leave the function fields empty."""
+    return f"""Write {count} original LeetCode-style coding problem(s) for a "{course}" course.
+Difficulty: {PRACTICE_DIFFICULTY.get(difficulty, PRACTICE_DIFFICULTY['Easy'])}
+{topic_line} {avoid_line}
+
+Learners solve them in Python, Java or JavaScript, so describe the problem in a language-neutral way.
+For each problem set kind = "function" and give:
+- title, topic (short), statement (markdown: the task, what to return, 1-2 worked examples in words;
+  NO solution code), constraints (short strings like "1 ≤ nums.length ≤ 1000")
+- function_name: camelCase, e.g. "maxProfit"
+- params: 1-4 parameters, each {{name (camelCase), type}}; type is one of: {PRACTICE_TYPES}
+  (ListNode = singly linked list written as [1,2,3]; TreeNode = binary tree in level order with null, e.g. [3,9,20,null,null,15,7])
+- returns: one of those types, or "void" when the function changes an array parameter in place
+  (then output_param = the name of that array parameter)
+- any_order: true only if the answer list may be in any order
+- reference_python: a correct Python solution written as
+  class Solution:
+      def {{function_name}}(self, ...):
+  using only built-ins plus math, collections, itertools, heapq, bisect, functools. It must RETURN the answer.
+- tests: 8 test cases; each args_json is a JSON array of the arguments in order (small inputs, at most
+  50 elements each, include edge cases like empty or single-element inputs where the constraints allow);
+  mark the first 2 as sample = true. Do NOT include expected outputs: the server computes them.
+Leave the sql fields empty."""
+
+
+def generate_practice_problems(course: str, difficulty: str = "Easy", count: int = 1,
+                               topic: Optional[str] = None, kind: str = "function",
+                               avoid: Optional[List[str]] = None) -> List[dict]:
+    """Ask the AI for raw Practice problems (dicts). The caller validates them and
+    computes expected answers by running the reference solution. Raises GenerationError."""
+    chain = _provider_chain()
+    if not chain:
+        raise GenerationError("No AI provider is configured (missing API keys for gemini/openrouter).")
+    prompt = _practice_prompt(canonical_skill(course), difficulty, count, topic, kind, avoid or [])
+    client = None
+    if any(provider == "gemini" for provider, _ in chain):
+        api_key = os.getenv("GEMINI_API_KEY")
+        if HAS_GENAI and api_key:
+            client = genai.Client(api_key=api_key)
+    last_error: Optional[Exception] = None
+    for provider, model in chain:
+        if provider == "gemini" and client is None:
+            continue
+        try:
+            gen = _call(provider, model, prompt, _GenPracticeSet, client)
+            if gen.problems:
+                return [p.model_dump() for p in gen.problems[:count]]
+            last_error = GenerationError(f"{provider}/{model} returned no problems")
+        except Exception as err:  # noqa: BLE001
+            last_error = err
+            logger.warning("[practice] generation failed with %s/%s: %s", provider, model, err)
     raise GenerationError(str(last_error) if last_error else "No models configured")
 
 

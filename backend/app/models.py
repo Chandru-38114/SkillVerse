@@ -295,6 +295,8 @@ class CompilerState(Base):
     session_id = Column(Integer, ForeignKey("sessions.id"), unique=True, nullable=False)
     code = Column(Text, nullable=False, default='print("Hello, SkillVerse!")')
     version = Column(Integer, default=0, nullable=False)
+    language = Column(String(20), default="python")   # python / java / javascript / sql / web
+    drafts = Column(Text, nullable=True)              # JSON {language: code}: one draft per language
     updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)
     
     session = relationship("Session")
@@ -694,3 +696,40 @@ class TopicScore(Base):
     __table_args__ = (
         Index("ix_topic_scores_user_skill", "user_id", "skill_id"),
     )
+
+
+class PracticeProblem(Base):
+    """A LeetCode-style Practice problem (hand-written bank or AI-written).
+    `spec` holds the signature + tests WITH expected answers (or SQL schema +
+    datasets): it never goes to the browser except the sample tests."""
+    __tablename__ = "practice_problems"
+
+    id = Column(Integer, primary_key=True, index=True)
+    slug = Column(String(120), unique=True, nullable=False, index=True)
+    course = Column(String(80), nullable=False, index=True)
+    title = Column(String(160), nullable=False)
+    difficulty = Column(String(10), nullable=False, default="Easy")   # Easy / Medium / Hard
+    topics = Column(JSON, nullable=False, default=list)
+    statement = Column(Text, nullable=False)
+    constraints = Column(JSON, nullable=False, default=list)
+    kind = Column(String(10), nullable=False, default="function")    # function / sql
+    spec = Column(JSON, nullable=False)
+    reference = Column(Text, nullable=True)                           # server-only reference solution
+    source = Column(String(10), nullable=False, default="bank")       # bank / ai
+    created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    created_at = Column(DateTime, default=utc_now, nullable=False)
+
+
+class PracticeSubmission(Base):
+    """One Submit on a Practice problem."""
+    __tablename__ = "practice_submissions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    problem_id = Column(Integer, ForeignKey("practice_problems.id"), nullable=False, index=True)
+    language = Column(String(20), nullable=False)
+    code = Column(Text, nullable=False)
+    verdict = Column(String(30), nullable=False)
+    passed = Column(Integer, nullable=False, default=0)
+    total = Column(Integer, nullable=False, default=0)
+    created_at = Column(DateTime, default=utc_now, nullable=False)

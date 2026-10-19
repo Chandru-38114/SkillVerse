@@ -6,12 +6,15 @@ Code compiler.
 - GET/PUT /compiler/{session_id}/state   load / save the shared editor
 - WS  /compiler/{session_id}/ws     live code sync between tutor and learner
 
-Only Python runs, in the sandbox (services/code_runner.py + sandbox.py).
+Languages: python and sql run on this server in sandboxes; java and javascript run
+on the separate code runner (services/code_exec.py). HTML/CSS/JS "web" pages are
+previewed in the browser and never sent here to run.
+The shared editor remembers the current language and one draft per language.
 """
 import asyncio
 import json
 import time
-from typing import Optional
+from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel, Field
@@ -20,7 +23,7 @@ from starlette.concurrency import run_in_threadpool
 
 from .. import models, auth
 from ..database import get_db, SessionLocal
-from ..services.code_runner import run_python
+from ..services.code_exec import run_program
 from ..services.session_access import get_session_for_participant, is_participant
 from ..ws_manager import SessionRoomManager
 
@@ -29,35 +32,45 @@ router = APIRouter(prefix="/compiler", tags=["compiler"])
 MAX_RELAYED_OUTPUT_CHARS = 20_000
 MAX_SHARED_CODE_CHARS = 50_000
 DEFAULT_CODE = 'print("Hello, SkillVerse!")'
+EDITOR_LANGUAGES = ("python", "java", "javascript", "sql", "web")
+LANG_PATTERN = "^(python|java|javascript|sql)$"
 SAVE_DELAY_SECONDS = 2.0  # live edits are saved 2 s after the last keystroke
 
 
 class RunRequest(BaseModel):
-    code: str = Field(..., max_length=10000)
+    code: str = Field(..., max_length=MAX_SHARED_CODE_CHARS)
+    language: str = Field("python", pattern=LANG_PATTERN)
+    stdin: str = Field("", max_length=20000)
 
 
 class RunResponse(BaseModel):
     output: str
     error: Optional[str] = None
+    status: str = "ok"
+    sql: Optional[List[Dict[str, Any]]] = None   # result tables for SQL
+    time_ms: Optional[int] = None
 
 
 class CompilerSaveRequest(BaseModel):
     code: str = Field(..., max_length=MAX_SHARED_CODE_CHARS)
+    language: Optional[str] = Field(None, pattern="^(python|java|javascript|sql|web)$")
 
 
 class CompilerResponse(BaseModel):
     code: str
     version: int
+    language: str = "python"
+    drafts: Dict[str, str] = {}
 
 
 # ---------------------------------------------------------------------------
 # Running code
 # ---------------------------------------------------------------------------
-def execute_python(code: str) -> RunResponse:
-    """Run untrusted Python in the sandbox with an empty environment and hard limits.
-    The child never sees DATABASE_URL, GEMINI_API_KEY or any other server secret."""
-    result = run_python(code)
-    return RunResponse(output=result["output"], error=result["error"])
+def execute(payload: RunRequest) -> RunResponse:
+    """Run learner code in its language's sandbox (services/code_exec.py).
+    Nothing that runs here ever sees DATABASE_URL, GEMINI_API_KEY or other secrets."""
+    r = run_program(payload.language, payload.code, payload.stdin)
+    return RunResponse(output=r["output"] or "", error=r["error"], status=r["status"], sql=r["sql"], time_ms=r["time_ms"])
 
 
 # Declared BEFORE "/{session_id}/run" so "arena" is not parsed as a session id.
@@ -66,8 +79,8 @@ def run_arena_code(
     payload: RunRequest,
     current_user: models.User = Depends(auth.get_current_user),
 ):
-    """Code runner for the Skill Arena: any signed-in user, no learning session needed."""
-    return execute_python(payload.code)
+    """Code runner for the Skill Arena and Practice: any signed-in user, no session needed."""
+    return execute(payload)
 
 
 @router.post("/{session_id}/run", response_model=RunResponse)
@@ -80,21 +93,35 @@ def run_code(
     get_session_for_participant(
         db, session_id, current_user.id, "Not authorized to access this session's compiler"
     )
-    return execute_python(payload.code)
+    return execute(payload)
 
 
 # ---------------------------------------------------------------------------
 # Saved editor state
 # ---------------------------------------------------------------------------
-def _store_code(db: Session, session_id: int, code: str) -> models.CompilerState:
-    """Create or update the saved code for a session and bump its version."""
+def _drafts(comp) -> dict:
+    try:
+        d = json.loads(comp.drafts or "{}") if comp else {}
+        return d if isinstance(d, dict) else {}
+    except ValueError:
+        return {}
+
+
+def _store_code(db: Session, session_id: int, code: str, language: Optional[str] = None) -> models.CompilerState:
+    """Create or update the saved code for a session and bump its version.
+    The code is also kept as that language's draft, so switching back restores it."""
     comp = db.query(models.CompilerState).filter_by(session_id=session_id).first()
     if not comp:
-        comp = models.CompilerState(session_id=session_id, code=code, version=1)
+        comp = models.CompilerState(session_id=session_id, code=code, version=1, language=language or "python")
         db.add(comp)
     else:
         comp.code = code
         comp.version += 1
+        if language:
+            comp.language = language
+    drafts = _drafts(comp)
+    drafts[comp.language or "python"] = code
+    comp.drafts = json.dumps(drafts)[:MAX_SHARED_CODE_CHARS * 5]
     db.commit()
     return comp
 
@@ -108,8 +135,8 @@ def get_compiler_state(
     get_session_for_participant(db, session_id, current_user.id)
     comp = db.query(models.CompilerState).filter_by(session_id=session_id).first()
     if not comp:
-        return {"code": DEFAULT_CODE, "version": 0}
-    return {"code": comp.code, "version": comp.version}
+        return {"code": DEFAULT_CODE, "version": 0, "language": "python", "drafts": {}}
+    return {"code": comp.code, "version": comp.version, "language": comp.language or "python", "drafts": _drafts(comp)}
 
 
 @router.put("/{session_id}/state")
@@ -120,7 +147,7 @@ def save_compiler_state(
     db: Session = Depends(get_db),
 ):
     get_session_for_participant(db, session_id, current_user.id)
-    comp = _store_code(db, session_id, payload.code)
+    comp = _store_code(db, session_id, payload.code, payload.language)
     db.refresh(comp)
     return {"status": "saved", "version": comp.version}
 
@@ -132,19 +159,19 @@ compiler_manager = SessionRoomManager()
 compiler_save_tasks = {}  # session_id -> the pending delayed save
 
 
-def _save_code_now(session_id: int, new_code: str) -> None:
+def _save_code_now(session_id: int, new_code: str, language: Optional[str] = None) -> None:
     db = SessionLocal()
     try:
-        _store_code(db, session_id, new_code)
+        _store_code(db, session_id, new_code, language)
     finally:
         db.close()
 
 
-async def debounced_save_compiler(session_id: int, new_code: str):
+async def debounced_save_compiler(session_id: int, new_code: str, language: Optional[str] = None):
     """Save after SAVE_DELAY_SECONDS; a newer edit cancels this one first."""
     try:
         await asyncio.sleep(SAVE_DELAY_SECONDS)
-        await run_in_threadpool(_save_code_now, session_id, new_code)
+        await run_in_threadpool(_save_code_now, session_id, new_code, language)
     except asyncio.CancelledError:
         pass
 
@@ -177,18 +204,22 @@ async def compiler_websocket(websocket: WebSocket, session_id: int, token: str):
                 msg = json.loads(data)
                 if msg.get("type") == "update_code":
                     new_code = msg.get("code")
+                    language = msg.get("language")
+                    if language not in EDITOR_LANGUAGES:
+                        language = None
                     if not isinstance(new_code, str) or len(new_code) > MAX_SHARED_CODE_CHARS:
                         continue
                     # Restart the delayed save with the newest code.
                     if session_id in compiler_save_tasks:
                         compiler_save_tasks[session_id].cancel()
                     compiler_save_tasks[session_id] = asyncio.create_task(
-                        debounced_save_compiler(session_id, new_code)
+                        debounced_save_compiler(session_id, new_code, language)
                     )
                     # Send the edit to the partner immediately.
                     await compiler_manager.broadcast_text(session_id, user_id, json.dumps({
                         "type": "update_code",
                         "code": new_code,
+                        "language": language,
                         "version": int(time.time() * 1000),
                     }))
                 elif msg.get("type") == "execution_result":

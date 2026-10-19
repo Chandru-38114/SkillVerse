@@ -19,7 +19,7 @@ def _limit_resources():  # runs in the child process before the sandbox starts (
     resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
 
 
-def run_python(code: str, timeout: float = 4.0) -> dict:
+def run_python(code: str, timeout: float = 4.0, stdin: str = "") -> dict:
     """Run untrusted Python in the sandbox with an empty environment and hard limits.
     The child never sees DATABASE_URL, GEMINI_API_KEY or any other server secret."""
     temp_path = None
@@ -31,6 +31,7 @@ def run_python(code: str, timeout: float = 4.0) -> dict:
             [sys.executable, '-I', '-S', SANDBOX_SCRIPT, temp_path],  # isolated mode, no site-packages
             capture_output=True,
             text=True,
+            input=stdin or "",
             timeout=timeout,
             env={},
             preexec_fn=_limit_resources if os.name == 'posix' else None,
