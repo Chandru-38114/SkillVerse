@@ -20,6 +20,7 @@ directly; the other three don't call it at all.
 | `attempt_integrity_test.py` | End-to-end `/assessments/start` and `/assessments/submit` behavior via `TestClient`, with a stubbed generator: resume without reroll, no answer keys sent to the client, violations recorded as evidence only (never affecting score), 409 on resubmission, expiry handling, and the 100.0 / 66.7 / 33.3 scoring combinations. | Exam-integrity guarantees |
 | `migration_test.py` | The startup schema migration in `app/main.py`: upgrading a legacy `assessment_sessions` table (missing `expires_at`/`violations`/`terminated`) in place, preserving the existing row with safe defaults, and idempotency on a second boot. | Migration safety |
 | `latency_test.py` | Real question-generation latency against the **deployed** backend (not a stub) — ten `POST /assessments/start` calls for Python, reporting mean/min/max and flagging any bank-fallback responses so they can be excluded from the AI-generation figure. | Generation latency |
+| `cycle_matching_simulation.py` | Pure-Python simulation (no app, no database): a seeded cohort of 100 members, eligibility gap 2 / floor 2, and the share of learners matched by pairs only versus pairs plus three-way cycles across availability levels (200 trials per point, seed 2026). | Simulated effect of three-way cycles |
 
 ## Running
 
@@ -30,6 +31,7 @@ python eval/sandbox_security_test.py
 python eval/grader_correctness_test.py
 python eval/attempt_integrity_test.py
 python eval/migration_test.py
+python eval/cycle_matching_simulation.py
 
 # Latency test needs a real deployment and a logged-in user's token:
 EVAL_BASE_URL=https://your-backend.onrender.com EVAL_JWT=eyJ... python eval/latency_test.py

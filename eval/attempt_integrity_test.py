@@ -4,7 +4,12 @@ Gemini API). Verifies: resume-without-reroll, no answer keys leaked to the
 client, violations recorded as evidence only (never affecting the score),
 one-submission-per-attempt (409 on resubmit), expiry handling, and the three
 scoring combinations the paper quotes.
+
+Coding questions are LeetCode-style judged problems (services/judge.py). The
+stub serves two fixed Python problems from the Practice bank, so the run is
+deterministic; their reference solutions are the "correct code" answers.
 """
+import json
 import datetime as dt
 import sys
 
@@ -21,6 +26,7 @@ from app import auth  # noqa: E402
 from app.database import engine, SessionLocal, Base  # noqa: E402
 import app.main as app_main  # noqa: E402
 import app.routers.assessments as assessments_router  # noqa: E402
+from app.services import practice_service as PS  # noqa: E402
 
 CALL_COUNT = {"n": 0}
 
@@ -67,10 +73,21 @@ def fake_generate_assessment(skill_name, level=None):
     return questions
 
 
-CORRECT_CODE = {
-    "fixed-code-0": "def solve_0(x):\n    return x + 1",
-    "fixed-code-1": "def solve_1(x):\n    return x * 2",
-}
+CORRECT_CODE = {}   # question id -> JSON answer {"language", "code"}, filled by the coding stub
+FIXED_CODING_SLUGS = ("count-vowels", "fizz-buzz")
+
+
+def fake_arena_coding(db, course, level, count=2, use_ai=True):
+    """Deterministic stand-in for practice_service.arena_coding_questions:
+    two judged Python problems (5 marks each) from the built-in bank."""
+    PS.ensure_bank(db)
+    out = []
+    for slug in FIXED_CODING_SLUGS[:count]:
+        p = db.query(models.PracticeProblem).filter_by(slug=slug).one()
+        q = PS.to_arena_question(p, ["python"])
+        CORRECT_CODE[q["id"]] = json.dumps({"language": "python", "code": p.reference})
+        out.append(q)
+    return out
 
 
 def all_correct_answers(question_ids):
@@ -99,7 +116,7 @@ def correct_objective_blank_code(question_ids):
         if qid.startswith("fixed-mcq-"):
             answers.append({"question_id": qid, "answer": "OptA"})
         else:
-            answers.append({"question_id": qid, "answer": ""})
+            answers.append({"question_id": qid, "answer": json.dumps({"language": "python", "code": ""})})
     return answers
 
 
@@ -112,6 +129,7 @@ def main() -> bool:
     Base.metadata.create_all(engine)
 
     assessments_router.generate_assessment = fake_generate_assessment
+    assessments_router.PS.arena_coding_questions = fake_arena_coding
 
     db = SessionLocal()
     user = models.User(
