@@ -133,7 +133,7 @@ Frontend uses `VITE_API_URL`. Never hardcode or print secrets.
 - Commit style: `type(scope): short description`, e.g. `fix(chat): ...`, `feat(skill-arena): ...`.
 
 ## Checks before committing
-- Backend: `python -m pytest backend/tests -q` (97 tests) and `python -m py_compile` on changed files.
+- Backend: `python -m pytest backend/tests -q` (113 tests) and `python -m py_compile` on changed files.
 - Frontend: `npm run build` must succeed.
 - Reuse the shared helpers above instead of copying code (storage, session checks,
   time zones, WebSocket rooms, uploads in api.js).
@@ -162,6 +162,24 @@ Frontend uses `VITE_API_URL`. Never hardcode or print secrets.
   both joined can't be cancelled. The post-session reassessment is for the learner only (`services/topic_scores.py`).
 - Old data with two rows for one course: `python scripts/fix_course_roles.py` (dry run), then
   `--apply`. Tests: `backend/tests/test_course_rules.py`.
+
+## Learning Rooms (group rooms) — `routers/rooms.py`
+- Tables `learning_rooms`, `room_members`, `room_messages`. A room is reached by its random `code`
+  (link `/rooms/<code>`). Public rooms are listed; private rooms work only with the link.
+- Host: edit, lock/unlock, public/private, remove people (they can't rejoin), close. Max 8 people (mesh video).
+- One WebSocket per member `/rooms/ws/{code}?token=`: `chat` (saved), call signalling (`call_start` host only,
+  `call_join` -> `call_peers`, `offer/answer/candidate` with `to`), and relayed `update_code`,
+  `execution_result`, `update_elements`. Frontend: `pages/rooms.jsx`, `pages/room.jsx`,
+  `components/rooms/GroupCall.jsx`. `Compiler` and `Whiteboard` take an optional `store` prop
+  (load/save/run) so rooms reuse them; without it they use the Learning Arena session as before.
+
+## Fame page — `services/fame.py`, `routers/fame.py`, `pages/fame.jsx`
+- Top Teachers (Fame = 45% teaching + 35% knowledge + 20% activity), Most Knowledgeable, Rising Stars.
+- Knowledge uses only COUNTED weekly attempts (first per week). Ratings: one vote per reviewer, rule-flagged
+  spam removed, Bayesian prior. Activity capped at 10 sessions.
+- Review summaries: `question_generator.analyze_teacher_reviews` (AI, cached in `review_insights`),
+  keyword analysis as fallback. The AI never changes a score. Weekly streak/improvement badges are computed
+  from `weekly_attempts` (no table).
 
 ## Known gaps / roadmap
 - Built (final round): topic scores (`topic_scores` table), post-session reassessment,

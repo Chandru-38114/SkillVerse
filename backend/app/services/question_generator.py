@@ -675,3 +675,58 @@ def sanitize(questions: List[dict]) -> List[dict]:
                 "question": q["question"], "options": q.get("options", []),
             })
     return out
+
+
+# ---------------------------------------------------------------------------
+# Fame page: analyse the reviews a teacher received
+# ---------------------------------------------------------------------------
+REVIEW_QUALITIES = ("clarity", "knowledge", "communication", "helpfulness", "patience")
+
+
+def analyze_teacher_reviews(reviews: List[dict], timeout: float = 45) -> Optional[dict]:
+    """reviews: [{"id", "rating", "comment"}]. Returns
+    {"summary", "strengths": [..], "improvements": [..], "qualities": {quality: 1-5 | None},
+     "flagged": [review ids that look spammy/irrelevant]} or None if the AI is unavailable.
+    The AI only describes the reviews; ratings and counts still decide the ranking."""
+    usable = [r for r in reviews if (r.get("comment") or "").strip()]
+    if not usable:
+        return None
+    lines = "\n".join(
+        f'- id={r["id"]} rating={r["rating"]}/5: {(r["comment"] or "").strip()[:400]}' for r in usable[:40]
+    )
+    prompt = (
+        "You analyse student reviews of a peer tutor on SkillVerse, a peer-learning platform.\n"
+        "Reviews (each with an id and a 1-5 star rating):\n"
+        f"{lines}\n\n"
+        "Reply with ONLY a JSON object, no other text, in exactly this shape:\n"
+        '{"summary": "2 short sentences about how this tutor teaches, based only on the reviews",'
+        ' "strengths": ["up to 3 short phrases"], "improvements": ["up to 2 short phrases, or empty"],'
+        ' "qualities": {"clarity": 1-5 or null, "knowledge": 1-5 or null, "communication": 1-5 or null,'
+        ' "helpfulness": 1-5 or null, "patience": 1-5 or null},'
+        ' "flagged": [ids of reviews that are spam, irrelevant to teaching, or suspicious]}\n'
+        "Use null for a quality the reviews say nothing about. Do not invent facts."
+    )
+    text = generate_text(prompt, timeout=timeout)
+    if not text:
+        return None
+    try:
+        raw = _CODE_FENCE_RE.sub("", text.strip())
+        start, end = raw.find("{"), raw.rfind("}")
+        data = json.loads(raw[start:end + 1])
+    except (ValueError, TypeError):
+        logger.warning("[fame] review analysis was not valid JSON")
+        return None
+    if not isinstance(data, dict) or not isinstance(data.get("summary"), str):
+        return None
+    ids = {r["id"] for r in reviews}
+    qualities = {}
+    for q in REVIEW_QUALITIES:
+        v = (data.get("qualities") or {}).get(q)
+        qualities[q] = max(1, min(5, int(v))) if isinstance(v, (int, float)) else None
+    return {
+        "summary": data["summary"].strip()[:400],
+        "strengths": [str(s)[:60] for s in (data.get("strengths") or [])][:3],
+        "improvements": [str(s)[:60] for s in (data.get("improvements") or [])][:2],
+        "qualities": qualities,
+        "flagged": [i for i in (data.get("flagged") or []) if i in ids],
+    }

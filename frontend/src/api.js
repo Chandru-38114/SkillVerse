@@ -405,6 +405,29 @@ export const api = {
     request(`/community/hackathons/${hackathonId}/join`, { method: "POST" }),
   completeHackathon: (hackathonId) =>
     request(`/community/hackathons/${hackathonId}/complete`, { method: "POST" }),
+
+  // Fame page
+  getFame: () => request("/fame", { bypassCache: true }),
+  getTeacherInsight: (userId, refresh = false) =>
+    request(`/fame/teacher/${userId}/insight${refresh ? "?refresh=true" : ""}`, { bypassCache: true }),
+  getMyWeekly: () => request("/fame/me/weekly", { bypassCache: true }),
+
+  // Learning Rooms (group rooms)
+  listRooms: () => request("/rooms", { bypassCache: true }),
+  createRoom: (data) => request("/rooms", { method: "POST", body: data }),
+  getRoom: (code) => request(`/rooms/${encodeURIComponent(code)}`, { bypassCache: true }),
+  joinRoom: (code) => request(`/rooms/${encodeURIComponent(code)}/join`, { method: "POST" }),
+  leaveRoom: (code) => request(`/rooms/${encodeURIComponent(code)}/leave`, { method: "POST" }),
+  updateRoom: (code, data) => request(`/rooms/${encodeURIComponent(code)}`, { method: "PATCH", body: data }),
+  removeRoomMember: (code, userId) => request(`/rooms/${encodeURIComponent(code)}/remove/${userId}`, { method: "POST" }),
+  closeRoom: (code) => request(`/rooms/${encodeURIComponent(code)}`, { method: "DELETE" }),
+  getRoomMessages: (code) => request(`/rooms/${encodeURIComponent(code)}/messages`, { bypassCache: true }),
+  getRoomWhiteboard: (code) => request(`/rooms/${encodeURIComponent(code)}/whiteboard`, { bypassCache: true }),
+  saveRoomWhiteboard: (code, state) => request(`/rooms/${encodeURIComponent(code)}/whiteboard`, { method: "PUT", body: { state } }),
+  getRoomCode: (code) => request(`/rooms/${encodeURIComponent(code)}/code`, { bypassCache: true }),
+  saveRoomCode: (code, text, language) => request(`/rooms/${encodeURIComponent(code)}/code`, { method: "PUT", body: { code: text, language } }),
+  runRoomCode: (code, text, language = "python", stdin = "") =>
+    request(`/rooms/${encodeURIComponent(code)}/run`, { method: "POST", body: { code: text, language, stdin } }),
 };
 
 // The GET cache is keyed by path only, so it must be emptied whenever the
@@ -440,6 +463,13 @@ export function chatSocketUrl(requestId) {
   const token = getToken();
   const wsBase = BASE_URL.replace(/^http/, "ws");
   return `${wsBase}/chat/ws/${requestId}?token=${encodeURIComponent(token || "")}`;
+}
+
+// Learning Room socket: chat, call signalling, live code and whiteboard.
+export function roomSocketUrl(code) {
+  const token = getToken();
+  const wsBase = BASE_URL.replace(/^http/, "ws");
+  return `${wsBase}/rooms/ws/${encodeURIComponent(code)}?token=${encodeURIComponent(token || "")}`;
 }
 
 export const getAvatarUrl = (url) => {

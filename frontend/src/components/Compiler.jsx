@@ -22,8 +22,17 @@ function sqlToText(results) {
  * - Python & SQL run on the SkillVerse server; Java & JavaScript on the code runner;
  *   HTML/CSS/JS run only in this browser, in a sealed preview.
  */
-export default function Compiler({ sessionId }) {
+export default function Compiler({ sessionId, store }) {
   const user = getSessionUser();
+  // Where the code is loaded, saved and run. Defaults to the Learning Arena session;
+  // Learning Rooms pass their own store.
+  const io = store || {
+    load: () => api.getCompilerState(sessionId),
+    save: (code, lang) => api.saveCompilerState(sessionId, code, lang),
+    run: (code, lang, stdin) => api.runCompiler(sessionId, code, lang, stdin),
+  };
+  const ioRef = useRef(io);
+  ioRef.current = io;
   const [language, setLanguage] = useState('python');
   const [code, setCode] = useState(HELLO.python);
   const draftsRef = useRef({});
@@ -51,7 +60,7 @@ export default function Compiler({ sessionId }) {
   // 1. Load the saved editor (language, code and every language's draft).
   useEffect(() => {
     let alive = true;
-    api.getCompilerState(sessionId).then(res => {
+    ioRef.current.load().then(res => {
       if (!alive || !res) return;
       const lang = LANGS.includes(res.language) ? res.language : 'python';
       draftsRef.current = res.drafts || {};
@@ -116,7 +125,7 @@ export default function Compiler({ sessionId }) {
     setSaveStatus('Saving…');
     saveTimerRef.current = setTimeout(async () => {
       try {
-        await api.saveCompilerState(sessionId, newCode, lang);
+        await ioRef.current.save(newCode, lang);
         setSaveStatus('Saved');
         setTimeout(() => setSaveStatus(''), 2000);
       } catch (err) {
@@ -169,7 +178,7 @@ export default function Compiler({ sessionId }) {
     if (language === 'web') { setPreviewRun(n => n + 1); return; }
     setIsRunning(true); setError(''); setOutput(''); setSqlResult(null);
     try {
-      const res = await api.runCompiler(sessionId, code, language, USES_STDIN.has(language) ? stdin : '');
+      const res = await ioRef.current.run(code, language, USES_STDIN.has(language) ? stdin : '');
       setError(res.error || '');
       setOutput(res.output || '');
       if (res.sql) setSqlResult(res.sql);

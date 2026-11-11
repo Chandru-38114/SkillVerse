@@ -32,7 +32,7 @@ from .routers import (  # noqa: E402
     auth, users, assessments, marketplace, requests, chat, reviews,
     sessions, compiler, whiteboard, materials, progress, certificates,
     notifications, gamification, exchanges, report_card, teacher_stats,
-    demand, community, badges, practice,
+    demand, community, badges, practice, fame, rooms,
 )
 
 
@@ -128,6 +128,7 @@ for _router in (
     auth, users, assessments, marketplace, requests, chat, sessions, compiler,
     whiteboard, materials, progress, reviews, certificates, notifications,
     gamification, exchanges, report_card, teacher_stats, demand, community, badges, practice,
+    fame, rooms,
 ):
     app.include_router(_router.router)
 

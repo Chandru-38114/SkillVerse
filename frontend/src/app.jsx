@@ -36,6 +36,9 @@ const QuestReview = lazy(() => import('./pages/quest_review'))
 const Community = lazy(() => import('./pages/community'))
 const Practice = lazy(() => import('./pages/practice'))
 const PracticeProblem = lazy(() => import('./pages/practice_problem'))
+const Rooms = lazy(() => import('./pages/rooms'))
+const Room = lazy(() => import('./pages/room'))
+const Fame = lazy(() => import('./pages/fame'))
 
 import { api, saveSession, clearSession } from './api'
 import { getSessionUser, getToken } from './api'
@@ -181,6 +184,9 @@ export default function App() {
             />
             <Route path="/gamification" element={<ProtectedRoute><Gamification /></ProtectedRoute>} />
             <Route path="/community" element={<ProtectedRoute><Community /></ProtectedRoute>} />
+            <Route path="/rooms" element={<ProtectedRoute><Rooms /></ProtectedRoute>} />
+            <Route path="/rooms/:code" element={<ProtectedRoute><Room /></ProtectedRoute>} />
+            <Route path="/fame" element={<ProtectedRoute><Fame /></ProtectedRoute>} />
             {/* The reset step lives on the forgot-password page */}
             <Route path="/reset-password" element={<Navigate to="/forgot-password" replace />} />
             {/* Unknown addresses used to show a blank page */}

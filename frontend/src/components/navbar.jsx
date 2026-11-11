@@ -10,6 +10,7 @@ const NAV = [
   { id: 'home', to: '/dashboard', label: 'Home' },
   { id: 'discover', to: '/marketplace', label: 'Discover' },
   { id: 'community', to: '/community', label: 'Community' },
+  { id: 'rooms', to: '/rooms', label: 'Rooms' },
   {
     id: 'connect', to: '/messages', label: 'Connect',
     items: [
@@ -23,6 +24,7 @@ const NAV = [
     id: 'journey', to: '/gamification', label: 'Journey',
     items: [
       { to: '/gamification', label: 'Skill Journey', sub: 'Points, badges, leaderboard' },
+      { to: '/fame', label: 'Hall of Fame', sub: 'Top teachers, rising stars' },
       { to: '/progress', label: 'Progress', sub: 'Skills and topic mastery' },
       { to: '/assessment', label: 'Assessments', sub: 'Skill Arena' },
       { to: '/practice', label: 'Practice', sub: 'Coding problems, LeetCode style' },
@@ -31,7 +33,7 @@ const NAV = [
 ]
 
 const CONNECT_ROUTES = ['/messages', '/requests', '/exchanges', '/sessions', '/chat']
-const JOURNEY_ROUTES = ['/gamification', '/progress', '/assessment', '/practice']
+const JOURNEY_ROUTES = ['/gamification', '/progress', '/assessment', '/practice', '/fame']
 
 const Chev = () => (
   <svg className="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -367,6 +369,7 @@ export default function Navbar() {
             <Link to="/dashboard" className={`ditem${location.pathname.startsWith('/dashboard') ? ' now' : ''}`}>Home</Link>
             <Link to="/marketplace" className={`ditem${location.pathname.startsWith('/marketplace') ? ' now' : ''}`}>Discover</Link>
             <Link to="/community" className={`ditem${location.pathname.startsWith('/community') ? ' now' : ''}`}>Community</Link>
+            <Link to="/rooms" className={`ditem${location.pathname.startsWith('/rooms') ? ' now' : ''}`}>Rooms</Link>
 
             <span className="lab">CONNECT</span>
             {(NAV.find(n => n.id === 'connect')?.items || []).map(it => (

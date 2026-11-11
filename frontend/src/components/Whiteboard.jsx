@@ -3,8 +3,16 @@ import { useState, useRef, useEffect, useCallback, useContext } from 'react';
 import { api } from '../api';
 import { SessionWebSocketContext } from './VideoChat';
 
-export default function Whiteboard({ sessionId }) {
+export default function Whiteboard({ sessionId, store }) {
   const svgRef = useRef(null);
+  // Where the board is loaded and saved. Defaults to the Learning Arena session;
+  // Learning Rooms pass their own store.
+  const io = store || {
+    load: () => api.getWhiteboard(sessionId),
+    save: (state) => api.saveWhiteboard(sessionId, state),
+  };
+  const ioRef = useRef(io);
+  ioRef.current = io;
   
   const [elements, setElements] = useState([]);
   const [history, setHistory] = useState([[]]);
@@ -41,7 +49,7 @@ export default function Whiteboard({ sessionId }) {
   useEffect(() => {
     async function loadBoard() {
       try {
-        const res = await api.getWhiteboard(sessionId);
+        const res = await ioRef.current.load();
         if (res.state) {
           const parsed = JSON.parse(res.state);
           isRemoteUpdate.current = true;
@@ -114,7 +122,7 @@ export default function Whiteboard({ sessionId }) {
     setSaveStatus('Saving...');
     const timer = setTimeout(async () => {
       try {
-        await api.saveWhiteboard(sessionId, stateStr);
+        await ioRef.current.save(stateStr);
         setSaveStatus('Saved');
         setTimeout(() => setSaveStatus(''), 2000);
       } catch {

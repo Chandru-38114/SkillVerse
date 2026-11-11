@@ -733,3 +733,66 @@ class PracticeSubmission(Base):
     passed = Column(Integer, nullable=False, default=0)
     total = Column(Integer, nullable=False, default=0)
     created_at = Column(DateTime, default=utc_now, nullable=False)
+
+
+# ── Fame page: cached AI analysis of a teacher's reviews ──────────────────────
+
+class ReviewInsight(Base):
+    """AI (or keyword) analysis of the reviews a teacher received. Recomputed
+    only when the set of reviews changes (`review_key`)."""
+    __tablename__ = "review_insights"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, unique=True, index=True)
+    review_key = Column(String(64), nullable=False)      # hash of the review ids + texts analysed
+    data = Column(Text, nullable=False)                   # JSON: summary, strengths, improvements, qualities, flagged
+    source = Column(String(20), nullable=False, default="keywords")   # "ai" | "keywords"
+    updated_at = Column(DateTime, default=utc_now, nullable=False)
+
+
+# ── Learning Rooms: group rooms with chat, call, shared code and board ───────
+
+class LearningRoom(Base):
+    __tablename__ = "learning_rooms"
+
+    id = Column(Integer, primary_key=True, index=True)
+    code = Column(String(24), unique=True, index=True, nullable=False)   # unguessable id used in the link
+    title = Column(String(120), nullable=False)
+    description = Column(Text, default="")
+    skill = Column(String(60), default="")
+    host_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    visibility = Column(String(10), default="public", nullable=False)   # "public" | "private"
+    max_participants = Column(Integer, default=8, nullable=False)
+    status = Column(String(10), default="open", nullable=False)        # "open" | "locked" | "closed"
+    whiteboard_state = Column(Text, default="[]")
+    code_state = Column(Text, default="")                               # JSON {code, language, drafts, version}
+    created_at = Column(DateTime, default=utc_now, nullable=False)
+
+    host = relationship("User", foreign_keys=[host_id])
+
+
+class RoomMember(Base):
+    __tablename__ = "room_members"
+
+    id = Column(Integer, primary_key=True, index=True)
+    room_id = Column(Integer, ForeignKey("learning_rooms.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    role = Column(String(10), default="member", nullable=False)        # "host" | "member"
+    status = Column(String(10), default="active", nullable=False)      # "active" | "left" | "removed"
+    joined_at = Column(DateTime, default=utc_now, nullable=False)
+
+    user = relationship("User")
+
+    __table_args__ = (UniqueConstraint("room_id", "user_id", name="uix_room_members_room_user"),)
+
+
+class RoomMessage(Base):
+    __tablename__ = "room_messages"
+
+    id = Column(Integer, primary_key=True, index=True)
+    room_id = Column(Integer, ForeignKey("learning_rooms.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    text = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=utc_now, nullable=False)
+
+    user = relationship("User")

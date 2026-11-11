@@ -1,0 +1,43 @@
+/* Fame page. Scoped under .sv-fame, same look as the V2 pages. */
+.sv-fame{
+  --acc:#FF8A3D; --accd:#C4581A; --accl:#FFE3CF;
+  font-family:Inter,system-ui,sans-serif;color:#29251F;background:#F8F3E9;min-height:100vh;padding:24px 16px 48px;
+}
+.sv-fame *{box-sizing:border-box}
+.sv-fame .wrap{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+.sv-fame h1{font-size:32px;font-weight:900;margin:0}
+.sv-fame h3{font-size:19px;font-weight:900;margin:0;overflow-wrap:anywhere}
+.sv-fame .muted{color:#6E6455}
+.sv-fame .eb{font-size:12px;font-weight:900;letter-spacing:.12em;color:#6E6455}
+.sv-fame-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:40px;padding:0 16px;border:2px solid #29251F;border-radius:10px;background:#FFFDF8;color:#29251F;font:800 14px Inter,sans-serif;cursor:pointer;box-shadow:0 3px 0 #29251F;text-decoration:none;white-space:nowrap}
+.sv-fame-btn.p{background:var(--acc)}
+.sv-fame-btn.sm{min-height:30px;padding:0 10px;font-size:12px}
+.sv-fame-btn:disabled{opacity:.5;cursor:not-allowed}
+.sv-fame-btn:focus-visible,.sv-fame-tabs button:focus-visible{outline:3px solid #A58D70;outline-offset:2px}
+.sv-fame-error{color:#9A2B1E;font-weight:700}
+.sv-fame-weekly{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;background:#D6F3EA;border:2px solid #29251F;border-radius:16px;padding:16px 18px;box-shadow:0 4px 0 #29251F}
+.sv-fame-tabs{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.sv-fame-tabs [role="tab"]{border:2px solid #29251F;border-radius:12px;padding:8px 14px;font:800 14px Inter,sans-serif;background:#FFFDF8;cursor:pointer;box-shadow:0 3px 0 #29251F;color:#29251F}
+.sv-fame-tabs [role="tab"][aria-selected="true"]{background:var(--acc);transform:translateY(2px);box-shadow:0 1px 0 #29251F}
+.sv-fame-formula{background:#FFFDF8;border:2px dashed #29251F;border-radius:14px;padding:12px 16px}
+.sv-fame-formula ul{margin:0 0 8px;padding-left:18px;font-weight:700;font-size:14px;line-height:1.6}
+.sv-fame-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px}
+@media (max-width:420px){.sv-fame-list{grid-template-columns:1fr}}
+.sv-fame-card{position:relative;display:flex;flex-direction:column;gap:12px;background:#FFFDF8;border:2px solid #29251F;border-radius:16px;padding:18px;box-shadow:0 4px 0 #D2BEA0,0 7px 0 #29251F}
+.sv-fame-card.featured{grid-column:1/-1;background:linear-gradient(135deg,#FFF4E0,#FFE3CF)}
+.sv-fame-rank{position:absolute;top:12px;right:14px;font-weight:900;font-size:20px;color:#C4581A}
+.sv-fame-avatar{display:inline-flex;align-items:center;justify-content:center;border-radius:50%;border:2px solid #29251F;background:var(--accl);font-weight:900;object-fit:cover;flex:none}
+.sv-fame-scores{display:flex;gap:8px;flex-wrap:wrap}
+.sv-fame-score{display:flex;flex-direction:column;align-items:center;min-width:70px;padding:6px 8px;border:2px solid #29251F;border-radius:12px;background:#F8F3E9}
+.sv-fame-score .v{font-size:20px;font-weight:900}
+.sv-fame-score .l{font-size:11px;font-weight:800;color:#6E6455;text-transform:uppercase;letter-spacing:.06em}
+.sv-fame-chips{display:flex;gap:6px;flex-wrap:wrap}
+.sv-fame .chip{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border:2px solid #29251F;border-radius:999px;font-size:12px;font-weight:800;background:#FFFDF8}
+.sv-fame .chip.good{background:#D6F3EA}
+.sv-fame .chip.warn{background:#FBEFC4}
+.sv-fame .chip.badge{background:#EFE3FF}
+.sv-fame-insight{border:2px solid #29251F;border-radius:12px;padding:10px 12px;background:#FFFDF8;font-size:14px;line-height:1.45}
+.sv-fame-qual{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px 14px;margin-top:8px;font-size:12px;font-weight:800}
+.sv-fame-qual > div{display:flex;flex-direction:column;gap:3px}
+.sv-fame-qual .bar{display:block;height:8px;border:2px solid #29251F;border-radius:6px;background:#F0E5D2;overflow:hidden}
+.sv-fame-qual .bar > span{display:block;height:100%;background:var(--acc)}
