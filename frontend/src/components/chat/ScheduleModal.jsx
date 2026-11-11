@@ -7,11 +7,7 @@ import { api } from '../../api'
 const DAYS_AHEAD = 60
 const DAYS_PER_PAGE = 14
 const DURATIONS = [15, 30, 45, 60, 90, 120, 180]
-const SLOT_GROUPS = [
-  { label: 'Morning', from: 6 * 60, to: 12 * 60 },
-  { label: 'Afternoon', from: 12 * 60, to: 17 * 60 },
-  { label: 'Evening', from: 17 * 60, to: 23 * 60 + 30 },
-]
+const DEFAULT_PICKS = [9 * 60, 14 * 60, 18 * 60, 20 * 60]
 
 const pad = (n) => String(n).padStart(2, '0')
 const toHHMM = (mins) => `${pad(Math.floor(mins / 60))}:${pad(mins % 60)}`
@@ -50,7 +46,7 @@ export default function ScheduleModal({ requestId, onClose, onScheduled }) {
   const days = useMemo(() => Array.from({ length: DAYS_AHEAD }, (_, i) => dayInfo(addDays(today, i), i)), [today])
   const [page, setPage] = useState(0)
   const [date, setDate] = useState(today)
-  const [start, setStart] = useState(null)      // minutes after midnight (IST)
+  const [timeText, setTimeText] = useState('')   // "HH:MM" exactly as typed, never rejected
   const [duration, setDuration] = useState(60)
   const [notes, setNotes] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -61,52 +57,42 @@ export default function ScheduleModal({ requestId, onClose, onScheduled }) {
     return () => clearInterval(t)
   }, [])
 
+  const crossesMidnight = (s, d) => s + d > 23 * 60 + 59
   // Slots in the past (today) can't be picked.
   const isPast = (mins) => {
     const at = createIstToUtcDate(date, toHHMM(mins))
     return !at || at.getTime() < now + 2 * 60 * 1000
   }
-  const slotsOf = (g) => {
-    const out = []
-    for (let m = g.from; m < g.to; m += 30) if (!isPast(m)) out.push(m)
-    return out
-  }
-  const [groupPick, setGroupPick] = useState(null)
-  // Show the chosen part of the day, else the first one that still has times.
-  const group = groupPick || (SLOT_GROUPS.find(g => slotsOf(g).length > 0) || SLOT_GROUPS[0]).label
+
+  const timeMatch = /^(\d{1,2}):(\d{2})$/.exec(timeText)
+  const start = (timeMatch && Number(timeMatch[1]) < 24 && Number(timeMatch[2]) < 60)
+    ? Number(timeMatch[1]) * 60 + Number(timeMatch[2])
+    : null
   const end = start == null ? null : start + duration
-  const crossesMidnight = (s, d) => s + d > 23 * 60 + 59
+  const timeError = timeText === '' ? ''
+    : start == null ? 'Enter a full time.'
+    : isPast(start) ? 'That time has already passed. Pick a later time.'
+    : crossesMidnight(start, duration) ? 'A session must end on the same day.'
+    : ''
+  const valid = start != null && !timeError
+  const quickPicks = date !== today
+    ? DEFAULT_PICKS
+    : (() => {
+        const out = []
+        for (let m = 0; m < 24 * 60 && out.length < 4; m += 30) {
+          if (!isPast(m) && !crossesMidnight(m, 15)) out.push(m)
+        }
+        return out
+      })()
 
   function pickDay(ymd) {
     setDate(ymd)
     setError('')
-    setGroupPick(null)
-    if (start != null && ymd === today) {
-      const at = createIstToUtcDate(ymd, toHHMM(start))
-      if (!at || at.getTime() < now) setStart(null)
-    }
-  }
-
-  function pickExact(value) {
-    const [h, m] = (value || '').split(':').map(Number)
-    if (Number.isNaN(h) || Number.isNaN(m)) return
-    const mins = h * 60 + m
-    if (isPast(mins)) { setError('That time has already passed. Pick a later time.'); return }
-    if (crossesMidnight(mins, duration)) { setError('A session must end on the same day.'); return }
-    setError('')
-    setStart(mins)
-  }
-
-  function nudge(delta) {
-    const next = start + delta
-    if (next < 0 || isPast(next) || crossesMidnight(next, duration)) return
-    setStart(next)
   }
 
   async function handleSubmit(e) {
     e.preventDefault()
-    if (start == null) { setError('Pick a start time.'); return }
-    if (crossesMidnight(start, duration)) { setError('A session must end on the same day.'); return }
+    if (!valid) { setError(timeError || 'Pick a start time.'); return }
     const startTime = toHHMM(start), endTime = toHHMM(end)
     const s = createIstToUtcDate(date, startTime)
     const en = createIstToUtcDate(date, endTime)
@@ -171,47 +157,25 @@ export default function ScheduleModal({ requestId, onClose, onScheduled }) {
           {/* 2. Start time */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             <span style={eb}>2 · START TIME <span style={{ fontWeight: 700, letterSpacing: 0, opacity: 0.7 }}>(IST)</span></span>
-            <div role="group" aria-label="Part of the day" style={{ display: 'flex', gap: 4, padding: 4, border: '2px solid #29251F', borderRadius: 14, background: '#F0E5D2', alignSelf: 'flex-start', flexWrap: 'wrap' }}>
-              {SLOT_GROUPS.map(g => {
-                const on = group === g.label, empty = slotsOf(g).length === 0
-                return (
-                  <button key={g.label} type="button" aria-pressed={on} disabled={empty} onClick={() => setGroupPick(g.label)}
-                    style={{ border: on ? '2px solid #29251F' : '2px solid transparent', borderRadius: 10, padding: '5px 12px', fontWeight: 800, fontSize: 13, fontFamily: 'inherit',
-                      background: on ? '#FFFDF8' : 'transparent', color: '#29251F', cursor: empty ? 'not-allowed' : 'pointer', opacity: empty ? 0.4 : 1 }}>
-                    {g.label}
-                  </button>
-                )
-              })}
-            </div>
-            {(() => {
-              const slots = slotsOf(SLOT_GROUPS.find(g => g.label === group))
-              if (slots.length === 0) return <span className="muted" style={{ fontSize: 13, fontWeight: 700 }}>No times left today. Pick another day.</span>
-              return (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(92px, 1fr))', gap: 6 }}>
-                  {slots.map(m => {
-                    const on = start != null && start >= m && start < m + 30
-                    return (
-                      <button key={m} type="button" aria-pressed={on} onClick={() => { setStart(m); setError('') }}
-                        style={{ ...chip(on), padding: '7px 4px', fontSize: 13 }}>
-                        {on ? to12h(start) : to12h(m)}
-                      </button>
-                    )
-                  })}
-                </div>
-              )
-            })()}
-            <label style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-              <span className="muted" style={{ fontSize: 12, fontWeight: 700 }}>Or type an exact time:</span>
-              <input type="time" step="60" className="in" aria-label="Exact start time"
-                value={start != null ? toHHMM(start) : ''} onChange={e => pickExact(e.target.value)}
-                style={{ width: 140, padding: '6px 10px', fontSize: 14 }} />
-            </label>
-            {start != null && (
+            <input type="time" step="60" className="in" aria-label="Start time" value={timeText}
+              onChange={e => { setTimeText(e.target.value); setError('') }}
+              style={{ width: 180, padding: '8px 12px', fontSize: 16, fontWeight: 700 }} />
+            {quickPicks.length > 0 ? (
               <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-                <span className="muted" style={{ fontSize: 12, fontWeight: 700 }}>Starts {to12h(start)} · fine-tune:</span>
-                <button type="button" onClick={() => nudge(-5)} style={{ ...chip(false), padding: '3px 10px', fontSize: 12 }}>−5 min</button>
-                <button type="button" onClick={() => nudge(5)} style={{ ...chip(false), padding: '3px 10px', fontSize: 12 }}>+5 min</button>
+                <span className="muted" style={{ fontSize: 12, fontWeight: 700 }}>Quick pick:</span>
+                {quickPicks.map(m => (
+                  <button key={m} type="button" aria-pressed={start === m}
+                    onClick={() => { setTimeText(toHHMM(m)); setError('') }}
+                    style={{ ...chip(start === m), padding: '5px 12px', fontSize: 13 }}>
+                    {to12h(m)}
+                  </button>
+                ))}
               </div>
+            ) : (
+              <span className="muted" style={{ fontSize: 13, fontWeight: 700 }}>No times left today. Pick another day.</span>
+            )}
+            {timeError && (
+              <span role="alert" style={{ color: '#9A2B1E', fontWeight: 700, fontSize: 13 }}>{timeError}</span>
             )}
           </div>
 
@@ -243,7 +207,7 @@ export default function ScheduleModal({ requestId, onClose, onScheduled }) {
             </div>
           )}
 
-          {start != null && chosen && (
+          {valid && chosen && (
             <div style={{ padding: '12px 14px', border: '2px solid #29251F', borderRadius: 12, background: '#D6F3EA', transform: 'rotate(-0.6deg)', boxShadow: '0 3px 0 #29251F' }}>
               <span style={eb}>SESSION SUMMARY</span>
               <div style={{ fontWeight: 800, marginTop: 4 }}>
@@ -256,7 +220,7 @@ export default function ScheduleModal({ requestId, onClose, onScheduled }) {
 
           <div style={{ display: 'flex', gap: 12 }}>
             <button type="button" className="btn btn-s" style={{ flex: 1, minHeight: 48 }} onClick={onClose}>Cancel</button>
-            <button type="submit" className="btn btn-p" style={{ flex: 1, minHeight: 48 }} disabled={submitting || start == null}>
+            <button type="submit" className="btn btn-p" style={{ flex: 1, minHeight: 48 }} disabled={submitting || !valid}>
               {submitting ? 'Scheduling…' : 'Schedule'}
             </button>
           </div>
