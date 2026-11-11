@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { createIstToUtcDate, getTodayIstYMD } from '../../utils/dateTime'
 import { api } from '../../api'
+import ClockPicker from './ClockPicker'
 
 // Session rules (the server checks them too): 15 min – 3 h, up to 60 days ahead,
 // start and end on the same day. All times are IST.
@@ -46,7 +47,8 @@ export default function ScheduleModal({ requestId, onClose, onScheduled }) {
   const days = useMemo(() => Array.from({ length: DAYS_AHEAD }, (_, i) => dayInfo(addDays(today, i), i)), [today])
   const [page, setPage] = useState(0)
   const [date, setDate] = useState(today)
-  const [timeText, setTimeText] = useState('')   // "HH:MM" exactly as typed, never rejected
+  const [timeText, setTimeText] = useState('')   // "HH:MM" (24 h) chosen on the clock or a quick pick
+  const [clockOpen, setClockOpen] = useState(false)
   const [duration, setDuration] = useState(60)
   const [notes, setNotes] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -85,8 +87,18 @@ export default function ScheduleModal({ requestId, onClose, onScheduled }) {
         return out
       })()
 
+  const clockStart = (() => {
+    if (start != null) return start
+    if (date !== today) return 10 * 60
+    for (let m = 0; m < 24 * 60; m += 15) if (!isPast(m + 3)) return m
+    return 23 * 60
+  })()
+  const checkTime = (m) => isPast(m) ? 'That time has already passed. Pick a later time.'
+    : crossesMidnight(m, duration) ? 'A session must end on the same day.' : ''
+
   function pickDay(ymd) {
     setDate(ymd)
+    setClockOpen(false)
     setError('')
   }
 
@@ -157,15 +169,24 @@ export default function ScheduleModal({ requestId, onClose, onScheduled }) {
           {/* 2. Start time */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             <span style={eb}>2 · START TIME <span style={{ fontWeight: 700, letterSpacing: 0, opacity: 0.7 }}>(IST)</span></span>
-            <input type="time" step="60" className="in" aria-label="Start time" value={timeText}
-              onChange={e => { setTimeText(e.target.value); setError('') }}
-              style={{ width: 180, padding: '8px 12px', fontSize: 16, fontWeight: 700 }} />
+            {clockOpen ? (
+              <ClockPicker key={date} initial={clockStart} check={checkTime}
+                onCancel={() => setClockOpen(false)}
+                onDone={(m) => { setTimeText(toHHMM(m)); setError(''); setClockOpen(false) }} />
+            ) : (
+              <button type="button" aria-label="Choose start time on a clock" onClick={() => setClockOpen(true)}
+                style={{ ...chip(start != null), alignSelf: 'flex-start', padding: '10px 16px', fontSize: 16, display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span aria-hidden="true">🕒</span>
+                {start != null ? to12h(start) : 'Choose a time'}
+                <span style={{ fontSize: 12, fontWeight: 700, opacity: 0.7 }}>{start != null ? 'change' : ''}</span>
+              </button>
+            )}
             {quickPicks.length > 0 ? (
               <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
                 <span className="muted" style={{ fontSize: 12, fontWeight: 700 }}>Quick pick:</span>
                 {quickPicks.map(m => (
                   <button key={m} type="button" aria-pressed={start === m}
-                    onClick={() => { setTimeText(toHHMM(m)); setError('') }}
+                    onClick={() => { setTimeText(toHHMM(m)); setError(''); setClockOpen(false) }}
                     style={{ ...chip(start === m), padding: '5px 12px', fontSize: 13 }}>
                     {to12h(m)}
                   </button>
