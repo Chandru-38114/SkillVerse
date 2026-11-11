@@ -398,7 +398,8 @@ async def webrtc_signaling(
 
         # First participant to connect marks the session as started.
         if s.started_at is None:
-            s.started_at = utc_now()
+            now = utc_now()
+            s.started_at = max(now, start_dt) if start_dt else now
             db.commit()
         tutor_id, learner_id = s.tutor_id, s.learner_id
     finally:

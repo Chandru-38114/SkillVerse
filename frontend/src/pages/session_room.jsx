@@ -27,6 +27,7 @@ function SessionRoomComponent() {
   const [error, setError] = useState(null)
   const [tool, setTool] = useState('split')
   const [timeLeft, setTimeLeft] = useState(null)
+  const [startsIn, setStartsIn] = useState(null)   // "MM:SS" until the scheduled start, null once started
   const [completing, setCompleting] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [notesData, setNotesData] = useState({
@@ -68,7 +69,21 @@ function SessionRoomComponent() {
 
   useEffect(() => {
     if (!session || session.status === 'completed' || !session.scheduled_end) return
+    function tick() {
+      if (session.scheduled_start) {
+        const startDiff = new Date(session.scheduled_start) - new Date()
+        if (startDiff > 0) {
+          const m = Math.floor(startDiff / 60000).toString().padStart(2, '0')
+          const s = Math.floor((startDiff % 60000) / 1000).toString().padStart(2, '0')
+          setStartsIn(`${m}:${s}`)
+        } else {
+          setStartsIn(null)
+        }
+      }
+    }
+    tick()
     const timer = setInterval(() => {
+      tick()
       const diff = new Date(session.scheduled_end) - new Date()
       if (diff <= 0) {
         setTimeLeft('00:00')
@@ -192,7 +207,12 @@ function SessionRoomComponent() {
 
         <div style={{ margin: '0 auto', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
           <span className="pill mono" style={{ height: 36 }}>{whenLabel}</span>
-          {timeLeft && !isCompleted && (
+          {startsIn && !isCompleted && (
+            <span className="pill mono" style={{ height: 36, fontSize: 13, background: '#FBEFC4' }}>
+              ◷ Starts in {startsIn}
+            </span>
+          )}
+          {!startsIn && timeLeft && !isCompleted && (
             <span className="pill mono" style={{ height: 36, fontSize: 13, ...(lowTime ? { background: '#E2533A', color: '#FFFDF8' } : { background: '#FFFDF8' }) }}>
               ◷ Ends in {timeLeft}
             </span>
@@ -201,7 +221,7 @@ function SessionRoomComponent() {
 
         <button type="button" className="btn btn-s" onClick={handleLeave}>Leave</button>
         {!isCompleted && (
-          <button type="button" className="btn btn-p" disabled={completing} onClick={() => setConfirmOpen(true)}>
+          <button type="button" className="btn btn-p" disabled={completing || !!startsIn} title={startsIn ? 'You can complete the session after it starts' : undefined} onClick={() => setConfirmOpen(true)}>
             ✓ Complete Session
           </button>
         )}
@@ -211,6 +231,15 @@ function SessionRoomComponent() {
       <div className="body" style={{ flex: 1, display: 'flex', minHeight: 0 }}>
         <VideoChat sessionId={session.id} onLeave={handleLeave}>
           <main style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 14, padding: '18px 20px', minHeight: 0 }}>
+
+            {startsIn && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', border: '2px solid #29251F', borderRadius: 12, background: '#FBEFC4', flexWrap: 'wrap', flex: 'none' }}>
+                <span className="eb" style={{ color: '#29251F' }}>WAITING ROOM</span>
+                <span style={{ fontWeight: 700, fontSize: 14 }}>
+                  The session starts at {formatTime(session.scheduled_start)} (in {startsIn}). You can test your camera and tools until then.
+                </span>
+              </div>
+            )}
 
             {session.notes && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', border: '2px solid #29251F', borderRadius: 12, background: '#FBEFC4', flexWrap: 'wrap', flex: 'none' }}>

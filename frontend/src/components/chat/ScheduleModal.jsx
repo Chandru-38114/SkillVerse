@@ -87,6 +87,16 @@ export default function ScheduleModal({ requestId, onClose, onScheduled }) {
     }
   }
 
+  function pickExact(value) {
+    const [h, m] = (value || '').split(':').map(Number)
+    if (Number.isNaN(h) || Number.isNaN(m)) return
+    const mins = h * 60 + m
+    if (isPast(mins)) { setError('That time has already passed. Pick a later time.'); return }
+    if (crossesMidnight(mins, duration)) { setError('A session must end on the same day.'); return }
+    setError('')
+    setStart(mins)
+  }
+
   function nudge(delta) {
     const next = start + delta
     if (next < 0 || isPast(next) || crossesMidnight(next, duration)) return
@@ -190,11 +200,17 @@ export default function ScheduleModal({ requestId, onClose, onScheduled }) {
                 </div>
               )
             })()}
+            <label style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+              <span className="muted" style={{ fontSize: 12, fontWeight: 700 }}>Or type an exact time:</span>
+              <input type="time" step="60" className="in" aria-label="Exact start time"
+                value={start != null ? toHHMM(start) : ''} onChange={e => pickExact(e.target.value)}
+                style={{ width: 140, padding: '6px 10px', fontSize: 14 }} />
+            </label>
             {start != null && (
               <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
                 <span className="muted" style={{ fontSize: 12, fontWeight: 700 }}>Starts {to12h(start)} · fine-tune:</span>
-                <button type="button" onClick={() => nudge(-15)} style={{ ...chip(false), padding: '3px 10px', fontSize: 12 }}>−15 min</button>
-                <button type="button" onClick={() => nudge(15)} style={{ ...chip(false), padding: '3px 10px', fontSize: 12 }}>+15 min</button>
+                <button type="button" onClick={() => nudge(-5)} style={{ ...chip(false), padding: '3px 10px', fontSize: 12 }}>−5 min</button>
+                <button type="button" onClick={() => nudge(5)} style={{ ...chip(false), padding: '3px 10px', fontSize: 12 }}>+5 min</button>
               </div>
             )}
           </div>
